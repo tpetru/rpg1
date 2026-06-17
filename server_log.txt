@@ -1,0 +1,1257 @@
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[13:59:10] filterscripts = ""  (string)
+[13:59:10] 
+[13:59:10] Server Plugins
+[13:59:10] --------------
+[13:59:10]  Loading plugin: mysql
+[13:59:10]  >> plugin.mysql: R41-4 successfully loaded.
+[13:59:10]   Loaded.
+[13:59:10]  Loading plugin: streamer
+[13:59:10] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[13:59:10]   Loaded.
+[13:59:10]  Loaded 2 plugins.
+
+[13:59:10] 
+[13:59:10] Filterscripts
+[13:59:10] ---------------
+[13:59:10]   Loaded 0 filterscripts.
+
+[13:59:10] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[13:59:10] MYSQL HANDLE: 1
+[13:59:10] MYSQL ERROR: 2005
+[13:59:10] [DB] EROARE: Nu s-a putut conecta la MySQL!
+[13:59:10] 
+----------------------------------
+[13:59:10]   Bare Script by Nikolas Maduro
+
+[13:59:10] ----------------------------------
+
+[13:59:10] Number of vehicle models: 0
+[13:59:10] --- Server Shutting Down.
+[13:59:10] plugin.mysql: Unloading plugin...
+[13:59:10] plugin.mysql: Plugin unloaded.
+[13:59:10] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[14:20:48] filterscripts = ""  (string)
+[14:20:48] 
+[14:20:48] Server Plugins
+[14:20:48] --------------
+[14:20:48]  Loading plugin: mysql
+[14:20:48]  >> plugin.mysql: R41-4 successfully loaded.
+[14:20:48]   Loaded.
+[14:20:48]  Loading plugin: streamer
+[14:20:48] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[14:20:48]   Loaded.
+[14:20:48]  Loaded 2 plugins.
+
+[14:20:48] 
+[14:20:48] Filterscripts
+[14:20:48] ---------------
+[14:20:48]   Loaded 0 filterscripts.
+
+[14:20:48] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[14:20:48] MYSQL HANDLE: 1
+[14:20:48] MYSQL ERROR: 1049
+[14:20:48] [DB] EROARE: Nu s-a putut conecta la MySQL!
+[14:20:48] 
+----------------------------------
+[14:20:48]   Bare Script by Nikolas Maduro
+
+[14:20:48] ----------------------------------
+
+[14:20:48] Number of vehicle models: 0
+[14:20:48] --- Server Shutting Down.
+[14:20:48] plugin.mysql: Unloading plugin...
+[14:20:48] plugin.mysql: Plugin unloaded.
+[14:20:48] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[14:21:27] filterscripts = ""  (string)
+[14:21:27] 
+[14:21:27] Server Plugins
+[14:21:27] --------------
+[14:21:27]  Loading plugin: mysql
+[14:21:27]  >> plugin.mysql: R41-4 successfully loaded.
+[14:21:27]   Loaded.
+[14:21:27]  Loading plugin: streamer
+[14:21:27] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[14:21:27]   Loaded.
+[14:21:27]  Loaded 2 plugins.
+
+[14:21:27] 
+[14:21:27] Filterscripts
+[14:21:27] ---------------
+[14:21:27]   Loaded 0 filterscripts.
+
+[14:21:27] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[14:21:27] MYSQL HANDLE: 1
+[14:21:27] MYSQL ERROR: 0
+[14:21:27] [DB] Conectat la MySQL cu succes!
+[14:21:27] [DB] Tabel `players` verificat/creat.
+[14:21:27] 
+----------------------------------
+[14:21:27]   Bare Script by Nikolas Maduro
+
+[14:21:27] ----------------------------------
+
+[14:21:27] Number of vehicle models: 0
+[14:24:38] [connection] 127.0.0.1:58221 requests connection cookie.
+[14:24:39] [connection] incoming connection: 127.0.0.1:58221 id: 0
+[14:24:40] [join] Punctulet has joined the server (0:127.0.0.1)
+[14:25:00] [part] Punctulet has left the server (0:1)
+[14:25:44] [connection] 127.0.0.1:54757 requests connection cookie.
+[14:25:45] [connection] incoming connection: 127.0.0.1:54757 id: 0
+[14:25:45] [join] Punctulet has joined the server (0:127.0.0.1)
+[14:26:04] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[14:49:04] filterscripts = ""  (string)
+[14:49:04] 
+[14:49:04] Server Plugins
+[14:49:04] --------------
+[14:49:04]  Loading plugin: mysql
+[14:49:04]  >> plugin.mysql: R41-4 successfully loaded.
+[14:49:04]   Loaded.
+[14:49:04]  Loading plugin: streamer
+[14:49:04] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[14:49:04]   Loaded.
+[14:49:04]  Loaded 2 plugins.
+
+[14:49:04] 
+[14:49:04] Filterscripts
+[14:49:04] ---------------
+[14:49:04]   Loaded 0 filterscripts.
+
+[14:49:04] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[14:49:04] MYSQL HANDLE: 1
+[14:49:04] MYSQL ERROR: 0
+[14:49:04] [DB] Conectat la MySQL cu succes!
+[14:49:04] [DB] Tabel `players` verificat/creat.
+[14:49:04] 
+----------------------------------
+[14:49:04]   Bare Script by Nikolas Maduro
+
+[14:49:04] ----------------------------------
+
+[14:49:04] Number of vehicle models: 0
+[14:49:34] [connection] 127.0.0.1:62967 requests connection cookie.
+[14:49:35] [connection] incoming connection: 127.0.0.1:62967 id: 0
+[14:49:35] [join] Punctulet has joined the server (0:127.0.0.1)
+[14:50:03] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:03:49] filterscripts = ""  (string)
+[15:03:49] 
+[15:03:49] Server Plugins
+[15:03:49] --------------
+[15:03:49]  Loading plugin: mysql
+[15:03:49]  >> plugin.mysql: R41-4 successfully loaded.
+[15:03:49]   Loaded.
+[15:03:49]  Loading plugin: streamer
+[15:03:49] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:03:49]   Loaded.
+[15:03:49]  Loaded 2 plugins.
+
+[15:03:49] 
+[15:03:49] Filterscripts
+[15:03:49] ---------------
+[15:03:49]   Loaded 0 filterscripts.
+
+[15:03:49] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[15:03:49] [DB] Conectat la MySQL cu succes!
+[15:03:49] [DB] Tabel `players` verificat/creat.
+[15:03:49] 
+----------------------------------
+[15:03:49]   Bare Script by Nikolas Maduro
+
+[15:03:49] ----------------------------------
+
+[15:03:49] Number of vehicle models: 0
+[15:04:09] [connection] 127.0.0.1:49602 requests connection cookie.
+[15:04:10] [connection] incoming connection: 127.0.0.1:49602 id: 0
+[15:04:10] [join] Punctulet has joined the server (0:127.0.0.1)
+[15:08:17] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:37:06] filterscripts = ""  (string)
+[15:37:06] 
+[15:37:06] Server Plugins
+[15:37:06] --------------
+[15:37:06]  Loading plugin: mysql
+[15:37:06]  >> plugin.mysql: R41-4 successfully loaded.
+[15:37:06]   Loaded.
+[15:37:06]  Loading plugin: streamer
+[15:37:06] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:37:06]   Loaded.
+[15:37:06]  Loaded 2 plugins.
+
+[15:37:06] 
+[15:37:06] Filterscripts
+[15:37:06] ---------------
+[15:37:06]   Loaded 0 filterscripts.
+
+[15:37:06] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[15:37:06] [DB] Conectat la MySQL cu succes!
+[15:37:06] [DB] Tabel `players` verificat/creat.
+[15:37:06] [DB] Tabele factiuni verificate/create.
+[15:37:06] 
+----------------------------------
+[15:37:06]   Bare Script by Nikolas Maduro
+
+[15:37:06] ----------------------------------
+
+[15:37:06] Number of vehicle models: 3
+[15:37:57] [connection] 127.0.0.1:63030 requests connection cookie.
+[15:37:58] [connection] incoming connection: 127.0.0.1:63030 id: 0
+[15:37:58] [join] Punctulet has joined the server (0:127.0.0.1)
+[15:38:18] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:43:16] filterscripts = ""  (string)
+[15:43:16] 
+[15:43:16] Server Plugins
+[15:43:16] --------------
+[15:43:16]  Loading plugin: mysql
+[15:43:16]  >> plugin.mysql: R41-4 successfully loaded.
+[15:43:16]   Loaded.
+[15:43:16]  Loading plugin: streamer
+[15:43:16] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:43:16]   Loaded.
+[15:43:16]  Loaded 2 plugins.
+
+[15:43:16] 
+[15:43:16] Filterscripts
+[15:43:16] ---------------
+[15:43:16]   Loaded 0 filterscripts.
+
+[15:43:16] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[15:43:16] [DB] Conectat la MySQL cu succes!
+[15:43:16] [DB] Tabel `players` verificat/creat.
+[15:43:16] [DB] Tabele factiuni verificate/create.
+[15:43:16] 
+----------------------------------
+[15:43:16]   Bare Script by Nikolas Maduro
+
+[15:43:16] ----------------------------------
+
+[15:43:16] Number of vehicle models: 3
+[15:43:36] [connection] 127.0.0.1:61501 requests connection cookie.
+[15:43:37] [connection] incoming connection: 127.0.0.1:61501 id: 0
+[15:43:37] [join] Punctulet has joined the server (0:127.0.0.1)
+[15:47:51] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[16:32:49] filterscripts = ""  (string)
+[16:32:49] 
+[16:32:49] Server Plugins
+[16:32:49] --------------
+[16:32:49]  Loading plugin: mysql
+[16:32:49]  >> plugin.mysql: R41-4 successfully loaded.
+[16:32:49]   Loaded.
+[16:32:49]  Loading plugin: streamer
+[16:32:49] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:32:49]   Loaded.
+[16:32:49]  Loaded 2 plugins.
+
+[16:32:49] 
+[16:32:49] Filterscripts
+[16:32:49] ---------------
+[16:32:49]   Loaded 0 filterscripts.
+
+[16:32:49] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[16:32:49] [DB] Conectat la MySQL cu succes!
+[16:32:49] [DB] Tabel `players` verificat/creat.
+[16:32:49] [DB] Tabele factiuni verificate/create.
+[16:32:49] 
+----------------------------------
+[16:32:49]   Bare Script by Nikolas Maduro
+
+[16:32:49] ----------------------------------
+
+[16:32:49] Number of vehicle models: 5
+[16:33:09] [connection] 127.0.0.1:60937 requests connection cookie.
+[16:33:10] [connection] incoming connection: 127.0.0.1:60937 id: 0
+[16:33:11] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:34:08] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[16:39:00] filterscripts = ""  (string)
+[16:39:00] 
+[16:39:00] Server Plugins
+[16:39:00] --------------
+[16:39:00]  Loading plugin: mysql
+[16:39:00]  >> plugin.mysql: R41-4 successfully loaded.
+[16:39:00]   Loaded.
+[16:39:00]  Loading plugin: streamer
+[16:39:00] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:39:00]   Loaded.
+[16:39:00]  Loaded 2 plugins.
+
+[16:39:00] 
+[16:39:00] Filterscripts
+[16:39:00] ---------------
+[16:39:00]   Loaded 0 filterscripts.
+
+[16:39:00] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[16:39:00] [DB] Conectat la MySQL cu succes!
+[16:39:00] [DB] Tabel `players` verificat/creat.
+[16:39:00] [DB] Tabele factiuni verificate/create.
+[16:39:00] 
+----------------------------------
+[16:39:00]   Bare Script by Nikolas Maduro
+
+[16:39:00] ----------------------------------
+
+[16:39:00] Number of vehicle models: 5
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[16:43:48] filterscripts = ""  (string)
+[16:43:48] 
+[16:43:48] Server Plugins
+[16:43:48] --------------
+[16:43:48]  Loading plugin: mysql
+[16:43:48]  >> plugin.mysql: R41-4 successfully loaded.
+[16:43:48]   Loaded.
+[16:43:48]  Loading plugin: streamer
+[16:43:48] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:43:48]   Loaded.
+[16:43:48]  Loaded 2 plugins.
+
+[16:43:48] 
+[16:43:48] Filterscripts
+[16:43:48] ---------------
+[16:43:48]   Loaded 0 filterscripts.
+
+[16:43:48] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[16:43:48] [DB] Conectat la MySQL cu succes!
+[16:43:48] [DB] Tabel `players` verificat/creat.
+[16:43:48] [DB] Tabele factiuni verificate/create.
+[16:43:48] [Factions] Se incarca factiunile din baza de date...
+[16:43:48] 
+----------------------------------
+[16:43:48]   Bare Script by Nikolas Maduro
+
+[16:43:48] ----------------------------------
+
+[16:43:48] Number of vehicle models: 5
+[16:43:48] [Factions] 7 factiuni incarcate.
+[16:44:12] [connection] 127.0.0.1:51205 requests connection cookie.
+[16:44:13] [connection] incoming connection: 127.0.0.1:51205 id: 0
+[16:44:13] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:46:39] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[17:06:09] filterscripts = ""  (string)
+[17:06:09] 
+[17:06:09] Server Plugins
+[17:06:09] --------------
+[17:06:09]  Loading plugin: mysql
+[17:06:09]  >> plugin.mysql: R41-4 successfully loaded.
+[17:06:09]   Loaded.
+[17:06:09]  Loading plugin: streamer
+[17:06:09] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[17:06:09]   Loaded.
+[17:06:09]  Loaded 2 plugins.
+
+[17:06:09] 
+[17:06:09] Filterscripts
+[17:06:09] ---------------
+[17:06:09]   Loaded 0 filterscripts.
+
+[17:06:09] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[17:06:09] [DB] Conectat la MySQL cu succes!
+[17:06:09] [DB] Tabel `players` verificat/creat.
+[17:06:09] [DB] Tabele factiuni verificate/create.
+[17:06:09] [Factions] Se incarca factiunile din baza de date...
+[17:06:09] 
+----------------------------------
+[17:06:09]   Bare Script by Nikolas Maduro
+
+[17:06:09] ----------------------------------
+
+[17:06:09] Number of vehicle models: 5
+[17:06:09] [Factions] 7 factiuni incarcate.
+[17:06:28] [connection] 127.0.0.1:63716 requests connection cookie.
+[17:06:29] [connection] incoming connection: 127.0.0.1:63716 id: 0
+[17:06:30] [join] Punctulet has joined the server (0:127.0.0.1)
+[17:07:12] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[18:28:17] filterscripts = ""  (string)
+[18:28:17] 
+[18:28:17] Server Plugins
+[18:28:17] --------------
+[18:28:17]  Loading plugin: mysql
+[18:28:17]  >> plugin.mysql: R41-4 successfully loaded.
+[18:28:17]   Loaded.
+[18:28:17]  Loading plugin: streamer
+[18:28:17] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[18:28:17]   Loaded.
+[18:28:17]  Loaded 2 plugins.
+
+[18:28:17] 
+[18:28:17] Filterscripts
+[18:28:17] ---------------
+[18:28:17]   Loaded 0 filterscripts.
+
+[18:28:17] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[18:28:17] [DB] Conectat la MySQL cu succes!
+[18:28:17] [DB] Tabel `players` verificat/creat.
+[18:28:17] [DB] Tabele factiuni si payday verificate/create.
+[18:28:17] [Factions] Se incarca factiunile din baza de date...
+[18:28:17] 
+----------------------------------
+[18:28:17]   Bare Script by Nikolas Maduro
+
+[18:28:17] ----------------------------------
+
+[18:28:17] Number of vehicle models: 5
+[18:28:17] [Factions] 7 factiuni incarcate.
+[18:28:17] [PayDay] Setari: salar minim $5000 | impozit 10% | CASS 10% | dobanda 0.25%
+[18:28:40] [connection] 127.0.0.1:58224 requests connection cookie.
+[18:28:41] [connection] incoming connection: 127.0.0.1:58224 id: 0
+[18:28:42] [join] Punctulet has joined the server (0:127.0.0.1)
+[18:29:19] [part] Punctulet has left the server (0:1)
+[19:00:22] [PayDay] Distribuit la 19:00.
+[20:00:40] [PayDay] Distribuit la 20:00.
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[20:09:14] filterscripts = ""  (string)
+[20:09:14] 
+[20:09:14] Server Plugins
+[20:09:14] --------------
+[20:09:14]  Loading plugin: mysql
+[20:09:14]  >> plugin.mysql: R41-4 successfully loaded.
+[20:09:14]   Loaded.
+[20:09:14]  Loading plugin: streamer
+[20:09:14] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[20:09:14]   Loaded.
+[20:09:14]  Loaded 2 plugins.
+
+[20:09:14] 
+[20:09:14] Filterscripts
+[20:09:14] ---------------
+[20:09:14]   Loaded 0 filterscripts.
+
+[20:09:14] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[20:09:14] [DB] Conectat la MySQL cu succes!
+[20:09:14] [DB] Tabel `players` verificat/creat.
+[20:09:14] [DB] Tabele factiuni si payday verificate/create.
+[20:09:14] [Factions] Se incarca factiunile din baza de date...
+[20:09:14] 
+----------------------------------
+[20:09:14]   Bare Script by Nikolas Maduro
+
+[20:09:14] ----------------------------------
+
+[20:09:14] Number of vehicle models: 5
+[20:09:14] [Factions] 7 factiuni incarcate.
+[20:09:14] [Houses] 0 case incarcate.
+[20:09:14] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[20:09:35] [connection] 127.0.0.1:57199 requests connection cookie.
+[20:09:36] [connection] incoming connection: 127.0.0.1:57199 id: 0
+[20:09:36] [join] Punctulet has joined the server (0:127.0.0.1)
+[20:11:24] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:00:39] filterscripts = ""  (string)
+[21:00:39] 
+[21:00:39] Server Plugins
+[21:00:39] --------------
+[21:00:39]  Loading plugin: mysql
+[21:00:39]  >> plugin.mysql: R41-4 successfully loaded.
+[21:00:39]   Loaded.
+[21:00:39]  Loading plugin: streamer
+[21:00:39] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:00:39]   Loaded.
+[21:00:39]  Loaded 2 plugins.
+
+[21:00:39] 
+[21:00:39] Filterscripts
+[21:00:39] ---------------
+[21:00:39]   Loaded 0 filterscripts.
+
+[21:00:39] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:00:39] [DB] Conectat la MySQL cu succes!
+[21:00:39] [DB] Tabel `players` verificat/creat.
+[21:00:39] [DB] Tabele factiuni si payday verificate/create.
+[21:00:39] [Factions] Se incarca factiunile din baza de date...
+[21:00:39] 
+----------------------------------
+[21:00:39]   Bare Script by Nikolas Maduro
+
+[21:00:39] ----------------------------------
+
+[21:00:39] Number of vehicle models: 5
+[21:00:39] [Factions] 7 factiuni incarcate.
+[21:00:39] [Houses] 1 case incarcate.
+[21:00:39] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[21:01:03] [connection] 127.0.0.1:60546 requests connection cookie.
+[21:01:04] [connection] incoming connection: 127.0.0.1:60546 id: 0
+[21:01:05] [join] Punctulet has joined the server (0:127.0.0.1)
+[21:01:22] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:02:50] filterscripts = ""  (string)
+[21:02:50] 
+[21:02:50] Server Plugins
+[21:02:50] --------------
+[21:02:50]  Loading plugin: mysql
+[21:02:50]  >> plugin.mysql: R41-4 successfully loaded.
+[21:02:50]   Loaded.
+[21:02:50]  Loading plugin: streamer
+[21:02:50] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:02:50]   Loaded.
+[21:02:50]  Loaded 2 plugins.
+
+[21:02:50] 
+[21:02:50] Filterscripts
+[21:02:50] ---------------
+[21:02:50]   Loaded 0 filterscripts.
+
+[21:02:50] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:02:50] [DB] Conectat la MySQL cu succes!
+[21:02:50] [DB] Tabel `players` verificat/creat.
+[21:02:50] [DB] Tabele factiuni si payday verificate/create.
+[21:02:50] [Factions] Se incarca factiunile din baza de date...
+[21:02:50] 
+----------------------------------
+[21:02:50]   Bare Script by Nikolas Maduro
+
+[21:02:50] ----------------------------------
+
+[21:02:50] Number of vehicle models: 5
+[21:02:50] [Factions] 7 factiuni incarcate.
+[21:02:50] [Houses] 1 case incarcate.
+[21:02:50] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:02:56] filterscripts = ""  (string)
+[21:02:56] 
+[21:02:56] Server Plugins
+[21:02:56] --------------
+[21:02:56]  Loading plugin: mysql
+[21:02:56]  >> plugin.mysql: R41-4 successfully loaded.
+[21:02:56]   Loaded.
+[21:02:56]  Loading plugin: streamer
+[21:02:56] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:02:56]   Loaded.
+[21:02:56]  Loaded 2 plugins.
+
+[21:02:56] 
+[21:02:56] Filterscripts
+[21:02:56] ---------------
+[21:02:56]   Loaded 0 filterscripts.
+
+[21:02:56] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:02:57] [DB] Conectat la MySQL cu succes!
+[21:02:57] [DB] Tabel `players` verificat/creat.
+[21:02:57] [DB] Tabele factiuni si payday verificate/create.
+[21:02:57] [Factions] Se incarca factiunile din baza de date...
+[21:02:57] 
+----------------------------------
+[21:02:57]   Bare Script by Nikolas Maduro
+
+[21:02:57] ----------------------------------
+
+[21:02:57] Number of vehicle models: 5
+[21:02:57] [Factions] 7 factiuni incarcate.
+[21:02:57] [Houses] 1 case incarcate.
+[21:02:57] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[21:03:15] [connection] 127.0.0.1:56215 requests connection cookie.
+[21:03:16] [connection] incoming connection: 127.0.0.1:56215 id: 0
+[21:03:16] [join] Punctulet has joined the server (0:127.0.0.1)
+[21:06:03] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:07:35] filterscripts = ""  (string)
+[21:07:35] 
+[21:07:35] Server Plugins
+[21:07:35] --------------
+[21:07:35]  Loading plugin: mysql
+[21:07:35]  >> plugin.mysql: R41-4 successfully loaded.
+[21:07:35]   Loaded.
+[21:07:35]  Loading plugin: streamer
+[21:07:35] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:07:35]   Loaded.
+[21:07:35]  Loaded 2 plugins.
+
+[21:07:35] 
+[21:07:35] Filterscripts
+[21:07:35] ---------------
+[21:07:35]   Loaded 0 filterscripts.
+
+[21:07:35] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:07:35] [DB] Conectat la MySQL cu succes!
+[21:07:35] [DB] Tabel `players` verificat/creat.
+[21:07:35] [DB] Tabele factiuni si payday verificate/create.
+[21:07:35] [Factions] Se incarca factiunile din baza de date...
+[21:07:35] 
+----------------------------------
+[21:07:35]   Bare Script by Nikolas Maduro
+
+[21:07:35] ----------------------------------
+
+[21:07:35] Number of vehicle models: 5
+[21:07:35] [Factions] 7 factiuni incarcate.
+[21:07:35] [Houses] 1 case incarcate.
+[21:07:35] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[21:07:54] [connection] 127.0.0.1:49998 requests connection cookie.
+[21:07:55] [connection] incoming connection: 127.0.0.1:49998 id: 0
+[21:07:55] [join] Punctulet has joined the server (0:127.0.0.1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:08:55] filterscripts = ""  (string)
+[21:08:55] 
+[21:08:55] Server Plugins
+[21:08:55] --------------
+[21:08:55]  Loading plugin: mysql
+[21:08:55]  >> plugin.mysql: R41-4 successfully loaded.
+[21:08:55]   Loaded.
+[21:08:55]  Loading plugin: streamer
+[21:08:55] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:08:55]   Loaded.
+[21:08:55]  Loaded 2 plugins.
+
+[21:08:55] 
+[21:08:55] Filterscripts
+[21:08:55] ---------------
+[21:08:55]   Loaded 0 filterscripts.
+
+[21:08:55] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:09:22] filterscripts = ""  (string)
+[21:09:22] 
+[21:09:22] Server Plugins
+[21:09:22] --------------
+[21:09:22]  Loading plugin: mysql
+[21:09:22]  >> plugin.mysql: R41-4 successfully loaded.
+[21:09:22]   Loaded.
+[21:09:22]  Loading plugin: streamer
+[21:09:22] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:09:22]   Loaded.
+[21:09:22]  Loaded 2 plugins.
+
+[21:09:22] 
+[21:09:22] Filterscripts
+[21:09:22] ---------------
+[21:09:22]   Loaded 0 filterscripts.
+
+[21:09:22] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:09:22] [DB] Conectat la MySQL cu succes!
+[21:09:22] [DB] Tabel `players` verificat/creat.
+[21:09:22] [DB] Tabele factiuni si payday verificate/create.
+[21:09:22] [Factions] Se incarca factiunile din baza de date...
+[21:09:22] 
+----------------------------------
+[21:09:22]   Bare Script by Nikolas Maduro
+
+[21:09:22] ----------------------------------
+
+[21:09:22] Number of vehicle models: 5
+[21:09:22] [Factions] 7 factiuni incarcate.
+[21:09:22] [Houses] 1 case incarcate.
+[21:09:22] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[21:09:42] [connection] 127.0.0.1:62359 requests connection cookie.
+[21:09:43] [connection] incoming connection: 127.0.0.1:62359 id: 0
+[21:09:43] [join] Punctulet has joined the server (0:127.0.0.1)
+[21:11:00] [PayDay] Distribuit la 21:00.
+[21:11:13] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:44:07] filterscripts = ""  (string)
+[21:44:07] 
+[21:44:07] Server Plugins
+[21:44:07] --------------
+[21:44:07]  Loading plugin: mysql
+[21:44:07]  >> plugin.mysql: R41-4 successfully loaded.
+[21:44:07]   Loaded.
+[21:44:07]  Loading plugin: streamer
+[21:44:07] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:44:07]   Loaded.
+[21:44:07]  Loaded 2 plugins.
+
+[21:44:07] 
+[21:44:07] Filterscripts
+[21:44:07] ---------------
+[21:44:07]   Loaded 0 filterscripts.
+
+[21:44:07] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:44:07] [DB] Conectat la MySQL cu succes!
+[21:44:07] [DB] Tabel `players` verificat/creat.
+[21:44:07] [DB] Tabele factiuni si payday verificate/create.
+[21:44:07] [Factions] Se incarca factiunile din baza de date...
+[21:44:07] 
+----------------------------------
+[21:44:07]   Bare Script by Nikolas Maduro
+
+[21:44:07] ----------------------------------
+
+[21:44:07] Number of vehicle models: 5
+[21:44:07] [Factions] 7 factiuni incarcate.
+[21:44:07] [Houses] 1 case incarcate.
+[21:44:07] [VehiculeFactiuni] 0 vehicule incarcate.
+[21:44:07] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[21:44:27] [connection] 127.0.0.1:51479 requests connection cookie.
+[21:44:28] [connection] incoming connection: 127.0.0.1:51479 id: 0
+[21:44:28] [join] Punctulet has joined the server (0:127.0.0.1)
+[21:55:18] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:58:45] filterscripts = ""  (string)
+[21:58:45] 
+[21:58:45] Server Plugins
+[21:58:45] --------------
+[21:58:45]  Loading plugin: mysql
+[21:58:45]  >> plugin.mysql: R41-4 successfully loaded.
+[21:58:45]   Loaded.
+[21:58:45]  Loading plugin: streamer
+[21:58:45] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:58:45]   Loaded.
+[21:58:45]  Loaded 2 plugins.
+
+[21:58:45] 
+[21:58:45] Filterscripts
+[21:58:45] ---------------
+[21:58:45]   Loaded 0 filterscripts.
+
+[21:58:45] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:58:45] [DB] Conectat la MySQL cu succes!
+[21:58:46] [DB] Tabel `players` verificat/creat.
+[21:58:46] [DB] Tabele factiuni si payday verificate/create.
+[21:58:46] [Factions] Se incarca factiunile din baza de date...
+[21:58:46] 
+----------------------------------
+[21:58:46]   Bare Script by Nikolas Maduro
+
+[21:58:46] ----------------------------------
+
+[21:58:46] Number of vehicle models: 5
+[21:58:46] [Factions] 7 factiuni incarcate.
+[21:58:46] [Houses] 1 case incarcate.
+[21:58:46] [VehiculeFactiuni] 10 vehicule incarcate.
+[21:58:46] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[21:59:04] [connection] 127.0.0.1:55591 requests connection cookie.
+[21:59:05] [connection] incoming connection: 127.0.0.1:55591 id: 0
+[21:59:06] [join] Punctulet has joined the server (0:127.0.0.1)
+[22:00:53] [PayDay] Distribuit la 22:00.
+[22:25:24] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[22:41:55] filterscripts = ""  (string)
+[22:41:55] 
+[22:41:55] Server Plugins
+[22:41:55] --------------
+[22:41:55]  Loading plugin: mysql
+[22:41:55]  >> plugin.mysql: R41-4 successfully loaded.
+[22:41:55]   Loaded.
+[22:41:55]  Loading plugin: streamer
+[22:41:55] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[22:41:55]   Loaded.
+[22:41:55]  Loaded 2 plugins.
+
+[22:41:55] 
+[22:41:55] Filterscripts
+[22:41:55] ---------------
+[22:41:55]   Loaded 0 filterscripts.
+
+[22:41:55] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[22:41:55] [DB] Conectat la MySQL cu succes!
+[22:41:55] [DB] Tabel `players` verificat/creat.
+[22:41:55] [DB] Tabele factiuni si payday verificate/create.
+[22:41:55] [Factions] Se incarca factiunile din baza de date...
+[22:41:55] 
+----------------------------------
+[22:41:55]   Bare Script by Nikolas Maduro
+
+[22:41:55] ----------------------------------
+
+[22:41:55] Number of vehicle models: 5
+[22:41:55] [Factions] 7 factiuni incarcate.
+[22:41:55] [Houses] 1 case incarcate.
+[22:41:55] [VehiculeFactiuni] 37 vehicule incarcate.
+[22:41:55] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[22:42:14] [connection] 127.0.0.1:53842 requests connection cookie.
+[22:42:15] [connection] incoming connection: 127.0.0.1:53842 id: 0
+[22:42:15] [join] Punctulet has joined the server (0:127.0.0.1)
+[22:44:12] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[23:10:25] filterscripts = ""  (string)
+[23:10:25] 
+[23:10:25] Server Plugins
+[23:10:25] --------------
+[23:10:25]  Loading plugin: mysql
+[23:10:25]  >> plugin.mysql: R41-4 successfully loaded.
+[23:10:25]   Loaded.
+[23:10:25]  Loading plugin: streamer
+[23:10:25] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[23:10:25]   Loaded.
+[23:10:25]  Loaded 2 plugins.
+
+[23:10:25] 
+[23:10:25] Filterscripts
+[23:10:25] ---------------
+[23:10:25]   Loaded 0 filterscripts.
+
+[23:10:25] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[23:10:25] [DB] Conectat la MySQL cu succes!
+[23:10:25] [DB] Tabel `players` verificat/creat.
+[23:10:25] [DB] Tabele factiuni si payday verificate/create.
+[23:10:25] [Factions] Se incarca factiunile din baza de date...
+[23:10:25] 
+----------------------------------
+[23:10:25]   Bare Script by Nikolas Maduro
+
+[23:10:25] ----------------------------------
+
+[23:10:25] Number of vehicle models: 5
+[23:10:25] [Factions] 7 factiuni incarcate.
+[23:10:25] [Houses] 1 case incarcate.
+[23:10:25] [VehiculeFactiuni] 37 vehicule incarcate.
+[23:10:25] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[23:10:43] [connection] 127.0.0.1:59078 requests connection cookie.
+[23:10:44] [connection] incoming connection: 127.0.0.1:59078 id: 0
+[23:10:45] [join] Punctulet has joined the server (0:127.0.0.1)
+[23:12:58] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[23:25:55] filterscripts = ""  (string)
+[23:25:55] 
+[23:25:55] Server Plugins
+[23:25:55] --------------
+[23:25:55]  Loading plugin: mysql
+[23:25:55]  >> plugin.mysql: R41-4 successfully loaded.
+[23:25:55]   Loaded.
+[23:25:55]  Loading plugin: streamer
+[23:25:55] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[23:25:55]   Loaded.
+[23:25:55]  Loaded 2 plugins.
+
+[23:25:55] 
+[23:25:55] Filterscripts
+[23:25:55] ---------------
+[23:25:55]   Loaded 0 filterscripts.
+
+[23:25:55] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[23:25:55] [DB] Conectat la MySQL cu succes!
+[23:25:55] [DB] Tabel `players` verificat/creat.
+[23:25:55] [DB] Tabele factiuni si payday verificate/create.
+[23:25:55] [Factions] Se incarca factiunile din baza de date...
+[23:25:55] 
+----------------------------------
+[23:25:55]   Bare Script by Nikolas Maduro
+
+[23:25:55] ----------------------------------
+
+[23:25:55] Number of vehicle models: 5
+[23:25:55] [Factions] 7 factiuni incarcate.
+[23:25:55] [Houses] 1 case incarcate.
+[23:25:55] [VehiculeFactiuni] 37 vehicule incarcate.
+[23:25:55] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[23:26:13] [connection] 127.0.0.1:52111 requests connection cookie.
+[23:26:14] [connection] incoming connection: 127.0.0.1:52111 id: 0
+[23:26:14] [join] Punctulet has joined the server (0:127.0.0.1)
+[23:26:43] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[23:26:55] filterscripts = ""  (string)
+[23:26:55] 
+[23:26:55] Server Plugins
+[23:26:55] --------------
+[23:26:55]  Loading plugin: mysql
+[23:26:55]  >> plugin.mysql: R41-4 successfully loaded.
+[23:26:55]   Loaded.
+[23:26:55]  Loading plugin: streamer
+[23:26:55] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[23:26:55]   Loaded.
+[23:26:55]  Loaded 2 plugins.
+
+[23:26:55] 
+[23:26:55] Filterscripts
+[23:26:55] ---------------
+[23:26:55]   Loaded 0 filterscripts.
+
+[23:26:55] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[23:26:55] [DB] Conectat la MySQL cu succes!
+[23:26:55] [DB] Tabel `players` verificat/creat.
+[23:26:55] [DB] Tabele factiuni si payday verificate/create.
+[23:26:55] [Factions] Se incarca factiunile din baza de date...
+[23:26:55] 
+----------------------------------
+[23:26:55]   Bare Script by Nikolas Maduro
+
+[23:26:55] ----------------------------------
+
+[23:26:55] Number of vehicle models: 5
+[23:26:55] [Factions] 7 factiuni incarcate.
+[23:26:55] [Houses] 1 case incarcate.
+[23:26:55] [VehiculeFactiuni] 37 vehicule incarcate.
+[23:26:55] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[23:27:13] [connection] 127.0.0.1:65180 requests connection cookie.
+[23:27:14] [connection] incoming connection: 127.0.0.1:65180 id: 0
+[23:27:14] [join] Punctulet has joined the server (0:127.0.0.1)
+[23:29:08] [PayDay] Distribuit la 23:00.
+[23:29:32] [part] Punctulet has left the server (0:1)
+[23:29:54] [connection] 127.0.0.1:53390 requests connection cookie.
+[23:29:55] [connection] incoming connection: 127.0.0.1:53390 id: 0
+[23:29:55] [join] Punctulet has joined the server (0:127.0.0.1)
+[23:30:40] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[23:43:03] filterscripts = ""  (string)
+[23:43:03] 
+[23:43:03] Server Plugins
+[23:43:03] --------------
+[23:43:03]  Loading plugin: mysql
+[23:43:03]  >> plugin.mysql: R41-4 successfully loaded.
+[23:43:03]   Loaded.
+[23:43:03]  Loading plugin: streamer
+[23:43:03] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[23:43:03]   Loaded.
+[23:43:03]  Loaded 2 plugins.
+
+[23:43:03] 
+[23:43:03] Filterscripts
+[23:43:03] ---------------
+[23:43:03]   Loaded 0 filterscripts.
+
+[23:43:03] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[23:43:03] [DB] Conectat la MySQL cu succes!
+[23:43:03] [DB] Tabel `players` verificat/creat.
+[23:43:03] [DB] Tabele factiuni si payday verificate/create.
+[23:43:03] [Factions] Se incarca factiunile din baza de date...
+[23:43:03] 
+----------------------------------
+[23:43:03]   Bare Script by Nikolas Maduro
+
+[23:43:03] ----------------------------------
+
+[23:43:03] Number of vehicle models: 5
+[23:43:03] [Factions] 7 factiuni incarcate.
+[23:43:03] [Houses] 1 case incarcate.
+[23:43:03] [VehiculeFactiuni] 37 vehicule incarcate.
+[23:43:03] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[23:43:22] [connection] 127.0.0.1:60531 requests connection cookie.
+[23:43:23] [connection] incoming connection: 127.0.0.1:60531 id: 0
+[23:43:23] [join] Punctulet has joined the server (0:127.0.0.1)
+[23:44:51] [part] Punctulet has left the server (0:1)
+[00:00:32] [PayDay] Distribuit la 00:00.
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[00:10:07] filterscripts = ""  (string)
+[00:10:07] 
+[00:10:07] Server Plugins
+[00:10:07] --------------
+[00:10:07]  Loading plugin: mysql
+[00:10:07]  >> plugin.mysql: R41-4 successfully loaded.
+[00:10:07]   Loaded.
+[00:10:07]  Loading plugin: streamer
+[00:10:07] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[00:10:07]   Loaded.
+[00:10:07]  Loaded 2 plugins.
+
+[00:10:07] 
+[00:10:07] Filterscripts
+[00:10:07] ---------------
+[00:10:07]   Loaded 0 filterscripts.
+
+[00:10:07] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[00:10:07] [DB] Conectat la MySQL cu succes!
+[00:10:07] [DB] Tabel `players` verificat/creat.
+[00:10:07] [DB] Tabele factiuni si payday verificate/create.
+[00:10:07] [Factions] Se incarca factiunile din baza de date...
+[00:10:07] 
+----------------------------------
+[00:10:07]   Bare Script by Nikolas Maduro
+
+[00:10:07] ----------------------------------
+
+[00:10:07] Number of vehicle models: 5
+[00:10:07] [Factions] 7 factiuni incarcate.
+[00:10:07] [Houses] 1 case incarcate.
+[00:10:07] [VehiculeFactiuni] 37 vehicule incarcate.
+[00:10:07] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[00:10:25] [connection] 127.0.0.1:61773 requests connection cookie.
+[00:10:26] [connection] incoming connection: 127.0.0.1:61773 id: 0
+[00:10:27] [join] Punctulet has joined the server (0:127.0.0.1)
+[00:12:23] [part] Punctulet has left the server (0:1)

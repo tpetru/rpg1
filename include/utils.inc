@@ -6,32 +6,30 @@
 #endif
 #define _utils_included
 
+#include <a_samp>
 #include <md5>
-
-// ---- Hash parola ----
-stock HashPassword(const pass[], output[], size = sizeof(output))
-{
-    new hash[33];
-    MD5_Hash(pass, hash, sizeof(hash));
-    format(output, size, "%s", hash);
-}
 
 // ---- Mesaje colorate ----
 stock SendMsg(playerid, color, const msg[])
 {
     SendClientMessage(playerid, color, msg);
+    return 1;
 }
 
 stock SendMsgAll(color, const msg[])
 {
     SendClientMessageToAll(color, msg);
+    return 1;
 }
 
 stock SendMsgFmt(playerid, color, const fmt[], {Float,_}:...)
 {
     new msg[256];
-    va_format(msg, sizeof(msg), fmt);
+    //va_format(msg, sizeof(msg), fmt);
+    //vformat(msg, sizeof(str), "%d", value);
+    format(msg, sizeof(msg), fmt);
     SendClientMessage(playerid, color, msg);
+    return 1;
 }
 
 stock SendMsgAllFmt(color, const fmt[], {Float,_}:...)
@@ -39,6 +37,7 @@ stock SendMsgAllFmt(color, const fmt[], {Float,_}:...)
     new msg[256];
     va_format(msg, sizeof(msg), fmt);
     SendClientMessageToAll(color, msg);
+    return 1;
 }
 
 // ---- Distanta ----
@@ -87,16 +86,7 @@ stock bool:IsValidName(const name[])
     return true;
 }
 
-// ---- Notificare factiune ----
-stock NotifyFaction(factionid, color, const msg[])
-{
-    for(new i = 0; i < MAX_PLAYERS; i++)
-    {
-        if(!IsPlayerConnected(i)) continue;
-        if(PlayerData[i][pFaction] == factionid)
-            SendClientMessage(i, color, msg);
-    }
-}
+
 
 // ---- Gametext cu stil ----
 stock ShowGameText(playerid, const msg[], time, style)
@@ -164,8 +154,4 @@ stock AnnounceInRange(Float:x, Float:y, Float:z, Float:range, color, const msg[]
     }
 }
 
-// ---- Verificare admin ----
-stock IsAdmin(playerid, level = 1)
-{
-    return (PlayerData[playerid][pAdminLevel] >= level);
-}
+
