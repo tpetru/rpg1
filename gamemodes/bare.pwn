@@ -1369,8 +1369,8 @@ public Radar_Tick()
                     C_ERROR"[RADAR] "C_INFO"%s"C_WHITE" passed at "C_INFO"%d km/h"C_WHITE" (limit "C_INFO"%d km/h"C_WHITE", +"C_INFO"%d km/h"C_WHITE" over).",
                     PlayerData[i][pName], ispeed, g_RadarSpeedLimit[j], ispeed - g_RadarSpeedLimit[j]);
                 SendClientMessage(j, COLOR_ERROR, rmsg);
+                break;
             }
-            break;
         }
     }
     return 1;
@@ -1447,6 +1447,7 @@ stock GetVehicleModelName(model, name[], len)
 // ============================================================
 #define MAX_PERSONAL_VEHICLES   200
 #define MAX_PLAYER_VEHICLES     3
+#define VSELLTO_RANGE           10.0
 #define VEHICLE_DOC_DURATION         604800  // 7 zile, in secunde (folosit la /vbuy)
 #define VEHICLE_INSURANCE_DURATION   432000  // 5 zile
 #define VEHICLE_MEDKIT_DURATION      604800  // 7 zile
@@ -3456,6 +3457,11 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
 
+        new Float:px, Float:py, Float:pz;
+        GetPlayerPos(playerid, px, py, pz);
+        if(!IsPlayerInRangeOfPoint(targetid, FINE_RANGE, px, py, pz))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player must be within 10m."), 1;
+
         new vehid = GetPlayerVehicleID(targetid);
         if(vehid == 0)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not in a vehicle."), 1;
@@ -3605,6 +3611,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         if(PlayerData[playerid][pFactionRank] < 2)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Requires rank 2 or higher."), 1;
+
+        if(g_RadarActive[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already have a radar installed. Use "C_INFO"/removeradar"C_WHITE" first."), 1;
 
         while(cmdtext[idx] == ' ') idx++;
         new p1[8];
@@ -3937,6 +3946,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         PlayerData[playerid][pMoney] -= HouseData[hidx][hPrice];
         GivePlayerMoney(playerid, -HouseData[hidx][hPrice]);
+        UpdatePlayer(playerid, pMoney);
 
         HouseData[hidx][hOwned]   = 1;
         HouseData[hidx][hOwnerId] = PlayerData[playerid][pID];
@@ -3975,6 +3985,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new price = HouseData[hidx][hPrice];
         PlayerData[playerid][pMoney] += price;
         GivePlayerMoney(playerid, price);
+        UpdatePlayer(playerid, pMoney);
         PlayerData[playerid][pHouse] = 999;
 
         HouseData[hidx][hOwned]    = 0;
@@ -4022,6 +4033,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         PlayerData[playerid][pMoney] -= BusinessData[bidx][bPrice];
         GivePlayerMoney(playerid, -BusinessData[bidx][bPrice]);
+        UpdatePlayer(playerid, pMoney);
 
         BusinessData[bidx][bOwned]   = 1;
         BusinessData[bidx][bOwnerId] = PlayerData[playerid][pID];
@@ -4069,6 +4081,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new refund = BusinessData[bidx][bPrice] / 2;
         PlayerData[playerid][pMoney] += refund;
         GivePlayerMoney(playerid, refund);
+        UpdatePlayer(playerid, pMoney);
 
         BusinessData[bidx][bOwned]    = 0;
         BusinessData[bidx][bOwnerId]  = 0;
@@ -4259,6 +4272,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
         while(cmdtext[idx] == ' ') idx++;
         strmid(p2, cmdtext, idx, strlen(cmdtext), 16);
         new newPrice = strval(p2);
+
+        if(!strlen(p1) || !strlen(p2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changebizprice [id] [new_price]"C_WHITE"."), 1;
 
         new bidx = Businesses_FindByID(bid);
         if(bidx == -1)
@@ -4537,6 +4553,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
         strmid(p2, cmdtext, idx, strlen(cmdtext), 16);
         new newPrice = strval(p2);
 
+        if(!strlen(p1) || !strlen(p2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changehouseprice [id] [new_price]"C_WHITE"."), 1;
+
         new hidx = Houses_FindByID(hid);
         if(hidx == -1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"House not found."), 1;
@@ -4571,6 +4590,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
         while(cmdtext[idx] == ' ') idx++;
         strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
         new targetid = strval(p2);
+
+        if(!strlen(p1) || !strlen(p2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changehouseowner [id] [playerid]"C_WHITE"."), 1;
 
         new hidx = Houses_FindByID(hid);
         if(hidx == -1)
@@ -4645,6 +4667,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         PlayerData[playerid][pMoney] -= PVehicleData[pvidx][pvPrice];
         GivePlayerMoney(playerid, -PVehicleData[pvidx][pvPrice]);
+        UpdatePlayer(playerid, pMoney);
 
         PVehicleData[pvidx][pvOwnerId] = PlayerData[playerid][pID];
         PlayerData[playerid][slot] = PVehicleData[pvidx][pvID];
@@ -4701,6 +4724,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         new refund = PVehicleData[pvidx][pvPrice] / 2;
         PlayerData[playerid][pMoney] += refund;
         GivePlayerMoney(playerid, refund);
+        UpdatePlayer(playerid, pMoney);
 
         PVehicles_ClearKeySlot(playerid, PVehicleData[pvidx][pvID]);
         PVehicleData[pvidx][pvOwnerId] = 0;
@@ -4751,6 +4775,11 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         if(targetid == playerid)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't sell to yourself."), 1;
+
+        new Float:px, Float:py, Float:pz;
+        GetPlayerPos(playerid, px, py, pz);
+        if(!IsPlayerInRangeOfPoint(targetid, VSELLTO_RANGE, px, py, pz))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player must be within 10m."), 1;
 
         new E_PLAYER_DATA:slot = PVehicles_FindFreeKeySlot(targetid);
         if(slot == E_PLAYER_DATA:-1)
@@ -4887,6 +4916,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         PlayerData[playerid][pMoney] -= g_InsurancePrice;
         GivePlayerMoney(playerid, -g_InsurancePrice);
+        UpdatePlayer(playerid, pMoney);
 
         PVehicleData[pvidx][pvInsuranceExp] = gettime() + VEHICLE_INSURANCE_DURATION;
 
@@ -4929,6 +4959,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         PlayerData[playerid][pMoney] -= g_MedkitPrice;
         GivePlayerMoney(playerid, -g_MedkitPrice);
+        UpdatePlayer(playerid, pMoney);
 
         PVehicleData[pvidx][pvMedkitExp] = gettime() + VEHICLE_MEDKIT_DURATION;
 
@@ -4971,6 +5002,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         PlayerData[playerid][pMoney] -= g_ExtinguisherPrice;
         GivePlayerMoney(playerid, -g_ExtinguisherPrice);
+        UpdatePlayer(playerid, pMoney);
 
         PVehicleData[pvidx][pvExtinguisherExp] = gettime() + VEHICLE_EXTINGUISHER_DURATION;
 
@@ -5713,7 +5745,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(fid < 1 || fid > MAX_FACTIONS)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid faction ID (1-7)."), 1;
 
-        if(!IsPlayerConnected(targetid))
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
 
         // Ajusteaza fMembers: scade la vechea factiune, adauga la noua
