@@ -62,6 +62,7 @@ forward OnHousesLoaded();
 forward OnHouseCreated(playerid, idx);
 forward OnBusinessesLoaded();
 forward OnBusinessCreated(playerid, idx);
+forward OnTurfsLoaded();
 forward OnVehiclesFactionLoaded();
 forward OnVehicleFactionCreated(playerid, idx);
 forward Fires_Tick();
@@ -86,6 +87,8 @@ new g_ExtinguisherPrice = 500;
 new g_ITPPrice         = 750;
 new g_PlatePrice       = 250;
 new g_RentBikePrice    = 15;
+new g_RentCarDesertPrice = 20;
+new g_ExamAPrice       = 200;
 new g_ExamBPrice       = 300;
 
 // ============================================================
@@ -118,6 +121,14 @@ new g_InviteFaction[MAX_PLAYERS]; // 0 = nicio invitatie
 new g_InviteInviter[MAX_PLAYERS];
 
 #define FINVITE_RANGE 15.0
+
+// Amenda RAR in asteptare (o singura amenda activa per player, cea mai recenta o suprascrie)
+new g_PendingFineAmount[MAX_PLAYERS]; // 0 = nicio amenda in asteptare
+new g_PendingFineOfficer[MAX_PLAYERS];
+new g_PendingFineReason[MAX_PLAYERS][128];
+
+#define FINE_RANGE 10.0
+#define M_RANGE    50.0
 
 // Returneaza {RRGGBB} pentru culoarea factiunii
 stock GetFactionColorCode(fid, out[], len)
@@ -333,6 +344,171 @@ stock bool:IsRentBikeVehicle(vehid)
 }
 
 // ============================================================
+//  MASINI DE INCHIRIAT (PIRAMIDA)
+// ============================================================
+#define MAX_RENT_CARS    4
+#define RENT_CAR_PRICE   30
+#define RENT_CAR_BIZ_ID  3
+
+new g_RentCarVehicle[MAX_RENT_CARS] = {-1, -1, -1, -1};
+
+// Returneaza true daca vehiculul dat e una dintre masinile de inchiriat
+stock bool:IsRentCarVehicle(vehid)
+{
+    for(new i = 0; i < MAX_RENT_CARS; i++)
+        if(g_RentCarVehicle[i] == vehid) return true;
+    return false;
+}
+
+// ============================================================
+//  MASINI DE INCHIRIAT (RENTCARDMVDESERT)
+// ============================================================
+#define MAX_RENT_CARS_DESERT    4
+#define RENT_CAR_DESERT_BIZ_ID  6
+
+new g_RentCarDesertVehicle[MAX_RENT_CARS_DESERT] = {-1, -1, -1, -1};
+
+// Returneaza true daca vehiculul dat e una dintre masinile de inchiriat de la RentCarDMVDesert
+stock bool:IsRentCarDesertVehicle(vehid)
+{
+    for(new i = 0; i < MAX_RENT_CARS_DESERT; i++)
+        if(g_RentCarDesertVehicle[i] == vehid) return true;
+    return false;
+}
+
+// ============================================================
+//  EXAMEN AUTO CATEGORIA A
+// ============================================================
+#define MAX_EXAMA_CARS        3
+#define EXAMA_CAR_MODEL       468 // Sanchez
+#define EXAMA_BIZ_ID          5
+#define EXAMA_LOC_X           -13.0385
+#define EXAMA_LOC_Y           2346.3943
+#define EXAMA_LOC_Z           24.1406
+#define EXAMA_RANGE           5.0
+#define EXAMA_CP_SIZE         5.0
+#define EXAMA_STEP_TIME       30000 // 30 secunde, in ms
+#define EXAMA_PASS_HEALTH     800.0
+#define EXAMA_PASS_DURATION   1123200 // 13 zile, in secunde
+#define EXAMA_FAIL_DURATION   259200  // 3 zile, in secunde
+#define MAX_EXAMA_CHECKPOINTS 10
+
+#define EXAMA_STATE_NONE        0
+#define EXAMA_STATE_WAITING_CAR 1
+#define EXAMA_STATE_DRIVING     2
+
+new Float:ExamACheckpoints[MAX_EXAMA_CHECKPOINTS][3] = {
+    {-28.5800, 2336.8235, 23.8089},
+    {-95.5793, 2371.9023, 16.5861},
+    {-158.2541, 2284.8386, 30.0590},
+    {-133.5963, 2260.8770, 30.9436},
+    {-223.5624, 2229.8826, 38.8588},
+    {-331.6229, 2144.8433, 46.3301},
+    {-264.6616, 2120.6362, 53.8529},
+    {-231.3696, 2154.7949, 46.1665},
+    {-162.8979, 2265.0098, 28.9983},
+    {-7.4154, 2341.7690, 23.8088}
+};
+
+new g_ExamACar[MAX_EXAMA_CARS] = {-1, -1, -1};
+new g_ExamAState[MAX_PLAYERS];
+new g_ExamACheckpoint[MAX_PLAYERS];
+new g_ExamAVehicle[MAX_PLAYERS];
+new g_ExamATimer[MAX_PLAYERS] = {-1, ...};
+
+forward ExamA_Timeout(playerid);
+
+// Returneaza true daca vehiculul dat e una dintre motocicletele de scoala (examen categoria A)
+stock bool:IsExamACarVehicle(vehid)
+{
+    for(new i = 0; i < MAX_EXAMA_CARS; i++)
+        if(g_ExamACar[i] == vehid) return true;
+    return false;
+}
+
+// Returneaza playerid-ul care da in prezent examenul cu acest vehicul, sau -1 daca e liber
+stock ExamA_GetCarUser(vehid)
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(g_ExamAState[i] == EXAMA_STATE_DRIVING && g_ExamAVehicle[i] == vehid)
+            return i;
+    return -1;
+}
+
+stock ExamA_KillTimer(playerid)
+{
+    if(g_ExamATimer[playerid] != -1)
+    {
+        KillTimer(g_ExamATimer[playerid]);
+        g_ExamATimer[playerid] = -1;
+    }
+}
+
+stock ExamA_GotoCheckpoint(playerid, cpIdx)
+{
+    SetPlayerCheckpoint(playerid, ExamACheckpoints[cpIdx][0], ExamACheckpoints[cpIdx][1], ExamACheckpoints[cpIdx][2], EXAMA_CP_SIZE);
+    ExamA_KillTimer(playerid);
+    g_ExamATimer[playerid] = SetTimerEx("ExamA_Timeout", EXAMA_STEP_TIME, false, "i", playerid);
+}
+
+stock ExamA_Fail(playerid, const reason[])
+{
+    new vehid = g_ExamAVehicle[playerid];
+
+    g_ExamAState[playerid]      = EXAMA_STATE_NONE;
+    g_ExamAVehicle[playerid]    = -1;
+    g_ExamACheckpoint[playerid] = 0;
+    DisablePlayerCheckpoint(playerid);
+    ExamA_KillTimer(playerid);
+
+    if(vehid != -1) SetVehicleToRespawn(vehid);
+
+    new msg[160];
+    format(msg, sizeof(msg), C_ERROR"Error: "C_WHITE"You failed the category A driving exam. %s Try again.", reason);
+    SendClientMessage(playerid, COLOR_ERROR, msg);
+}
+
+stock ExamA_Finish(playerid)
+{
+    new vehid = g_ExamAVehicle[playerid];
+
+    DisablePlayerCheckpoint(playerid);
+    ExamA_KillTimer(playerid);
+    g_ExamAState[playerid]      = EXAMA_STATE_NONE;
+    g_ExamAVehicle[playerid]    = -1;
+    g_ExamACheckpoint[playerid] = 0;
+
+    new Float:health = 0.0;
+    if(vehid != -1) GetVehicleHealth(vehid, health);
+
+    new bool:fullPass = (health >= EXAMA_PASS_HEALTH);
+    new expTs = gettime() + (fullPass ? EXAMA_PASS_DURATION : EXAMA_FAIL_DURATION);
+
+    new dateStr[11];
+    UnixToDateStr(expTs, dateStr, sizeof(dateStr));
+    format(PlayerData[playerid][pDrivingLicA_exp], 11, "%s", dateStr);
+    UpdatePlayer(playerid, pDrivingLicA_exp);
+
+    if(vehid != -1) SetVehicleToRespawn(vehid);
+
+    new msg[160];
+    format(msg, sizeof(msg),
+        C_SUCCESS"Congratulations, "C_WHITE"your category A license has been extended until "C_INFO"%s"C_WHITE" (Vehicle HP: "C_INFO"%d"C_WHITE").",
+        dateStr, floatround(health));
+    SendClientMessage(playerid, COLOR_SUCCESS, msg);
+}
+
+public ExamA_Timeout(playerid)
+{
+    if(!IsPlayerConnected(playerid)) return 0;
+    if(g_ExamAState[playerid] == EXAMA_STATE_NONE) return 0;
+
+    g_ExamATimer[playerid] = -1;
+    ExamA_Fail(playerid, "Time's up.");
+    return 1;
+}
+
+// ============================================================
 //  EXAMEN AUTO CATEGORIA B
 // ============================================================
 #define MAX_EXAMB_CARS        3
@@ -461,24 +637,245 @@ public Exam_Timeout(playerid)
     return 1;
 }
 
+// ============================================================
+//  EXAMEN AUTO CATEGORIA C
+// ============================================================
+#define MAX_EXAMC_TRUCKS         2
+#define MAX_EXAMC_TRAILERS       2
+#define EXAMC_TRUCK_MODEL        403 // Linerunner
+#define EXAMC_TRAILER_MODEL      450 // Trailer
+#define EXAMC_BIZ_ID             4
+#define EXAMC_PRICE              500
+#define EXAMC_LOC_X              1375.2307
+#define EXAMC_LOC_Y              1019.8265
+#define EXAMC_LOC_Z              10.8203
+#define EXAMC_RANGE              5.0
+#define EXAMC_CP_SIZE            5.0
+#define EXAMC_STEP_TIME          30000 // 30 secunde, in ms
+#define EXAMC_PASS_HEALTH        800.0
+#define EXAMC_PASS_DURATION      1728000 // 20 zile, in secunde
+#define EXAMC_FAIL_DURATION      432000  // 5 zile, in secunde
+#define MAX_EXAMC_CHECKPOINTS    6
+
+#define EXAMC_STATE_NONE            0
+#define EXAMC_STATE_WAITING_TRUCK   1
+#define EXAMC_STATE_WAITING_TRAILER 2
+#define EXAMC_STATE_DRIVING         3
+
+new Float:ExamCCheckpoints[MAX_EXAMC_CHECKPOINTS][3] = {
+    {1424.8381,  988.9763, 11.4167},
+    {1482.6425, 1017.5750, 11.4138},
+    {1442.8020, 1113.3623, 11.4136},
+    {1397.2150, 1118.4844, 11.4066},
+    {1406.1770, 1024.8680, 11.4167},
+    {1389.1658,  947.0981, 11.4130}
+};
+
+new g_ExamCTruck[MAX_EXAMC_TRUCKS]     = {-1, -1};
+new g_ExamCTrailer[MAX_EXAMC_TRAILERS] = {-1, -1};
+new g_ExamCState[MAX_PLAYERS];
+new g_ExamCCheckpoint[MAX_PLAYERS];
+new g_ExamCVehicle[MAX_PLAYERS];       // cap tractor folosit la examen
+new g_ExamCTrailerVeh[MAX_PLAYERS];    // remorca atasata la examen
+new g_ExamCTimer[MAX_PLAYERS] = {-1, ...};
+
+forward ExamC_Timeout(playerid);
+
+// Returneaza true daca vehiculul dat e unul dintre capetele tractor de scoala (examen categoria C)
+stock bool:IsExamCTruckVehicle(vehid)
+{
+    for(new i = 0; i < MAX_EXAMC_TRUCKS; i++)
+        if(g_ExamCTruck[i] == vehid) return true;
+    return false;
+}
+
+// Returneaza true daca vehiculul dat e una dintre remorcile de scoala (examen categoria C)
+stock bool:IsExamCTrailerVehicle(vehid)
+{
+    for(new i = 0; i < MAX_EXAMC_TRAILERS; i++)
+        if(g_ExamCTrailer[i] == vehid) return true;
+    return false;
+}
+
+// Returneaza playerid-ul care da in prezent examenul C cu acest cap tractor, sau -1 daca e liber
+stock ExamC_GetTruckUser(vehid)
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(g_ExamCState[i] != EXAMC_STATE_NONE && g_ExamCVehicle[i] == vehid)
+            return i;
+    return -1;
+}
+
+stock ExamC_KillTimer(playerid)
+{
+    if(g_ExamCTimer[playerid] != -1)
+    {
+        KillTimer(g_ExamCTimer[playerid]);
+        g_ExamCTimer[playerid] = -1;
+    }
+}
+
+stock ExamC_StartStepTimer(playerid)
+{
+    ExamC_KillTimer(playerid);
+    g_ExamCTimer[playerid] = SetTimerEx("ExamC_Timeout", EXAMC_STEP_TIME, false, "i", playerid);
+}
+
+stock ExamC_GotoCheckpoint(playerid, cpIdx)
+{
+    SetPlayerCheckpoint(playerid, ExamCCheckpoints[cpIdx][0], ExamCCheckpoints[cpIdx][1], ExamCCheckpoints[cpIdx][2], EXAMC_CP_SIZE);
+    ExamC_StartStepTimer(playerid);
+}
+
+stock ExamC_Fail(playerid, const reason[])
+{
+    new vehid = g_ExamCVehicle[playerid];
+    new trailerid = g_ExamCTrailerVeh[playerid];
+
+    g_ExamCState[playerid]      = EXAMC_STATE_NONE;
+    g_ExamCVehicle[playerid]    = -1;
+    g_ExamCTrailerVeh[playerid] = -1;
+    g_ExamCCheckpoint[playerid] = 0;
+    DisablePlayerCheckpoint(playerid);
+    ExamC_KillTimer(playerid);
+
+    if(vehid != -1) SetVehicleToRespawn(vehid);
+    if(trailerid != -1) SetVehicleToRespawn(trailerid);
+
+    new msg[160];
+    format(msg, sizeof(msg), C_ERROR"Error: "C_WHITE"You failed the category C driving exam. %s Try again.", reason);
+    SendClientMessage(playerid, COLOR_ERROR, msg);
+}
+
+stock ExamC_Finish(playerid)
+{
+    new vehid = g_ExamCVehicle[playerid];
+    new trailerid = g_ExamCTrailerVeh[playerid];
+
+    DisablePlayerCheckpoint(playerid);
+    ExamC_KillTimer(playerid);
+    g_ExamCState[playerid]      = EXAMC_STATE_NONE;
+    g_ExamCVehicle[playerid]    = -1;
+    g_ExamCTrailerVeh[playerid] = -1;
+    g_ExamCCheckpoint[playerid] = 0;
+
+    new Float:truckHealth = 0.0, Float:trailerHealth = 0.0;
+    if(vehid != -1) GetVehicleHealth(vehid, truckHealth);
+    if(trailerid != -1) GetVehicleHealth(trailerid, trailerHealth);
+
+    new bool:fullPass = (truckHealth >= EXAMC_PASS_HEALTH && trailerHealth >= EXAMC_PASS_HEALTH);
+    new expTs = gettime() + (fullPass ? EXAMC_PASS_DURATION : EXAMC_FAIL_DURATION);
+
+    new dateStr[11];
+    UnixToDateStr(expTs, dateStr, sizeof(dateStr));
+    format(PlayerData[playerid][pDrivingLicC_exp], 11, "%s", dateStr);
+    UpdatePlayer(playerid, pDrivingLicC_exp);
+
+    if(vehid != -1) SetVehicleToRespawn(vehid);
+    if(trailerid != -1) SetVehicleToRespawn(trailerid);
+
+    new msg[180];
+    format(msg, sizeof(msg),
+        C_SUCCESS"Congratulations, "C_WHITE"your category C license has been extended until "C_INFO"%s"C_WHITE" (Truck HP: "C_INFO"%d"C_WHITE", Trailer HP: "C_INFO"%d"C_WHITE").",
+        dateStr, floatround(truckHealth), floatround(trailerHealth));
+    SendClientMessage(playerid, COLOR_SUCCESS, msg);
+}
+
+public ExamC_Timeout(playerid)
+{
+    if(!IsPlayerConnected(playerid)) return 0;
+    if(g_ExamCState[playerid] == EXAMC_STATE_NONE) return 0;
+
+    g_ExamCTimer[playerid] = -1;
+    ExamC_Fail(playerid, "Time's up.");
+    return 1;
+}
+
+public OnTrailerUpdate(playerid, vehicleid)
+{
+    if(g_ExamCState[playerid] == EXAMC_STATE_WAITING_TRAILER && g_ExamCVehicle[playerid] == vehicleid)
+    {
+        if(IsTrailerAttachedToVehicle(vehicleid))
+        {
+            new trailerid = GetVehicleTrailer(vehicleid);
+            if(IsExamCTrailerVehicle(trailerid))
+            {
+                g_ExamCState[playerid]      = EXAMC_STATE_DRIVING;
+                g_ExamCTrailerVeh[playerid] = trailerid;
+                g_ExamCCheckpoint[playerid] = 0;
+                ExamC_GotoCheckpoint(playerid, 0);
+
+                SendClientMessage(playerid, COLOR_INFO,
+                    C_INFO"Info: "C_WHITE"Trailer attached! The exam has started, you have "C_INFO"30 seconds"C_WHITE" to reach the next checkpoint.");
+            }
+        }
+    }
+    else if(g_ExamCState[playerid] == EXAMC_STATE_DRIVING && g_ExamCVehicle[playerid] == vehicleid)
+    {
+        if(!IsTrailerAttachedToVehicle(vehicleid))
+            ExamC_Fail(playerid, "You detached the trailer.");
+    }
+    return 1;
+}
 public OnPlayerEnterCheckpoint(playerid)
 {
-    if(g_ExamState[playerid] != EXAM_STATE_DRIVING) return 1;
-
-    g_ExamCheckpoint[playerid]++;
-    if(g_ExamCheckpoint[playerid] >= MAX_EXAMB_CHECKPOINTS)
+    if(g_ExamAState[playerid] == EXAMA_STATE_DRIVING)
     {
-        Exam_Finish(playerid);
-    }
-    else
-    {
-        Exam_GotoCheckpoint(playerid, g_ExamCheckpoint[playerid]);
+        g_ExamACheckpoint[playerid]++;
+        if(g_ExamACheckpoint[playerid] >= MAX_EXAMA_CHECKPOINTS)
+        {
+            ExamA_Finish(playerid);
+        }
+        else
+        {
+            ExamA_GotoCheckpoint(playerid, g_ExamACheckpoint[playerid]);
 
-        new msg[64];
-        format(msg, sizeof(msg), C_INFO"Info: "C_WHITE"Checkpoint "C_INFO"%d/%d"C_WHITE"!",
-            g_ExamCheckpoint[playerid], MAX_EXAMB_CHECKPOINTS);
-        SendClientMessage(playerid, COLOR_INFO, msg);
+            new msg[64];
+            format(msg, sizeof(msg), C_INFO"Info: "C_WHITE"Checkpoint "C_INFO"%d/%d"C_WHITE"!",
+                g_ExamACheckpoint[playerid], MAX_EXAMA_CHECKPOINTS);
+            SendClientMessage(playerid, COLOR_INFO, msg);
+        }
+        return 1;
     }
+
+    if(g_ExamState[playerid] == EXAM_STATE_DRIVING)
+    {
+        g_ExamCheckpoint[playerid]++;
+        if(g_ExamCheckpoint[playerid] >= MAX_EXAMB_CHECKPOINTS)
+        {
+            Exam_Finish(playerid);
+        }
+        else
+        {
+            Exam_GotoCheckpoint(playerid, g_ExamCheckpoint[playerid]);
+
+            new msg[64];
+            format(msg, sizeof(msg), C_INFO"Info: "C_WHITE"Checkpoint "C_INFO"%d/%d"C_WHITE"!",
+                g_ExamCheckpoint[playerid], MAX_EXAMB_CHECKPOINTS);
+            SendClientMessage(playerid, COLOR_INFO, msg);
+        }
+        return 1;
+    }
+
+    if(g_ExamCState[playerid] == EXAMC_STATE_DRIVING)
+    {
+        g_ExamCCheckpoint[playerid]++;
+        if(g_ExamCCheckpoint[playerid] >= MAX_EXAMC_CHECKPOINTS)
+        {
+            ExamC_Finish(playerid);
+        }
+        else
+        {
+            ExamC_GotoCheckpoint(playerid, g_ExamCCheckpoint[playerid]);
+
+            new msg[64];
+            format(msg, sizeof(msg), C_INFO"Info: "C_WHITE"Checkpoint "C_INFO"%d/%d"C_WHITE"!",
+                g_ExamCCheckpoint[playerid], MAX_EXAMC_CHECKPOINTS);
+            SendClientMessage(playerid, COLOR_INFO, msg);
+        }
+        return 1;
+    }
+
     return 1;
 }
 
@@ -607,7 +1004,7 @@ stock Houses_FindPlayerByPID(pid)
 // ============================================================
 #define MAX_BUSINESSES          50
 #define BUSINESS_RANGE          5.0
-#define BUSINESS_ICON_SLOT_BASE 100
+#define BUSINESS_ICON_SLOT_BASE 10 // SetPlayerMapIcon iconid e limitat la 0-99; sloturile 1-7 sunt factiunile, 10-59 business-urile, 60-69 incendiile
 
 enum E_BUSINESS_DATA
 {
@@ -680,6 +1077,65 @@ stock Businesses_FindByID(bid)
 }
 
 // ============================================================
+//  TURFS (TERITORII FACTIUNI)
+// ============================================================
+#define MAX_TURFS 50
+
+enum E_TURF_DATA
+{
+    tID, tFactionID, tName[32],
+    Float:tX1, Float:tY1, Float:tX2, Float:tY2,
+    bool:tAttackable, tColor[9]
+}
+new TurfData[MAX_TURFS][E_TURF_DATA];
+new g_TurfZone[MAX_TURFS] = {-1, ...};
+new g_TurfCount = 0;
+
+// Converteste un string hex (ex: "3366CC88") in valoarea sa intreaga (0x3366CC88)
+stock HexStrToInt(const str[])
+{
+    new result = 0;
+    for(new i = 0; str[i] != EOS; i++)
+    {
+        new c = str[i], digit;
+        if(c >= '0' && c <= '9') digit = c - '0';
+        else if(c >= 'A' && c <= 'F') digit = c - 'A' + 10;
+        else if(c >= 'a' && c <= 'f') digit = c - 'a' + 10;
+        else continue;
+        result = (result << 4) | digit;
+    }
+    return result;
+}
+
+// Distruge si recreeaza gangzone-ul pentru un turf
+stock Turfs_RecreateZone(idx)
+{
+    if(g_TurfZone[idx] != -1)
+    {
+        GangZoneDestroy(g_TurfZone[idx]);
+        g_TurfZone[idx] = -1;
+    }
+    g_TurfZone[idx] = GangZoneCreate(TurfData[idx][tX1], TurfData[idx][tY1], TurfData[idx][tX2], TurfData[idx][tY2]);
+    GangZoneShowForAll(g_TurfZone[idx], HexStrToInt(TurfData[idx][tColor]));
+}
+
+stock Turfs_FindByID(tid)
+{
+    for(new i = 0; i < g_TurfCount; i++)
+        if(TurfData[i][tID] == tid) return i;
+    return -1;
+}
+
+// Arata toate turf-urile incarcate unui singur player (folosit la conectare,
+// pentru ca GangZoneShowForAll nu acopera playerii care se conecteaza dupa apel)
+stock Turfs_ShowToPlayer(playerid)
+{
+    for(new i = 0; i < g_TurfCount; i++)
+        if(g_TurfZone[i] != -1)
+            GangZoneShowForPlayer(playerid, g_TurfZone[i], HexStrToInt(TurfData[i][tColor]));
+}
+
+// ============================================================
 //  VEHICULE FACTIUNI
 // ============================================================
 #define MAX_VFACTION_VEHICLES   100
@@ -740,11 +1196,12 @@ stock VehiclesFaction_Create(idx)
 #define MAX_FIRES               10
 #define FIRETRUCK_MODEL         407
 #define FIRE_MAPICON_ID         20
-#define FIRE_ICON_SLOT_BASE     50
+#define FIRE_ICON_SLOT_BASE     60
 #define FIRE_EXTINGUISH_RANGE   25.0
 #define DUTY_HQ_RANGE           10.0
 #define FACTION_SMURD           3
 #define FACTION_RAR             2
+#define FACTION_POLICE          1
 
 #define FIRE_VISUAL_REFRESH      4 // recreeaza explozia (vizual) o data la 4 secunde, nu in fiecare tick, ca sa nu se suprapuna si sa para mai mare
 
@@ -837,6 +1294,83 @@ public Fires_Tick()
         else
         {
             FireData[f][fireProgress] = 0;
+        }
+    }
+    return 1;
+}
+
+// ============================================================
+//  CAMERE RADAR (POLITIA)
+// ============================================================
+#define RADAR_RANGE       10.0
+#define RADAR_TICK        1000 // 1 secunda, in ms
+
+new bool:g_RadarActive[MAX_PLAYERS];
+new Float:g_RadarX[MAX_PLAYERS];
+new Float:g_RadarY[MAX_PLAYERS];
+new Float:g_RadarZ[MAX_PLAYERS];
+new g_RadarSpeedLimit[MAX_PLAYERS];
+new g_RadarFlaggedBy[MAX_PLAYERS] = {-1, ...}; // pentru fiecare player, ID-ul ofiterului al carui radar l-a avertizat deja (evita spam la fiecare tick)
+
+forward Radar_Tick();
+
+// Returneaza viteza curenta a vehiculului in care se afla playerid, in km/h (aproximare standard SA-MP)
+stock Float:GetPlayerVehicleSpeed(playerid)
+{
+    new vehid = GetPlayerVehicleID(playerid);
+    if(vehid == 0) return 0.0;
+
+    new Float:vx, Float:vy, Float:vz;
+    GetVehicleVelocity(vehid, vx, vy, vz);
+    return floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0;
+}
+
+public Radar_Tick()
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+
+        if(GetPlayerVehicleID(i) == 0)
+        {
+            g_RadarFlaggedBy[i] = -1;
+            continue;
+        }
+
+        // Daca e deja semnalat, verifica daca a iesit din raza radarului care l-a semnalat
+        if(g_RadarFlaggedBy[i] != -1)
+        {
+            new j = g_RadarFlaggedBy[i];
+            if(!g_RadarActive[j] || !IsPlayerInRangeOfPoint(i, RADAR_RANGE, g_RadarX[j], g_RadarY[j], g_RadarZ[j]))
+                g_RadarFlaggedBy[i] = -1;
+        }
+
+        if(g_RadarFlaggedBy[i] != -1) continue;
+
+        for(new j = 0; j < MAX_PLAYERS; j++)
+        {
+            if(i == j || !g_RadarActive[j]) continue;
+            if(!IsPlayerInRangeOfPoint(i, RADAR_RANGE, g_RadarX[j], g_RadarY[j], g_RadarZ[j])) continue;
+
+            new Float:speed = GetPlayerVehicleSpeed(i);
+            new ispeed = floatround(speed);
+
+            if(ispeed > g_RadarSpeedLimit[j])
+            {
+                g_RadarFlaggedBy[i] = j;
+
+                new rmsg[160];
+                format(rmsg, sizeof(rmsg),
+                    C_ERROR"[RADAR] "C_WHITE"You have exceeded the speed limit ("C_INFO"%d km/h"C_WHITE", limit "C_INFO"%d km/h"C_WHITE")! Pull over.",
+                    ispeed, g_RadarSpeedLimit[j]);
+                SendClientMessage(i, COLOR_ERROR, rmsg);
+
+                format(rmsg, sizeof(rmsg),
+                    C_ERROR"[RADAR] "C_INFO"%s"C_WHITE" passed at "C_INFO"%d km/h"C_WHITE" (limit "C_INFO"%d km/h"C_WHITE", +"C_INFO"%d km/h"C_WHITE" over).",
+                    PlayerData[i][pName], ispeed, g_RadarSpeedLimit[j], ispeed - g_RadarSpeedLimit[j]);
+                SendClientMessage(j, COLOR_ERROR, rmsg);
+            }
+            break;
         }
     }
     return 1;
@@ -1187,6 +1721,8 @@ stock DB_CreateTables()
         `itp_price`         INT   DEFAULT 750,\
         `plate_price`       INT   DEFAULT 250,\
         `rent_bike_price`   INT   DEFAULT 15,\
+        `rent_car_desert_price` INT DEFAULT 20,\
+        `exam_a_price`      INT   DEFAULT 200,\
         `exam_b_price`      INT   DEFAULT 300\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
@@ -1197,6 +1733,8 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `itp_price`          INT DEFAULT 750", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `plate_price`        INT DEFAULT 250", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `rent_bike_price`    INT DEFAULT 15",  "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `rent_car_desert_price` INT DEFAULT 20", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `exam_a_price`       INT DEFAULT 200", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `exam_b_price`       INT DEFAULT 300", "", "", 0);
 
     mysql_tquery(g_SQL,
@@ -1279,6 +1817,36 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `vehicles_personal` MODIFY `medkit_exp`       DATE DEFAULT NULL", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `vehicles_personal` MODIFY `extinguisher_exp` DATE DEFAULT NULL", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `vehicles_personal` MODIFY `itp_exp`          DATE DEFAULT NULL", "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `turfs` (\
+        `id`         INT AUTO_INCREMENT PRIMARY KEY,\
+        `faction_id` INT DEFAULT 0,\
+        `name`       VARCHAR(32) NOT NULL DEFAULT '',\
+        `x1`         FLOAT DEFAULT 0.0,\
+        `y1`         FLOAT DEFAULT 0.0,\
+        `x2`         FLOAT DEFAULT 0.0,\
+        `y2`         FLOAT DEFAULT 0.0,\
+        `attackable` TINYINT(1) DEFAULT 1,\
+        `color`      VARCHAR(8) DEFAULT '000000FF',\
+        UNIQUE KEY `uq_turf_name` (`name`)\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+
+    mysql_tquery(g_SQL, "ALTER TABLE `turfs` MODIFY `color` VARCHAR(8) DEFAULT '000000FF'", "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "INSERT IGNORE INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) VALUES \
+        (4,'HQ {Factiune 4}',-304.0,2583.5,-168.0,2762.5,0,'3366CC88'),\
+        (5,'HQ {Factiune 5}',-1563.0,2546.5,-1387.0,2687.5,0,'AA44AA88'),\
+        (6,'HQ {Factiune 6}',-845.0,1416.5,-748.0,1608.5,0,'44AA4488'),\
+        (7,'HQ {Factiune 7}',30.0,1046.5,130.0,1146.5,0,'FFCC0088');",
+        "", "", 0);
+
+    mysql_tquery(g_SQL, "UPDATE `turfs` SET `faction_id`=4,`color`='3366CC88' WHERE `name`='HQ {Factiune 4}'", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `turfs` SET `faction_id`=5,`color`='AA44AA88' WHERE `name`='HQ {Factiune 5}'", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `turfs` SET `faction_id`=6,`color`='44AA4488' WHERE `name`='HQ {Factiune 6}'", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `turfs` SET `faction_id`=7,`color`='FFCC0088' WHERE `name`='HQ {Factiune 7}'", "", "", 0);
 
     print("[DB] Tabele factiuni si payday verificate/create.");
 }
@@ -1400,6 +1968,42 @@ public OnBusinessesLoaded()
     }
     printf("[Businesses] %d business-uri incarcate.", g_BusinessCount);
     Businesses_UpdatePlayersIcons();
+    return 1;
+}
+
+stock Turfs_Load()
+{
+    mysql_tquery(g_SQL,
+        "SELECT `id`,`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color` FROM `turfs` ORDER BY `id` ASC",
+        "OnTurfsLoaded");
+}
+
+public OnTurfsLoaded()
+{
+    new rows = cache_num_rows();
+    g_TurfCount = 0;
+    for(new i = 0; i < rows && g_TurfCount < MAX_TURFS; i++)
+    {
+        new idx = g_TurfCount;
+        cache_get_value_name_int  (i, "id",         TurfData[idx][tID]);
+        cache_get_value_name_int  (i, "faction_id",  TurfData[idx][tFactionID]);
+        cache_get_value_name      (i, "name",        TurfData[idx][tName], 32);
+        cache_get_value_name_float(i, "x1", TurfData[idx][tX1]);
+        cache_get_value_name_float(i, "y1", TurfData[idx][tY1]);
+        cache_get_value_name_float(i, "x2", TurfData[idx][tX2]);
+        cache_get_value_name_float(i, "y2", TurfData[idx][tY2]);
+
+        new attackable;
+        cache_get_value_name_int(i, "attackable", attackable);
+        TurfData[idx][tAttackable] = bool:attackable;
+
+        cache_get_value_name(i, "color", TurfData[idx][tColor], 9);
+
+        g_TurfZone[idx] = -1;
+        Turfs_RecreateZone(idx);
+        g_TurfCount++;
+    }
+    printf("[Turfs] %d turf-uri incarcate.", g_TurfCount);
     return 1;
 }
 
@@ -1619,7 +2223,7 @@ public OnVehicleITPCheck(playerid, pvidx, vehid)
 stock PayDay_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `min_salary`,`tax`,`cass`,`bank_interest`,`insurance_price`,`medkit_price`,`extinguisher_price`,`itp_price`,`plate_price`,`rent_bike_price`,`exam_b_price` \
+        "SELECT `min_salary`,`tax`,`cass`,`bank_interest`,`insurance_price`,`medkit_price`,`extinguisher_price`,`itp_price`,`plate_price`,`rent_bike_price`,`rent_car_desert_price`,`exam_a_price`,`exam_b_price` \
          FROM `payday_setup` WHERE `id`=1 LIMIT 1",
         "OnPayDayLoaded");
 }
@@ -1638,12 +2242,14 @@ public OnPayDayLoaded()
         cache_get_value_name_int  (0, "itp_price",          g_ITPPrice);
         cache_get_value_name_int  (0, "plate_price",        g_PlatePrice);
         cache_get_value_name_int  (0, "rent_bike_price",    g_RentBikePrice);
+        cache_get_value_name_int  (0, "rent_car_desert_price", g_RentCarDesertPrice);
+        cache_get_value_name_int  (0, "exam_a_price",       g_ExamAPrice);
         cache_get_value_name_int  (0, "exam_b_price",       g_ExamBPrice);
     }
     printf("[PayDay] Setari: Salar minim $%d | Impozit %d%% | CASS %d%% | Dobanda %.2f%%",
         g_PDMinSalary, g_PDTax, g_PDCASS, g_PDInterest);
-    printf("[VehiculePersonale] Asigurare $%d | Kit medical $%d | Extinctor $%d | ITP $%d | Numar inmatriculare $%d | Bicicleta $%d | Examen B $%d",
-        g_InsurancePrice, g_MedkitPrice, g_ExtinguisherPrice, g_ITPPrice, g_PlatePrice, g_RentBikePrice, g_ExamBPrice);
+    printf("[VehiculePersonale] Asigurare $%d | Kit medical $%d | Extinctor $%d | ITP $%d | Numar inmatriculare $%d | Bicicleta $%d | RentCarDMVDesert $%d | Examen A $%d | Examen B $%d",
+        g_InsurancePrice, g_MedkitPrice, g_ExtinguisherPrice, g_ITPPrice, g_PlatePrice, g_RentBikePrice, g_RentCarDesertPrice, g_ExamAPrice, g_ExamBPrice);
     return 1;
 }
 
@@ -2050,10 +2656,33 @@ public OnGameModeInit()
     g_RentBikeVehicle[3] = AddStaticVehicle(510, 2855.0, 1287.0, 11.0, 45.0, 6, 6);
     g_RentBikeVehicle[4] = AddStaticVehicle(510, 2840.0, 1286.0, 11.0, 45.0, 6, 6);
 
+    // Masini de inchiriat piramida
+    g_RentCarVehicle[0] = AddStaticVehicle(545, 2220.0, 1278.0, 10.6, 90.0, 6, 6);
+    g_RentCarVehicle[1] = AddStaticVehicle(565, 2200.0, 1283.0, 10.6, 90.0, 6, 6);
+    g_RentCarVehicle[2] = AddStaticVehicle(477, 2200.0, 1288.0, 10.6, 90.0, 6, 6);
+    g_RentCarVehicle[3] = AddStaticVehicle(559, 2200.0, 1293.0, 10.6, 90.0, 6, 6);
+
+    // Masini de inchiriat RentCarDMVDesert
+    g_RentCarDesertVehicle[0] = AddStaticVehicle(471, -17.0106, 2325.4922, 23.6235, 0.5196, 6, 6);
+    g_RentCarDesertVehicle[1] = AddStaticVehicle(471, -19.7723, 2325.7161, 23.6209, 359.8743, 6, 6);
+    g_RentCarDesertVehicle[2] = AddStaticVehicle(468, -26.1589, 2324.3223, 23.8033, 2.3033, 6, 6);
+    g_RentCarDesertVehicle[3] = AddStaticVehicle(468, -28.8546, 2324.5056, 23.8053, 2.8901, 6, 6);
+
+    // Motociclete scoala (examen categoria A)
+    g_ExamACar[0] = AddStaticVehicle(468, -13.5, 2340.0, 23.8097, 91.1855, 226, 226);
+    g_ExamACar[1] = AddStaticVehicle(468, -13.5, 2337.0, 23.8096, 90.2720, 226, 226);
+    g_ExamACar[2] = AddStaticVehicle(468, -13.5, 2334.0, 23.8133, 91.6934, 226, 226);
+
     // Masini scoala (examen categoria B)
     g_ExamBCar[0] = AddStaticVehicle(480, 2215.0, 1280.0, 10.5, 270.0, 226, 226);
     g_ExamBCar[1] = AddStaticVehicle(480, 2215.0, 1285.0, 10.5, 270.0, 226, 226);
     g_ExamBCar[2] = AddStaticVehicle(480, 2215.0, 1290.0, 10.5, 270.0, 226, 226);
+
+    // Capete tractor + remorci scoala (examen categoria C)
+    g_ExamCTruck[0]   = AddStaticVehicle(403, 1379.0, 1025.0, 11.5, 240.0, 226, 226);
+    g_ExamCTruck[1]   = AddStaticVehicle(403, 1387.0, 1027.0, 11.5, 240.0, 226, 226);
+    g_ExamCTrailer[0] = AddStaticVehicle(450, 1389.0, 1043.0, 11.5, 270.0, 226, 226); // scade 1 la X daca remorca nu se aliniaza
+    g_ExamCTrailer[1] = AddStaticVehicle(450, 1389.0, 1035.0, 11.5, 270.0, 226, 226); // scade 1 la X daca remorca nu se aliniaza
 
     // 3D Text:
     Create3DTextLabel("[ Vehicle Inspection Service ]\n[ Use /vitp ]\n[ Price: 750$ ]", COLOR_WHITE,
@@ -2062,9 +2691,17 @@ public OnGameModeInit()
     Create3DTextLabel("[ Vehicle Inspection Service ]\n[ Use /vplate ]\n[ Price: 250$ ]", COLOR_WHITE,
         PLATE_LOC_X, PLATE_LOC_Y, PLATE_LOC_Z - 1.0, 25.0, 0, 0);
 
+    CreatePickup(1210, 1, EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z, -1);
+    Create3DTextLabel("[ Category A Exam ]\n[ /examA ]", COLOR_WHITE,
+        EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z - 0.0, 25.0, 0, 0);
+
     CreatePickup(1210, 1, EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z, -1);
     Create3DTextLabel("[ Category B Exam ]\n[ /examB ]", COLOR_WHITE,
         EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z - 0.0, 25.0, 0, 0);
+
+    CreatePickup(1210, 1, EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z, -1);
+    Create3DTextLabel("[ Category C Exam ]\n[ /examC ]", COLOR_WHITE,
+        EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z - 0.0, 25.0, 0, 0);
 
 	// HQ RAR
     CreateDynamicObject(19817, 932.00000, 2081.00000, 9.70000,   0.00000, 0.00000, 90.00000);
@@ -2116,6 +2753,8 @@ public OnGameModeInit()
         g_BusinessLabel[i] = Text3D:INVALID_3DTEXT_ID;
     }
 
+    for(new i = 0; i < MAX_TURFS; i++) g_TurfZone[i] = -1;
+
     for(new i = 0; i < MAX_VFACTION_VEHICLES; i++) g_VFactionVehicle[i] = -1;
     for(new i = 0; i < MAX_VEHICLES; i++) g_VehicleFactionOwner[i] = 0;
     for(new i = 0; i < MAX_FIRES; i++) FireData[i][fireActive] = false;
@@ -2130,12 +2769,14 @@ public OnGameModeInit()
     Factions_Load();
     Houses_Load();
     Businesses_Load();
+    Turfs_Load();
     VehiclesFaction_Load();
     PVehicles_Load();
     PayDay_Load();
 
     SetTimer("PayDay_Check", 60000, true);
     SetTimer("Fires_Tick", 1000, true);
+    SetTimer("Radar_Tick", RADAR_TICK, true);
 
     return 1;
 }
@@ -2150,6 +2791,13 @@ public OnPlayerConnect(playerid)
 {
     g_InviteFaction[playerid] = 0;
     g_InviteInviter[playerid] = 0;
+
+    g_PendingFineAmount[playerid] = 0;
+    g_PendingFineOfficer[playerid] = 0;
+    g_PendingFineReason[playerid][0] = EOS;
+
+    g_RadarActive[playerid]    = false;
+    g_RadarFlaggedBy[playerid] = -1;
 
     PlayerData[playerid][pID]         = 0;
     PlayerData[playerid][pLevel]      = 1;
@@ -2183,6 +2831,8 @@ public OnPlayerConnect(playerid)
     SetPlayerVirtualWorld(playerid, -1);
 
     GameTextForPlayer(playerid, "~g~Welcome to\n~y~Old is Gold", 5000, 5);
+
+    Turfs_ShowToPlayer(playerid);
 
     Player_CheckExists(playerid);
     return 1;
@@ -2465,7 +3115,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
-    // ---- /accept finvite [playerid] ----
+    // ---- /accept finvite [playerid] / /accept fine [playerid] ----
     if(strcmp(cmd, "/accept", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
@@ -2480,8 +3130,51 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new p1[8];
         strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
 
-        if(strcmp(sub, "finvite", true) != 0 || !strlen(p1))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/accept finvite [playerid]"C_WHITE"."), 1;
+        if(!strlen(p1) || (strcmp(sub, "finvite", true) != 0 && strcmp(sub, "fine", true) != 0))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/accept finvite [playerid]"C_WHITE" or "C_INFO"/accept fine [playerid]"C_WHITE"."), 1;
+
+        if(strcmp(sub, "fine", true) == 0)
+        {
+            new officerid = strval(p1);
+
+            if(g_PendingFineAmount[playerid] == 0 || g_PendingFineOfficer[playerid] != officerid)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have a pending fine from this player."), 1;
+
+            if(!IsPlayerConnected(officerid) || !PlayerData[officerid][pLogged])
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The officer is no longer connected."), 1;
+
+            new Float:ox, Float:oy, Float:oz;
+            GetPlayerPos(officerid, ox, oy, oz);
+            if(!IsPlayerInRangeOfPoint(playerid, FINE_RANGE, ox, oy, oz))
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be within 10m of the officer who fined you."), 1;
+
+            new amount = g_PendingFineAmount[playerid];
+            new reason[128];
+            format(reason, 128, "%s", g_PendingFineReason[playerid]);
+
+            if(PlayerData[playerid][pMoney] < amount)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money to pay this fine."), 1;
+
+            PlayerData[playerid][pMoney] -= amount;
+            GivePlayerMoney(playerid, -amount);
+            UpdatePlayer(playerid, pMoney);
+
+            PlayerData[officerid][pMoney] += amount;
+            GivePlayerMoney(officerid, amount);
+            UpdatePlayer(officerid, pMoney);
+
+            g_PendingFineAmount[playerid]  = 0;
+            g_PendingFineOfficer[playerid] = 0;
+            g_PendingFineReason[playerid][0] = EOS;
+
+            new amsg2[160];
+            format(amsg2, sizeof(amsg2), C_SUCCESS"Success: "C_WHITE"You paid the "C_INFO"$%d"C_WHITE" fine for: "C_INFO"%s"C_WHITE".", amount, reason);
+            SendClientMessage(playerid, COLOR_SUCCESS, amsg2);
+
+            format(amsg2, sizeof(amsg2), C_SUCCESS"Success: "C_WHITE"%s"C_WHITE" paid the "C_INFO"$%d"C_WHITE" fine you issued.", PlayerData[playerid][pName], amount);
+            SendClientMessage(officerid, COLOR_SUCCESS, amsg2);
+            return 1;
+        }
 
         new inviterid = strval(p1);
 
@@ -2705,6 +3398,12 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(rank >= 5)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 5] "C_WHITE"/fbankwithdraw [amount], /fsetrank [playerid] [rank 1-5]");
 
+        if(fid == FACTION_RAR)
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, On-Duty] "C_WHITE"/inspectcar [playerid], /fine [playerid] [amount] [reason], /m [playerid]");
+
+        if(fid == FACTION_POLICE && rank >= 2)
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+] "C_WHITE"/installradar [speedLimit], /removeradar");
+
         SendClientMessage(playerid, COLOR_INFO, C_INFO"____________________________________________");
         return 1;
     }
@@ -2731,6 +3430,221 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SendClientMessage(playerid, COLOR_SUCCESS, C_INFO"Info: "C_WHITE"You are now "C_SUCCESS"ON-DUTY"C_WHITE".");
         else
             SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"You are now "C_ERROR"OFF-DUTY"C_WHITE".");
+        return 1;
+    }
+
+    // ---- /inspectcar [playerid] ----
+    if(strcmp(cmd, "/inspectcar", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pFaction] != FACTION_RAR)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the Registrul Auto Roman."), 1;
+
+        if(!PlayerData[playerid][pOnDuty])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be on-duty to use this command."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/inspectcar [playerid]"C_WHITE"."), 1;
+
+        new targetid = strval(p1);
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        new vehid = GetPlayerVehicleID(targetid);
+        if(vehid == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not in a vehicle."), 1;
+
+        new pvidx = g_VehicleToPVIndex[vehid];
+        if(pvidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This vehicle is not a registered personal vehicle."), 1;
+
+        new vname[24];
+        GetVehicleModelName(PVehicleData[pvidx][pvModelID], vname, sizeof(vname));
+
+        new medStatus[16], extStatus[16], itpStatus[16];
+        VehicleDoc_Status(PVehicleData[pvidx][pvMedkitExp], medStatus, sizeof(medStatus));
+        VehicleDoc_Status(PVehicleData[pvidx][pvExtinguisherExp], extStatus, sizeof(extStatus));
+        VehicleDoc_Status(PVehicleData[pvidx][pvITPExp], itpStatus, sizeof(itpStatus));
+
+        new Float:health;
+        GetVehicleHealth(vehid, health);
+
+        new line[160];
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"_____ Vehicle Inspection ____________________________");
+        format(line, sizeof(line), C_WHITE"Driver: "C_INFO"%s"C_WHITE" | Vehicle: "C_INFO"%s"C_WHITE" | Plate: "C_INFO"%s",
+            PlayerData[targetid][pName], vname, PVehicleData[pvidx][pvPlate]);
+        SendClientMessage(playerid, COLOR_WHITE, line);
+        format(line, sizeof(line), C_WHITE"Medical Kit: "C_INFO"%s"C_WHITE" | Extinguisher: "C_INFO"%s"C_WHITE" | ITP: "C_INFO"%s",
+            medStatus, extStatus, itpStatus);
+        SendClientMessage(playerid, COLOR_WHITE, line);
+        format(line, sizeof(line), C_WHITE"Vehicle Health: "C_INFO"%d", floatround(health));
+        SendClientMessage(playerid, COLOR_WHITE, line);
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"_______________________________________________________");
+        return 1;
+    }
+
+    // ---- /fine [playerid] [amount] [reason] ----
+    if(strcmp(cmd, "/fine", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pFaction] != FACTION_RAR)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the Registrul Auto Roman."), 1;
+
+        if(!PlayerData[playerid][pOnDuty])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be on-duty to use this command."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8], p2[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        new reason[128];
+        strmid(reason, cmdtext, idx, strlen(cmdtext), 128);
+
+        if(!strlen(p1) || !strlen(p2) || !strlen(reason))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/fine [playerid] [amount] [reason]"C_WHITE"."), 1;
+
+        new targetid = strval(p1);
+        new amount = strval(p2);
+
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        if(targetid == playerid)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't fine yourself."), 1;
+
+        if(amount <= 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid amount."), 1;
+
+        new Float:px, Float:py, Float:pz;
+        GetPlayerPos(playerid, px, py, pz);
+        if(!IsPlayerInRangeOfPoint(targetid, FINE_RANGE, px, py, pz))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player must be within 10m."), 1;
+
+        g_PendingFineAmount[targetid]  = amount;
+        g_PendingFineOfficer[targetid] = playerid;
+        format(g_PendingFineReason[targetid], 128, "%s", reason);
+
+        new fmsg[160];
+        format(fmsg, sizeof(fmsg), C_SUCCESS"Success: "C_WHITE"You issued a "C_INFO"$%d"C_WHITE" fine to "C_INFO"%s"C_WHITE" for: "C_INFO"%s"C_WHITE". Waiting for them to accept.",
+            amount, PlayerData[targetid][pName], reason);
+        SendClientMessage(playerid, COLOR_SUCCESS, fmsg);
+
+        format(fmsg, sizeof(fmsg),
+            C_ERROR"[RAR] "C_WHITE"Officer "C_INFO"%s"C_WHITE" fined you "C_INFO"$%d"C_WHITE" for: "C_INFO"%s"C_WHITE". Type "C_INFO"/accept fine %d"C_WHITE" to accept it.",
+            PlayerData[playerid][pName], amount, reason, playerid);
+        SendClientMessage(targetid, COLOR_ERROR, fmsg);
+        return 1;
+    }
+
+    // ---- /m [playerid] ----
+    if(strcmp(cmd, "/m", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pFaction] != FACTION_RAR)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the Registrul Auto Roman."), 1;
+
+        if(!PlayerData[playerid][pOnDuty])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be on-duty to use this command."), 1;
+
+        new myVehid = GetPlayerVehicleID(playerid);
+        if(myVehid == 0 || g_VehicleFactionOwner[myVehid] != FACTION_RAR)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a faction vehicle to use this command."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/m [playerid]"C_WHITE"."), 1;
+
+        new targetid = strval(p1);
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        if(GetPlayerVehicleID(targetid) == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not in a vehicle."), 1;
+
+        new Float:px, Float:py, Float:pz;
+        GetPlayerPos(playerid, px, py, pz);
+        if(!IsPlayerInRangeOfPoint(targetid, M_RANGE, px, py, pz))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player must be within 50m."), 1;
+
+        new mmsg[160];
+        format(mmsg, sizeof(mmsg),
+            C_ERROR"[RAR] "C_WHITE"Officer "C_INFO"%s"C_WHITE" orders you to pull over: stop the car and remain inside the vehicle.",
+            PlayerData[playerid][pName]);
+        SendClientMessage(targetid, COLOR_ERROR, mmsg);
+
+        format(mmsg, sizeof(mmsg), C_SUCCESS"Success: "C_INFO"%s"C_WHITE" has received your order to pull over.", PlayerData[targetid][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, mmsg);
+        return 1;
+    }
+
+    // ---- /installradar [speedLimit] ----
+    if(strcmp(cmd, "/installradar", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pFaction] != FACTION_POLICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the Politia Romana."), 1;
+
+        if(PlayerData[playerid][pFactionRank] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Requires rank 2 or higher."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/installradar [speedLimit]"C_WHITE"."), 1;
+
+        new speedLimit = strval(p1);
+        if(speedLimit <= 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid speed limit."), 1;
+
+        GetPlayerPos(playerid, g_RadarX[playerid], g_RadarY[playerid], g_RadarZ[playerid]);
+        g_RadarSpeedLimit[playerid] = speedLimit;
+        g_RadarActive[playerid]     = true;
+
+        new imsg[128];
+        format(imsg, sizeof(imsg), C_SUCCESS"Success: "C_WHITE"Radar camera installed with a "C_INFO"%d km/h"C_WHITE" speed limit.", speedLimit);
+        SendClientMessage(playerid, COLOR_SUCCESS, imsg);
+        return 1;
+    }
+
+    // ---- /removeradar ----
+    if(strcmp(cmd, "/removeradar", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pFaction] != FACTION_POLICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the Politia Romana."), 1;
+
+        if(PlayerData[playerid][pFactionRank] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Requires rank 2 or higher."), 1;
+
+        if(!g_RadarActive[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have an installed radar."), 1;
+
+        g_RadarActive[playerid] = false;
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Radar camera removed.");
         return 1;
     }
 
@@ -2858,8 +3772,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SendClientMessage(playerid, COLOR_WHITE,
             C_INFO"[Vehicles] "C_WHITE"/vbuy, /vsell, /vsellto [playerid], /vcolor [1/2] [colorID], /vplate [number]");
         SendClientMessage(playerid, COLOR_WHITE,
-            C_INFO"[Vehicles] "C_WHITE"/vinsurance, /vmedicalkit, /vextinctor, /vitp, /vpark, /vstats, /rentbike");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Licenses] "C_WHITE"/licenses, /examB");
+            C_INFO"[Vehicles] "C_WHITE"/vinsurance, /vmedicalkit, /vextinctor, /vitp, /vpark, /vstats, /rentbike, /rentcar");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Licenses] "C_WHITE"/licenses, /examA, /examB, /examC");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Business] "C_WHITE"/buybiz, /sellbiz, /bbank, /bwithdraw [amount]");
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"========================================");
@@ -3438,6 +4352,94 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /rentcar ----
+    if(strcmp(cmd, "/rentcar", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new vehid = GetPlayerVehicleID(playerid);
+        new price, bizid;
+        if(vehid != 0 && IsRentCarVehicle(vehid))
+        {
+            price = RENT_CAR_PRICE;
+            bizid = RENT_CAR_BIZ_ID;
+        }
+        else if(vehid != 0 && IsRentCarDesertVehicle(vehid))
+        {
+            price = g_RentCarDesertPrice;
+            bizid = RENT_CAR_DESERT_BIZ_ID;
+        }
+        else
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a rental car."), 1;
+
+        if(PlayerData[playerid][pMoney] < price)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= price;
+        GivePlayerMoney(playerid, -price);
+        UpdatePlayer(playerid, pMoney);
+
+        new bidx = Businesses_FindByID(bizid);
+        if(bidx != -1)
+        {
+            BusinessData[bidx][bBank] += price;
+
+            new q[128];
+            mysql_format(g_SQL, q, sizeof(q), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[bidx][bBank], BusinessData[bidx][bID]);
+            mysql_tquery(g_SQL, q, "", "", 0);
+        }
+
+        TogglePlayerControllable(playerid, 1);
+
+        new lmsg[128];
+        format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You rented the car for "C_INFO"$%d"C_WHITE".", price);
+        SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
+    // ---- /examA ----
+    if(strcmp(cmd, "/examA", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!IsPlayerInRangeOfPoint(playerid, EXAMA_RANGE, EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the exam location."), 1;
+
+        if(g_ExamAState[playerid] != EXAMA_STATE_NONE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already have an exam in progress."), 1;
+
+        if(PlayerData[playerid][pMoney] < g_ExamAPrice)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= g_ExamAPrice;
+        GivePlayerMoney(playerid, -g_ExamAPrice);
+        UpdatePlayer(playerid, pMoney);
+
+        new bidx = Businesses_FindByID(EXAMA_BIZ_ID);
+        if(bidx != -1)
+        {
+            BusinessData[bidx][bBank] += g_ExamAPrice;
+
+            new q[128];
+            mysql_format(g_SQL, q, sizeof(q), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[bidx][bBank], BusinessData[bidx][bID]);
+            mysql_tquery(g_SQL, q, "", "", 0);
+        }
+
+        g_ExamAState[playerid]      = EXAMA_STATE_WAITING_CAR;
+        g_ExamACheckpoint[playerid] = 0;
+        g_ExamAVehicle[playerid]    = -1;
+        ExamA_KillTimer(playerid);
+        g_ExamATimer[playerid] = SetTimerEx("ExamA_Timeout", EXAMA_STEP_TIME, false, "i", playerid);
+
+        SendClientMessage(playerid, COLOR_INFO,
+            C_INFO"Info: "C_WHITE"Get into a "C_INFO"Sanchez"C_WHITE" within "C_INFO"30 seconds"C_WHITE" to start the exam.");
+        return 1;
+    }
+
     // ---- /examB ----
     if(strcmp(cmd, "/examB", true) == 0)
     {
@@ -3476,6 +4478,47 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         SendClientMessage(playerid, COLOR_INFO,
             C_INFO"Info: "C_WHITE"Get into a "C_INFO"Comet"C_WHITE" within "C_INFO"30 seconds"C_WHITE" to start the exam.");
+        return 1;
+    }
+
+    // ---- /examC ----
+    if(strcmp(cmd, "/examC", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!IsPlayerInRangeOfPoint(playerid, EXAMC_RANGE, EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the exam location."), 1;
+
+        if(g_ExamCState[playerid] != EXAMC_STATE_NONE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already have an exam in progress."), 1;
+
+        if(PlayerData[playerid][pMoney] < EXAMC_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= EXAMC_PRICE;
+        GivePlayerMoney(playerid, -EXAMC_PRICE);
+        UpdatePlayer(playerid, pMoney);
+
+        new bidx = Businesses_FindByID(EXAMC_BIZ_ID);
+        if(bidx != -1)
+        {
+            BusinessData[bidx][bBank] += EXAMC_PRICE;
+
+            new q[128];
+            mysql_format(g_SQL, q, sizeof(q), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[bidx][bBank], BusinessData[bidx][bID]);
+            mysql_tquery(g_SQL, q, "", "", 0);
+        }
+
+        g_ExamCState[playerid]      = EXAMC_STATE_WAITING_TRUCK;
+        g_ExamCCheckpoint[playerid] = 0;
+        g_ExamCVehicle[playerid]    = -1;
+        g_ExamCTrailerVeh[playerid] = -1;
+        ExamC_StartStepTimer(playerid);
+
+        SendClientMessage(playerid, COLOR_INFO,
+            C_INFO"Info: "C_WHITE"Get into a "C_INFO"truck"C_WHITE" within "C_INFO"30 seconds"C_WHITE" to start the exam.");
         return 1;
     }
 
@@ -4841,8 +5884,16 @@ public OnPlayerDeath(playerid, killerid, reason)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+    ExamA_KillTimer(playerid);
+    g_ExamAState[playerid] = EXAMA_STATE_NONE;
+
     Exam_KillTimer(playerid);
     g_ExamState[playerid] = EXAM_STATE_NONE;
+
+    ExamC_KillTimer(playerid);
+    g_ExamCState[playerid] = EXAMC_STATE_NONE;
+
+    g_RadarActive[playerid] = false;
 
     FullUpdatePlayer(playerid);
     return 1;
@@ -4854,12 +5905,31 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
         RemovePlayerFromVehicle(playerid);
 
     // A iesit din masina in timpul examenului (inainte de ultimul checkpoint) -> pica si masina respawneaza
+    if(oldstate == PLAYER_STATE_DRIVER && newstate != PLAYER_STATE_DRIVER && g_ExamAState[playerid] == EXAMA_STATE_DRIVING)
+        ExamA_Fail(playerid, "You got out of the bike.");
+
+    // A iesit din masina in timpul examenului (inainte de ultimul checkpoint) -> pica si masina respawneaza
     if(oldstate == PLAYER_STATE_DRIVER && newstate != PLAYER_STATE_DRIVER && g_ExamState[playerid] == EXAM_STATE_DRIVING)
         Exam_Fail(playerid, "You got out of the car.");
+
+    // A coborat din capul tractor in timpul examenului C -> pica si vehiculele respawneaza
+    if(oldstate == PLAYER_STATE_DRIVER && newstate != PLAYER_STATE_DRIVER &&
+       (g_ExamCState[playerid] == EXAMC_STATE_WAITING_TRAILER || g_ExamCState[playerid] == EXAMC_STATE_DRIVING))
+        ExamC_Fail(playerid, "You got out of the truck.");
 
     if(newstate == PLAYER_STATE_PASSENGER)
     {
         new vehid = GetPlayerVehicleID(playerid);
+        if(vehid >= 0 && vehid < MAX_VEHICLES && IsExamACarVehicle(vehid))
+        {
+            new examUser = ExamA_GetCarUser(vehid);
+            if(examUser != -1 && examUser != playerid)
+            {
+                RemovePlayerFromVehicle(playerid);
+                SendClientMessage(playerid, COLOR_ERROR,
+                    C_ERROR"Error: "C_WHITE"This bike is being used for an exam.");
+            }
+        }
         if(vehid >= 0 && vehid < MAX_VEHICLES && IsExamBCarVehicle(vehid))
         {
             new examUser = Exam_GetCarUser(vehid);
@@ -4868,6 +5938,16 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
                 RemovePlayerFromVehicle(playerid);
                 SendClientMessage(playerid, COLOR_ERROR,
                     C_ERROR"Error: "C_WHITE"This car is being used for an exam.");
+            }
+        }
+        if(vehid >= 0 && vehid < MAX_VEHICLES && IsExamCTruckVehicle(vehid))
+        {
+            new examUser = ExamC_GetTruckUser(vehid);
+            if(examUser != -1 && examUser != playerid)
+            {
+                RemovePlayerFromVehicle(playerid);
+                SendClientMessage(playerid, COLOR_ERROR,
+                    C_ERROR"Error: "C_WHITE"This truck is being used for an exam.");
             }
         }
     }
@@ -4895,7 +5975,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
                     C_ERROR"Error: "C_WHITE"This vehicle has not been bought yet. Use "C_INFO"/vbuy"C_WHITE" to be able to start it.");
             }
 
-            if(!IsExamBCarVehicle(vehid))
+            if(!IsExamACarVehicle(vehid) && !IsExamBCarVehicle(vehid) && !IsExamCTruckVehicle(vehid) && !IsRentCarVehicle(vehid) && !IsRentCarDesertVehicle(vehid))
             {
                 new category = GetVehicleLicenseCategory(GetVehicleModel(vehid));
                 if(!Player_HasValidLicense(playerid, category))
@@ -4916,6 +5996,41 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
                 TogglePlayerControllable(playerid, 0);
                 SendClientMessage(playerid, COLOR_INFO,
                     C_INFO"Info: "C_WHITE"This bike is for rent. Use "C_INFO"/rentbike"C_WHITE" to be able to use it.");
+            }
+
+            if(IsRentCarVehicle(vehid) || IsRentCarDesertVehicle(vehid))
+            {
+                TogglePlayerControllable(playerid, 0);
+                SendClientMessage(playerid, COLOR_INFO,
+                    C_INFO"Info: "C_WHITE"This car is for rent. Use "C_INFO"/rentcar"C_WHITE" to be able to use it.");
+            }
+
+            if(IsExamACarVehicle(vehid))
+            {
+                new examUser = ExamA_GetCarUser(vehid);
+                if(examUser != -1 && examUser != playerid)
+                {
+                    RemovePlayerFromVehicle(playerid);
+                    SendClientMessage(playerid, COLOR_ERROR,
+                        C_ERROR"Error: "C_WHITE"This bike is being used for an exam.");
+                }
+                else if(g_ExamAState[playerid] != EXAMA_STATE_WAITING_CAR)
+                {
+                    RemovePlayerFromVehicle(playerid);
+                    SendClientMessage(playerid, COLOR_ERROR,
+                        C_ERROR"Error: "C_WHITE"You must use "C_INFO"/examA"C_WHITE" to use this bike.");
+                }
+                else
+                {
+                    ExamA_KillTimer(playerid);
+                    g_ExamAState[playerid]      = EXAMA_STATE_DRIVING;
+                    g_ExamAVehicle[playerid]    = vehid;
+                    g_ExamACheckpoint[playerid] = 0;
+                    ExamA_GotoCheckpoint(playerid, 0);
+
+                    SendClientMessage(playerid, COLOR_INFO,
+                        C_INFO"Info: "C_WHITE"The exam has started! You have "C_INFO"30 seconds"C_WHITE" to reach the next checkpoint.");
+                }
             }
 
             if(IsExamBCarVehicle(vehid))
@@ -4943,6 +6058,33 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 
                     SendClientMessage(playerid, COLOR_INFO,
                         C_INFO"Info: "C_WHITE"The exam has started! You have "C_INFO"30 seconds"C_WHITE" to reach the next checkpoint.");
+                }
+            }
+
+            if(IsExamCTruckVehicle(vehid))
+            {
+                new examUser = ExamC_GetTruckUser(vehid);
+                if(examUser != -1 && examUser != playerid)
+                {
+                    RemovePlayerFromVehicle(playerid);
+                    SendClientMessage(playerid, COLOR_ERROR,
+                        C_ERROR"Error: "C_WHITE"This truck is being used for an exam.");
+                }
+                else if(g_ExamCState[playerid] != EXAMC_STATE_WAITING_TRUCK)
+                {
+                    RemovePlayerFromVehicle(playerid);
+                    SendClientMessage(playerid, COLOR_ERROR,
+                        C_ERROR"Error: "C_WHITE"You must use "C_INFO"/examC"C_WHITE" to use this truck.");
+                }
+                else
+                {
+                    ExamC_KillTimer(playerid);
+                    g_ExamCState[playerid]   = EXAMC_STATE_WAITING_TRAILER;
+                    g_ExamCVehicle[playerid] = vehid;
+                    ExamC_StartStepTimer(playerid);
+
+                    SendClientMessage(playerid, COLOR_INFO,
+                        C_INFO"Info: "C_WHITE"Now attach a "C_INFO"trailer"C_WHITE" within "C_INFO"30 seconds"C_WHITE" to continue the exam.");
                 }
             }
         }
