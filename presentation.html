@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NostalgiaRP — Bine ai venit!</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1d212c;
+    --border: #2a2f3d;
+    --text: #d8dce5;
+    --muted: #8b93a7;
+    --accent: #5b9dff;
+    --accent-2: #ffcc00;
+    --green: #3ecf8e;
+    --red: #ff5d5d;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.hero {
+    padding: 70px 24px 50px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, #1b2030 0%, #0f1115 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero h1 {
+    margin: 0 0 12px;
+    font-size: 2.8rem;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header.hero p { margin: 0 auto; max-width: 640px; color: var(--muted); font-size: 1.1rem; }
+  .badges { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+  }
+
+  nav.toc {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    justify-content: center;
+    padding: 14px 16px;
+    background: rgba(15,17,21,0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.toc a {
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+  }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+
+  main { max-width: 980px; margin: 0 auto; padding: 40px 24px 100px; }
+
+  section { margin-bottom: 60px; scroll-margin-top: 70px; }
+  section h2 {
+    font-size: 1.7rem;
+    margin: 0 0 6px;
+    color: #fff;
+  }
+  section .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 1rem; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin: 14px 0;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 8px; font-size: 0.94rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { background: var(--panel-2); color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  code, .cmd {
+    background: #11141b;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 0.9em;
+    color: var(--green);
+    white-space: nowrap;
+  }
+
+  .feature-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .faction-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 10px;
+    background: var(--panel-2); margin-bottom: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+  .note {
+    border-left: 3px solid var(--accent-2);
+    background: rgba(255,204,0,0.06);
+    padding: 12px 18px;
+    border-radius: 0 10px 10px 0;
+    margin: 16px 0;
+    font-size: 0.94rem;
+  }
+  .note.danger { border-left-color: var(--red); background: rgba(255,93,93,0.07); }
+
+  footer { text-align: center; padding: 40px 20px 60px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>🏙️ NostalgiaRP</h1>
+  <p>Un server de roleplay construit de la zero, cu o economie reală, facțiuni active, examene auto cu adevărat funcționale și un sistem de viață care nu te lasă să stai degeaba.</p>
+  <div class="badges">
+    <span class="badge">7 Facțiuni</span>
+    <span class="badge">Economie reală</span>
+    <span class="badge">Permise auto A/B/C/D</span>
+    <span class="badge">GPS &amp; Radar</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#start">Primii pași</a>
+  <a href="#factions">Facțiuni</a>
+  <a href="#economy">Economie</a>
+  <a href="#houses-biz">Case &amp; Afaceri</a>
+  <a href="#vehicles">Vehicule</a>
+  <a href="#exams">Permise auto</a>
+  <a href="#health">Sănătate</a>
+  <a href="#gps">GPS &amp; Radar</a>
+  <a href="#police">Lege &amp; Ordine</a>
+  <a href="#commands">Comenzi</a>
+</nav>
+
+<main>
+
+<section id="start">
+  <h2>🚪 Primii pași</h2>
+  <p class="subtitle">Tot ce trebuie să știi înainte să intri în lume</p>
+  <div class="grid-3">
+    <div class="card">
+      <div class="feature-icon">📝</div>
+      <h4>Creează-ți contul</h4>
+      <p style="color:var(--muted); margin:0"><code>/register [parolă]</code> la prima conectare, apoi <code>/login [parolă]</code> de fiecare dată după aceea.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">📊</div>
+      <h4>Vezi-ți progresul</h4>
+      <p style="color:var(--muted); margin:0"><code>/stats</code> îți arată nivelul, RP-ul, banii, facțiunea și casa ta, oricând.
+      Pentru detalii despre mașinile tale (acte, stare), folosește <code>/vstats</code>.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">🆘</div>
+      <h4>Ai nevoie de ajutor?</h4>
+      <p style="color:var(--muted); margin:0"><code>/help</code> îți arată comenzile disponibile pentru jucători, oricând ai nevoie.</p>
+    </div>
+  </div>
+</section>
+
+<section id="factions">
+  <h2>🪪 Facțiuni</h2>
+  <p class="subtitle">Alege-ți tabăra — ordine publică sau viață de cartier</p>
+
+  <div class="faction-row"><span class="dot" style="background:#4488ff"></span><strong>Politia Romana</strong><span style="color:var(--muted); margin-left:auto">Menține ordinea, oprește șoferii periculoși</span></div>
+  <div class="faction-row"><span class="dot" style="background:#003399"></span><strong>Registrul Auto Roman (RAR)</strong><span style="color:var(--muted); margin-left:auto">Inspecții tehnice, plăcuțe, amenzi auto</span></div>
+  <div class="faction-row"><span class="dot" style="background:#ff5500"></span><strong>SMURD</strong><span style="color:var(--muted); margin-left:auto">Salvează vieți, vindecă răniții și bolnavii</span></div>
+  <div class="faction-row"><span class="dot" style="background:#3366cc"></span><strong>Mafia Europeana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#aa44aa"></span><strong>Mafia Americana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#44aa44"></span><strong>Mafia Africana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#ffcc00"></span><strong>Mafia Asiatica</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+
+  <div class="card" style="margin-top:20px">
+    <h4 style="margin-top:0">Cum funcționează</h4>
+    <p>Fiecare facțiune are un sediu (HQ), o bancă proprie și un sistem de ranguri (1 până la 5, unde 5 e liderul).
+    Membri mai vechi cu rang ridicat pot invita jucători noi (<code>/finvite</code>), gestiona banca facțiunii și avansa pe alți membri.
+    Pentru Poliție, RAR și SMURD există și un sistem de <strong>tură</strong> — folosești <code>/duty</code> lângă sediu ca să intri "la muncă" și să ai acces la comenzile speciale ale facțiunii tale.</p>
+  </div>
+</section>
+
+<section id="economy">
+  <h2>💰 Economie</h2>
+  <p class="subtitle">Banii nu cad din cer — dar nici nu trebuie să muncești prea mult ca să-i ai</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">💵 PayDay — salariul tău orar</h4>
+    <p>O dată pe oră, toți jucătorii conectați primesc automat un salariu, calculat în funcție de nivelul personajului tău
+    (cu cât ești mai experimentat, cu atât câștigi mai mult). Din salariu se scad impozit și CASS, iar banii din contul tău
+    bancar produc dobândă — chiar și fără să faci nimic.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🏦 Cont bancar</h4>
+      <p style="color:var(--muted); margin:0">Banii pot fi ținuți în numerar sau în bancă. Banca produce dobândă la fiecare PayDay.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📈 Nivel &amp; RP</h4>
+      <p style="color:var(--muted); margin:0">Fiecare PayDay îți crește și RP-ul (Role-Play Points) — un semn al experienței tale pe server.</p>
+    </div>
+  </div>
+</section>
+
+<section id="houses-biz">
+  <h2>🏠 Case &amp; Afaceri</h2>
+  <p class="subtitle">Investește în viața ta din joc</p>
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🏠 Case</h4>
+      <p><code>/buyhouse</code> lângă o casă liberă o cumperi pe loc. Poți deține o singură casă, dar o poți revinde oricând
+      cu <code>/sellhouse</code> la prețul integral.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏢 Afaceri</h4>
+      <p><code>/buybiz</code> îți cumpără o afacere lângă tine — poți deține mai multe simultan. Fiecare afacere are propria
+      bancă (<code>/bbank</code>, <code>/bwithdraw</code>), alimentată automat de serviciile orașului (școli de șoferi,
+      închirieri, etc.) care funcționează prin ea.</p>
+    </div>
+  </div>
+</section>
+
+<section id="vehicles">
+  <h2>🚗 Vehicule personale</h2>
+  <p class="subtitle">Mașina ta, regulile tale</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🔑 Cumpărare</h4>
+      <p><code>/vbuy</code> — cumperi mașina în care te afli, dacă e disponibilă spre vânzare. Vine cu toate actele
+      (asigurare, kit medical, extinctor, ITP) valabile <strong>7 zile</strong> de la achiziție.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📋 Acte la zi</h4>
+      <p><code>/vinsurance</code>, <code>/vmedicalkit</code>, <code>/vextinctor</code> — reînnoiești fiecare document
+      separat. <code>/vitp</code> (la sediul RAR) verifică toate actele odată și starea mașinii.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔧 Motor &amp; Încuiere</h4>
+      <p>Mașina ta are stare reală de <strong>motor pornit/oprit</strong> și <strong>încuiat/descuiat</strong>:
+      <code>/engine</code> (sau tasta Numpad 2) pornește/oprește motorul, <code>/lock</code> încuie/descuie ușile —
+      poți folosi <code>/lock</code> fie din interiorul mașinii, fie de afară, dacă ești la maxim 5m de ea.
+      Totul vizibil live pe bordul tău.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🎨 Personalizare</h4>
+      <p><code>/vcolor</code> schimbă culorile, <code>/vplate</code> îți pune un număr de înmatriculare personalizat
+      la sediul RAR. <code>/vpark</code> salvează locul unde îți parchezi mașina.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:8px">
+    <h4 style="margin-top:0">🚲 🚙 Închirieri</h4>
+    <p><code>/rentbike</code> și <code>/rentcar</code> îți pun la dispoziție biciclete și mașini de închiriat în mai multe
+    locații din oraș — ideal când nu ai (încă) propriul vehicul.</p>
+  </div>
+</section>
+
+<section id="exams">
+  <h2>🪪 Permise auto</h2>
+  <p class="subtitle">Patru categorii, patru provocări reale</p>
+
+  <table>
+    <tr><th>Categorie</th><th>Vehicul</th><th>Provocare</th></tr>
+    <tr><td><code>/examA</code></td><td>Motocicletă</td><td>10 puncte de control, cronometrat</td></tr>
+    <tr><td><code>/examB</code></td><td>Mașină</td><td>7 puncte de control, cronometrat</td></tr>
+    <tr><td><code>/examC</code></td><td>Camion + remorcă</td><td>Atașezi remorca, apoi 6 puncte de control</td></tr>
+    <tr><td><code>/examD</code></td><td>Autobuz</td><td>9 puncte de control, cronometrat</td></tr>
+  </table>
+
+  <div class="note">
+    Fiecare etapă a traseului are un timp limită — dacă întârzii prea mult la un punct de control, pici examenul.
+    La final, starea vehiculului contează: termini cu mașina în stare bună și permisul ține mult mai mult timp!
+  </div>
+
+  <p><code>/licenses</code> îți arată oricând starea celor 4 categorii de permis pe care le deții.</p>
+</section>
+
+<section id="health">
+  <h2>❤️ Sănătate &amp; Boli</h2>
+  <p class="subtitle">Viața de RP nu e mereu ușoară</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">⏳ Viața scade în timp</h4>
+      <p style="color:var(--muted); margin:0">Viața fiecărui personaj scade ușor cu trecerea timpului — un motiv în plus
+      să rămâi atent la sănătatea ta și să apelezi la SMURD când ai nevoie.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚑 Tratament SMURD</h4>
+      <p style="color:var(--muted); margin:0">Urcă ca pasager într-o ambulanță SMURD și un medic te poate vindeca complet
+      cu <code>/heal</code>, contra unei taxe mici.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4 style="margin-top:0">🦠 Te poți îmbolnăvi</h4>
+    <p>Din când în când, pot apărea focare de boală în oraș. Dacă te îmbolnăvești, vei simți efectul imediat
+    (mers instabil, viața scade mai repede) și vei primi un mesaj clar. Boala dispare singură în timp, dar cel mai
+    rapid mod de vindecare este să mergi la <strong>spitalul SMURD</strong> și să folosești <code>/curedisease</code>
+    — câteva secunde de tratament și ești din nou sănătos.</p>
+  </div>
+</section>
+
+<section id="gps">
+  <h2>🗺️ GPS &amp; Radar</h2>
+  <p class="subtitle">Nu te mai rătăci, dar nici nu mai depăși viteza</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🧭 Navigație GPS</h4>
+      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele) — alegi categoria, apoi
+      locația, și primești un punct de control direct pe hartă. <code>/killcp</code> anulează oricând checkpoint-ul activ.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📡 Radar de viteză</h4>
+      <p>Polițiștii pot instala camere radar prin oraș. Dacă treci cu viteză peste limita afișată, vei fi avertizat
+      pe loc — așa că ține un ochi pe vitezometrul din bordul mașinii tale.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4 style="margin-top:0">🚦 Bord digital (HUD)</h4>
+    <p>De fiecare dată când urci într-un vehicul, primești automat un mic afișaj cu viteza curentă, starea mașinii (HP),
+    dacă motorul e pornit și dacă ușile sunt încuiate — toate actualizate live.</p>
+  </div>
+</section>
+
+<section id="police">
+  <h2>🚓 Lege &amp; Ordine</h2>
+  <p class="subtitle">Ce te așteaptă dacă încalci regulile</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">Amenzi</h4>
+    <p>Un ofițer RAR sau Poliție te poate amenda pentru încălcarea regulilor de circulație. Amenda nu se scade automat —
+    primești o notificare și trebuie să o accepți cu <code>/accept fine [id]</code> pentru ca plata să se proceseze.</p>
+  </div>
+  <div class="card">
+    <h4 style="margin-top:0">Verificări &amp; permise</h4>
+    <p>Poliția și RAR pot opri și inspecta vehiculul tău (acte, stare tehnică) și îți pot verifica permisele auto direct
+    din teren. Dacă încalci grav regulile, un permis poate fi suspendat.</p>
+  </div>
+</section>
+
+<section id="commands">
+  <h2>📜 Toate comenzile</h2>
+  <p class="subtitle">Lista completă a comenzilor disponibile jucătorilor</p>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">👤 Cont</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/register [parolă]</code></td><td>Creează un cont nou</td></tr>
+    <tr><td><code>/login [parolă]</code></td><td>Te loghezi pe contul tău</td></tr>
+    <tr><td><code>/stats</code></td><td>Informații despre contul tău</td></tr>
+    <tr><td><code>/cspawn</code></td><td>Schimbă punctul de spawn (civil / HQ facțiune / casă proprie)</td></tr>
+    <tr><td><code>/help</code></td><td>Listă de comenzi pentru jucători</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🪪 Facțiune</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/f [mesaj]</code></td><td>Chat intern de facțiune</td></tr>
+    <tr><td><code>/finvite [playerid]</code></td><td>Invită un jucător neafiliat în facțiunea ta (rang 4+)</td></tr>
+    <tr><td><code>/accept finvite [playerid]</code></td><td>Acceptă o invitație de facțiune</td></tr>
+    <tr><td><code>/fmembers</code></td><td>Membri online, grupați pe rang</td></tr>
+    <tr><td><code>/fbank</code></td><td>Sold bancă facțiune (rang 4+)</td></tr>
+    <tr><td><code>/fbankwithdraw [sumă]</code></td><td>Retrage bani din banca facțiunii (rang 5)</td></tr>
+    <tr><td><code>/fsetrank [playerid] [1-5]</code></td><td>Schimbă rangul unui membru (rang 5)</td></tr>
+    <tr><td><code>/fhelp</code></td><td>Comenzi de facțiune disponibile pentru tine</td></tr>
+    <tr><td><code>/duty</code></td><td>Intri/ieși din tură, lângă sediul facțiunii (Poliție/RAR/SMURD)</td></tr>
+    <tr><td><code>/factions</code></td><td>Listă cu toate cele 7 facțiuni</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🏠 Case &amp; Afaceri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/buyhouse</code></td><td>Cumpără casa liberă din apropiere</td></tr>
+    <tr><td><code>/sellhouse</code></td><td>Vinde-ți casa, la preț integral</td></tr>
+    <tr><td><code>/buybiz</code></td><td>Cumpără afacerea liberă din apropiere</td></tr>
+    <tr><td><code>/sellbiz</code></td><td>Vinde o afacere deținută, la 50% din preț</td></tr>
+    <tr><td><code>/bbank</code></td><td>Sold bancă afacere, lângă ea</td></tr>
+    <tr><td><code>/bwithdraw [sumă]</code></td><td>Retrage bani din banca afacerii tale</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚗 Vehicule personale</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/vbuy</code></td><td>Cumpără vehiculul în care te afli</td></tr>
+    <tr><td><code>/vsell</code></td><td>Vinde-ți vehiculul, la 50% din preț</td></tr>
+    <tr><td><code>/vsellto [playerid]</code></td><td>Transferă gratuit proprietatea unui jucător apropiat</td></tr>
+    <tr><td><code>/vcolor [1/2] [colorID]</code></td><td>Schimbă culoarea 1 sau 2</td></tr>
+    <tr><td><code>/vplate [text]</code></td><td>Plăcuță personalizată (max 10 caractere), la sediul RAR</td></tr>
+    <tr><td><code>/vinsurance</code></td><td>Reînnoiește asigurarea</td></tr>
+    <tr><td><code>/vmedicalkit</code></td><td>Reînnoiește kitul medical</td></tr>
+    <tr><td><code>/vextinctor</code></td><td>Reînnoiește extinctorul</td></tr>
+    <tr><td><code>/vitp</code></td><td>Verificare tehnică (ITP), la sediul RAR</td></tr>
+    <tr><td><code>/vpark</code></td><td>Salvează poziția curentă ca punct de respawn al mașinii</td></tr>
+    <tr><td><code>/vstats</code></td><td>Listă vehicule deținute + starea documentelor</td></tr>
+    <tr><td><code>/engine</code> <span style="color:var(--muted)">(sau tasta Numpad 2)</span></td><td>Pornește/oprește motorul</td></tr>
+    <tr><td><code>/lock</code></td><td>Încuie/descuie ușile (doar proprietar) — din interior sau din apropiere, max 5m</td></tr>
+    <tr><td><code>/rentbike</code></td><td>Închiriază o bicicletă din apropiere</td></tr>
+    <tr><td><code>/rentcar</code></td><td>Închiriază o mașină din apropiere</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🪪 Examene &amp; permise</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/examA</code></td><td>Examen categoria A (motocicletă)</td></tr>
+    <tr><td><code>/examB</code></td><td>Examen categoria B (mașină)</td></tr>
+    <tr><td><code>/examC</code></td><td>Examen categoria C (camion + remorcă)</td></tr>
+    <tr><td><code>/examD</code></td><td>Examen categoria D (autobuz)</td></tr>
+    <tr><td><code>/licenses</code></td><td>Starea celor 4 permise ale tale</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🗺️ GPS &amp; Sănătate</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/gps [nume]</code></td><td>Setează un checkpoint (fără argument = meniu pe categorii)</td></tr>
+    <tr><td><code>/killcp</code></td><td>Anulează checkpoint-ul GPS activ</td></tr>
+    <tr><td><code>/curedisease</code></td><td>Te vindecă, la spitalul SMURD (dacă ești bolnav)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚓 Poliție / RAR / SMURD</h3>
+  <p style="color:var(--muted); margin-top:-4px">Disponibile doar membrilor facțiunilor respective, de regulă aflați în tură.</p>
+  <table>
+    <tr><th>Comandă</th><th>Facțiune</th><th>Descriere</th></tr>
+    <tr><td><code>/fine [playerid] [sumă] [motiv]</code></td><td>RAR / Poliție</td><td>Emite o amendă în așteptare</td></tr>
+    <tr><td><code>/accept fine [playerid]</code></td><td>—</td><td>Acceptă și plătește amenda primită</td></tr>
+    <tr><td><code>/inspectcar [playerid]</code></td><td>RAR / Poliție</td><td>Inspectează vehiculul unui jucător</td></tr>
+    <tr><td><code>/confiscateextinctor [playerid]</code></td><td>RAR (rang 3+)</td><td>Confiscă (expiră) extinctorul vehiculului unui jucător</td></tr>
+    <tr><td><code>/m [playerid]</code></td><td>RAR / Poliție</td><td>Ordonă unui șofer să tragă pe dreapta</td></tr>
+    <tr><td><code>/checklicenses [playerid]</code></td><td>Poliție</td><td>Verifică permisele unui jucător</td></tr>
+    <tr><td><code>/suspendlic [playerid] [cat/all]</code></td><td>Poliție</td><td>Suspendă unul sau toate permisele unui jucător</td></tr>
+    <tr><td><code>/radar install/remove [viteza]</code></td><td>Poliție (rang 2+)</td><td>Instalează/scoate o cameră radar</td></tr>
+    <tr><td><code>/garage</code> / <code>/entrace</code></td><td>Poliție</td><td>Teleportare dus-întors garaj ↔ intrare (sau tasta ENTER)</td></tr>
+    <tr><td><code>/heal [playerid]</code></td><td>SMURD</td><td>Vindecă un pasager din ambulanță</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  NostalgiaRP — vino, joacă, construiește-ți povestea.
+</footer>
+
+</body>
+</html>

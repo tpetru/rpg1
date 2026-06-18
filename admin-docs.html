@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NostalgiaRP — Documentație Tehnică (Admin)</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1d212c;
+    --border: #2a2f3d;
+    --text: #d8dce5;
+    --muted: #8b93a7;
+    --accent: #5b9dff;
+    --accent-2: #ffcc00;
+    --green: #3ecf8e;
+    --red: #ff5d5d;
+    --purple: #b388ff;
+    --code-bg: #11141b;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.hero {
+    padding: 50px 24px 36px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, #1b2030 0%, #0f1115 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero h1 {
+    margin: 0 0 8px; font-size: 2.2rem;
+    background: linear-gradient(90deg, var(--accent), var(--red));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header.hero p { margin: 0; color: var(--muted); }
+  .badges { margin-top: 16px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge { background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); padding: 5px 12px; border-radius: 999px; font-size: 0.8rem; }
+
+  .layout { display: flex; max-width: 1320px; margin: 0 auto; align-items: flex-start; }
+  nav.toc {
+    position: sticky; top: 0; align-self: flex-start; width: 270px; flex-shrink: 0;
+    max-height: 100vh; overflow-y: auto; padding: 26px 16px 60px 24px; font-size: 0.9rem;
+  }
+  nav.toc h3 { color: var(--muted); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 1px; margin: 16px 0 6px; }
+  nav.toc h3:first-child { margin-top: 0; }
+  nav.toc a { display: block; color: var(--text); padding: 4px 10px; border-radius: 6px; margin-bottom: 1px; }
+  nav.toc a:hover { background: var(--panel-2); text-decoration: none; color: var(--accent); }
+
+  main { flex: 1; min-width: 0; padding: 30px 32px 100px; }
+
+  section { margin-bottom: 50px; scroll-margin-top: 16px; }
+  section h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 9px; margin-bottom: 16px; color: #fff; }
+  section h3 { font-size: 1.1rem; color: var(--accent); margin: 24px 0 8px; }
+  section h4 { font-size: 0.98rem; color: var(--accent-2); margin: 18px 0 6px; }
+  p { color: var(--text); }
+  .lead { color: var(--muted); }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin: 12px 0; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } nav.toc { display: none; } }
+
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 22px; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.4px; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  code, .cmd { background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-family: "Cascadia Code", Consolas, monospace; font-size: 0.85em; color: var(--green); white-space: nowrap; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-family: "Cascadia Code", Consolas, monospace; font-size: 0.82rem; color: #cfe3ff; white-space: pre-wrap; }
+
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; }
+  .pill-police { background: rgba(91,157,255,0.15); color: var(--accent); }
+  .pill-rar { background: rgba(0,51,153,0.25); color: #7da9ff; }
+  .pill-smurd { background: rgba(255,85,0,0.18); color: #ff8a5d; }
+  .pill-admin { background: rgba(255,93,93,0.15); color: var(--red); }
+  .pill-lvl { background: var(--panel-2); border: 1px solid var(--border); color: var(--accent-2); font-family: monospace; }
+
+  .note { border-left: 3px solid var(--accent-2); background: rgba(255,204,0,0.06); padding: 9px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 0.88rem; }
+  .note.warn, .note.bug { border-left-color: var(--red); background: rgba(255,93,93,0.07); }
+  .note.ok { border-left-color: var(--green); background: rgba(62,207,142,0.07); }
+
+  footer { text-align: center; padding: 26px 20px 50px; color: var(--muted); font-size: 0.82rem; border-top: 1px solid var(--border); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
+  <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
+  <div class="badges">
+    <span class="badge">gamemodes/bare.pwn — ~7800 linii</span>
+    <span class="badge">10 tabele MySQL</span>
+    <span class="badge">87 comenzi</span>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc">
+  <h3>Cuprins</h3>
+  <a href="#factions">Facțiuni</a>
+  <a href="#economy">Economie / PayDay</a>
+  <a href="#houses-biz">Case &amp; Business-uri</a>
+  <a href="#vehicles">Vehicule personale</a>
+  <a href="#exams">Examene auto</a>
+  <a href="#disease">Sistem boli</a>
+  <a href="#engine-lock">Motor &amp; Lock</a>
+  <a href="#police-garage">Garaj Poliție</a>
+  <a href="#gps-radar">GPS / Radar / HUD</a>
+  <a href="#police-rar-cmds">RAR / Poliție / SMURD</a>
+  <a href="#turfs">Turfs</a>
+  <a href="#database">Schema bazei de date</a>
+  <a href="#admin-cmds">Comenzi admin</a>
+  <a href="#known-issues">Probleme cunoscute</a>
+  <h3>Comenzi complete</h3>
+  <a href="#cmd-account">Cont</a>
+  <a href="#cmd-faction">Facțiune</a>
+  <a href="#cmd-vehicle">Vehicule</a>
+  <a href="#cmd-misc">GPS / Diverse</a>
+</nav>
+
+<main>
+
+<section id="factions">
+  <h2>Facțiuni</h2>
+  <p>Defines: <code>MAX_FACTIONS=7</code>, <code>FACTION_POLICE=1</code>, <code>FACTION_RAR=2</code>, <code>FACTION_SMURD=3</code>.
+  Facțiunile 4-7 (Mafii) sunt referite doar prin ID numeric brut, fără <code>#define</code>.</p>
+
+  <table>
+    <tr><th>ID</th><th>Nume</th><th>Culoare (FactionColors)</th></tr>
+    <tr><td>1</td><td>Politia Romana</td><td>0x4488FFFF (albastru)</td></tr>
+    <tr><td>2</td><td>Registrul Auto Roman</td><td>0x003399FF (albastru închis)</td></tr>
+    <tr><td>3</td><td>SMURD</td><td>0xFF5500FF (portocaliu)</td></tr>
+    <tr><td>4</td><td>Mafia Europeana</td><td>0x3366CCFF</td></tr>
+    <tr><td>5</td><td>Mafia Americana</td><td>0xAA44AAFF</td></tr>
+    <tr><td>6</td><td>Mafia Africana</td><td>0x44AA44FF</td></tr>
+    <tr><td>7</td><td>Mafia Asiatica</td><td>0xFFCC00FF</td></tr>
+  </table>
+
+  <h3>Ranguri (pFactionRank, 1-5)</h3>
+  <table>
+    <tr><th>Rang</th><th>Acces</th></tr>
+    <tr><td>1+</td><td><code>/f</code>, <code>/fmembers</code>, <code>/fhelp</code> (toți membrii)</td></tr>
+    <tr><td>2+</td><td><code>/radar install/remove</code> — doar Poliție</td></tr>
+    <tr><td>4+</td><td><code>/finvite</code>, <code>/fbank</code> (vizualizare)</td></tr>
+    <tr><td>5 (Lead)</td><td><code>/fbankwithdraw</code>, <code>/fsetrank</code></td></tr>
+  </table>
+  <div class="note warn">Nu există nicio protecție: un Lead (rang 5) se poate auto-retrograda sau poate promova pe oricine la rang 5 fără restricție suplimentară în cod.</div>
+
+  <h3>Sistem de tură (pOnDuty)</h3>
+  <p>Boolean <strong>doar în memorie, NU e persistat în DB</strong> — la fiecare reconectare, starea de duty pornește de la <code>false</code>.
+  Relevant doar pentru facțiunile 1-3. <code>/duty</code> necesită <code>DUTY_HQ_RANGE=10.0</code> de HQ (HQ trebuie setat, adică hq_x/hq_y ≠ 0).</p>
+  <p>Comenzi care verifică direct <code>pOnDuty</code>: <code>/heal</code> (SMURD), <code>/inspectcar</code>, <code>/fine</code>, <code>/m</code> (RAR/Poliție),
+  <code>/checklicenses</code>, <code>/suspendlic</code> (Poliție). <code>/garage</code>, <code>/entrace</code> și tasta ENTER pentru teleport <strong>NU</strong> cer duty, doar apartenență la facțiune.</p>
+</section>
+
+<section id="economy">
+  <h2>Economie / PayDay</h2>
+
+  <h3>Formula PayDay (PayDay_Apply, fiecare oră reală)</h3>
+  <pre>salary   = min_salary + 2500*level + random(2501)
+tax      = salary * tax% / 100
+cass     = salary * cass% / 100
+net      = salary - tax - cass
+interest = floatround(bank * bank_interest% / 100.0)
+
+money += net
+bank  += interest
+RP    += 1</pre>
+  <p><code>PayDay_Check()</code> rulează la fiecare 60000ms, declanșează <code>PayDay_Apply()</code> doar când <code>minute==0 && hour != g_LastPayDayHour</code>.
+  Poate fi forțat manual cu <code>/payday</code> (admin lvl 5).</p>
+
+  <h3>Tabel payday_setup (rând unic, id=1)</h3>
+  <table>
+    <tr><th>Coloană</th><th>Default</th></tr>
+    <tr><td>min_salary</td><td>5000</td></tr>
+    <tr><td>tax</td><td>10 (%)</td></tr>
+    <tr><td>cass</td><td>10 (%)</td></tr>
+    <tr><td>bank_interest</td><td>0.25 (%)</td></tr>
+    <tr><td>insurance_price</td><td>500</td></tr>
+    <tr><td>medkit_price</td><td>500</td></tr>
+    <tr><td>extinguisher_price</td><td>500</td></tr>
+    <tr><td>itp_price</td><td>750</td></tr>
+    <tr><td>plate_price</td><td>250</td></tr>
+    <tr><td>rent_bike_price</td><td>15</td></tr>
+    <tr><td>rent_car_desert_price</td><td>20</td></tr>
+    <tr><td>exam_a_price</td><td>200</td></tr>
+    <tr><td>exam_b_price</td><td>300</td></tr>
+    <tr><td>exam_c_price</td><td>500</td></tr>
+    <tr><td>exam_d_price</td><td>400</td></tr>
+  </table>
+  <div class="note">Nota: chiria mașinii "Piramida" obișnuite (<code>/rentcar</code>, varianta non-desert) folosește o constantă hardcodată <code>RENT_CAR_PRICE=30</code>, NU e citită din DB.</div>
+  <div class="note">
+    Toate sumele afișate jucătorilor (chat, label-uri 3D, HUD) trec prin <code>MoneyStr(amount)</code> — formatare cu
+    separator de mii ("."), ex: <code>1000000</code> → <code>1.000.000</code>. Implementată cu un pool rotativ de 6
+    buffere statice (suportă mai multe sume într-un singur <code>format()</code>). Log-urile de consolă (<code>printf</code>,
+    ex. dump-ul de prețuri la pornire) <strong>NU</strong> trec prin acest helper — rămân numere brute, intenționat,
+    pentru lizibilitate la debugging.
+  </div>
+</section>
+
+<section id="houses-biz">
+  <h2>Case &amp; Business-uri</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🏠 Case</h4>
+      <p><code>/buyhouse</code>: preț exact listat, fără formulă. <code>/sellhouse</code>: refund <strong>100%</strong>.
+      Un jucător poate deține o singură casă (<code>pHouse==999</code> = fără casă).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏢 Business-uri</h4>
+      <p><code>/buybiz</code>: preț exact, fără limită de deținere. <code>/sellbiz</code>: refund <strong>50%</strong> (price/2,
+      împărțire întreagă), banca business-ului e <strong>pierdută</strong> (resetată la 0) la vânzare.</p>
+    </div>
+  </div>
+
+  <h3>Rutarea veniturilor pe ID de business</h3>
+  <table>
+    <tr><th>ID</th><th>Sursă</th><th>Detaliu</th></tr>
+    <tr><td>1</td><td><code>/rentbike</code></td><td>g_RentBikePrice (15)</td></tr>
+    <tr><td>2</td><td><code>/examB</code></td><td>g_ExamBPrice (300)</td></tr>
+    <tr><td>3</td><td><code>/rentcar</code> (Piramida)</td><td>RENT_CAR_PRICE hardcodat (30)</td></tr>
+    <tr><td>4</td><td><code>/examC</code></td><td>g_ExamCPrice (500)</td></tr>
+    <tr><td>5</td><td><code>/examA</code></td><td>g_ExamAPrice (200)</td></tr>
+    <tr><td>6</td><td><code>/rentcar</code> (DMVDesert)</td><td>g_RentCarDesertPrice (20)</td></tr>
+    <tr><td>7</td><td><code>/examD</code></td><td>g_ExamDPrice (400)</td></tr>
+    <tr><td>8</td><td><code>/vbuy</code></td><td>vezi nota de mai jos</td></tr>
+  </table>
+  <div class="note">
+    <strong>Business ID 8</strong> primește la fiecare <code>/vbuy</code> suma <code>floatround(pvPrice * 0.001 / 100.0)</code>
+    — efectiv <code>pvPrice × 0.00001</code>, o sumă neglijabilă (ex: la $50,000 → $0). Se aplică <strong>necondiționat</strong>,
+    indiferent dacă business-ul cu ID 8 există sau nu (dacă nu există, query-ul pur și simplu nu găsește rândul și nu se întâmplă nimic).
+    Plata <code>/vplate</code> și <code>/vitp</code> merg <strong>integral</strong> către banca facțiunii RAR (nu către un business), via <code>Faction_AddBank</code>.
+  </div>
+</section>
+
+<section id="vehicles">
+  <h2>Vehicule personale</h2>
+  <table>
+    <tr><th>Document</th><th>Preț (DB)</th><th>Durată</th><th>Comandă</th></tr>
+    <tr><td>Asigurare</td><td>insurance_price (500)</td><td>5 zile (432000s)</td><td><code>/vinsurance</code></td></tr>
+    <tr><td>Kit medical</td><td>medkit_price (500)</td><td>7 zile (604800s)</td><td><code>/vmedicalkit</code></td></tr>
+    <tr><td>Extinctor</td><td>extinguisher_price (500)</td><td>10 zile (864000s)</td><td><code>/vextinctor</code></td></tr>
+    <tr><td>ITP</td><td>itp_price (750)</td><td>15 zile (doar dacă trece verificarea)</td><td><code>/vitp</code></td></tr>
+    <tr><td>Plăcuță</td><td>plate_price (250)</td><td>permanent</td><td><code>/vplate</code></td></tr>
+  </table>
+
+  <h3>/vbuy — detalii</h3>
+  <p>Plătește <code>pvPrice</code> integral, pornește motorul (engine=1), setează toate cele 4 documente valabile 7 zile
+  (<code>VEHICLE_DOC_DURATION = 604800</code>). Vezi nota despre business ID 8 mai sus.</p>
+
+  <h3>/vitp — verificare tehnică (async)</h3>
+  <p>La sediul RAR (ITP_LOC: 930.0, 2067.0, 12.5, rază 5m), motor oprit, ITP expirat. Costă <code>g_ITPPrice</code> (750),
+  plătit integral către <code>FACTION_RAR</code>. Îngheață jucătorul 10s (<code>ITP_CHECK_TIME</code>), apoi callback async
+  <code>OnVehicleITPCheck</code>: trece doar dacă <code>health &gt; ITP_MIN_HEALTH</code> ȘI asigurarea/kitul/extinctorul sunt
+  toate valide în acel moment. Eșec = nimic nu se schimbă, banii nu se restituie.</p>
+
+  <h3>/vplate — verificare async de unicitate</h3>
+  <p>Max 10 caractere, la PLATE_LOC (930.0, 2074.0, 12.5, rază 5m), motor oprit. Verificarea de unicitate e async
+  (<code>OnVehiclePlateChecked</code>) — banii sunt scăzuți și creditați RAR-ului <strong>în callback</strong>, nu în corpul comenzii.</p>
+</section>
+
+<section id="exams">
+  <h2>Examene auto</h2>
+  <table>
+    <tr><th>Examen</th><th>Vehicul (model)</th><th>CP-uri</th><th>Timp/etapă</th><th>Prag HP</th><th>Durată trecut</th><th>Durată picat</th><th>Preț</th><th>Biz ID</th></tr>
+    <tr><td><code>/examA</code></td><td>Sanchez (468)</td><td>10</td><td>45s</td><td>≥800/1000</td><td>11 zile (950400s)</td><td>3 zile (259200s)</td><td>200</td><td>5</td></tr>
+    <tr><td><code>/examB</code></td><td>Comet (480)</td><td>7</td><td>45s</td><td>≥800/1000</td><td>13 zile (1123200s)</td><td>3 zile (259200s)</td><td>300</td><td>2</td></tr>
+    <tr><td><code>/examC</code></td><td>Linerunner (403) + Trailer (450)</td><td>6</td><td>45s</td><td>≥800/1000 ambele</td><td>20 zile (1728000s)</td><td>5 zile (432000s)</td><td>500</td><td>4</td></tr>
+    <tr><td><code>/examD</code></td><td>Bus (437)</td><td>9</td><td>45s</td><td>≥800/1000</td><td>16 zile (1382400s)</td><td>3 zile (259200s)</td><td>400</td><td>7</td></tr>
+  </table>
+  <div class="note">
+    Taxa se plătește indiferent de rezultat, fără refund. Rază start = 5m, dimensiune checkpoint = 5m.
+    <strong>Nu există un eșec real la finalizare</strong> — chiar și cu HP scăzut la final tot primești permis, doar mai scurt.
+    Eșecul total (fără permis) apare doar la <strong>timeout</strong> (expiră cele 45s la o etapă) sau, doar la Exam C,
+    la <strong>detașarea remorcii</strong> (monitorizat separat de <code>ExamC_TrailerTick</code>, polling la 2000ms, plus
+    evenimentul <code>OnTrailerUpdate</code> ca prim nivel de detecție).
+  </div>
+</section>
+
+<section id="disease">
+  <h2>Sistem boli (Diseases)</h2>
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>DISEASE_RADIUS</td><td>500.0</td></tr>
+    <tr><td>DISEASE_DECAY_AMOUNT</td><td>3.0 HP/min (vs. 1.0 HP/min normal)</td></tr>
+    <tr><td>DISEASE_CURE_PAYDAYS</td><td>3</td></tr>
+    <tr><td>DISEASE_DRUNK_LEVEL</td><td>3000</td></tr>
+    <tr><td>HOSPITAL_RANGE</td><td>10.0 (de un punct fix: HOSPITAL_LOC 1582.5594, 1769.1219, 10.8203 — NU relativ la HQ-ul SMURD)</td></tr>
+    <tr><td>DISEASE_CURE_PRICE</td><td>200</td></tr>
+    <tr><td>DISEASE_FREEZE_TIME</td><td>10000ms</td></tr>
+    <tr><td>HEALTH_DECAY_TICK</td><td>60000ms (decay general, 1HP/min, valabil pentru toți jucătorii non-bolnavi)</td></tr>
+  </table>
+
+  <h3>Flux complet</h3>
+  <ol>
+    <li><code>/createdisease</code> (admin lvl 3) infectează toți jucătorii conectați aflați în 500m de admin (sare peste cei deja bolnavi).</li>
+    <li><code>Disease_Infect</code>: <code>pDiseased=true</code>, <code>pDiseasePaydays=0</code>, persistă în DB, aplică <code>SetPlayerDrunkLevel(3000)</code> (singura metodă fiabilă găsită pentru a simula "mers instabil" — animațiile custom nu pot suprascrie alergarea normală a jucătorului în SA-MP).</li>
+    <li>Cât timp e bolnav: decay de viață 3.0/min în loc de 1.0/min, prin același <code>HealthDecay_Tick</code>.</li>
+    <li>La fiecare PayDay: <code>pDiseasePaydays++</code>; la 3, vindecare automată gratuită + mesaj.</li>
+    <li><code>/curedisease</code>: necesită 10m de punctul fix "Hospitalization" (1582.5594, 1769.1219, 10.8203 — marcat în lume cu pickup model 1241 + etichetă 3D "[ Hospitalization ]\n[ Use /curedisease ]") + $200 (→ banca SMURD). Îngheață 10s (<code>TogglePlayerControllable(0)</code>), apoi <code>Disease_FinishCure</code> (timer) dezgheață și vindecă.</li>
+    <li><strong>Persistență la deconectare</strong>: <code>diseased</code> și <code>disease_paydays</code> sunt coloane DB, încărcate la login; dacă jucătorul revine încă bolnav, efectul drunk + mesajul de reamintire se reaplică automat.</li>
+  </ol>
+</section>
+
+<section id="engine-lock">
+  <h2>Motor &amp; Lock</h2>
+  <ul>
+    <li><code>/engine</code> — doar din scaunul șoferului; blocat complet dacă vehiculul personal nu e încă cumpărat ("Use /vbuy").</li>
+    <li><strong>Keybind</strong>: <code>KEY_SUBMISSION</code> (NU un keybind specific de numpad — verificați configurația de control efectivă dacă promovați public "Numpad 2").</li>
+    <li><code>/lock</code> — doar proprietarul. Funcționează <strong>din interiorul vehiculului</strong> (ca înainte) SAU
+    <strong>de afară, în raza <code>LOCK_RANGE=5.0</code></strong> — în acest caz comanda caută printre cele 3 vehicule
+    personale ale jucătorului (<code>pKey1/2/3</code>) pe cel mai apropiat, folosind poziția lui <strong>live</strong>
+    (<code>GetVehiclePos</code>), nu poziția salvată din <code>/vpark</code>. Comută parametrul "doors", independent de
+    starea motorului. Starea e <strong>persistată în DB</strong> (<code>vehicles_personal.locked</code>) și reaplicată
+    automat la fiecare <code>PVehicles_Create</code> (deci o mașină lăsată încuiată rămâne încuiată și după un restart
+    de server).</li>
+    <li><code>/vplate</code> și <code>/vitp</code> ambele necesită motorul OPRIT.</li>
+    <li><code>/engine</code> NU mai trimite mesaj de confirmare în chat ("Engine turned ON/OFF" a fost eliminat) —
+    feedback-ul e doar vizual, prin linia de Engine din Speedometer HUD.</li>
+  </ul>
+</section>
+
+<section id="police-garage">
+  <h2>Garaj Poliție</h2>
+  <table>
+    <tr><th>Punct</th><th>Coordonate</th></tr>
+    <tr><td>Garaj</td><td>2287.2419, 2431.6370, 10.9</td></tr>
+    <tr><td>Intrare</td><td>2296.5811, 2451.4043, 10.9</td></tr>
+  </table>
+  <p>Rază <code>POLICE_TP_RANGE = 7.0</code>. <code>/garage</code> (la garaj) teleportă la intrare; <code>/entrace</code>
+  (typo în sursă pentru "entrance", la intrare) teleportă înapoi la garaj. Aceeași logică e declanșată și de
+  apăsarea tastei <strong>ENTER</strong> (<code>KEY_ACTION</code>) prin <code>Police_GarageEntranceToggle</code>.
+  <strong>Niciuna dintre cele 3 metode nu cere tură activă</strong> — doar apartenență la facțiunea Poliție.
+  Dacă jucătorul e în vehicul, vehiculul se teleportează odată cu el.</p>
+</section>
+
+<section id="gps-radar">
+  <h2>GPS / Radar / HUD</h2>
+
+  <h3>GPS — tabel locations_gps (separat de locations_admin!)</h3>
+  <div class="note">
+    <strong>Important</strong>: <code>locations_admin</code> (locID/locName/locX/Y/Z, redenumit din vechiul <code>locations</code>
+    printr-un <code>RENAME TABLE</code> de migrare) e folosit <strong>exclusiv</strong> de <code>/gotoloc</code>
+    (admin lvl 2) — rândurile seed sunt examA/B/C/D, vplate, vitp, hospital.
+    <code>locations_gps</code> (glID/glCategory/glName/glLocX/Y/Z, redenumit din vechiul <code>gps_locations</code>) e
+    folosit <strong>exclusiv</strong> de <code>/gps</code> (player-facing) — rândul seed e categoria 4 "Hospitalization".
+    Nu există nicio suprapunere de cod între cele două.
+  </div>
+  <p><code>/gps</code> fără argument deschide dialog categorii: "DMV\nFactions\nBusiness\nOthers". Potrivirea categoriei
+  (<code>GPS_CategoryMatches</code>) acceptă <strong>ambele formate</strong> din DB: textul ("DMV", case-insensitive) SAU
+  numărul 1-based ca string ("1","2","3","4") — populați coloana <code>glCategory</code> cu oricare din cele două.
+  <code>/gps</code> e blocat total în timpul oricărui examen auto activ. Checkpoint size = 5.0.</p>
+
+  <h3>Radar</h3>
+  <p><code>/radar install [limit]</code> / <code>remove</code> — Poliție rang≥2 (nu cere duty pentru broadcast-ul de activare,
+  doar pentru a instala). Creează obiect fizic (model 18654) + etichetă 3D. <code>Radar_Tick</code> rulează la 1000ms;
+  pentru orice vehicul în <code>RADAR_RANGE=10.0</code> de un radar activ, calculează viteza ca
+  <code>sqrt(vx²+vy²+vz²) × 180.0</code> (aproximare km/h standard SA-MP). Dacă depășește limita: șoferul primește
+  avertisment, <strong>ofițerul care a instalat radarul respectiv</strong> primește numele șoferului, viteza și depășirea.
+  Șoferul e marcat ca "deja avertizat" până iese din raza radarului (evită spam).</p>
+
+  <h3>Speedometer HUD</h3>
+  <p>4 PlayerTextDraw-uri, actualizate la 200ms cât timp ești în vehicul (ascunse altfel):
+  <code>"%d km/h"</code>, <code>"%d hp"</code> (plafonat afișaj la 1000), <code>"engine ON/OFF"</code>, <code>"locked"/"unlocked"</code>.</p>
+
+  <h3>Ceas server &amp; ecran login</h3>
+  <p><code>ServerClock_Text</code>: textdraw global la (565,20), actualizat la 1000ms, afișează ora reală a serverului (HH:MM).
+  <code>LoginBG_Text</code>: PlayerTextDraw cu sprite <code>"LOAD0UK:load0uk"</code>, fundal full-screen pe ecranul de login,
+  distrus la login/register reușit.</p>
+</section>
+
+<section id="police-rar-cmds">
+  <h2>RAR / Poliție / SMURD — detalii comenzi</h2>
+
+  <h3><span class="pill pill-rar">RAR</span> + <span class="pill pill-police">Poliție</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/fine [id] [sumă] [motiv]</code></td><td>On-duty, target în 15m (FINE_RANGE). Nicio limită superioară pe sumă. NU scade bani imediat — stochează amenda în așteptare.</td></tr>
+    <tr><td><code>/accept fine [officerid]</code></td><td>Re-validează raza de 15m la momentul acceptării (nu la momentul emiterii). Banii merg direct în <strong>cash-ul personal al ofițerului</strong>, NU într-o bancă de facțiune.</td></tr>
+    <tr><td><code>/inspectcar [id]</code></td><td>On-duty, target în 15m (FINE_RANGE), motor oprit, trebuie să fie vehicul personal înregistrat. Doar raport, fără acțiune. <strong>Câmpurile afișate diferă pe facțiune</strong>: Poliție vede Insurance + Medical Kit + Extinguisher; RAR vede Medical Kit + Extinguisher + ITP + Vehicle Health.</td></tr>
+    <tr><td><code>/m [id]</code></td><td>On-duty ȘI ofițerul trebuie să fie într-un vehicul de facțiune. Target în 50m (M_RANGE). Mesaj text simplu — nu există mecanism real de oprire forțată.</td></tr>
+  </table>
+
+  <h3><span class="pill pill-rar">RAR</span> rang 3+</h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/confiscateextinctor [id]</code></td><td>On-duty, <code>pFactionRank&gt;=3</code>, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează <code>extinguisher_exp = gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători.</td></tr>
+  </table>
+
+  <h3><span class="pill pill-police">Poliție</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/checklicenses [id]</code></td><td>On-duty. Doar raport.</td></tr>
+    <tr><td><code>/suspendlic [id] [A/B/C/D/all]</code></td><td>On-duty. Șterge (NULL) data de expirare — revocare permanentă, nu suspendare temporizată.</td></tr>
+  </table>
+
+  <h3><span class="pill pill-smurd">SMURD</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/heal [id]</code></td><td>On-duty. Target trebuie să fie PASAGER într-o Ambulanță (model 416). Costă $50, plătit de <strong>țintă</strong>, creditat <strong>băncii facțiunii SMURD</strong> (nu medicului personal).</td></tr>
+    <tr><td><code>/createdisease</code></td><td>Admin lvl 3, nu SMURD — vezi secțiunea Boli.</td></tr>
+    <tr><td><code>/curedisease</code></td><td>Comandă de jucător (nu necesită facțiune) — vezi secțiunea Boli.</td></tr>
+  </table>
+
+  <h3>/accept — comandă partajată</h3>
+  <p><code>/accept finvite [id]</code> și <code>/accept fine [officerid]</code> folosesc <strong>aceeași comandă</strong>
+  <code>/accept</code>, distinse prin primul cuvânt-cheie. Stocare separată pentru fiecare tip de cerere în așteptare
+  (1 invitație + 1 amendă per jucător, simultan posibil).</p>
+</section>
+
+<section id="turfs">
+  <h2>Turfs</h2>
+  <div class="note bug">
+    <strong>Confirmat: nu există niciun mecanism de capturare/atac.</strong> Coloana <code>attackable</code> din tabela
+    <code>turfs</code> e încărcată în memorie (<code>tAttackable</code>) dar <strong>nu e citită nicăieri altundeva</strong> —
+    e dată moartă. Nu există <code>OnPlayerEnterDynamicArea</code>, nicio comandă <code>/turf*</code>, niciun cod de
+    capturare. Turfs sunt pur vizuale: <code>GangZoneCreate</code>/<code>GangZoneShowForAll</code> cu dreptunghi + culoare
+    stocate în DB, legate de un <code>faction_id</code> doar pentru afișare. Singura "gestionare" sunt niște SQL-uri
+    brute comentate în cod (linii ~2403-2413), folosite o singură dată manual pentru seed — nu e tooling live.
+  </div>
+</section>
+
+<section id="database">
+  <h2>Schema bazei de date (10 tabele)</h2>
+
+  <h4>players</h4>
+  <pre>id (PK AI), username VARCHAR(24) UNIQUE, password VARCHAR(64), email VARCHAR(64) DEFAULT '',
+level INT DEFAULT 1, money INT DEFAULT 0, bank INT DEFAULT 0, rp INT DEFAULT 0,
+admin_level INT DEFAULT 0, faction INT DEFAULT 0, faction_rank INT DEFAULT 1,
+faction_join DATE DEFAULT NULL, house INT DEFAULT 999, business INT DEFAULT 999,
+spawn_type INT DEFAULT 1, key1/key2/key3 INT DEFAULT 0,
+driving_lic_a/b/c/d_exp DATE DEFAULT NULL,
+diseased TINYINT DEFAULT 0, disease_paydays INT DEFAULT 0</pre>
+
+  <h4>factions</h4>
+  <pre>id INT PK, name VARCHAR(32) DEFAULT '', members INT DEFAULT 0, lead VARCHAR(24) DEFAULT '',
+bank BIGINT DEFAULT 0, pickup_id INT DEFAULT -1, mapicon_id INT DEFAULT -1,
+hq_x/hq_y/hq_z FLOAT DEFAULT 0.0</pre>
+
+  <h4>payday_setup</h4>
+  <pre>id INT PK DEFAULT 1, min_salary INT DEFAULT 5000, tax INT DEFAULT 10, cass INT DEFAULT 10,
+bank_interest FLOAT DEFAULT 0.25, insurance_price INT DEFAULT 500, medkit_price INT DEFAULT 500,
+extinguisher_price INT DEFAULT 500, itp_price INT DEFAULT 750, plate_price INT DEFAULT 250,
+rent_bike_price INT DEFAULT 15, rent_car_desert_price INT DEFAULT 20,
+exam_a/b/c/d_price INT DEFAULT 200/300/500/400</pre>
+
+  <h4>houses</h4>
+  <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Casa', owner VARCHAR(24) DEFAULT '', owner_id INT DEFAULT 0,
+owned TINYINT DEFAULT 0, price INT DEFAULT 50000, loc_x/y/z FLOAT DEFAULT 0.0</pre>
+
+  <h4>businesses</h4>
+  <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Business', owned TINYINT DEFAULT 0, owner VARCHAR(24) DEFAULT '',
+owner_id INT DEFAULT 0, price INT DEFAULT 50000, bank INT DEFAULT 0, loc_x/y/z FLOAT DEFAULT 0.0</pre>
+
+  <h4>vehicles_faction</h4>
+  <pre>id INT PK AI, faction_id INT NOT NULL, model_id INT NOT NULL, loc_x/y/z FLOAT DEFAULT 0.0,
+rotation FLOAT DEFAULT 0.0, color1/color2 INT DEFAULT 1</pre>
+
+  <h4>vehicles_personal</h4>
+  <pre>id INT PK AI, owner_id INT DEFAULT 0, model_id INT NOT NULL, color1/color2 INT DEFAULT 1,
+plate VARCHAR(16) UNIQUE DEFAULT NULL, price INT DEFAULT 0, loc_x/y/z FLOAT DEFAULT 0.0,
+rotation FLOAT DEFAULT 0.0, insurance_exp/medkit_exp/extinguisher_exp/itp_exp DATE DEFAULT NULL,
+locked TINYINT DEFAULT 0</pre>
+
+  <h4>turfs</h4>
+  <pre>id INT PK AI, faction_id INT DEFAULT 0, name VARCHAR(32) NOT NULL DEFAULT '',
+x1/y1/x2/y2 FLOAT DEFAULT 0.0, attackable TINYINT(1) DEFAULT 1, color VARCHAR(8) DEFAULT '000000FF',
+UNIQUE KEY uq_turf_name(name)</pre>
+
+  <h4>locations_admin <span style="color:var(--muted); font-weight:400; font-size:0.8em">(redenumit din locations)</span></h4>
+  <pre>locID INT PK AI, locName VARCHAR(32) NOT NULL DEFAULT '', locX/Y/Z FLOAT DEFAULT 0.0,
+UNIQUE KEY uq_location_name(locName)
+-- seed: examA, examB, examC, examD, vplate, vitp, hospital</pre>
+
+  <h4>locations_gps <span style="color:var(--muted); font-weight:400; font-size:0.8em">(redenumit din gps_locations)</span></h4>
+  <pre>glID INT PK AI, glCategory VARCHAR(32) NOT NULL DEFAULT '', glName VARCHAR(32) NOT NULL DEFAULT '',
+glLocX/Y/Z FLOAT DEFAULT 0.0, UNIQUE KEY uq_gps_name(glName)
+-- glCategory accepta "DMV"/"FACTIONS"/"BUSINESS"/"OTHERS" SAU "1"/"2"/"3"/"4"
+-- seed: categoria 4, "Hospitalization" (1582.5594, 1769.1219, 10.8203)</pre>
+</section>
+
+<section id="admin-cmds">
+  <h2>Comenzi admin (complet, după nivel)</h2>
+  <table>
+    <tr><th>Nivel</th><th>Comenzi</th></tr>
+    <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code></td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code></td></tr>
+    <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code></td></tr>
+    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code></td></tr>
+    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/changebizname</code>, <code>/changebizprice</code>, <code>/changebizloc</code>, <code>/changehouseprice</code>, <code>/changehouseowner</code>, <code>/vcreate</code>, <code>/vsetprice</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code></td></tr>
+  </table>
+  <div class="note">
+    <strong>/changefactionlead</strong> forțează acum necondiționat <code>pSpawn=2</code> (HQ Spawn) pentru noul lider,
+    recalculează coordonatele de spawn pe HQ-ul noii facțiuni (<code>Player_RecalcSpawn</code>) și îl respawnează pe loc
+    (<code>SpawnPlayer</code>) — indiferent ce avea setat anterior ca tip de spawn.
+  </div>
+</section>
+
+<section id="known-issues">
+  <h2>Probleme cunoscute / de verificat</h2>
+  <div class="note bug">
+    <strong>/createhouse — preț implicit inconsecvent.</strong> Valoarea în memorie e setată la 999.999.999, dar
+    INSERT-ul SQL efectiv folosește 50.000 ca literal. Până la următorul reload din DB, prețul afișat în joc
+    (din memorie) și cel din baza de date diferă.
+  </div>
+  <div class="note bug">
+    <strong>/removefactionlead</strong> face update-ul DB direct după username (string), nu după ID — fragil dacă
+    liderul e offline sau și-a schimbat numele între timp.
+  </div>
+  <div class="note warn">
+    <strong>Turfs</strong> au coloana <code>attackable</code> complet nefolosită — dacă promovați public un sistem de
+    "teritorii capturabile", el nu există încă în cod (vezi secțiunea Turfs).
+  </div>
+  <div class="note warn">
+    <strong>Business ID 8</strong> primește comision la <code>/vbuy</code> necondiționat, chiar dacă acel business nu
+    a fost încă creat în DB (query-ul pur și simplu nu afectează nimic) — nu generează eroare, dar nici venit, până
+    nu există efectiv un rând cu <code>id=8</code> în <code>businesses</code>.
+  </div>
+</section>
+
+<section id="cmd-account">
+  <h2>Listă completă comenzi (referință rapidă)</h2>
+  <h3>Cont</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/register [parolă]</code></td><td>Parolă stocată în clar (fără hashing vizibil în cod)</td></tr>
+    <tr><td><code>/login [parolă]</code></td><td>Comparație directă cu strcmp</td></tr>
+    <tr><td><code>/stats</code></td><td>Read-only</td></tr>
+  </table>
+
+  <h3 id="cmd-faction">Facțiune</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/f [mesaj]</code></td><td>Chat facțiune</td></tr>
+    <tr><td><code>/finvite [id]</code></td><td>Rang 4+, target în 15m (FINVITE_RANGE), fără facțiune</td></tr>
+    <tr><td><code>/accept finvite/fine [id]</code></td><td>Comandă partajată, vezi secțiunea RAR/Poliție</td></tr>
+    <tr><td><code>/fmembers</code> / <code>/fhelp</code> / <code>/factions</code> / <code>/duty</code></td><td>Vezi sus</td></tr>
+  </table>
+
+  <h3 id="cmd-vehicle">Vehicule</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/vbuy /vsell /vsellto /vcolor /vplate /vinsurance /vmedicalkit /vextinctor /vitp /vpark /vstats /lock /engine</code></td><td>Vezi secțiunea Vehicule personale</td></tr>
+    <tr><td><code>/rentbike /rentcar /cspawn</code></td><td>Vezi Economie / Houses</td></tr>
+  </table>
+
+  <h3 id="cmd-misc">GPS / Diverse</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/gps [nume]</code> / <code>/killcp</code></td><td>Vezi secțiunea GPS</td></tr>
+    <tr><td><code>/radar install/remove [limită]</code></td><td>Vezi secțiunea Radar</td></tr>
+    <tr><td><code>/licenses /examA /examB /examC /examD</code></td><td>Vezi secțiunea Examene</td></tr>
+    <tr><td><code>/help</code></td><td>Listă generală jucător</td></tr>
+  </table>
+</section>
+
+</main>
+</div>
+
+<footer>
+  Document intern — generat dintr-un survey complet al <code>gamemodes/bare.pwn</code> la momentul scrierii. Nu distribui jucătorilor.
+</footer>
+
+</body>
+</html>
