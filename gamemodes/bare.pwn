@@ -3512,7 +3512,7 @@ public OnGameModeInit()
     g_RentBikeVehicle[4] = AddStaticVehicle(510, 2840.0, 1286.0, 11.0, 45.0, 6, 6);
 
     // Masini de inchiriat piramida
-    g_RentCarVehicle[0] = AddStaticVehicle(545, 2220.0, 1278.0, 10.6, 90.0, 6, 6);
+    g_RentCarVehicle[0] = AddStaticVehicle(545, 2200.0, 1278.0, 10.6, 90.0, 6, 6);
     g_RentCarVehicle[1] = AddStaticVehicle(565, 2200.0, 1283.0, 10.6, 90.0, 6, 6);
     g_RentCarVehicle[2] = AddStaticVehicle(477, 2200.0, 1288.0, 10.6, 90.0, 6, 6);
     g_RentCarVehicle[3] = AddStaticVehicle(559, 2200.0, 1293.0, 10.6, 90.0, 6, 6);
@@ -4352,7 +4352,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR/Police, On-Duty] "C_WHITE"/fine, /m, /inspectcar");
 
         if(fid == FACTION_RAR && rank >= 3)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+, On-Duty] "C_WHITE"/confiscateextinctor");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+, On-Duty] "C_WHITE"/confiscate [extinctor/medkit/itp]");
 
         if(fid == FACTION_POLICE)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, On-Duty] "C_WHITE"/checkLicenses, /suspendLic");
@@ -4523,8 +4523,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
-    // ---- /confiscateextinctor [playerid] ----
-    if(strcmp(cmd, "/confiscateextinctor", true) == 0)
+    // ---- /confiscate [extinctor/medkit/itp] [playerid] ----
+    if(strcmp(cmd, "/confiscate", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
@@ -4539,11 +4539,16 @@ public OnPlayerCommandText(playerid, cmdtext[])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be on-duty to use this command."), 1;
 
         while(cmdtext[idx] == ' ') idx++;
+        new subStart = idx;
+        while(cmdtext[idx] > ' ') idx++;
+        new sub[10];
+        strmid(sub, cmdtext, subStart, idx, 10);
+        while(cmdtext[idx] == ' ') idx++;
         new p1[8];
         strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
 
-        if(!strlen(p1))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/confiscateextinctor [playerid]"C_WHITE"."), 1;
+        if((strcmp(sub, "extinctor", true) != 0 && strcmp(sub, "medkit", true) != 0 && strcmp(sub, "itp", true) != 0) || !strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/confiscate [extinctor/medkit/itp] [playerid]"C_WHITE"."), 1;
 
         new targetid = strval(p1);
         if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
@@ -4567,23 +4572,44 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(pvidx == -1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This vehicle is not a registered personal vehicle."), 1;
 
-        PVehicleData[pvidx][pvExtinguisherExp] = gettime();
+        new docName[24], docColumn[24], expTs;
+        if(strcmp(sub, "extinctor", true) == 0)
+        {
+            PVehicleData[pvidx][pvExtinguisherExp] = gettime();
+            expTs = PVehicleData[pvidx][pvExtinguisherExp];
+            format(docName, sizeof(docName), "fire extinguisher");
+            format(docColumn, sizeof(docColumn), "extinguisher_exp");
+        }
+        else if(strcmp(sub, "medkit", true) == 0)
+        {
+            PVehicleData[pvidx][pvMedkitExp] = gettime();
+            expTs = PVehicleData[pvidx][pvMedkitExp];
+            format(docName, sizeof(docName), "medical kit");
+            format(docColumn, sizeof(docColumn), "medkit_exp");
+        }
+        else
+        {
+            PVehicleData[pvidx][pvITPExp] = gettime();
+            expTs = PVehicleData[pvidx][pvITPExp];
+            format(docName, sizeof(docName), "ITP");
+            format(docColumn, sizeof(docColumn), "itp_exp");
+        }
 
         new dateStr[11];
-        UnixToDateStr(PVehicleData[pvidx][pvExtinguisherExp], dateStr, sizeof(dateStr));
+        UnixToDateStr(expTs, dateStr, sizeof(dateStr));
 
         new q[128];
-        mysql_format(g_SQL, q, sizeof(q), "UPDATE `vehicles_personal` SET `extinguisher_exp`='%s' WHERE `id`=%d",
-            dateStr, PVehicleData[pvidx][pvID]);
+        mysql_format(g_SQL, q, sizeof(q), "UPDATE `vehicles_personal` SET `%s`='%s' WHERE `id`=%d",
+            docColumn, dateStr, PVehicleData[pvidx][pvID]);
         mysql_tquery(g_SQL, q, "", "", 0);
 
         new cmsg[160];
-        format(cmsg, sizeof(cmsg), C_SUCCESS"Success: "C_WHITE"You confiscated "C_INFO"%s"C_WHITE"'s fire extinguisher document.",
-            PlayerData[targetid][pName]);
+        format(cmsg, sizeof(cmsg), C_SUCCESS"Success: "C_WHITE"You confiscated "C_INFO"%s"C_WHITE"'s %s document.",
+            PlayerData[targetid][pName], docName);
         SendClientMessage(playerid, COLOR_SUCCESS, cmsg);
 
-        format(cmsg, sizeof(cmsg), C_ERROR"Error: "C_WHITE"Your fire extinguisher document was confiscated by "C_INFO"%s"C_WHITE".",
-            PlayerData[playerid][pName]);
+        format(cmsg, sizeof(cmsg), C_ERROR"Error: "C_WHITE"Your %s document was confiscated by "C_INFO"%s"C_WHITE".",
+            docName, PlayerData[playerid][pName]);
         SendClientMessage(targetid, COLOR_ERROR, cmsg);
         return 1;
     }

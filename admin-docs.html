@@ -390,7 +390,7 @@ RP    += 1</pre>
   <h3><span class="pill pill-rar">RAR</span> rang 3+</h3>
   <table>
     <tr><th>Comandă</th><th>Detalii</th></tr>
-    <tr><td><code>/confiscateextinctor [id]</code></td><td>On-duty, <code>pFactionRank&gt;=3</code>, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează <code>extinguisher_exp = gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători.</td></tr>
+    <tr><td><code>/confiscate [extinctor/medkit/itp] [id]</code></td><td>On-duty, <code>pFactionRank&gt;=3</code>, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează coloana aleasă (<code>extinguisher_exp</code> / <code>medkit_exp</code> / <code>itp_exp</code>) la <code>gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători. (Comandă unică, fuzionată din fostele <code>/confiscateextinctor</code> și <code>/confiscatemedkit</code>.)</td></tr>
   </table>
 
   <h3><span class="pill pill-police">Poliție</span></h3>

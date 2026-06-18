@@ -3057,3 +3057,74 @@ v0.3.7-R2, (C)2005-2015 SA-MP Team
 [17:19:50] [connection] incoming connection: 127.0.0.1:50973 id: 0
 [17:19:50] [join] Punctulet has joined the server (0:127.0.0.1)
 [17:24:30] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[21:50:58] filterscripts = ""  (string)
+[21:50:58] 
+[21:50:58] Server Plugins
+[21:50:58] --------------
+[21:50:58]  Loading plugin: mysql
+[21:50:58]  >> plugin.mysql: R41-4 successfully loaded.
+[21:50:58]   Loaded.
+[21:50:58]  Loading plugin: streamer
+[21:50:58] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[21:50:58]   Loaded.
+[21:50:58]  Loaded 2 plugins.
+
+[21:50:58] 
+[21:50:58] Filterscripts
+[21:50:58] ---------------
+[21:50:58]   Loaded 0 filterscripts.
+
+[21:50:58] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[21:50:58] [DB] Conectat la MySQL cu succes!
+[21:50:58] [DB] Tabel `players` verificat/creat.
+[21:50:58] [DB] Tabele factiuni si payday verificate/create.
+[21:50:58] [Factions] Se incarca factiunile din baza de date...
+[21:50:58] 
+----------------------------------
+[21:50:58]   NostalgiaRP by Nikolas Maduro  
+
+[21:50:58] ----------------------------------
+
+[21:50:58] Number of vehicle models: 14
+[21:50:58] [Factions] 7 factiuni incarcate.
+[21:50:58] [Houses] 1 case incarcate.
+[21:50:58] [Businesses] 8 business-uri incarcate.
+[21:50:58] [Turfs] 4 turf-uri incarcate.
+[21:50:58] [Locations] 7 locatii incarcate.
+[21:50:58] [GPS] 5 locatii incarcate.
+[21:50:58] [VehiculeFactiuni] 85 vehicule incarcate.
+[21:50:58] [VehiculePersonale] 15 vehicule incarcate.
+[21:50:58] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[21:50:58] [VehiculePersonale] Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Numar inmatriculare $250 | Bicicleta $15 | RentCarDMVDesert $20 | Examen A $200 | Examen B $300 | Examen C $500 | Examen D $400
+[21:51:18] [connection] 127.0.0.1:56082 requests connection cookie.
+[21:51:19] [connection] incoming connection: 127.0.0.1:56082 id: 0
+[21:51:19] [join] Punctulet has joined the server (0:127.0.0.1)
+[21:52:23] [part] Punctulet has left the server (0:1)
+[21:52:54] [connection] 127.0.0.1:64593 requests connection cookie.
+[21:52:55] [connection] incoming connection: 127.0.0.1:64593 id: 0
+[21:52:56] [join] Punctulet has joined the server (0:127.0.0.1)
+[21:54:05] [part] Punctulet has left the server (0:1)
+[21:54:25] [connection] 127.0.0.1:62847 requests connection cookie.
+[21:54:26] [connection] incoming connection: 127.0.0.1:62847 id: 0
+[21:54:26] [join] Punctulet has joined the server (0:127.0.0.1)
+[21:55:59] [connection] 127.0.0.1:65054 requests connection cookie.
+[21:56:00] [connection] incoming connection: 127.0.0.1:65054 id: 1
+[21:56:00] [join] Punctulet2 has joined the server (1:127.0.0.1)
+[21:57:40] [DEBUG /fine] targetid=1 connected=1 logged=1 len=159 msg={FF3333}[Police] {FFFFFF}Officer {BB99FF}Punctulet{FFFFFF} fined you {BB99FF}$6{FFFFFF} for: {BB99FF}asa vr eu{FFFFFF}. Type {BB99FF}/accept fine 0{FFFFFF} to 
+[21:57:43] [DEBUG /fine] targetid=1 connected=1 logged=1 len=159 msg={FF3333}[Police] {FFFFFF}Officer {BB99FF}Punctulet{FFFFFF} fined you {BB99FF}$6{FFFFFF} for: {BB99FF}asa vr eu{FFFFFF}. Type {BB99FF}/accept fine 0{FFFFFF} to 
+[21:57:44] [DEBUG /fine] targetid=1 connected=1 logged=1 len=159 msg={FF3333}[Police] {FFFFFF}Officer {BB99FF}Punctulet{FFFFFF} fined you {BB99FF}$6{FFFFFF} for: {BB99FF}asa vr eu{FFFFFF}. Type {BB99FF}/accept fine 0{FFFFFF} to 
+[22:00:26] [PayDay] Distribuit la 22:00.
+[22:12:22] [part] Punctulet has left the server (0:1)
+[22:14:04] [part] Punctulet2 has left the server (1:1)
