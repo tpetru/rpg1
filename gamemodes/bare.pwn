@@ -94,6 +94,8 @@ new g_ExamAPrice       = 200;
 new g_ExamBPrice       = 300;
 new g_ExamCPrice       = 500;
 new g_ExamDPrice       = 400;
+new g_PizzaPrice       = 50;
+new g_BurgerPrice      = 55;
 
 // ============================================================
 //  DATE JUCATOR
@@ -1031,17 +1033,21 @@ stock GPS_FindByName(const name[])
     return -1;
 }
 
-#define DIALOG_GPS_CATEGORY 9001
-#define DIALOG_GPS_LOCATION 9002
+#define DIALOG_GPS_CATEGORY  9001
+#define DIALOG_GPS_LOCATION  9002
+#define DIALOG_BUSINESS_LIST 9003
 
-new const GPS_CATEGORY_NAMES[4][16] = {"DMV", "FACTIONS", "BUSINESS", "OTHERS"};
+// Nume afisate playerului (titlul celui de-al doilea dialog)
+new const GPS_CATEGORY_NAMES[5][16] = {"DMV Locations", "FACTIONS", "BUSINESS", "Others", "Shops"};
+// Aliasuri text vechi acceptate din DB (separat de GPS_CATEGORY_NAMES, ca sa nu stricam matching-ul cand redenumim afisarea)
+new const GPS_CATEGORY_ALIAS[5][16] = {"DMV", "FACTIONS", "BUSINESS", "OTHERS", "SHOPS"};
 new g_GPSDialogCategory[MAX_PLAYERS];
 
-// Verifica daca o categorie din DB se potriveste cu categoria catIdx (0=DMV, 1=FACTIONS, 2=BUSINESS, 3=OTHERS).
-// Accepta atat numele ("DMV") cat si numarul ("1"), ca sa functioneze indiferent cum a fost populata baza de date.
+// Verifica daca o categorie din DB se potriveste cu categoria catIdx (0=DMV, 1=FACTIONS, 2=BUSINESS, 3=OTHERS, 4=SHOPS).
+// Accepta atat numele text vechi ("DMV") cat si numarul ("1"), ca sa functioneze indiferent cum a fost populata baza de date.
 stock bool:GPS_CategoryMatches(const category[], catIdx)
 {
-    if(strcmp(category, GPS_CATEGORY_NAMES[catIdx], true) == 0) return true;
+    if(strcmp(category, GPS_CATEGORY_ALIAS[catIdx], true) == 0) return true;
 
     new numStr[4];
     format(numStr, sizeof(numStr), "%d", catIdx + 1);
@@ -1497,6 +1503,156 @@ stock VehiclesFaction_Create(idx)
 #define HOSPITAL_LOC_Z       10.8203
 #define DISEASE_CURE_PRICE   200
 #define DISEASE_FREEZE_TIME  10000 // 10 secunde, in ms
+
+#define MAX_MEDSHOPS             6
+#define MEDSHOP_ICON_SLOT_BASE   70 // sloturile 70-75 (10-59 = business-uri, 60-69 = incendii)
+#define MEDSHOP_MAPICON_ID       11
+#define MEDSHOP_PICKUP_MODEL     2690
+#define MEDSHOP_RANGE            10.0
+
+new Float:MedShopLocations[MAX_MEDSHOPS][3] = {
+    {1536.3281, 1044.9326, 10.8203},
+    {2194.0332, 1990.9806, 12.2969},
+    {1920.2715, 2447.3835, 11.1782},
+    {1378.2955, 2355.3503, 10.8203},
+    {662.2972,  1717.1869, 7.1875},
+    {-87.7910,  1378.0410, 10.2734}
+};
+
+// Creeaza pickup-urile si etichetele 3D pentru shop-urile de medkit/extinctor (o singura data, la pornire)
+stock MedShops_CreateWorld()
+{
+    new label[96];
+    format(label, sizeof(label), "[ Shop ]\n[ /vMedicalKit - %s$ ]\n[ /vExtinctor - %s$ ]",
+        MoneyStr(g_MedkitPrice), MoneyStr(g_ExtinguisherPrice));
+
+    for(new i = 0; i < MAX_MEDSHOPS; i++)
+    {
+        CreatePickup(MEDSHOP_PICKUP_MODEL, 1, MedShopLocations[i][0], MedShopLocations[i][1], MedShopLocations[i][2], -1);
+        Create3DTextLabel(label, COLOR_WHITE, MedShopLocations[i][0], MedShopLocations[i][1], MedShopLocations[i][2] - 0.0, 15.0, 0, 0);
+    }
+}
+
+// Seteaza map icon-urile shop-urilor de medkit/extinctor pentru un player
+stock MedShops_SetPlayerIcons(playerid)
+{
+    for(new i = 0; i < MAX_MEDSHOPS; i++)
+    {
+        SetPlayerMapIcon(playerid, MEDSHOP_ICON_SLOT_BASE + i,
+            MedShopLocations[i][0], MedShopLocations[i][1], MedShopLocations[i][2],
+            MEDSHOP_MAPICON_ID, 0, MAPICON_LOCAL);
+    }
+}
+
+// Verifica daca playerid e in raza unuia dintre cele 6 shop-uri de medkit/extinctor
+stock bool:MedShops_PlayerInRange(playerid)
+{
+    for(new i = 0; i < MAX_MEDSHOPS; i++)
+        if(IsPlayerInRangeOfPoint(playerid, MEDSHOP_RANGE, MedShopLocations[i][0], MedShopLocations[i][1], MedShopLocations[i][2]))
+            return true;
+    return false;
+}
+
+// ============================================================
+//  MANCARE (/pizza, /burger)
+// ============================================================
+#define MAX_FOOD_LOCATIONS   5
+#define FOOD_RANGE            10.0
+
+#define PIZZA_HEAL_AMOUNT     20.0
+#define PIZZA_BIZ_ID          12
+#define PIZZA_ICON_SLOT_BASE  76 // sloturile 76-80
+#define PIZZA_MAPICON_ID      29
+#define PIZZA_PICKUP_MODEL    1582
+
+#define BURGER_HEAL_AMOUNT    25.0
+#define BURGER_BIZ_ID         13
+#define BURGER_ICON_SLOT_BASE 81 // sloturile 81-85
+#define BURGER_MAPICON_ID     10
+#define BURGER_PICKUP_MODEL   19320
+
+new Float:PizzaLocations[MAX_FOOD_LOCATIONS][3] = {
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0}
+};
+
+new Float:BurgerLocations[MAX_FOOD_LOCATIONS][3] = {
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0}
+};
+
+// Verifica daca playerid e in raza uneia dintre cele 5 locatii de /pizza
+stock bool:Pizza_PlayerInRange(playerid)
+{
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+        if(IsPlayerInRangeOfPoint(playerid, FOOD_RANGE, PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2]))
+            return true;
+    return false;
+}
+
+// Verifica daca playerid e in raza uneia dintre cele 5 locatii de /burger
+stock bool:Burger_PlayerInRange(playerid)
+{
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+        if(IsPlayerInRangeOfPoint(playerid, FOOD_RANGE, BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2]))
+            return true;
+    return false;
+}
+
+// Creeaza pickup-urile si etichetele 3D pentru cele 5 locatii de /pizza (o singura data, la pornire)
+stock Pizza_CreateWorld()
+{
+    new label[96];
+    format(label, sizeof(label), "[ Buy Food ]\n[ /pizza ]\n[ +%d hp = %s$ ]", floatround(PIZZA_HEAL_AMOUNT), MoneyStr(g_PizzaPrice));
+
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        CreatePickup(PIZZA_PICKUP_MODEL, 1, PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2], -1);
+        Create3DTextLabel(label, COLOR_WHITE, PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2] - 0.0, 15.0, 0, 0);
+    }
+}
+
+// Seteaza map icon-urile locatiilor de /pizza pentru un player
+stock Pizza_SetPlayerIcons(playerid)
+{
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        SetPlayerMapIcon(playerid, PIZZA_ICON_SLOT_BASE + i,
+            PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2],
+            PIZZA_MAPICON_ID, 0, MAPICON_LOCAL);
+    }
+}
+
+// Creeaza pickup-urile si etichetele 3D pentru cele 5 locatii de /burger (o singura data, la pornire)
+stock Burger_CreateWorld()
+{
+    new label[96];
+    format(label, sizeof(label), "[ Buy Food ]\n[ /burger ]\n[ +%d hp = %s$ ]", floatround(BURGER_HEAL_AMOUNT), MoneyStr(g_BurgerPrice));
+
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        CreatePickup(BURGER_PICKUP_MODEL, 1, BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2], -1);
+        Create3DTextLabel(label, COLOR_WHITE, BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2] - 0.0, 15.0, 0, 0);
+    }
+}
+
+// Seteaza map icon-urile locatiilor de /burger pentru un player
+stock Burger_SetPlayerIcons(playerid)
+{
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        SetPlayerMapIcon(playerid, BURGER_ICON_SLOT_BASE + i,
+            BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2],
+            BURGER_MAPICON_ID, 0, MAPICON_LOCAL);
+    }
+}
+
 #define FACTION_RAR             2
 #define FACTION_POLICE          1
 
@@ -2356,7 +2512,9 @@ stock DB_CreateTables()
         `exam_a_price`      INT   DEFAULT 200,\
         `exam_b_price`      INT   DEFAULT 300,\
         `exam_c_price`      INT   DEFAULT 500,\
-        `exam_d_price`      INT   DEFAULT 400\
+        `exam_d_price`      INT   DEFAULT 400,\
+        `pizza_price`       INT   DEFAULT 50,\
+        `burger_price`      INT   DEFAULT 55\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
@@ -2371,6 +2529,8 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `exam_b_price`       INT DEFAULT 300", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `exam_c_price`       INT DEFAULT 500", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `exam_d_price`       INT DEFAULT 400", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `pizza_price`        INT DEFAULT 50",  "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `payday_setup` ADD COLUMN `burger_price`       INT DEFAULT 55",  "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `houses` (\
@@ -2520,19 +2680,34 @@ stock DB_CreateTables()
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `locations_gps` (\
-        `glID`       INT AUTO_INCREMENT PRIMARY KEY,\
-        `glCategory` VARCHAR(32) NOT NULL DEFAULT '',\
-        `glName`     VARCHAR(32) NOT NULL DEFAULT '',\
-        `glLocX`     FLOAT DEFAULT 0.0,\
-        `glLocY`     FLOAT DEFAULT 0.0,\
-        `glLocZ`     FLOAT DEFAULT 0.0,\
+        `glID`           INT AUTO_INCREMENT PRIMARY KEY,\
+        `glCategory`     VARCHAR(32) NOT NULL DEFAULT '',\
+        `glCategoryName` VARCHAR(32) NOT NULL DEFAULT '',\
+        `glName`         VARCHAR(32) NOT NULL DEFAULT '',\
+        `glLocX`         FLOAT DEFAULT 0.0,\
+        `glLocY`         FLOAT DEFAULT 0.0,\
+        `glLocZ`         FLOAT DEFAULT 0.0,\
         UNIQUE KEY `uq_gps_name` (`glName`)\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
+    mysql_tquery(g_SQL, "ALTER TABLE `locations_gps` ADD COLUMN `glCategoryName` VARCHAR(32) NOT NULL DEFAULT ''", "", "", 0);
+
+    // Completeaza numele categoriei pentru randurile existente, pe baza vechii valori glCategory
+    mysql_tquery(g_SQL, "UPDATE `locations_gps` SET `glCategoryName`='DMV Locations' WHERE `glCategory` IN ('1','DMV')", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `locations_gps` SET `glCategoryName`='FACTIONS' WHERE `glCategory` IN ('2','FACTIONS')", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `locations_gps` SET `glCategoryName`='BUSINESS' WHERE `glCategory` IN ('3','BUSINESS')", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `locations_gps` SET `glCategoryName`='Others' WHERE `glCategory` IN ('4','OTHERS')", "", "", 0);
+
     mysql_tquery(g_SQL,
-        "INSERT IGNORE INTO `locations_gps` (`glCategory`,`glName`,`glLocX`,`glLocY`,`glLocZ`) VALUES \
-        ('4', 'Hospitalization', 1582.5594, 1769.1219, 10.8203);",
+        "INSERT IGNORE INTO `locations_gps` (`glCategory`,`glCategoryName`,`glName`,`glLocX`,`glLocY`,`glLocZ`) VALUES \
+        ('4', 'Others', 'Hospitalization', 1582.5594, 1769.1219, 10.8203),\
+        ('5', 'Shops', 'Medical Shop 1', 1536.3281, 1044.9326, 10.8203),\
+        ('5', 'Shops', 'Medical Shop 2', 2194.0332, 1990.9806, 12.2969),\
+        ('5', 'Shops', 'Medical Shop 3', 1920.2715, 2447.3835, 11.1782),\
+        ('5', 'Shops', 'Medical Shop 4', 1378.2955, 2355.3503, 10.8203),\
+        ('5', 'Shops', 'Medical Shop 5', 662.2972, 1717.1869, 7.1875),\
+        ('5', 'Shops', 'Medical Shop 6', -87.7910, 1378.0410, 10.2734);",
         "", "", 0);
 
     print("[DB] Tabele factiuni si payday verificate/create.");
@@ -2964,7 +3139,7 @@ public OnVehicleITPCheck(playerid, pvidx, vehid)
 stock PayDay_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `min_salary`,`tax`,`cass`,`bank_interest`,`insurance_price`,`medkit_price`,`extinguisher_price`,`itp_price`,`plate_price`,`rent_bike_price`,`rent_car_desert_price`,`exam_a_price`,`exam_b_price`,`exam_c_price`,`exam_d_price` \
+        "SELECT `min_salary`,`tax`,`cass`,`bank_interest`,`insurance_price`,`medkit_price`,`extinguisher_price`,`itp_price`,`plate_price`,`rent_bike_price`,`rent_car_desert_price`,`exam_a_price`,`exam_b_price`,`exam_c_price`,`exam_d_price`,`pizza_price`,`burger_price` \
          FROM `payday_setup` WHERE `id`=1 LIMIT 1",
         "OnPayDayLoaded");
 }
@@ -2988,11 +3163,13 @@ public OnPayDayLoaded()
         cache_get_value_name_int  (0, "exam_b_price",       g_ExamBPrice);
         cache_get_value_name_int  (0, "exam_c_price",       g_ExamCPrice);
         cache_get_value_name_int  (0, "exam_d_price",       g_ExamDPrice);
+        cache_get_value_name_int  (0, "pizza_price",        g_PizzaPrice);
+        cache_get_value_name_int  (0, "burger_price",       g_BurgerPrice);
     }
     printf("[PayDay] Setari: Salar minim $%d | Impozit %d%% | CASS %d%% | Dobanda %.2f%%",
         g_PDMinSalary, g_PDTax, g_PDCASS, g_PDInterest);
-    printf("[VehiculePersonale] Asigurare $%d | Kit medical $%d | Extinctor $%d | ITP $%d | Numar inmatriculare $%d | Bicicleta $%d | RentCarDMVDesert $%d | Examen A $%d | Examen B $%d | Examen C $%d | Examen D $%d",
-        g_InsurancePrice, g_MedkitPrice, g_ExtinguisherPrice, g_ITPPrice, g_PlatePrice, g_RentBikePrice, g_RentCarDesertPrice, g_ExamAPrice, g_ExamBPrice, g_ExamCPrice, g_ExamDPrice);
+    printf("[VehiculePersonale] Asigurare $%d | Kit medical $%d | Extinctor $%d | ITP $%d | Numar inmatriculare $%d | Bicicleta $%d | RentCarDMVDesert $%d | Examen A $%d | Examen B $%d | Examen C $%d | Examen D $%d | Pizza $%d | Burger $%d",
+        g_InsurancePrice, g_MedkitPrice, g_ExtinguisherPrice, g_ITPPrice, g_PlatePrice, g_RentBikePrice, g_RentCarDesertPrice, g_ExamAPrice, g_ExamBPrice, g_ExamCPrice, g_ExamDPrice, g_PizzaPrice, g_BurgerPrice);
     return 1;
 }
 
@@ -3218,6 +3395,9 @@ public OnPlayerRegister(playerid)
     SetPlayerColor(playerid, FactionColors[FACTION_NONE]);
     Factions_SetPlayerIcons(playerid);
     Businesses_SetPlayerIcons(playerid);
+    MedShops_SetPlayerIcons(playerid);
+    Pizza_SetPlayerIcons(playerid);
+    Burger_SetPlayerIcons(playerid);
 
     LoginBG_Destroy(playerid);
 
@@ -3291,6 +3471,9 @@ public OnPlayerLogin(playerid)
     SetPlayerColor(playerid, FactionColors[PlayerData[playerid][pFaction]]);
     Factions_SetPlayerIcons(playerid);
     Businesses_SetPlayerIcons(playerid);
+    MedShops_SetPlayerIcons(playerid);
+    Pizza_SetPlayerIcons(playerid);
+    Burger_SetPlayerIcons(playerid);
 
     GivePlayerMoney(playerid, PlayerData[playerid][pMoney]);
     SetPlayerScore(playerid, PlayerData[playerid][pLevel]);
@@ -3545,41 +3728,45 @@ public OnGameModeInit()
 
     // 3D Text:
     Create3DTextLabel("[ Vehicle Inspection Service ]\n[ Use /vitp ]\n[ Price: 750$ ]", COLOR_WHITE,
-        ITP_LOC_X, ITP_LOC_Y, ITP_LOC_Z - 1.0, 25.0, 0, 0);
+        ITP_LOC_X, ITP_LOC_Y, ITP_LOC_Z - 1.0, 27.0, 0, 0);
 
     Create3DTextLabel("[ Vehicle Inspection Service ]\n[ Use /vplate ]\n[ Price: 250$ ]", COLOR_WHITE,
-        PLATE_LOC_X, PLATE_LOC_Y, PLATE_LOC_Z - 1.0, 25.0, 0, 0);
+        PLATE_LOC_X, PLATE_LOC_Y, PLATE_LOC_Z - 1.0, 27.0, 0, 0);
 
     new examLabel[64];
 
     CreatePickup(1210, 1, EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category A Exam ]\n[ /examA ]\n[ Price: $%s ]", MoneyStr(g_ExamAPrice));
     Create3DTextLabel(examLabel, COLOR_WHITE,
-        EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z - 0.0, 20.0, 0, 0);
+        EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z - 0.5, 20.0, 0, 0);
 
     CreatePickup(1210, 1, EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category B Exam ]\n[ /examB ]\n[ Price: $%s ]", MoneyStr(g_ExamBPrice));
     Create3DTextLabel(examLabel, COLOR_WHITE,
-        EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z - 0.0, 20.0, 0, 0);
+        EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z - 0.5, 20.0, 0, 0);
 
     CreatePickup(1210, 1, EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category C Exam ]\n[ /examC ]\n[ Price: $%s ]", MoneyStr(g_ExamCPrice));
     Create3DTextLabel(examLabel, COLOR_WHITE,
-        EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z - 0.0, 20.0, 0, 0);
+        EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z - 0.5, 20.0, 0, 0);
 
     CreatePickup(1210, 1, EXAMD_LOC_X, EXAMD_LOC_Y, EXAMD_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category D Exam ]\n[ /examD ]\n[ Price: $%s ]", MoneyStr(g_ExamDPrice));
     Create3DTextLabel(examLabel, COLOR_WHITE,
-        EXAMD_LOC_X, EXAMD_LOC_Y, EXAMD_LOC_Z - 0.0, 20.0, 0, 0);
+        EXAMD_LOC_X, EXAMD_LOC_Y, EXAMD_LOC_Z - 0.5, 20.0, 0, 0);
 
-    Create3DTextLabel("[ Police ]\n[ Type /garage ]", COLOR_WHITE,
-        POLICE_GARAGE_X, POLICE_GARAGE_Y, POLICE_GARAGE_Z - 0.0, 10.0, 0, 0);
-    Create3DTextLabel("[ Police ]\n[ Type /entrace ]", COLOR_WHITE,
-        POLICE_ENTRANCE_X, POLICE_ENTRANCE_Y, POLICE_ENTRANCE_Z - 0.0, 10.0, 0, 0);
+    Create3DTextLabel("[ Police ]\n[ Type /garage ]\n [ Or press ENTER (F) ]", COLOR_WHITE,
+        POLICE_GARAGE_X, POLICE_GARAGE_Y, POLICE_GARAGE_Z - 0.5, 10.0, 0, 0);
+    Create3DTextLabel("[ Police ]\n[ Type /entrace ]\n[ Or press ENTER (F) ]", COLOR_WHITE,
+        POLICE_ENTRANCE_X, POLICE_ENTRANCE_Y, POLICE_ENTRANCE_Z - 0.5, 10.0, 0, 0);
 
     CreatePickup(1241, 1, HOSPITAL_LOC_X, HOSPITAL_LOC_Y, HOSPITAL_LOC_Z, -1);
     Create3DTextLabel("[ Hospitalization ]\n[ Use /curedisease ]", COLOR_WHITE,
-        HOSPITAL_LOC_X, HOSPITAL_LOC_Y, HOSPITAL_LOC_Z - 0.0, 10.0, 0, 0);
+        HOSPITAL_LOC_X, HOSPITAL_LOC_Y, HOSPITAL_LOC_Z - 0.5, 10.0, 0, 0);
+
+    MedShops_CreateWorld();
+    Pizza_CreateWorld();
+    Burger_CreateWorld();
 
 	// HQ RAR
     CreateDynamicObject(19817, 932.00000, 2081.00000, 9.70000,   0.00000, 0.00000, 90.00000);
@@ -4337,28 +4524,31 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new rank = PlayerData[playerid][pFactionRank];
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"_____ Faction Commands ____________________");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 1+] "C_WHITE"/f, /fmembers, /fhelp");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 1+] "C_WHITE"/f, /fmembers /fhelp");
 
         if(fid >= 1 && fid <= 3)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 1+] "C_WHITE"/duty");
 
         if(rank >= 4)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 4+] "C_WHITE"/finvite, /fbank");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 4+] "C_WHITE"/finvite /fbank");
 
         if(rank >= 5)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 5] "C_WHITE"/fbankwithdraw, /fsetrank");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 5] "C_WHITE"/fbankwithdraw /fsetrank");
 
         if(fid == FACTION_RAR || fid == FACTION_POLICE)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR/Police, On-Duty] "C_WHITE"/fine, /m, /inspectcar");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR/Police, On-Duty] "C_WHITE"/fine /m /inspectcar");
 
         if(fid == FACTION_RAR && rank >= 3)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+, On-Duty] "C_WHITE"/confiscate [extinctor/medkit/itp]");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+, On-Duty] "C_WHITE"/confiscate");
+
+        if(fid == FACTION_POLICE && rank >= 2)
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+, On-Duty] "C_WHITE"/confiscate /confiscate");
 
         if(fid == FACTION_POLICE)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, On-Duty] "C_WHITE"/checkLicenses, /suspendLic");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, On-Duty] "C_WHITE"/checkLicenses /suspendLic");
 
         if(fid == FACTION_POLICE)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police] "C_WHITE"/garage, /entrace");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police] "C_WHITE"/garage /entrace");
 
         if(fid == FACTION_POLICE && rank >= 2)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+] "C_WHITE"/radar]");
@@ -4523,16 +4713,20 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
-    // ---- /confiscate [extinctor/medkit/itp] [playerid] ----
+    // ---- /confiscate [extinctor/medkit/itp] [playerid] (RAR) | [insurance] [playerid] / [licence] [A/B/C/D/all] [playerid] (Police) ----
     if(strcmp(cmd, "/confiscate", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
 
-        if(PlayerData[playerid][pFaction] != FACTION_RAR)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the Registrul Auto Roman."), 1;
+        if(PlayerData[playerid][pFaction] != FACTION_RAR && PlayerData[playerid][pFaction] != FACTION_POLICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the Registrul Auto Roman or Politia Romana."), 1;
 
-        if(PlayerData[playerid][pFactionRank] < 3)
+        new bool:isPolice = (PlayerData[playerid][pFaction] == FACTION_POLICE);
+
+        if(isPolice && PlayerData[playerid][pFactionRank] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Requires rank 2 or higher."), 1;
+        if(!isPolice && PlayerData[playerid][pFactionRank] < 3)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Requires rank 3 or higher."), 1;
 
         if(!PlayerData[playerid][pOnDuty])
@@ -4544,11 +4738,96 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new sub[10];
         strmid(sub, cmdtext, subStart, idx, 10);
         while(cmdtext[idx] == ' ') idx++;
+
+        // ---- Police: /confiscate licence [A/B/C/D/all] [playerid] ----
+        if(isPolice && strcmp(sub, "licence", true) == 0)
+        {
+            new lp1[8], lp2[8];
+            strmid(lp1, cmdtext, idx, strlen(cmdtext), 8);
+            while(cmdtext[idx] > ' ') idx++;
+            while(cmdtext[idx] == ' ') idx++;
+            strmid(lp2, cmdtext, idx, strlen(cmdtext), 8);
+
+            if(!strlen(lp1) || !strlen(lp2))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/confiscate licence [A/B/C/D/all] [playerid]"C_WHITE"."), 1;
+
+            new targetid = strval(lp2);
+            if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+            new Float:lx, Float:ly, Float:lz;
+            GetPlayerPos(playerid, lx, ly, lz);
+            if(!IsPlayerInRangeOfPoint(targetid, FINE_RANGE, lx, ly, lz))
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player must be within 15m."), 1;
+
+            new lq[256], catLabel[8];
+
+            if(strcmp(lp1, "all", true) == 0)
+            {
+                PlayerData[targetid][pDrivingLicA_exp][0] = EOS;
+                PlayerData[targetid][pDrivingLicB_exp][0] = EOS;
+                PlayerData[targetid][pDrivingLicC_exp][0] = EOS;
+                PlayerData[targetid][pDrivingLicD_exp][0] = EOS;
+
+                mysql_format(g_SQL, lq, sizeof(lq),
+                    "UPDATE `players` SET `driving_lic_a_exp`=NULL, `driving_lic_b_exp`=NULL, `driving_lic_c_exp`=NULL, `driving_lic_d_exp`=NULL WHERE `id`=%d",
+                    PlayerData[targetid][pID]);
+                format(catLabel, sizeof(catLabel), "ALL");
+            }
+            else if(strcmp(lp1, "A", true) == 0)
+            {
+                PlayerData[targetid][pDrivingLicA_exp][0] = EOS;
+                mysql_format(g_SQL, lq, sizeof(lq), "UPDATE `players` SET `driving_lic_a_exp`=NULL WHERE `id`=%d", PlayerData[targetid][pID]);
+                format(catLabel, sizeof(catLabel), "A");
+            }
+            else if(strcmp(lp1, "B", true) == 0)
+            {
+                PlayerData[targetid][pDrivingLicB_exp][0] = EOS;
+                mysql_format(g_SQL, lq, sizeof(lq), "UPDATE `players` SET `driving_lic_b_exp`=NULL WHERE `id`=%d", PlayerData[targetid][pID]);
+                format(catLabel, sizeof(catLabel), "B");
+            }
+            else if(strcmp(lp1, "C", true) == 0)
+            {
+                PlayerData[targetid][pDrivingLicC_exp][0] = EOS;
+                mysql_format(g_SQL, lq, sizeof(lq), "UPDATE `players` SET `driving_lic_c_exp`=NULL WHERE `id`=%d", PlayerData[targetid][pID]);
+                format(catLabel, sizeof(catLabel), "C");
+            }
+            else if(strcmp(lp1, "D", true) == 0)
+            {
+                PlayerData[targetid][pDrivingLicD_exp][0] = EOS;
+                mysql_format(g_SQL, lq, sizeof(lq), "UPDATE `players` SET `driving_lic_d_exp`=NULL WHERE `id`=%d", PlayerData[targetid][pID]);
+                format(catLabel, sizeof(catLabel), "D");
+            }
+            else
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid category. Use A, B, C, D or all."), 1;
+
+            mysql_tquery(g_SQL, lq, "", "", 0);
+
+            new lcmsg[160];
+            format(lcmsg, sizeof(lcmsg), C_SUCCESS"Success: "C_WHITE"You confiscated "C_INFO"%s"C_WHITE"'s category "C_INFO"%s"C_WHITE" driving license.",
+                PlayerData[targetid][pName], catLabel);
+            SendClientMessage(playerid, COLOR_SUCCESS, lcmsg);
+
+            format(lcmsg, sizeof(lcmsg), C_ERROR"Error: "C_WHITE"Your category "C_INFO"%s"C_WHITE" driving license was confiscated by "C_INFO"%s"C_WHITE".",
+                catLabel, PlayerData[playerid][pName]);
+            SendClientMessage(targetid, COLOR_ERROR, lcmsg);
+            return 1;
+        }
+
         new p1[8];
         strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
 
-        if((strcmp(sub, "extinctor", true) != 0 && strcmp(sub, "medkit", true) != 0 && strcmp(sub, "itp", true) != 0) || !strlen(p1))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/confiscate [extinctor/medkit/itp] [playerid]"C_WHITE"."), 1;
+        new bool:validSub = isPolice
+            ? (strcmp(sub, "insurance", true) == 0)
+            : (strcmp(sub, "extinctor", true) == 0 || strcmp(sub, "medkit", true) == 0 || strcmp(sub, "itp", true) == 0);
+
+        if(!validSub || !strlen(p1))
+        {
+            new umsg[96];
+            format(umsg, sizeof(umsg), C_INFO"Info: "C_WHITE"Use "C_INFO"%s"C_WHITE".",
+                isPolice ? "/confiscate [insurance [playerid] / licence [A/B/C/D/all] [playerid]]" : "/confiscate [extinctor/medkit/itp] [playerid]");
+            return SendClientMessage(playerid, COLOR_INFO, umsg), 1;
+        }
 
         new targetid = strval(p1);
         if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
@@ -4586,6 +4865,13 @@ public OnPlayerCommandText(playerid, cmdtext[])
             expTs = PVehicleData[pvidx][pvMedkitExp];
             format(docName, sizeof(docName), "medical kit");
             format(docColumn, sizeof(docColumn), "medkit_exp");
+        }
+        else if(strcmp(sub, "insurance", true) == 0)
+        {
+            PVehicleData[pvidx][pvInsuranceExp] = gettime();
+            expTs = PVehicleData[pvidx][pvInsuranceExp];
+            format(docName, sizeof(docName), "insurance");
+            format(docColumn, sizeof(docColumn), "insurance_exp");
         }
         else
         {
@@ -4861,6 +5147,31 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /businesslist ----
+    if(strcmp(cmd, "/businesslist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        new list[4096];
+        strcat(list, "ID\tName\tOwner\tPrice\n");
+        for(new i = 0; i < g_BusinessCount; i++)
+        {
+            new owner[24];
+            if(BusinessData[i][bOwned]) format(owner, sizeof(owner), "%s", BusinessData[i][bOwner]);
+            else format(owner, sizeof(owner), "-");
+
+            new line[160];
+            format(line, sizeof(line), "%d\t%s\t%s\t$%s\n",
+                BusinessData[i][bID], BusinessData[i][bName], owner,
+                MoneyStr(BusinessData[i][bPrice]));
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_BUSINESS_LIST, DIALOG_STYLE_TABLIST_HEADERS, "Business List", list, "Close", "");
+        return 1;
+    }
+
     // ---- /aheal [playerid] ----
     if(strcmp(cmd, "/aheal", true) == 0)
     {
@@ -4946,6 +5257,93 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /gotobiz [biz_id] ----
+    if(strcmp(cmd, "/gotobiz", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/gotobiz [biz_id]"C_WHITE"."), 1;
+
+        new bidx = Businesses_FindByID(strval(p1));
+        if(bidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown business ID."), 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), BusinessData[bidx][bLocX], BusinessData[bidx][bLocY], BusinessData[bidx][bLocZ] + 0.1);
+        else
+            SetPlayerPos(playerid, BusinessData[bidx][bLocX], BusinessData[bidx][bLocY], BusinessData[bidx][bLocZ] + 0.1);
+
+        new bmsg[96];
+        format(bmsg, sizeof(bmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Teleported to business "C_INFO"%s"C_WHITE".", BusinessData[bidx][bName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, bmsg);
+        return 1;
+    }
+
+    // ---- /gotohouse [house_id] ----
+    if(strcmp(cmd, "/gotohouse", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/gotohouse [house_id]"C_WHITE"."), 1;
+
+        new hidx = Houses_FindByID(strval(p1));
+        if(hidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown house ID."), 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), HouseData[hidx][hLocX], HouseData[hidx][hLocY], HouseData[hidx][hLocZ] + 0.1);
+        else
+            SetPlayerPos(playerid, HouseData[hidx][hLocX], HouseData[hidx][hLocY], HouseData[hidx][hLocZ] + 0.1);
+
+        new hmsg[96];
+        format(hmsg, sizeof(hmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Teleported to house "C_INFO"%s"C_WHITE".", HouseData[hidx][hName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, hmsg);
+        return 1;
+    }
+
+    // ---- /gotofaction [faction_id] ----
+    if(strcmp(cmd, "/gotofaction", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/gotofaction [faction_id]"C_WHITE"."), 1;
+
+        new fid = strval(p1);
+        if(fid < 1 || fid > MAX_FACTIONS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid faction ID (1-7)."), 1;
+
+        if(FactionData[fid][fHQX] == 0.0 && FactionData[fid][fHQY] == 0.0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This faction doesn't have a HQ set."), 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), FactionData[fid][fHQX], FactionData[fid][fHQY], FactionData[fid][fHQZ] + 0.1);
+        else
+            SetPlayerPos(playerid, FactionData[fid][fHQX], FactionData[fid][fHQY], FactionData[fid][fHQZ] + 0.1);
+
+        new fmsg[96];
+        format(fmsg, sizeof(fmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Teleported to "C_INFO"%s"C_WHITE" HQ.", FactionData[fid][fName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, fmsg);
+        return 1;
+    }
+
     // ---- /help ----
     if(strcmp(cmd, "/help", true) == 0)
     {
@@ -4977,7 +5375,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(alv >= 1)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal");
         if(alv >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoloc [location]");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoloc");
         if(alv >= 3)
         {
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[3] "C_WHITE"/veh /rac /createdisease");
@@ -6219,6 +6617,17 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         GivePlayerMoney(playerid, -g_InsurancePrice);
         UpdatePlayer(playerid, pMoney);
 
+        new inbidx = Businesses_FindByID(11);
+        if(inbidx != -1)
+        {
+            BusinessData[inbidx][bBank] += g_InsurancePrice;
+
+            new inbq[128];
+            mysql_format(g_SQL, inbq, sizeof(inbq), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[inbidx][bBank], BusinessData[inbidx][bID]);
+            mysql_tquery(g_SQL, inbq, "", "", 0);
+        }
+
         PVehicleData[pvidx][pvInsuranceExp] = gettime() + VEHICLE_INSURANCE_DURATION;
 
         new dateStr[11];
@@ -6241,6 +6650,9 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
 
+        if(!MedShops_PlayerInRange(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a "C_INFO"Shop"C_WHITE" to do this."), 1;
+
         new vehid = GetPlayerVehicleID(playerid);
         if(vehid == 0)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a vehicle."), 1;
@@ -6261,6 +6673,17 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         PlayerData[playerid][pMoney] -= g_MedkitPrice;
         GivePlayerMoney(playerid, -g_MedkitPrice);
         UpdatePlayer(playerid, pMoney);
+
+        new mkbidx = Businesses_FindByID(9);
+        if(mkbidx != -1)
+        {
+            BusinessData[mkbidx][bBank] += g_MedkitPrice;
+
+            new mkbq[128];
+            mysql_format(g_SQL, mkbq, sizeof(mkbq), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[mkbidx][bBank], BusinessData[mkbidx][bID]);
+            mysql_tquery(g_SQL, mkbq, "", "", 0);
+        }
 
         PVehicleData[pvidx][pvMedkitExp] = gettime() + VEHICLE_MEDKIT_DURATION;
 
@@ -6284,6 +6707,9 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
 
+        if(!MedShops_PlayerInRange(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a "C_INFO"Shop"C_WHITE" to do this."), 1;
+
         new vehid = GetPlayerVehicleID(playerid);
         if(vehid == 0)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a vehicle."), 1;
@@ -6305,6 +6731,17 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         GivePlayerMoney(playerid, -g_ExtinguisherPrice);
         UpdatePlayer(playerid, pMoney);
 
+        new exbidx = Businesses_FindByID(10);
+        if(exbidx != -1)
+        {
+            BusinessData[exbidx][bBank] += g_ExtinguisherPrice;
+
+            new exbq[128];
+            mysql_format(g_SQL, exbq, sizeof(exbq), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[exbidx][bBank], BusinessData[exbidx][bID]);
+            mysql_tquery(g_SQL, exbq, "", "", 0);
+        }
+
         PVehicleData[pvidx][pvExtinguisherExp] = gettime() + VEHICLE_EXTINGUISHER_DURATION;
 
         new dateStr[11];
@@ -6317,6 +6754,86 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         new lmsg[128];
         format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought an extinguisher ("C_INFO"10 days"C_WHITE") for "C_INFO"$%s"C_WHITE".", MoneyStr(g_ExtinguisherPrice));
+        SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
+    // ---- /pizza ----
+    if(strcmp(cmd, "/pizza", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!Pizza_PlayerInRange(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a "C_INFO"Pizza"C_WHITE" location to do this."), 1;
+
+        if(PlayerData[playerid][pMoney] < g_PizzaPrice)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= g_PizzaPrice;
+        GivePlayerMoney(playerid, -g_PizzaPrice);
+        UpdatePlayer(playerid, pMoney);
+
+        new pzbidx = Businesses_FindByID(PIZZA_BIZ_ID);
+        if(pzbidx != -1)
+        {
+            BusinessData[pzbidx][bBank] += g_PizzaPrice;
+
+            new pzbq[128];
+            mysql_format(g_SQL, pzbq, sizeof(pzbq), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[pzbidx][bBank], BusinessData[pzbidx][bID]);
+            mysql_tquery(g_SQL, pzbq, "", "", 0);
+        }
+
+        new Float:health;
+        GetPlayerHealth(playerid, health);
+        health += PIZZA_HEAL_AMOUNT;
+        if(health > 100.0) health = 100.0;
+        SetPlayerHealth(playerid, health);
+
+        new lmsg[128];
+        format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"pizza"C_WHITE" for "C_INFO"$%s"C_WHITE" (+%d HP).",
+            MoneyStr(g_PizzaPrice), floatround(PIZZA_HEAL_AMOUNT));
+        SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
+    // ---- /burger ----
+    if(strcmp(cmd, "/burger", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!Burger_PlayerInRange(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a "C_INFO"Burger"C_WHITE" location to do this."), 1;
+
+        if(PlayerData[playerid][pMoney] < g_BurgerPrice)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= g_BurgerPrice;
+        GivePlayerMoney(playerid, -g_BurgerPrice);
+        UpdatePlayer(playerid, pMoney);
+
+        new bgbidx = Businesses_FindByID(BURGER_BIZ_ID);
+        if(bgbidx != -1)
+        {
+            BusinessData[bgbidx][bBank] += g_BurgerPrice;
+
+            new bgbq[128];
+            mysql_format(g_SQL, bgbq, sizeof(bgbq), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[bgbidx][bBank], BusinessData[bgbidx][bID]);
+            mysql_tquery(g_SQL, bgbq, "", "", 0);
+        }
+
+        new Float:health;
+        GetPlayerHealth(playerid, health);
+        health += BURGER_HEAL_AMOUNT;
+        if(health > 100.0) health = 100.0;
+        SetPlayerHealth(playerid, health);
+
+        new lmsg[128];
+        format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"burger"C_WHITE" for "C_INFO"$%s"C_WHITE" (+%d HP).",
+            MoneyStr(g_BurgerPrice), floatround(BURGER_HEAL_AMOUNT));
         SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
         return 1;
     }
@@ -6375,7 +6892,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(!strlen(gname))
         {
             ShowPlayerDialog(playerid, DIALOG_GPS_CATEGORY, DIALOG_STYLE_LIST,
-                "Select Location Category", "DMV\nFactions\nBusiness\nOthers", "Select", "Cancel");
+                "Select Location Category", "DMV Locations\nFactions\nBusiness\nOthers\nShops", "Select", "Cancel");
             return 1;
         }
 
@@ -7472,7 +7989,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             Vehicle_ToggleEngine(playerid);
     }
 
-    if((newkeys & KEY_ACTION) && !(oldkeys & KEY_ACTION))
+    if((newkeys & KEY_SECONDARY_ATTACK) && !(oldkeys & KEY_SECONDARY_ATTACK))
     {
         if(PlayerData[playerid][pLogged] && PlayerData[playerid][pFaction] == FACTION_POLICE)
             Police_GarageEntranceToggle(playerid);
@@ -7486,7 +8003,53 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
     {
         if(!response) return 1; // Cancel
 
-        if(listitem < 0 || listitem > 3) return 1;
+        if(listitem < 0 || listitem > 4) return 1;
+
+        g_GPSDialogCategory[playerid] = listitem;
+
+        // Factiuni: lista e populata direct din FactionData (HQ-ul fiecarei factiuni cu HQ setat), nu din locations_gps
+        if(listitem == 1)
+        {
+            new list[320], any = 0, line[48];
+            for(new i = 1; i <= MAX_FACTIONS; i++)
+            {
+                if(FactionData[i][fHQX] == 0.0 && FactionData[i][fHQY] == 0.0) continue;
+                format(line, sizeof(line), "%s (%dm)\n", FactionData[i][fName],
+                    floatround(GetPlayerDistanceFromPoint(playerid, FactionData[i][fHQX], FactionData[i][fHQY], FactionData[i][fHQZ])));
+                strcat(list, line);
+                any++;
+            }
+
+            if(!any)
+            {
+                SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"No locations are available in this category.");
+                return 1;
+            }
+
+            ShowPlayerDialog(playerid, DIALOG_GPS_LOCATION, DIALOG_STYLE_LIST, "GPS - Factions", list, "Select", "Cancel");
+            return 1;
+        }
+
+        // Business: lista e populata direct din BusinessData, nu din locations_gps
+        if(listitem == 2)
+        {
+            if(g_BusinessCount == 0)
+            {
+                SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"No locations are available in this category.");
+                return 1;
+            }
+
+            new list[2560], line[48];
+            for(new i = 0; i < g_BusinessCount; i++)
+            {
+                format(line, sizeof(line), "%s (%dm)\n", BusinessData[i][bName],
+                    floatround(GetPlayerDistanceFromPoint(playerid, BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ])));
+                strcat(list, line);
+            }
+
+            ShowPlayerDialog(playerid, DIALOG_GPS_LOCATION, DIALOG_STYLE_LIST, "GPS - Business", list, "Select", "Cancel");
+            return 1;
+        }
 
         if(GPS_CountInCategory(listitem) == 0)
         {
@@ -7494,15 +8057,14 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             return 1;
         }
 
-        g_GPSDialogCategory[playerid] = listitem;
-
-        new list[512];
+        new list[768], line[48];
         for(new i = 0; i < g_GPSCount; i++)
         {
             if(GPS_CategoryMatches(GPSData[i][glCategory], listitem))
             {
-                strcat(list, GPSData[i][glName]);
-                strcat(list, "\n");
+                format(line, sizeof(line), "%s (%dm)\n", GPSData[i][glName],
+                    floatround(GetPlayerDistanceFromPoint(playerid, GPSData[i][glLocX], GPSData[i][glLocY], GPSData[i][glLocZ])));
+                strcat(list, line);
             }
         }
 
@@ -7516,13 +8078,51 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
     {
         if(!response) return 1; // Cancel
 
-        new gidx = GPS_GetNthInCategory(g_GPSDialogCategory[playerid], listitem);
-        if(gidx == -1)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown location."), 1;
-
         if(g_ExamAState[playerid] != EXAMA_STATE_NONE || g_ExamState[playerid] != EXAM_STATE_NONE ||
            g_ExamCState[playerid] != EXAMC_STATE_NONE || g_ExamDState[playerid] != EXAMD_STATE_NONE)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't use GPS during an exam."), 1;
+
+        // Factiuni: listitem indexeaza direct lista de factiuni-cu-HQ construita mai sus, in aceeasi ordine
+        if(g_GPSDialogCategory[playerid] == 1)
+        {
+            new fid = 0, count = 0;
+            for(new i = 1; i <= MAX_FACTIONS; i++)
+            {
+                if(FactionData[i][fHQX] == 0.0 && FactionData[i][fHQY] == 0.0) continue;
+                if(count == listitem) { fid = i; break; }
+                count++;
+            }
+
+            if(fid == 0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown location."), 1;
+
+            SetPlayerCheckpoint(playerid, FactionData[fid][fHQX], FactionData[fid][fHQY], FactionData[fid][fHQZ], GPS_CP_SIZE);
+            g_GPSActive[playerid] = true;
+
+            new gmsg[128];
+            format(gmsg, sizeof(gmsg), C_SUCCESS"Success: "C_WHITE"GPS checkpoint set to "C_INFO"%s"C_WHITE".", FactionData[fid][fName]);
+            SendClientMessage(playerid, COLOR_SUCCESS, gmsg);
+            return 1;
+        }
+
+        // Business: listitem indexeaza direct BusinessData
+        if(g_GPSDialogCategory[playerid] == 2)
+        {
+            if(listitem < 0 || listitem >= g_BusinessCount)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown location."), 1;
+
+            SetPlayerCheckpoint(playerid, BusinessData[listitem][bLocX], BusinessData[listitem][bLocY], BusinessData[listitem][bLocZ], GPS_CP_SIZE);
+            g_GPSActive[playerid] = true;
+
+            new gmsg[128];
+            format(gmsg, sizeof(gmsg), C_SUCCESS"Success: "C_WHITE"GPS checkpoint set to "C_INFO"%s"C_WHITE".", BusinessData[listitem][bName]);
+            SendClientMessage(playerid, COLOR_SUCCESS, gmsg);
+            return 1;
+        }
+
+        new gidx = GPS_GetNthInCategory(g_GPSDialogCategory[playerid], listitem);
+        if(gidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown location."), 1;
 
         SetPlayerCheckpoint(playerid, GPSData[gidx][glLocX], GPSData[gidx][glLocY], GPSData[gidx][glLocZ], GPS_CP_SIZE);
         g_GPSActive[playerid] = true;

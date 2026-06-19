@@ -147,6 +147,7 @@
     <tr><th>Rang</th><th>Acces</th></tr>
     <tr><td>1+</td><td><code>/f</code>, <code>/fmembers</code>, <code>/fhelp</code> (toți membrii)</td></tr>
     <tr><td>2+</td><td><code>/radar install/remove</code> — doar Poliție</td></tr>
+    <tr><td>3+</td><td><code>/confiscate</code> — RAR (extinctor/medkit/itp) și Poliție (doar insurance)</td></tr>
     <tr><td>4+</td><td><code>/finvite</code>, <code>/fbank</code> (vizualizare)</td></tr>
     <tr><td>5 (Lead)</td><td><code>/fbankwithdraw</code>, <code>/fsetrank</code></td></tr>
   </table>
@@ -387,10 +388,11 @@ RP    += 1</pre>
     <tr><td><code>/m [id]</code></td><td>On-duty ȘI ofițerul trebuie să fie într-un vehicul de facțiune. Target în 50m (M_RANGE). Mesaj text simplu — nu există mecanism real de oprire forțată.</td></tr>
   </table>
 
-  <h3><span class="pill pill-rar">RAR</span> rang 3+</h3>
+  <h3><span class="pill pill-rar">RAR</span> + <span class="pill pill-police">Poliție</span> rang 3+</h3>
   <table>
     <tr><th>Comandă</th><th>Detalii</th></tr>
-    <tr><td><code>/confiscate [extinctor/medkit/itp] [id]</code></td><td>On-duty, <code>pFactionRank&gt;=3</code>, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează coloana aleasă (<code>extinguisher_exp</code> / <code>medkit_exp</code> / <code>itp_exp</code>) la <code>gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători. (Comandă unică, fuzionată din fostele <code>/confiscateextinctor</code> și <code>/confiscatemedkit</code>.)</td></tr>
+    <tr><td><code>/confiscate [extinctor/medkit/itp] [id]</code></td><td>RAR, on-duty, <code>pFactionRank&gt;=3</code>, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează coloana aleasă (<code>extinguisher_exp</code> / <code>medkit_exp</code> / <code>itp_exp</code>) la <code>gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători.</td></tr>
+    <tr><td><code>/confiscate insurance [id]</code></td><td>Poliție, on-duty, <code>pFactionRank&gt;=3</code>. Aceeași comandă <code>/confiscate</code>, dar sub-cuvântul cheie disponibil diferă pe facțiune: RAR poate alege extinctor/medkit/itp, Poliția poate alege <strong>doar</strong> insurance.</td></tr>
   </table>
 
   <h3><span class="pill pill-police">Poliție</span></h3>
