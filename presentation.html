@@ -142,6 +142,7 @@
     <span class="badge">Economie reală</span>
     <span class="badge">Permise auto A/B/C/D</span>
     <span class="badge">GPS &amp; Radar</span>
+    <span class="badge">Turneu de Golf</span>
   </div>
 </header>
 
@@ -153,6 +154,8 @@
   <a href="#vehicles">Vehicule</a>
   <a href="#exams">Permise auto</a>
   <a href="#health">Sănătate</a>
+  <a href="#food">Mâncare</a>
+  <a href="#golf">Turneu Golf</a>
   <a href="#gps">GPS &amp; Radar</a>
   <a href="#police">Lege &amp; Ordine</a>
   <a href="#commands">Comenzi</a>
@@ -256,8 +259,9 @@
     </div>
     <div class="card">
       <h4 style="margin-top:0">📋 Acte la zi</h4>
-      <p><code>/vinsurance</code>, <code>/vmedicalkit</code>, <code>/vextinctor</code> — reînnoiești fiecare document
-      separat. <code>/vitp</code> (la sediul RAR) verifică toate actele odată și starea mașinii.</p>
+      <p><code>/vinsurance</code> o reînnoiești oriunde, dar <code>/vmedicalkit</code> și <code>/vextinctor</code>
+      necesită să fii lângă unul dintre punctele <strong>[ Shop ]</strong> de pe hartă. <code>/vitp</code>
+      (la sediul RAR) verifică toate actele odată și starea mașinii.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🔧 Motor &amp; Încuiere</h4>
@@ -326,6 +330,55 @@
   </div>
 </section>
 
+<section id="food">
+  <h2>🍕 Mâncare</h2>
+  <p class="subtitle">Foamea nu te omoară, dar puțină viață în plus nu strică niciodată</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🍕 Pizza</h4>
+      <p><code>/pizza</code>, lângă un punct <strong>[ Buy Food ]</strong> de tip pizza — îți reface <strong>20 HP</strong>
+      contra unei sume mici. Plafonat la 100 HP.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍔 Burger</h4>
+      <p><code>/burger</code>, lângă un punct <strong>[ Buy Food ]</strong> de tip burger — îți reface <strong>25 HP</strong>,
+      la un preț puțin mai mare decât pizza. Plafonat la 100 HP.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Ambele comenzi funcționează <strong>doar</strong> dacă ești aproape de locația corectă — punctele de mâncare sunt
+    marcate pe hartă cu propriile lor iconițe, vizibile tot timpul.
+  </div>
+</section>
+
+<section id="golf">
+  <h2>⛳ Turneu de Golf</h2>
+  <p class="subtitle">Un mini-joc eliminatoriu, organizat periodic de administrație</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">📝 Înscrierea</h4>
+      <p>Când un admin deschide înscrierile, vei vedea un anunț pe server. Folosește <code>/joingolf</code> ca să intri
+      în turneu — poți renunța oricând cu <code>/leavegolf</code>, înainte sau chiar în timpul unei runde
+      (dar dacă pleci în timpul unei runde active, ești automat eliminat).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏌️ Cum se joacă</h4>
+      <p>Fiecare jucător primește propria minge. Te apropii de ea și folosești <code>/hitball [1/2/3]</code> — puterea
+      loviturii determină cât de departe zboară mingea, iar direcția e dată de unde te uiți tu în acel moment.
+      Mingea se mișcă lin, nu se teleportează.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Scopul fiecărei runde e să bagi mingea în groapă din cât mai puține lovituri. După ce toți jucătorii termină
+    groapa, doar cei cu cele mai puține lovituri trec mai departe — restul sunt eliminați. Turneul continuă pe runde
+    până rămâne un singur câștigător.
+  </div>
+</section>
+
 <section id="gps">
   <h2>🗺️ GPS &amp; Radar</h2>
   <p class="subtitle">Nu te mai rătăci, dar nici nu mai depăși viteza</p>
@@ -333,8 +386,10 @@
   <div class="grid-2">
     <div class="card">
       <h4 style="margin-top:0">🧭 Navigație GPS</h4>
-      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele) — alegi categoria, apoi
-      locația, și primești un punct de control direct pe hartă. <code>/killcp</code> anulează oricând checkpoint-ul activ.</p>
+      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele, Magazine) — alegi categoria, apoi
+      locația, și primești un punct de control direct pe hartă. Categoriile Facțiuni și Afaceri sunt actualizate
+      automat (orice facțiune cu sediu sau afacere existentă apare acolo), iar fiecare locație din listă îți arată și
+      <strong>distanța</strong> până la ea, în metri. <code>/killcp</code> anulează oricând checkpoint-ul activ.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">📡 Radar de viteză</h4>
@@ -444,6 +499,21 @@
     <tr><td><code>/curedisease</code></td><td>Te vindecă, la spitalul SMURD (dacă ești bolnav)</td></tr>
   </table>
 
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🍔 Mâncare</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/pizza</code></td><td>Cumpără o pizza la un punct [ Buy Food ] (+20 HP)</td></tr>
+    <tr><td><code>/burger</code></td><td>Cumpără un burger la un punct [ Buy Food ] (+25 HP)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">⛳ Turneu de Golf</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/joingolf</code></td><td>Te înscrii la turneu, cât timp înscrierile sunt deschise</td></tr>
+    <tr><td><code>/leavegolf</code></td><td>Părăsești turneul (te elimină dacă o runda e activă)</td></tr>
+    <tr><td><code>/hitball [1/2/3]</code></td><td>Lovești mingea cu puterea aleasă, în direcția în care privești</td></tr>
+  </table>
+
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚓 Poliție / RAR / SMURD</h3>
   <p style="color:var(--muted); margin-top:-4px">Disponibile doar membrilor facțiunilor respective, de regulă aflați în tură.</p>
   <table>
@@ -452,12 +522,13 @@
     <tr><td><code>/accept fine [playerid]</code></td><td>—</td><td>Acceptă și plătește amenda primită</td></tr>
     <tr><td><code>/inspectcar [playerid]</code></td><td>RAR / Poliție</td><td>Inspectează vehiculul unui jucător</td></tr>
     <tr><td><code>/confiscate [extinctor/medkit/itp] [playerid]</code></td><td>RAR (rang 3+)</td><td>Confiscă (expiră) actul ales al vehiculului unui jucător</td></tr>
-    <tr><td><code>/confiscate insurance [playerid]</code></td><td>Poliție (rang 3+)</td><td>Confiscă (expiră) asigurarea vehiculului unui jucător</td></tr>
+    <tr><td><code>/confiscate insurance [playerid]</code></td><td>Poliție (rang 2+)</td><td>Confiscă (expiră) asigurarea vehiculului unui jucător</td></tr>
+    <tr><td><code>/confiscate licence [A/B/C/D/all] [playerid]</code></td><td>Poliție (rang 2+)</td><td>Confiscă (anulează) un permis auto al unui jucător</td></tr>
     <tr><td><code>/m [playerid]</code></td><td>RAR / Poliție</td><td>Ordonă unui șofer să tragă pe dreapta</td></tr>
     <tr><td><code>/checklicenses [playerid]</code></td><td>Poliție</td><td>Verifică permisele unui jucător</td></tr>
     <tr><td><code>/suspendlic [playerid] [cat/all]</code></td><td>Poliție</td><td>Suspendă unul sau toate permisele unui jucător</td></tr>
     <tr><td><code>/radar install/remove [viteza]</code></td><td>Poliție (rang 2+)</td><td>Instalează/scoate o cameră radar</td></tr>
-    <tr><td><code>/garage</code> / <code>/entrace</code></td><td>Poliție</td><td>Teleportare dus-întors garaj ↔ intrare (sau tasta ENTER)</td></tr>
+    <tr><td><code>/garage</code> / <code>/entrace</code></td><td>Poliție</td><td>Teleportare dus-întors garaj ↔ intrare (sau click dreapta)</td></tr>
     <tr><td><code>/heal [playerid]</code></td><td>SMURD</td><td>Vindecă un pasager din ambulanță</td></tr>
   </table>
 </section>

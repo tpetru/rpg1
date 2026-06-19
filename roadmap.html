@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NostalgiaRP — Roadmap</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1d212c;
+    --border: #2a2f3d;
+    --text: #d8dce5;
+    --muted: #8b93a7;
+    --accent: #5b9dff;
+    --accent-2: #ffcc00;
+    --green: #3ecf8e;
+    --red: #ff5d5d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header.hero {
+    padding: 50px 24px 36px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, #1b2030 0%, #0f1115 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero h1 {
+    margin: 0 0 8px; font-size: 2.2rem;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header.hero p { margin: 0; color: var(--muted); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 100px; }
+
+  .feature {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 18px 0;
+  }
+  .feature h2 { margin: 0 0 4px; font-size: 1.3rem; color: #fff; }
+  .feature .status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 12px;
+  }
+  .status-idea { background: rgba(91,157,255,0.15); color: var(--accent); }
+  .status-progress { background: rgba(255,204,0,0.15); color: var(--accent-2); }
+  .status-done { background: rgba(62,207,142,0.15); color: var(--green); }
+
+  .feature ul { margin: 8px 0; padding-left: 20px; }
+  .feature li { margin: 4px 0; }
+
+  code {
+    background: #11141b;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 0.88em;
+    color: var(--green);
+  }
+
+  .note {
+    border-left: 3px solid var(--accent-2);
+    background: rgba(255,204,0,0.06);
+    padding: 10px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 0.92rem;
+  }
+
+  footer { text-align: center; padding: 30px 20px 50px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>🗺️ Roadmap</h1>
+  <p>Feature-uri discutate / planificate pentru NostalgiaRP, neimplementate încă (sau parțial).</p>
+</header>
+
+<main>
+
+<div class="feature">
+  <h2>🚐 Sistem Rulote Personale (tractare)</h2>
+  <span class="status status-idea">Idee / design — neimplementat</span>
+
+  <p>Sistem de rulote personale, similar conceptual cu vehiculele personale, cu posibilitatea de a fi
+  tractate de o mașină.</p>
+
+  <h4 style="margin-bottom:4px">Cum funcționează (design agreat)</h4>
+  <ul>
+    <li>Rulota e un <strong>obiect</strong> (nu vehicul), atașat în spatele mașinii cu
+      <code>AttachObjectToVehicle</code> cât timp e tractată.</li>
+    <li>La parcare (comandă gen <code>/parkrulota</code>):
+      <ul>
+        <li>Se copiază poziția <strong>și rotația completă</strong> a mașinii (<code>GetVehicleRotationQuat</code>,
+          nu doar Z-angle) către obiectul rulotei — rulota rămâne exact unde era mașina, cu panta
+          terenului deja corectă (moștenită din înclinarea fizică a mașinii, fără calcule manuale de
+          teren / fără MapAndreas).</li>
+        <li>Obiectul rulotei se detașează de mașină.</li>
+        <li>Mașina e respawnată la <strong>aceeași poziție X/Y, cu Z+5</strong> (fără alte modificări —
+          fără offset orizontal, fără rotație nouă).</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h4 style="margin-bottom:4px">De ce varianta asta</h4>
+  <ul>
+    <li>Rulota stă mereu în panta corectă a terenului.</li>
+    <li>Nu există risc ca rulota să fie plasată într-un alt obiect (stă exact unde a fost mașina, deci
+      pe o poziție deja validă/accesibilă).</li>
+    <li>Mașina rămâne liberă să se miște, fără rulotă atașată.</li>
+  </ul>
+
+  <div class="note">
+    Variante alternative discutate și respinse: deplasarea rulotei pe X/Y cu un offset calculat din
+    unghiul mașinii (risc de coliziune cu alte obiecte/ziduri); combinarea Z+5 cu un mic offset
+    "înainte" pentru mașină (posibilă soluție mai sigură împotriva căderii mașinii înapoi peste rulotă,
+    dar s-a decis să rămânem la varianta simplă, fără modificări suplimentare, pentru moment).
+  </div>
+</div>
+
+</main>
+
+<footer>
+  NostalgiaRP — document intern de planificare, nu reflectă neapărat ordinea finală de implementare.
+</footer>
+
+</body>
+</html>

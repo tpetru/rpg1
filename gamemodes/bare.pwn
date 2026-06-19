@@ -1036,6 +1036,7 @@ stock GPS_FindByName(const name[])
 #define DIALOG_GPS_CATEGORY  9001
 #define DIALOG_GPS_LOCATION  9002
 #define DIALOG_BUSINESS_LIST 9003
+#define DIALOG_RADAR_LIST    9004
 
 // Nume afisate playerului (titlul celui de-al doilea dialog)
 new const GPS_CATEGORY_NAMES[5][16] = {"DMV Locations", "FACTIONS", "BUSINESS", "Others", "Shops"};
@@ -1183,7 +1184,7 @@ stock Factions_RecreatePickup(fid)
     }
 }
 
-// Seteaza map icon-urile factiunilor (MAPICON_LOCAL) pentru un player
+// Seteaza map icon-urile factiunilor (MAPICON_GLOBAL) pentru un player
 stock Factions_SetPlayerIcons(playerid)
 {
     for(new i = 1; i <= MAX_FACTIONS; i++)
@@ -1191,7 +1192,7 @@ stock Factions_SetPlayerIcons(playerid)
         if(FactionData[i][fMapIconID] == -1) continue;
         if(FactionData[i][fHQX] == 0.0 && FactionData[i][fHQY] == 0.0) continue;
         SetPlayerMapIcon(playerid, i, FactionData[i][fHQX], FactionData[i][fHQY], FactionData[i][fHQZ],
-            FactionData[i][fMapIconID], FactionColors[i], MAPICON_LOCAL);
+            FactionData[i][fMapIconID], FactionColors[i], MAPICON_GLOBAL);
     }
     SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_GLOBAL); // SPAWN POINT
 }
@@ -1326,7 +1327,7 @@ stock Businesses_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, BUSINESS_ICON_SLOT_BASE + i,
             BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ],
-            BusinessData[i][bOwned] ? 36 : 52, 0, MAPICON_LOCAL);
+            BusinessData[i][bOwned] ? 36 : 52, 0, MAPICON_GLOBAL);
     }
 }
 
@@ -1540,7 +1541,7 @@ stock MedShops_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, MEDSHOP_ICON_SLOT_BASE + i,
             MedShopLocations[i][0], MedShopLocations[i][1], MedShopLocations[i][2],
-            MEDSHOP_MAPICON_ID, 0, MAPICON_LOCAL);
+            MEDSHOP_MAPICON_ID, 0, MAPICON_GLOBAL);
     }
 }
 
@@ -1572,19 +1573,19 @@ stock bool:MedShops_PlayerInRange(playerid)
 #define BURGER_PICKUP_MODEL   19320
 
 new Float:PizzaLocations[MAX_FOOD_LOCATIONS][3] = {
-    {0.0, 0.0, 0.0},
-    {0.0, 0.0, 0.0},
-    {0.0, 0.0, 0.0},
+    {2393.1387, 2042.6146, 10.8203}, // pizza1
+    {2638.1370, 1849.6857, 11.0234}, // pizza2
+    {173.1981,  1176.2303, 14.7645}, // pizza3
     {0.0, 0.0, 0.0},
     {0.0, 0.0, 0.0}
 };
 
 new Float:BurgerLocations[MAX_FOOD_LOCATIONS][3] = {
-    {0.0, 0.0, 0.0},
-    {0.0, 0.0, 0.0},
-    {0.0, 0.0, 0.0},
-    {0.0, 0.0, 0.0},
-    {0.0, 0.0, 0.0}
+    {2163.9583, 2795.4819, 10.8203}, // burger1
+    {2366.2407, 2071.1733, 10.8203}, // burger2
+    {2478.7034, 2034.2334, 11.0625}, // burger3
+    {1158.2510, 2072.0894, 11.0625}, // burger4
+    {1873.1813, 2071.5874, 11.0625}  // burger5
 };
 
 // Verifica daca playerid e in raza uneia dintre cele 5 locatii de /pizza
@@ -1625,7 +1626,7 @@ stock Pizza_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, PIZZA_ICON_SLOT_BASE + i,
             PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2],
-            PIZZA_MAPICON_ID, 0, MAPICON_LOCAL);
+            PIZZA_MAPICON_ID, 0, MAPICON_GLOBAL);
     }
 }
 
@@ -1649,8 +1650,326 @@ stock Burger_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, BURGER_ICON_SLOT_BASE + i,
             BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2],
-            BURGER_MAPICON_ID, 0, MAPICON_LOCAL);
+            BURGER_MAPICON_ID, 0, MAPICON_GLOBAL);
     }
+}
+
+// ============================================================
+//  TURNEU DE GOLF (eliminatoriu pe runde)
+// ============================================================
+#define GOLF_ADMIN_LEVEL     2
+#define GOLF_MAX_ROUNDS      5
+#define GOLF_BALL_MODEL      19577 // <-- schimba aici modelul obiectului mingii de golf
+#define GOLF_HOLE_OBJECT_MODEL 19306
+#define GOLF_HOLE_RADIUS     2.0
+#define GOLF_BALL_RANGE      2.0   // cat de aproape trebuie sa fie playerul de mingea lui ca sa o loveasca
+#define GOLF_CLUB_WEAPON_ID  2     // Golf Club
+
+// Viteza mingii (unitati/secunda) pe cele 3 faze ale traseului (MoveDynamicObject)
+#define GOLF_BALL_SPEED_PHASE1 3.0  // primele 40%
+#define GOLF_BALL_SPEED_PHASE2 2.4  // urmatoarele 50%
+#define GOLF_BALL_SPEED_PHASE3 1.2  // ultimele 10%
+
+#define GOLF_STATUS_CLOSED   0
+#define GOLF_STATUS_OPEN     1
+#define GOLF_STATUS_PROGRESS 2
+
+new g_GolfStatus = GOLF_STATUS_CLOSED;
+new g_GolfRound  = 0;
+
+// Tee (start), per runda (index 0 = runda 1). Completeaza coordonatele reale ulterior.
+// X, Y, Z, unghi (directia in care e orientat playerul la tee)
+new Float:GolfTeeLocations[GOLF_MAX_ROUNDS][4] = {
+    {1407.9103, 2788.7463, 10.8203, 140.0},
+    {1410.1445, 2755.3176, 11.3605, 140.0},
+    {1418.1429, 2726.7859, 10.8203, 140.0},
+    {1383.1753, 2790.1079, 10.9387, 140.0},
+    {1343.0795, 2840.8035, 10.8203, 140.0}
+};
+
+// Gaurile (g1-g5). Ordinea in care sunt jucate pe runde e amestecata la fiecare /startgolf (vezi g_GolfHoleOrder).
+new Float:GolfHoleLocations[GOLF_MAX_ROUNDS][3] = {
+    {1148.9257, 2836.0691, 10.8203}, // g1
+    {1167.4847, 2820.2939, 10.8203}, // g2
+    {1145.8853, 2802.7761, 10.8203}, // g3
+    {1136.6375, 2771.0535, 10.8922}, // g4
+    {1129.6167, 2748.2361, 10.8203}  // g5
+};
+
+// Ordinea (indecsi in GolfHoleLocations) in care se joaca gaurile in turneul curent, amestecata la /startgolf
+new g_GolfHoleOrder[GOLF_MAX_ROUNDS] = {0, 1, 2, 3, 4};
+
+// Amesteca g_GolfHoleOrder (Fisher-Yates)
+stock Golf_ShuffleHoleOrder()
+{
+    for(new i = 0; i < GOLF_MAX_ROUNDS; i++)
+        g_GolfHoleOrder[i] = i;
+
+    for(new i = GOLF_MAX_ROUNDS - 1; i > 0; i--)
+    {
+        new j = random(i + 1);
+        new tmp = g_GolfHoleOrder[i];
+        g_GolfHoleOrder[i] = g_GolfHoleOrder[j];
+        g_GolfHoleOrder[j] = tmp;
+    }
+}
+
+new bool:g_GolfJoined[MAX_PLAYERS];
+new bool:g_GolfActive[MAX_PLAYERS];
+new g_GolfStrokes[MAX_PLAYERS];
+new bool:g_GolfFinishedHole[MAX_PLAYERS];
+
+new g_GolfHoleObject = -1;
+
+new STREAMER_TAG_OBJECT:g_GolfBallObject[MAX_PLAYERS];
+new Float:g_GolfBallStart[MAX_PLAYERS][3];
+new Float:g_GolfBallTarget[MAX_PLAYERS][3];
+new g_GolfBallPhase[MAX_PLAYERS]; // 0 = pe loc, 1/2/3 = fazele de viteza in desfasurare (MoveDynamicObject)
+
+stock Float:Golf_Distance(Float:x1, Float:y1, Float:z1, Float:x2, Float:y2, Float:z2)
+{
+    return floatsqroot(floatpower(x2 - x1, 2.0) + floatpower(y2 - y1, 2.0) + floatpower(z2 - z1, 2.0));
+}
+
+// Cauta playerid-ul caruia ii apartine mingea cu obiectul dat (reverse lookup)
+stock Golf_FindBallOwner(STREAMER_TAG_OBJECT:objectid)
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(g_GolfBallObject[i] == objectid) return i;
+    return -1;
+}
+
+// Calculeaza punctul de pe traseu (start -> target) corespunzator unui procent (0.0-1.0)
+stock Golf_BallWaypoint(playerid, Float:frac, &Float:x, &Float:y, &Float:z)
+{
+    x = g_GolfBallStart[playerid][0] + (g_GolfBallTarget[playerid][0] - g_GolfBallStart[playerid][0]) * frac;
+    y = g_GolfBallStart[playerid][1] + (g_GolfBallTarget[playerid][1] - g_GolfBallStart[playerid][1]) * frac;
+    z = g_GolfBallStart[playerid][2];
+}
+
+// Porneste faza data (1/2/3) a miscarii mingii prin MoveDynamicObject
+stock Golf_StartBallPhase(playerid, phase)
+{
+    g_GolfBallPhase[playerid] = phase;
+
+    new Float:frac, Float:speed;
+    switch(phase)
+    {
+        case 1: { frac = 0.4; speed = GOLF_BALL_SPEED_PHASE1; }
+        case 2: { frac = 0.9; speed = GOLF_BALL_SPEED_PHASE2; }
+        default: { frac = 1.0; speed = GOLF_BALL_SPEED_PHASE3; }
+    }
+
+    new Float:wx, Float:wy, Float:wz;
+    Golf_BallWaypoint(playerid, frac, wx, wy, wz);
+
+    MoveDynamicObject(g_GolfBallObject[playerid], wx, wy, wz, speed);
+}
+
+// Porneste o runda noua: muta toti jucatorii activi la tee, le creeaza minge noua, reseteaza loviturile
+stock Golf_StartRound(round)
+{
+    g_GolfRound = round;
+    new holeIdx = round - 1;
+
+    if(holeIdx < 0 || holeIdx >= GOLF_MAX_ROUNDS)
+    {
+        Golf_EndTournament(-1);
+        return;
+    }
+
+    new msg[160];
+    format(msg, sizeof(msg), C_INFO"[Golf Tournament] "C_WHITE"Round "C_INFO"%d"C_WHITE" has started!", round);
+    SendClientMessageToAll(COLOR_INFO, msg);
+
+    new actualHoleIdx = g_GolfHoleOrder[holeIdx];
+
+    if(g_GolfHoleObject != -1)
+    {
+        DestroyObject(g_GolfHoleObject);
+        g_GolfHoleObject = -1;
+    }
+    g_GolfHoleObject = CreateObject(GOLF_HOLE_OBJECT_MODEL,
+        GolfHoleLocations[actualHoleIdx][0], GolfHoleLocations[actualHoleIdx][1], GolfHoleLocations[actualHoleIdx][2] - 1, 0.0, 0.0, 0.0);
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_GolfActive[i]) continue;
+
+        g_GolfStrokes[i] = 0;
+        g_GolfFinishedHole[i] = false;
+        g_GolfBallPhase[i] = 0;
+
+        if(IsValidDynamicObject(g_GolfBallObject[i]))
+            DestroyDynamicObject(g_GolfBallObject[i]);
+
+        g_GolfBallObject[i] = CreateDynamicObject(GOLF_BALL_MODEL,
+            GolfTeeLocations[holeIdx][0], GolfTeeLocations[holeIdx][1], GolfTeeLocations[holeIdx][2]-1, 0.0, 0.0, 0.0);
+
+        SetPlayerPos(i, GolfTeeLocations[holeIdx][0], GolfTeeLocations[holeIdx][1], GolfTeeLocations[holeIdx][2] + 0.5);
+        SetPlayerFacingAngle(i, GolfTeeLocations[holeIdx][3]);
+
+        SetPlayerCheckpoint(i, GolfHoleLocations[actualHoleIdx][0], GolfHoleLocations[actualHoleIdx][1], GolfHoleLocations[actualHoleIdx][2], 1.0);
+
+        SendClientMessage(i, COLOR_INFO, C_INFO"Info: "C_WHITE"Get close to your ball and use "C_INFO"/hitball [1-3]"C_WHITE" to hit it toward the hole.");
+    }
+}
+
+// Cand un player isi termina gaura (mingea s-a oprit in raza GOLF_HOLE_RADIUS de groapa)
+stock Golf_PlayerFinishedHole(playerid)
+{
+    g_GolfFinishedHole[playerid] = true;
+    DisablePlayerCheckpoint(playerid);
+
+    new fmsg[128];
+    format(fmsg, sizeof(fmsg), C_SUCCESS"[Golf] "C_WHITE"%s"C_WHITE" finished the hole in "C_INFO"%d"C_WHITE" strokes!",
+        PlayerData[playerid][pName], g_GolfStrokes[playerid]);
+    SendClientMessageToAll(COLOR_INFO, fmsg);
+
+    Golf_CheckRoundComplete();
+}
+
+// Verifica daca toti jucatorii activi au terminat gaura curenta
+stock Golf_CheckRoundComplete()
+{
+    if(g_GolfStatus != GOLF_STATUS_PROGRESS) return;
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_GolfActive[i]) continue;
+        if(!g_GolfFinishedHole[i]) return; // mai e cineva care nu a terminat inca
+    }
+
+    Golf_FinishRound();
+}
+
+// Toti au terminat gaura: doar cel/cei cu cele mai putine lovituri trec mai departe, restul sunt eliminati
+stock Golf_FinishRound()
+{
+    new best = 2147483647;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_GolfActive[i]) continue;
+        if(g_GolfStrokes[i] < best) best = g_GolfStrokes[i];
+    }
+
+    new advancing = 0, winner = -1;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_GolfActive[i]) continue;
+
+        if(g_GolfStrokes[i] == best)
+        {
+            advancing++;
+            winner = i;
+        }
+        else
+        {
+            g_GolfActive[i] = false;
+            DisablePlayerCheckpoint(i);
+            g_GolfBallPhase[i] = 0;
+
+            if(IsValidDynamicObject(g_GolfBallObject[i]))
+                DestroyDynamicObject(g_GolfBallObject[i]);
+
+            new emsg[128];
+            format(emsg, sizeof(emsg), C_ERROR"[Golf] "C_WHITE"%s"C_WHITE" was eliminated ("C_INFO"%d strokes"C_WHITE").",
+                PlayerData[i][pName], g_GolfStrokes[i]);
+            SendClientMessageToAll(COLOR_ERROR, emsg);
+        }
+    }
+
+    if(advancing <= 1)
+    {
+        Golf_EndTournament(winner);
+        return;
+    }
+
+    Golf_StartRound(g_GolfRound + 1);
+}
+
+// Incheie turneul (winnerid == -1 daca nu mai sunt gauri pregatite / fara castigator)
+stock Golf_EndTournament(winnerid)
+{
+    if(winnerid != -1 && IsPlayerConnected(winnerid))
+    {
+        new wmsg[160];
+        format(wmsg, sizeof(wmsg), C_SUCCESS"[Golf Tournament] "C_INFO"%s"C_WHITE" won the golf tournament! Congratulations!",
+            PlayerData[winnerid][pName]);
+        SendClientMessageToAll(COLOR_SUCCESS, wmsg);
+    }
+    else
+    {
+        SendClientMessageToAll(COLOR_INFO, C_INFO"[Golf Tournament] "C_WHITE"The tournament has ended with no winner.");
+    }
+
+    if(g_GolfHoleObject != -1)
+    {
+        DestroyObject(g_GolfHoleObject);
+        g_GolfHoleObject = -1;
+    }
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsValidDynamicObject(g_GolfBallObject[i]))
+            DestroyDynamicObject(g_GolfBallObject[i]);
+        if(IsPlayerConnected(i)) DisablePlayerCheckpoint(i);
+        g_GolfJoined[i]       = false;
+        g_GolfActive[i]       = false;
+        g_GolfStrokes[i]      = 0;
+        g_GolfFinishedHole[i] = false;
+        g_GolfBallPhase[i]    = 0;
+    }
+
+    g_GolfStatus = GOLF_STATUS_CLOSED;
+    g_GolfRound  = 0;
+}
+
+// Cand un player se deconecteaza in timpul unei runde active, e eliminat pe loc ca sa nu blocheze runda
+stock Golf_PlayerLeftMidRound(playerid)
+{
+    if(IsValidDynamicObject(g_GolfBallObject[playerid]))
+        DestroyDynamicObject(g_GolfBallObject[playerid]);
+
+    if(IsPlayerConnected(playerid)) DisablePlayerCheckpoint(playerid);
+
+    g_GolfJoined[playerid]    = false;
+    g_GolfBallPhase[playerid] = 0;
+
+    if(g_GolfStatus == GOLF_STATUS_PROGRESS && g_GolfActive[playerid])
+    {
+        g_GolfActive[playerid] = false;
+        Golf_CheckRoundComplete();
+    }
+}
+
+// Mingea a ajuns la waypoint-ul curent (MoveDynamicObject) - trece la faza urmatoare, sau opreste si verifica gaura
+public OnDynamicObjectMoved(STREAMER_TAG_OBJECT:objectid)
+{
+    new playerid = Golf_FindBallOwner(objectid);
+    if(playerid == -1 || g_GolfBallPhase[playerid] == 0) return 1;
+
+    if(g_GolfBallPhase[playerid] < 3)
+    {
+        Golf_StartBallPhase(playerid, g_GolfBallPhase[playerid] + 1);
+        return 1;
+    }
+
+    g_GolfBallPhase[playerid] = 0;
+
+    if(IsPlayerConnected(playerid) && g_GolfActive[playerid] && !g_GolfFinishedHole[playerid])
+    {
+        new roundSlot = g_GolfRound - 1;
+        if(roundSlot >= 0 && roundSlot < GOLF_MAX_ROUNDS)
+        {
+            new holeIdx = g_GolfHoleOrder[roundSlot];
+            new Float:bx, Float:by, Float:bz;
+            GetDynamicObjectPos(objectid, bx, by, bz);
+            if(Golf_Distance(bx, by, bz, GolfHoleLocations[holeIdx][0], GolfHoleLocations[holeIdx][1], GolfHoleLocations[holeIdx][2]) <= GOLF_HOLE_RADIUS)
+                Golf_PlayerFinishedHole(playerid);
+        }
+    }
+    return 1;
 }
 
 #define FACTION_RAR             2
@@ -2309,6 +2628,21 @@ stock Vehicle_ToggleEngine(playerid)
     new engine, lights, alarm, doors, bonnet, boot, objective;
     GetVehicleParamsEx(vehid, engine, lights, alarm, doors, bonnet, boot, objective);
     engine = engine ? 0 : 1;
+    SetVehicleParamsEx(vehid, engine, lights, alarm, doors, bonnet, boot, objective);
+
+    return 1;
+}
+
+// Aprinde/stinge farurile vehiculului in care se afla playerid (trebuie sa fie soferul)
+stock Vehicle_ToggleLights(playerid)
+{
+    new vehid = GetPlayerVehicleID(playerid);
+    if(vehid == 0 || GetPlayerVehicleSeat(playerid) != 0)
+        return 0;
+
+    new engine, lights, alarm, doors, bonnet, boot, objective;
+    GetVehicleParamsEx(vehid, engine, lights, alarm, doors, bonnet, boot, objective);
+    lights = lights ? 0 : 1;
     SetVehicleParamsEx(vehid, engine, lights, alarm, doors, bonnet, boot, objective);
 
     return 1;
@@ -3391,7 +3725,7 @@ public OnPlayerRegister(playerid)
     Player_RecalcSpawn(playerid);
 
     SetPlayerVirtualWorld(playerid, 0);
-    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_LOCAL);
+    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_GLOBAL);
     SetPlayerColor(playerid, FactionColors[FACTION_NONE]);
     Factions_SetPlayerIcons(playerid);
     Businesses_SetPlayerIcons(playerid);
@@ -3802,6 +4136,55 @@ public OnGameModeInit()
 	CreateDynamicObject(1597, 953.00000, 2061.50000, 12.28000,   0.00000, 0.00000, -45.00000);
 	CreateDynamicObject(1597, 953.00000, 2083.00000, 12.28000,   0.00000, 0.00000, 45.00000);
 
+	// Camping
+	CreateDynamicObject(5418, 1376.68188, 694.27466, 16.57000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 725.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1363.00000, 725.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1368.00000, 725.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1373.00000, 725.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1378.00000, 725.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1383.00000, 724.97998, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1388.00000, 725.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1392.98022, 724.99744, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1363.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1368.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1373.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1378.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1383.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1388.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1393.00000, 797.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 730.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 735.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 740.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 745.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 750.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 755.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 760.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 770.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 775.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 780.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 785.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 790.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1396.00000, 765.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 730.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 735.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 740.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 745.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 750.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 755.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 760.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 790.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(736, 1358.00000, 785.00000, 19.98000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3171, 1364.28918, 788.17737, 9.75710,   0.00000, 0.00000, -40.00000);
+	CreateDynamicObject(3171, 1372.04102, 791.66473, 9.75710,   0.00000, 0.00000, 10.00000);
+	CreateDynamicObject(3171, 1392.03943, 791.12848, 9.75710,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3171, 1390.16125, 779.50610, 9.75710,   0.00000, 0.00000, -90.00000);
+	CreateDynamicObject(3168, 1365.56824, 753.05426, 9.81050,   0.00000, 0.00000, 90.00000);
+	CreateDynamicObject(3168, 1388.35291, 729.54822, 9.81050,   0.00000, 0.00000, -110.00000);
+	CreateDynamicObject(3174, 1365.79578, 730.29089, 9.80984,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3172, 1390.02930, 746.44336, 9.81350,   0.00000, 0.00000, 160.00000);
+
 
 
     for(new i = 0; i <= MAX_FACTIONS; i++) g_FactionLabel[i] = Text3D:INVALID_3DTEXT_ID;
@@ -4104,10 +4487,69 @@ public OnPlayerCommandText(playerid, cmdtext[])
             if(!IsPlayerConnected(i) || !PlayerData[i][pLogged] || PlayerData[i][pFaction] != FACTION_SMURD) continue;
             if(!PlayerData[i][pOnDuty]) continue;
             SendClientMessage(i, COLOR_INFO, fmsg);
-            SetPlayerMapIcon(i, FIRE_ICON_SLOT_BASE + fidx, fx, fy, fz, FIRE_MAPICON_ID, 0, MAPICON_LOCAL);
+            SetPlayerMapIcon(i, FIRE_ICON_SLOT_BASE + fidx, fx, fy, fz, FIRE_MAPICON_ID, 0, MAPICON_GLOBAL);
         }
 
         SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Fire created.");
+        return 1;
+    }
+
+    // ---- /opengolftournament ----
+    if(strcmp(cmd, "/opengolftournament", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < GOLF_ADMIN_LEVEL)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        if(g_GolfStatus != GOLF_STATUS_CLOSED)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"A golf tournament is already open or in progress."), 1;
+
+        g_GolfStatus = GOLF_STATUS_OPEN;
+        g_GolfRound = 0;
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            g_GolfJoined[i] = false;
+            g_GolfActive[i] = false;
+            g_GolfStrokes[i] = 0;
+            g_GolfFinishedHole[i] = false;
+        }
+
+        SendClientMessageToAll(COLOR_INFO, C_INFO"[Golf Tournament] "C_WHITE"Registration is now "C_INFO"OPEN"C_WHITE"! Type "C_INFO"/joingolf"C_WHITE" to participate.");
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Golf tournament registration opened.");
+        return 1;
+    }
+
+    // ---- /startgolf ----
+    if(strcmp(cmd, "/startgolf", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < GOLF_ADMIN_LEVEL)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        if(g_GolfStatus != GOLF_STATUS_OPEN)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The tournament must be opened first with "C_INFO"/opengolftournament"C_WHITE"."), 1;
+
+        new joined = 0;
+        for(new i = 0; i < MAX_PLAYERS; i++)
+            if(g_GolfJoined[i]) joined++;
+
+        if(joined < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"At least 2 players must join before starting."), 1;
+
+        g_GolfStatus = GOLF_STATUS_PROGRESS;
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            g_GolfActive[i] = g_GolfJoined[i];
+            if(!g_GolfActive[i]) continue;
+
+            SetPlayerHealth(i, 100.0);
+            GivePlayerWeapon(i, GOLF_CLUB_WEAPON_ID, 1);
+        }
+
+        Golf_ShuffleHoleOrder();
+
+        SendClientMessageToAll(COLOR_SUCCESS, C_SUCCESS"[Golf Tournament] "C_WHITE"Registrations closed. The tournament has started!");
+        Golf_StartRound(1);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Golf tournament started.");
         return 1;
     }
 
@@ -4542,7 +4984,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+, On-Duty] "C_WHITE"/confiscate");
 
         if(fid == FACTION_POLICE && rank >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+, On-Duty] "C_WHITE"/confiscate /confiscate");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+, On-Duty] "C_WHITE"/confiscate insurance /confiscate licence");
 
         if(fid == FACTION_POLICE)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, On-Duty] "C_WHITE"/checkLicenses /suspendLic");
@@ -4551,7 +4993,10 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police] "C_WHITE"/garage /entrace");
 
         if(fid == FACTION_POLICE && rank >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+] "C_WHITE"/radar]");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+] "C_WHITE"/radar");
+
+        if(fid == FACTION_POLICE && rank >= 4)
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 4+] "C_WHITE"/showradars /removeradar");
 
         if(fid == FACTION_SMURD)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[SMURD, On-Duty] "C_WHITE"/heal");
@@ -5056,9 +5501,12 @@ public OnPlayerCommandText(playerid, cmdtext[])
             g_RadarSpeedLimit[playerid] = speedLimit;
             g_RadarActive[playerid]     = true;
 
+            new Float:radarAngle;
+            GetPlayerFacingAngle(playerid, radarAngle);
+
             Radar_DestroyProps(playerid);
             g_RadarObject[playerid] = CreateObject(RADAR_OBJECT_MODEL,
-                g_RadarX[playerid] + 1.0, g_RadarY[playerid], g_RadarZ[playerid] - 1.0, 0.0, 0.0, 0.0);
+                g_RadarX[playerid] + 1.0, g_RadarY[playerid], g_RadarZ[playerid] - 1.0, 0.0, 0.0, radarAngle);
 
             new label[64];
             format(label, sizeof(label), "[ Radar %s ]\n[ Speed max: %d km/h ]", PlayerData[playerid][pName], speedLimit);
@@ -5093,6 +5541,81 @@ public OnPlayerCommandText(playerid, cmdtext[])
         }
 
         return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/radar [install/remove] [speedLimit]"C_WHITE"."), 1;
+    }
+
+    // ---- /showradars ----
+    if(strcmp(cmd, "/showradars", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new bool:isPoliceRank4 = (PlayerData[playerid][pFaction] == FACTION_POLICE && PlayerData[playerid][pFactionRank] >= 4);
+        if(PlayerData[playerid][pAdminLevel] < 1 && !isPoliceRank4)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires Police rank 4+ or admin level 1."), 1;
+
+        new list[1024], any = 0;
+        strcat(list, "RadarID\tOfficer\tSpeed Limit\tDistance\n");
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            if(!g_RadarActive[i]) continue;
+
+            new line[112];
+            format(line, sizeof(line), "%d\t%s\t%d km/h\t%dm\n",
+                i, PlayerData[i][pName], g_RadarSpeedLimit[i],
+                floatround(GetPlayerDistanceFromPoint(playerid, g_RadarX[i], g_RadarY[i], g_RadarZ[i])));
+            strcat(list, line);
+            any++;
+        }
+
+        if(!any)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no active radars right now."), 1;
+
+        ShowPlayerDialog(playerid, DIALOG_RADAR_LIST, DIALOG_STYLE_TABLIST_HEADERS, "Active Radars", list, "Close", "");
+        return 1;
+    }
+
+    // ---- /removeradar [radarid] ----
+    if(strcmp(cmd, "/removeradar", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new bool:isPoliceRank4 = (PlayerData[playerid][pFaction] == FACTION_POLICE && PlayerData[playerid][pFactionRank] >= 4);
+        if(PlayerData[playerid][pAdminLevel] < 1 && !isPoliceRank4)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires Police rank 4+ or admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/removeradar [radarid]"C_WHITE". See "C_INFO"/showradars"C_WHITE" for IDs."), 1;
+
+        new radarid = strval(p1);
+        if(radarid < 0 || radarid >= MAX_PLAYERS || !g_RadarActive[radarid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"There is no active radar with that ID."), 1;
+
+        new ownerName[24];
+        format(ownerName, sizeof(ownerName), "%s", PlayerData[radarid][pName]);
+
+        g_RadarActive[radarid]     = false;
+        g_RadarSpeedLimit[radarid] = 0;
+        g_RadarX[radarid]          = 0.0;
+        g_RadarY[radarid]          = 0.0;
+        g_RadarZ[radarid]          = 0.0;
+        Radar_DestroyProps(radarid);
+
+        new rmsg[128];
+        format(rmsg, sizeof(rmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Removed "C_INFO"%s"C_WHITE"'s radar (ID "C_INFO"%d"C_WHITE").", ownerName, radarid);
+        SendClientMessage(playerid, COLOR_SUCCESS, rmsg);
+
+        if(IsPlayerConnected(radarid) && radarid != playerid)
+        {
+            new omsg[128];
+            format(omsg, sizeof(omsg), C_ERROR"Error: "C_WHITE"Your radar was removed by "C_INFO"%s"C_WHITE".", PlayerData[playerid][pName]);
+            SendClientMessage(radarid, COLOR_ERROR, omsg);
+        }
+        return 1;
     }
 
     // ---- /factions ----
@@ -5240,7 +5763,22 @@ public OnPlayerCommandText(playerid, cmdtext[])
         strmid(locname, cmdtext, idx, strlen(cmdtext), 32);
 
         if(!strlen(locname))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/gotoloc [location]"C_WHITE"."), 1;
+        {
+            SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/gotoloc [location]"C_WHITE". Available locations:");
+
+            new locList[512];
+            for(new i = 0; i < g_LocationCount; i++)
+            {
+                if(i > 0) strcat(locList, ", ");
+                strcat(locList, LocationData[i][locName]);
+            }
+
+            if(!g_LocationCount)
+                SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"No locations are available.");
+            else
+                SendClientMessage(playerid, COLOR_WHITE, locList);
+            return 1;
+        }
 
         new lidx = Locations_FindByName(locname);
         if(lidx == -1)
@@ -5344,6 +5882,43 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /goto [playerid] ----
+    if(strcmp(cmd, "/goto", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/goto [playerid]"C_WHITE"."), 1;
+
+        new targetid = strval(p1);
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        if(targetid == playerid)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't teleport to yourself."), 1;
+
+        new Float:tx, Float:ty, Float:tz;
+        GetPlayerPos(targetid, tx, ty, tz);
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), tx, ty, tz + 0.1);
+        else
+            SetPlayerPos(playerid, tx, ty, tz + 0.1);
+
+        SetPlayerVirtualWorld(playerid, GetPlayerVirtualWorld(targetid));
+        SetPlayerInterior(playerid, GetPlayerInterior(targetid));
+
+        new gmsg[96];
+        format(gmsg, sizeof(gmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Teleported to "C_INFO"%s"C_WHITE".", PlayerData[targetid][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, gmsg);
+        return 1;
+    }
+
     // ---- /help ----
     if(strcmp(cmd, "/help", true) == 0)
     {
@@ -5351,7 +5926,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Account] "C_WHITE"/register /login /stats /help");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /rentcat /rentbike /curedisease");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Houses] "C_WHITE"/buyhouse, /sellhouse");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Houses] "C_WHITE"/buyhouse /sellhouse");
         SendClientMessage(playerid, COLOR_WHITE,
             C_INFO"[Vehicles] "C_WHITE"[Vehicles] /vstats /vbuy /vsell /vpark /vsellto /vcolor /vplate");
         SendClientMessage(playerid, COLOR_WHITE,
@@ -5370,17 +5945,17 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(alv < 1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access to admin commands."), 1;
 
-        SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Admin Commands ======================");
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Admin Commands ==========================================");
 
         if(alv >= 1)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /businesslist /showradars /removeradar");
         if(alv >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoloc");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoLoc /gotoBiz /gotoHouse /gotoFaction /goto");
         if(alv >= 3)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[3] "C_WHITE"/veh /rac /createdisease");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[3] "C_WHITE"/veh /rac /createDisease");
             SendClientMessage(playerid, COLOR_WHITE,
-                C_INFO"[3] [DrivingLic] "C_WHITE"/setdrivingLicAexp /setdrivingLicBexp /setdrivingLicCexp /setdrivingLicDexp");
+                C_INFO"[3] [DrivingLic] "C_WHITE"/setDrivingLicAexp /setDrivingLicBexp /setDrivingLicCexp /setDrivingLicDexp");
         }
         if(alv >= 5)
         {
@@ -5390,14 +5965,13 @@ public OnPlayerCommandText(playerid, cmdtext[])
         }
         if(alv >= 6)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Factions] "C_WHITE"/changeFactionHQ /changeFactionhqIcon /changeFactionPickup /changeFactionLead");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Factions] "C_WHITE"/createFactionVeh /removeFactionLead");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Factions] "C_WHITE"/changeFactionHQ /changeFactionhqIcon /changeFactionPickup /changeFactionLead ");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Houses] "C_WHITE"/createHouse /changeHousePrice /changeHouseOwner ");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [PVehicles] "C_WHITE"/vCreate /vSetPrice");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Business] "C_WHITE"/createBiz /changeBizName /changeBizPrice /changeBizLoc");
         }
 
-        SendClientMessage(playerid, COLOR_INFO, C_INFO"==========================================");
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"=============================================================");
         return 1;
     }
 
@@ -6838,6 +7412,111 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         return 1;
     }
 
+    // ---- /joingolf ----
+    if(strcmp(cmd, "/joingolf", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(g_GolfStatus != GOLF_STATUS_OPEN)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"There is no open golf tournament right now."), 1;
+
+        if(g_GolfJoined[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already joined the tournament."), 1;
+
+        g_GolfJoined[playerid] = true;
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You joined the golf tournament. Wait for an admin to start it.");
+        return 1;
+    }
+
+    // ---- /leavegolf ----
+    if(strcmp(cmd, "/leavegolf", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!g_GolfJoined[playerid] && !g_GolfActive[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the golf tournament."), 1;
+
+        new bool:wasActive = (g_GolfStatus == GOLF_STATUS_PROGRESS && g_GolfActive[playerid]);
+
+        Golf_PlayerLeftMidRound(playerid);
+
+        if(wasActive)
+        {
+            new lmsg[128];
+            format(lmsg, sizeof(lmsg), C_ERROR"[Golf] "C_WHITE"%s"C_WHITE" left the tournament and was eliminated.", PlayerData[playerid][pName]);
+            SendClientMessageToAll(COLOR_ERROR, lmsg);
+        }
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You left the golf tournament.");
+        return 1;
+    }
+
+    // ---- /hitball [power 1-3] ----
+    if(strcmp(cmd, "/hitball", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(g_GolfStatus != GOLF_STATUS_PROGRESS || !g_GolfActive[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not currently in an active golf round."), 1;
+
+        if(g_GolfFinishedHole[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already finished this hole."), 1;
+
+        if(g_GolfBallPhase[playerid] != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your ball is still moving."), 1;
+
+        if(!IsValidDynamicObject(g_GolfBallObject[playerid]))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have a ball."), 1;
+
+        new Float:curX, Float:curY, Float:curZ;
+        GetDynamicObjectPos(g_GolfBallObject[playerid], curX, curY, curZ);
+
+        if(!IsPlayerInRangeOfPoint(playerid, GOLF_BALL_RANGE, curX, curY, curZ))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be near your ball to hit it."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[4];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 4);
+
+        if(!strlen(p1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/hitball [power 1-3]"C_WHITE"."), 1;
+
+        new power = strval(p1);
+        if(power < 1 || power > 3)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Power must be 1, 2 or 3."), 1;
+
+        new Float:dist;
+        if(power == 1)      dist = 20.0 + float(random(10));  // 20-30
+        else if(power == 2) dist = 40.0 + float(random(15)); // 40-55
+        else                 dist = 60.0 + float(random(20)); // 60-80
+
+        new Float:angle;
+        GetPlayerFacingAngle(playerid, angle);
+
+        new Float:dx = dist * floatsin(-angle, degrees);
+        new Float:dy = dist * floatcos(angle, degrees);
+
+        g_GolfBallStart[playerid][0] = curX;
+        g_GolfBallStart[playerid][1] = curY;
+        g_GolfBallStart[playerid][2] = curZ;
+
+        g_GolfBallTarget[playerid][0] = curX + dx;
+        g_GolfBallTarget[playerid][1] = curY + dy;
+        g_GolfBallTarget[playerid][2] = curZ;
+
+        Golf_StartBallPhase(playerid, 1);
+
+        g_GolfStrokes[playerid]++;
+
+        new hmsg[96];
+        format(hmsg, sizeof(hmsg), C_SUCCESS"Success: "C_WHITE"You hit the ball! ("C_INFO"Stroke #%d"C_WHITE")", g_GolfStrokes[playerid]);
+        SendClientMessage(playerid, COLOR_SUCCESS, hmsg);
+        return 1;
+    }
+
     // ---- /vpark ----
     if(strcmp(cmd, "/vpark", true) == 0)
     {
@@ -7974,6 +8653,8 @@ public OnPlayerDisconnect(playerid, reason)
     g_RadarActive[playerid] = false;
     Radar_DestroyProps(playerid);
 
+    Golf_PlayerLeftMidRound(playerid);
+
     Speedometer_Destroy(playerid);
     LoginBG_Destroy(playerid);
 
@@ -7993,6 +8674,12 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
     {
         if(PlayerData[playerid][pLogged] && PlayerData[playerid][pFaction] == FACTION_POLICE)
             Police_GarageEntranceToggle(playerid);
+    }
+
+    if((newkeys & KEY_HANDBRAKE) && !(oldkeys & KEY_HANDBRAKE))
+    {
+        if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
+            Vehicle_ToggleLights(playerid);
     }
     return 1;
 }
@@ -8385,6 +9072,11 @@ public OnPlayerRequestClass(playerid, classid)
 // coordonatele salvate in baza de date (ultima pozitie din /vpark), nu la pozitia de creare.
 public OnVehicleSpawn(vehicleid)
 {
+    // Params nesetate (vehicul nou-creat) sunt -1, nu 0 - fortam engine OFF explicit, ca sa nu fie citit ca "ON"
+    new engine, lights, alarm, doors, bonnet, boot, objective;
+    GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
+    SetVehicleParamsEx(vehicleid, 0, lights, alarm, doors, bonnet, boot, objective);
+
     if(vehicleid >= 0 && vehicleid < MAX_VEHICLES)
     {
         new pvidx = g_VehicleToPVIndex[vehicleid];
