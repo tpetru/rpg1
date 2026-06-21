@@ -97,42 +97,38 @@
 <main>
 
 <div class="feature">
+<h2> De adaugat rotatii la rulote, in db</h2>
   <h2>🚐 Sistem Rulote Personale (tractare)</h2>
-  <span class="status status-idea">Idee / design — neimplementat</span>
+  <span class="status status-done">Implementat</span>
 
-  <p>Sistem de rulote personale, similar conceptual cu vehiculele personale, cu posibilitatea de a fi
-  tractate de o mașină.</p>
+  <p>Sistem de rulote personale, câte una per jucător (<code>pCaravanKey</code> — 0 = nu deține, 1/2/3 =
+  tipul deținut), cu posibilitatea de a fi tractate de mașina personală a jucătorului.</p>
 
-  <h4 style="margin-bottom:4px">Cum funcționează (design agreat)</h4>
+  <h4 style="margin-bottom:4px">Cum funcționează (implementat)</h4>
   <ul>
-    <li>Rulota e un <strong>obiect</strong> (nu vehicul), atașat în spatele mașinii cu
-      <code>AttachObjectToVehicle</code> cât timp e tractată.</li>
-    <li>La parcare (comandă gen <code>/parkrulota</code>):
+    <li>Rulota e un <strong>obiect dinamic</strong> (<code>CreateDynamicObject</code>, streamer), nu vehicul.</li>
+    <li><code>/attach</code>: atașează rulota în spatele mașinii cu <code>AttachDynamicObjectToVehicle</code>
+      (offset fix pe axa Y, în spatele mașinii). Necesită să fii șofer într-un <strong>vehicul personal
+      al tău</strong>.</li>
+    <li><code>/detach</code>:
       <ul>
-        <li>Se copiază poziția <strong>și rotația completă</strong> a mașinii (<code>GetVehicleRotationQuat</code>,
-          nu doar Z-angle) către obiectul rulotei — rulota rămâne exact unde era mașina, cu panta
-          terenului deja corectă (moștenită din înclinarea fizică a mașinii, fără calcule manuale de
-          teren / fără MapAndreas).</li>
-        <li>Obiectul rulotei se detașează de mașină.</li>
-        <li>Mașina e respawnată la <strong>aceeași poziție X/Y, cu Z+5</strong> (fără alte modificări —
-          fără offset orizontal, fără rotație nouă).</li>
+        <li>Scoate atașarea (<code>Streamer_SetIntData(..., E_STREAMER_ATTACHED_VEHICLE, INVALID_VEHICLE_ID)</code>
+          — nu există native dedicat de "detach" în streamer, se șterge direct data internă).</li>
+        <li>Pune rulota exact unde era mașina (poziție + <code>GetVehicleZAngle</code>) și salvează poziția
+          în DB (<code>caravan_x/y/z/rotation</code>), ca să reapară acolo la următoarea logare.</li>
+        <li>Mașina e respawnată la <strong>aceeași poziție X/Y, cu Z+5</strong> (fără alte modificări).</li>
       </ul>
     </li>
-  </ul>
-
-  <h4 style="margin-bottom:4px">De ce varianta asta</h4>
-  <ul>
-    <li>Rulota stă mereu în panta corectă a terenului.</li>
-    <li>Nu există risc ca rulota să fie plasată într-un alt obiect (stă exact unde a fost mașina, deci
-      pe o poziție deja validă/accesibilă).</li>
-    <li>Mașina rămâne liberă să se miște, fără rulotă atașată.</li>
+    <li><code>/createcaravan [playerid] [tip 1-3]</code> (admin lvl 6) — atribuie o rulotă unui jucător;
+      necesar adăugat ca să existe o cale de a obține una (nu exista încă o comandă de cumpărare).</li>
   </ul>
 
   <div class="note">
-    Variante alternative discutate și respinse: deplasarea rulotei pe X/Y cu un offset calculat din
-    unghiul mașinii (risc de coliziune cu alte obiecte/ziduri); combinarea Z+5 cu un mic offset
-    "înainte" pentru mașină (posibilă soluție mai sigură împotriva căderii mașinii înapoi peste rulotă,
-    dar s-a decis să rămânem la varianta simplă, fără modificări suplimentare, pentru moment).
+    Simplificare față de discuția inițială: la <code>/detach</code> se copiază doar <strong>unghiul Z</strong>
+    al mașinii (<code>GetVehicleZAngle</code>), nu rotația completă via quaternion
+    (<code>GetVehicleRotationQuat</code>) — pante foarte abrupte nu vor fi reflectate perfect pe rulotă.
+    Modelele celor 3 tipuri de rulote: <code>CARAVAN_MODEL_1=3174</code>, <code>CARAVAN_MODEL_2=3171</code>,
+    <code>CARAVAN_MODEL_3=3172</code>.
   </div>
 </div>
 

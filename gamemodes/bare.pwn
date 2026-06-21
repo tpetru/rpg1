@@ -72,6 +72,8 @@ forward OnVehiclesPersonalLoaded();
 forward OnVehiclePersonalCreated(playerid, idx);
 forward OnVehiclePlateChecked(playerid, pvidx, plate[]);
 forward OnVehicleITPCheck(playerid, pvidx, vehid);
+forward OnCaravansLoaded();
+forward OnCaravanCreated(playerid, idx);
 
 new MySQL:g_SQL;
 
@@ -108,7 +110,8 @@ enum E_PLAYER_DATA
     pKey1, pKey2, pKey3,
     pDrivingLicA_exp[11], pDrivingLicB_exp[11], pDrivingLicC_exp[11], pDrivingLicD_exp[11],
     bool:pLogged, bool:pRegistered, bool:pOnDuty,
-    bool:pDiseased, pDiseasePaydays
+    bool:pDiseased, pDiseasePaydays,
+    pCaravanKey
 }
 new PlayerData[MAX_PLAYERS][E_PLAYER_DATA];
 
@@ -1661,14 +1664,14 @@ stock Burger_SetPlayerIcons(playerid)
 #define GOLF_MAX_ROUNDS      5
 #define GOLF_BALL_MODEL      19577 // <-- schimba aici modelul obiectului mingii de golf
 #define GOLF_HOLE_OBJECT_MODEL 19306
-#define GOLF_HOLE_RADIUS     2.0
+#define GOLF_HOLE_RADIUS     3.0
 #define GOLF_BALL_RANGE      2.0   // cat de aproape trebuie sa fie playerul de mingea lui ca sa o loveasca
+#define GOLF_HIT_MAX_POWER     200   // valoarea maxima permisa pentru [numar] (puterea) la /hitball
+#define GOLF_POWER_TO_DISTANCE 0.25  // 1 punct de putere = 0.25 unitati de distanta
 #define GOLF_CLUB_WEAPON_ID  2     // Golf Club
 
-// Viteza mingii (unitati/secunda) pe cele 3 faze ale traseului (MoveDynamicObject)
-#define GOLF_BALL_SPEED_PHASE1 3.0  // primele 40%
-#define GOLF_BALL_SPEED_PHASE2 2.4  // urmatoarele 50%
-#define GOLF_BALL_SPEED_PHASE3 1.2  // ultimele 10%
+// Viteza mingii (unitati/secunda), constanta pe tot traseul (MoveDynamicObject)
+#define GOLF_BALL_SPEED 6.8
 
 #define GOLF_STATUS_CLOSED   0
 #define GOLF_STATUS_OPEN     1
@@ -1717,18 +1720,72 @@ stock Golf_ShuffleHoleOrder()
 new bool:g_GolfJoined[MAX_PLAYERS];
 new bool:g_GolfActive[MAX_PLAYERS];
 new g_GolfStrokes[MAX_PLAYERS];
+new g_GolfLastPower[MAX_PLAYERS];
 new bool:g_GolfFinishedHole[MAX_PLAYERS];
 
 new g_GolfHoleObject = -1;
 
 new STREAMER_TAG_OBJECT:g_GolfBallObject[MAX_PLAYERS];
-new Float:g_GolfBallStart[MAX_PLAYERS][3];
+new STREAMER_TAG_3D_TEXT_LABEL:g_GolfBallLabel[MAX_PLAYERS];
 new Float:g_GolfBallTarget[MAX_PLAYERS][3];
-new g_GolfBallPhase[MAX_PLAYERS]; // 0 = pe loc, 1/2/3 = fazele de viteza in desfasurare (MoveDynamicObject)
+new bool:g_GolfBallMoving[MAX_PLAYERS];
+new g_GolfBallLabelTimer[MAX_PLAYERS] = {-1, ...};
+
+// Opreste (daca exista) timer-ul de resincronizare a etichetei 3D a mingii unui player
+stock Golf_StopLabelTimer(playerid)
+{
+    if(g_GolfBallLabelTimer[playerid] != -1)
+    {
+        KillTimer(g_GolfBallLabelTimer[playerid]);
+        g_GolfBallLabelTimer[playerid] = -1;
+    }
+}
+
+// Porneste timer-ul (la fiecare 2 secunde) care recreeaza eticheta 3D la pozitia curenta a mingii -
+// fallback in caz ca atasarea native (Streamer_SetIntData ATTACHED_OBJECT) nu functioneaza vizual
+stock Golf_StartLabelTimer(playerid)
+{
+    Golf_StopLabelTimer(playerid);
+    g_GolfBallLabelTimer[playerid] = SetTimerEx("Golf_LabelResync", 2000, true, "i", playerid);
+}
+
+// Recreeaza eticheta 3D a mingii la pozitia ei curenta (apelat din timer-ul de mai sus)
+forward Golf_LabelResync(playerid);
+public Golf_LabelResync(playerid)
+{
+    if(!IsPlayerConnected(playerid) || !g_GolfActive[playerid] || !IsValidDynamicObject(g_GolfBallObject[playerid]))
+    {
+        Golf_StopLabelTimer(playerid);
+        return 1;
+    }
+
+    new Float:bx, Float:by, Float:bz;
+    GetDynamicObjectPos(g_GolfBallObject[playerid], bx, by, bz);
+
+    if(IsValidDynamic3DTextLabel(g_GolfBallLabel[playerid]))
+        DestroyDynamic3DTextLabel(g_GolfBallLabel[playerid]);
+
+    new ballLabel[32];
+    format(ballLabel, sizeof(ballLabel), "[ %d ]", playerid);
+    g_GolfBallLabel[playerid] = CreateDynamic3DTextLabel(ballLabel, COLOR_WHITE, bx, by, bz + 0.1, 100.0);
+    Streamer_SetIntData(STREAMER_TYPE_3D_TEXT_LABEL, g_GolfBallLabel[playerid], E_STREAMER_ATTACHED_OBJECT, _:g_GolfBallObject[playerid]);
+    return 1;
+}
+
+// Distruge mingea (obiect + eticheta 3D) unui player, daca exista, si opreste timer-ul de resincronizare
+stock Golf_DestroyBall(playerid)
+{
+    if(IsValidDynamicObject(g_GolfBallObject[playerid]))
+        DestroyDynamicObject(g_GolfBallObject[playerid]);
+    if(IsValidDynamic3DTextLabel(g_GolfBallLabel[playerid]))
+        DestroyDynamic3DTextLabel(g_GolfBallLabel[playerid]);
+    Golf_StopLabelTimer(playerid);
+}
 
 stock Float:Golf_Distance(Float:x1, Float:y1, Float:z1, Float:x2, Float:y2, Float:z2)
 {
-    return floatsqroot(floatpower(x2 - x1, 2.0) + floatpower(y2 - y1, 2.0) + floatpower(z2 - z1, 2.0));
+    #pragma unused z1, z2
+    return floatsqroot(floatpower(x2 - x1, 2.0) + floatpower(y2 - y1, 2.0));
 }
 
 // Cauta playerid-ul caruia ii apartine mingea cu obiectul dat (reverse lookup)
@@ -1739,31 +1796,12 @@ stock Golf_FindBallOwner(STREAMER_TAG_OBJECT:objectid)
     return -1;
 }
 
-// Calculeaza punctul de pe traseu (start -> target) corespunzator unui procent (0.0-1.0)
-stock Golf_BallWaypoint(playerid, Float:frac, &Float:x, &Float:y, &Float:z)
+// Porneste miscarea mingii spre g_GolfBallTarget, cu viteza constanta GOLF_BALL_SPEED
+stock Golf_StartBallMove(playerid)
 {
-    x = g_GolfBallStart[playerid][0] + (g_GolfBallTarget[playerid][0] - g_GolfBallStart[playerid][0]) * frac;
-    y = g_GolfBallStart[playerid][1] + (g_GolfBallTarget[playerid][1] - g_GolfBallStart[playerid][1]) * frac;
-    z = g_GolfBallStart[playerid][2];
-}
-
-// Porneste faza data (1/2/3) a miscarii mingii prin MoveDynamicObject
-stock Golf_StartBallPhase(playerid, phase)
-{
-    g_GolfBallPhase[playerid] = phase;
-
-    new Float:frac, Float:speed;
-    switch(phase)
-    {
-        case 1: { frac = 0.4; speed = GOLF_BALL_SPEED_PHASE1; }
-        case 2: { frac = 0.9; speed = GOLF_BALL_SPEED_PHASE2; }
-        default: { frac = 1.0; speed = GOLF_BALL_SPEED_PHASE3; }
-    }
-
-    new Float:wx, Float:wy, Float:wz;
-    Golf_BallWaypoint(playerid, frac, wx, wy, wz);
-
-    MoveDynamicObject(g_GolfBallObject[playerid], wx, wy, wz, speed);
+    g_GolfBallMoving[playerid] = true;
+    MoveDynamicObject(g_GolfBallObject[playerid],
+        g_GolfBallTarget[playerid][0], g_GolfBallTarget[playerid][1], g_GolfBallTarget[playerid][2], GOLF_BALL_SPEED);
 }
 
 // Porneste o runda noua: muta toti jucatorii activi la tee, le creeaza minge noua, reseteaza loviturile
@@ -1798,13 +1836,19 @@ stock Golf_StartRound(round)
 
         g_GolfStrokes[i] = 0;
         g_GolfFinishedHole[i] = false;
-        g_GolfBallPhase[i] = 0;
+        g_GolfBallMoving[i] = false;
 
-        if(IsValidDynamicObject(g_GolfBallObject[i]))
-            DestroyDynamicObject(g_GolfBallObject[i]);
+        Golf_DestroyBall(i);
 
         g_GolfBallObject[i] = CreateDynamicObject(GOLF_BALL_MODEL,
-            GolfTeeLocations[holeIdx][0], GolfTeeLocations[holeIdx][1], GolfTeeLocations[holeIdx][2]-1, 0.0, 0.0, 0.0);
+            GolfTeeLocations[holeIdx][0], GolfTeeLocations[holeIdx][1], GolfTeeLocations[holeIdx][2]-0.90, 0.0, 0.0, 0.0);
+
+        new ballLabel[32];
+        format(ballLabel, sizeof(ballLabel), "[ %d ]", i);
+        g_GolfBallLabel[i] = CreateDynamic3DTextLabel(ballLabel, COLOR_WHITE,
+            GolfTeeLocations[holeIdx][0], GolfTeeLocations[holeIdx][1], GolfTeeLocations[holeIdx][2]-0.80, 100.0);
+        Streamer_SetIntData(STREAMER_TYPE_3D_TEXT_LABEL, g_GolfBallLabel[i], E_STREAMER_ATTACHED_OBJECT, _:g_GolfBallObject[i]);
+        Golf_StartLabelTimer(i);
 
         SetPlayerPos(i, GolfTeeLocations[holeIdx][0], GolfTeeLocations[holeIdx][1], GolfTeeLocations[holeIdx][2] + 0.5);
         SetPlayerFacingAngle(i, GolfTeeLocations[holeIdx][3]);
@@ -1867,10 +1911,8 @@ stock Golf_FinishRound()
         {
             g_GolfActive[i] = false;
             DisablePlayerCheckpoint(i);
-            g_GolfBallPhase[i] = 0;
-
-            if(IsValidDynamicObject(g_GolfBallObject[i]))
-                DestroyDynamicObject(g_GolfBallObject[i]);
+            g_GolfBallMoving[i] = false;
+            Golf_DestroyBall(i);
 
             new emsg[128];
             format(emsg, sizeof(emsg), C_ERROR"[Golf] "C_WHITE"%s"C_WHITE" was eliminated ("C_INFO"%d strokes"C_WHITE").",
@@ -1911,14 +1953,13 @@ stock Golf_EndTournament(winnerid)
 
     for(new i = 0; i < MAX_PLAYERS; i++)
     {
-        if(IsValidDynamicObject(g_GolfBallObject[i]))
-            DestroyDynamicObject(g_GolfBallObject[i]);
+        Golf_DestroyBall(i);
         if(IsPlayerConnected(i)) DisablePlayerCheckpoint(i);
         g_GolfJoined[i]       = false;
         g_GolfActive[i]       = false;
         g_GolfStrokes[i]      = 0;
         g_GolfFinishedHole[i] = false;
-        g_GolfBallPhase[i]    = 0;
+        g_GolfBallMoving[i]   = false;
     }
 
     g_GolfStatus = GOLF_STATUS_CLOSED;
@@ -1928,13 +1969,12 @@ stock Golf_EndTournament(winnerid)
 // Cand un player se deconecteaza in timpul unei runde active, e eliminat pe loc ca sa nu blocheze runda
 stock Golf_PlayerLeftMidRound(playerid)
 {
-    if(IsValidDynamicObject(g_GolfBallObject[playerid]))
-        DestroyDynamicObject(g_GolfBallObject[playerid]);
+    Golf_DestroyBall(playerid);
 
     if(IsPlayerConnected(playerid)) DisablePlayerCheckpoint(playerid);
 
-    g_GolfJoined[playerid]    = false;
-    g_GolfBallPhase[playerid] = 0;
+    g_GolfJoined[playerid]     = false;
+    g_GolfBallMoving[playerid] = false;
 
     if(g_GolfStatus == GOLF_STATUS_PROGRESS && g_GolfActive[playerid])
     {
@@ -1943,19 +1983,13 @@ stock Golf_PlayerLeftMidRound(playerid)
     }
 }
 
-// Mingea a ajuns la waypoint-ul curent (MoveDynamicObject) - trece la faza urmatoare, sau opreste si verifica gaura
+// Mingea a ajuns la destinatie (MoveDynamicObject) - opreste si verifica daca a intrat in gaura
 public OnDynamicObjectMoved(STREAMER_TAG_OBJECT:objectid)
 {
     new playerid = Golf_FindBallOwner(objectid);
-    if(playerid == -1 || g_GolfBallPhase[playerid] == 0) return 1;
+    if(playerid == -1 || !g_GolfBallMoving[playerid]) return 1;
 
-    if(g_GolfBallPhase[playerid] < 3)
-    {
-        Golf_StartBallPhase(playerid, g_GolfBallPhase[playerid] + 1);
-        return 1;
-    }
-
-    g_GolfBallPhase[playerid] = 0;
+    g_GolfBallMoving[playerid] = false;
 
     if(IsPlayerConnected(playerid) && g_GolfActive[playerid] && !g_GolfFinishedHole[playerid])
     {
@@ -1965,11 +1999,164 @@ public OnDynamicObjectMoved(STREAMER_TAG_OBJECT:objectid)
             new holeIdx = g_GolfHoleOrder[roundSlot];
             new Float:bx, Float:by, Float:bz;
             GetDynamicObjectPos(objectid, bx, by, bz);
-            if(Golf_Distance(bx, by, bz, GolfHoleLocations[holeIdx][0], GolfHoleLocations[holeIdx][1], GolfHoleLocations[holeIdx][2]) <= GOLF_HOLE_RADIUS)
+            new Float:remaining = Golf_Distance(bx, by, bz, GolfHoleLocations[holeIdx][0], GolfHoleLocations[holeIdx][1], GolfHoleLocations[holeIdx][2]);
+            if(remaining <= GOLF_HOLE_RADIUS)
+            {
                 Golf_PlayerFinishedHole(playerid);
+            }
+            else
+            {
+                new dmsg[144];
+                format(dmsg, sizeof(dmsg), C_SUCCESS"Success: "C_WHITE"You hit the ball with "C_INFO"%d"C_WHITE" power! ("C_INFO"Stroke #%d"C_WHITE") - "C_INFO"%.1f"C_WHITE" meters left until the hole.",
+                    g_GolfLastPower[playerid], g_GolfStrokes[playerid], remaining);
+                SendClientMessage(playerid, COLOR_SUCCESS, dmsg);
+            }
         }
     }
     return 1;
+}
+
+// ============================================================
+//  RULOTE PERSONALE (tractare)
+// ============================================================
+#define CARAVAN_MODEL_1          3174
+#define CARAVAN_MODEL_2          3171
+#define CARAVAN_MODEL_3          3172
+#define CARAVAN_ATTACH_OFFSET_Y -6  // distanta in spatele masinii unde sta rulota cand e atasata
+#define CARAVAN_ATTACH_OFFSET_Z -0.8 // cat de jos sta rulota fata de masina cand e atasata
+#define CARAVAN_PARK_OFFSET_Z   -0.45  // cat de jos se pozitioneaza rulota fata de masina la /detach
+#define MAX_PERSONAL_CARAVANS   100
+
+enum E_CARAVAN_DATA
+{
+    rID, rOwned, rOwner, rPrice, bool:rCamping, rCampingStartDate,
+    Float:rParkLocX, Float:rParkLocY, Float:rParkLocZ,
+    Float:rCampLocX, Float:rCampLocY, Float:rCampLocZ,
+    Float:rParkRX, Float:rParkRY, Float:rParkRZ,
+    Float:rCampRX, Float:rCampRY, Float:rCampRZ
+}
+new CaravanData[MAX_PERSONAL_CARAVANS][E_CARAVAN_DATA];
+new g_CaravanCount = 0;
+
+new STREAMER_TAG_OBJECT:g_CaravanObject[MAX_PLAYERS]; // un singur obiect per owner (un singur pCaravanKey per player)
+new g_CaravanAttachedVeh[MAX_PLAYERS]; // 0 = parcata (neatasata), altfel = vehicleid de care e atasata in acest moment
+
+stock Caravan_GetModel(type)
+{
+    if(type == 2) return CARAVAN_MODEL_2;
+    if(type == 3) return CARAVAN_MODEL_3;
+    return CARAVAN_MODEL_1;
+}
+
+// Intoarce rotatia COMPLETA (rx/ry/rz, in grade) a unui vehicul, inclusiv panta/inclinarea, nu doar directia.
+// SA-MP nu are un native direct pentru asta (doar GetVehicleZAngle, care da exclusiv directia) - se calculeaza
+// din quaternion (GetVehicleRotationQuat), folosind formula standard "GetVehicleRotation" din comunitatea SA-MP.
+stock GetVehicleRotation(vehicleid, &Float:rx, &Float:ry, &Float:rz)
+{
+    new Float:w, Float:x, Float:y, Float:z;
+    GetVehicleRotationQuat(vehicleid, w, x, y, z);
+
+    new Float:sqw = w * w;
+    new Float:sqx = x * x;
+    new Float:sqy = y * y;
+    new Float:sqz = z * z;
+
+    // rx/rz sunt schimbate intre ele fata de formula standard "GetVehicleRotation" - testat empiric
+    // (vezi /detach debug log): unghiul de yaw cade pe axa Z (rz), nu pe X, pentru obiectele SA-MP
+    rz = atan2(2.0 * (x*y + z*w), sqx - sqy - sqz + sqw);
+
+    new Float:sinp = -2.0 * (x*z - y*w);
+    if(sinp > 1.0) sinp = 1.0;
+    else if(sinp < -1.0) sinp = -1.0;
+    ry = -asin(sinp); // semn inversat fata de formula standard - de testat daca rezolva eroarea reziduala
+
+    rx = atan2(2.0 * (y*z + x*w), -sqx - sqy + sqz + sqw);
+
+    // NOTA: atan2()/asin() din SA-MP intorc deja grade, nu radiani (spre deosebire de C standard) -
+    // nu se mai inmulteste cu RAD2DEG aici, altfel valorile se umfla de ~57x (bug confirmat din /detach debug log)
+
+    if(rx < 0.0) rx += 360.0;
+    if(ry < 0.0) ry += 360.0;
+    if(rz < 0.0) rz += 360.0;
+}
+
+// Cauta rândul din CaravanData detinut de un anumit player (dupa pID), sau -1
+stock Caravan_FindByOwner(ownerId)
+{
+    for(new i = 0; i < g_CaravanCount; i++)
+        if(CaravanData[i][rOwned] && CaravanData[i][rOwner] == ownerId) return i;
+    return -1;
+}
+
+stock Caravans_Load()
+{
+    mysql_tquery(g_SQL,
+        "SELECT `rID`,`rOwned`,`rOwner`,`rPrice`,`rCamping`,`rCampingStartDate`,\
+         `rParkLocX`,`rParkLocY`,`rParkLocZ`,`rCampLocX`,`rCampLocY`,`rCampLocZ`,\
+         `parkRX`,`parkRY`,`parkRZ`,`campRX`,`campRY`,`campRZ` \
+         FROM `rulote_personale` ORDER BY `rID` ASC",
+        "OnCaravansLoaded");
+}
+
+public OnCaravansLoaded()
+{
+    new rows = cache_num_rows();
+    g_CaravanCount = 0;
+    for(new i = 0; i < rows && g_CaravanCount < MAX_PERSONAL_CARAVANS; i++)
+    {
+        new idx = g_CaravanCount;
+        cache_get_value_name_int(i, "rID",    CaravanData[idx][rID]);
+        cache_get_value_name_int(i, "rOwned", CaravanData[idx][rOwned]);
+        cache_get_value_name_int(i, "rOwner", CaravanData[idx][rOwner]);
+        cache_get_value_name_int(i, "rPrice", CaravanData[idx][rPrice]);
+
+        new campingInt;
+        cache_get_value_name_int(i, "rCamping", campingInt);
+        CaravanData[idx][rCamping] = bool:campingInt;
+
+        new dateBuf[11];
+        cache_get_value_name(i, "rCampingStartDate", dateBuf, sizeof(dateBuf));
+        CaravanData[idx][rCampingStartDate] = DateStrToUnix(dateBuf);
+
+        cache_get_value_name_float(i, "rParkLocX", CaravanData[idx][rParkLocX]);
+        cache_get_value_name_float(i, "rParkLocY", CaravanData[idx][rParkLocY]);
+        cache_get_value_name_float(i, "rParkLocZ", CaravanData[idx][rParkLocZ]);
+        cache_get_value_name_float(i, "rCampLocX", CaravanData[idx][rCampLocX]);
+        cache_get_value_name_float(i, "rCampLocY", CaravanData[idx][rCampLocY]);
+        cache_get_value_name_float(i, "rCampLocZ", CaravanData[idx][rCampLocZ]);
+        cache_get_value_name_float(i, "parkRX", CaravanData[idx][rParkRX]);
+        cache_get_value_name_float(i, "parkRY", CaravanData[idx][rParkRY]);
+        cache_get_value_name_float(i, "parkRZ", CaravanData[idx][rParkRZ]);
+        cache_get_value_name_float(i, "campRX", CaravanData[idx][rCampRX]);
+        cache_get_value_name_float(i, "campRY", CaravanData[idx][rCampRY]);
+        cache_get_value_name_float(i, "campRZ", CaravanData[idx][rCampRZ]);
+
+        g_CaravanCount++;
+    }
+    printf("[Rulote] %d rulote incarcate.", g_CaravanCount);
+    return 1;
+}
+
+// Completeaza rID-ul real (alocat de DB) pentru rândul rezervat sincron in /createcaravan
+public OnCaravanCreated(playerid, idx)
+{
+    CaravanData[idx][rID] = cache_insert_id();
+    return 1;
+}
+
+// La login: daca playerul detine o rulota si a fost parcata cel putin o data, o recreeaza la ultima pozitie salvata
+stock Caravan_ShowParked(playerid)
+{
+    if(PlayerData[playerid][pCaravanKey] == 0) return;
+    if(IsValidDynamicObject(g_CaravanObject[playerid])) return;
+
+    new cidx = Caravan_FindByOwner(PlayerData[playerid][pID]);
+    if(cidx == -1) return;
+    if(CaravanData[cidx][rParkLocX] == 0.0 && CaravanData[cidx][rParkLocY] == 0.0 && CaravanData[cidx][rParkLocZ] == 0.0) return;
+
+    g_CaravanObject[playerid] = CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]),
+        CaravanData[cidx][rParkLocX], CaravanData[cidx][rParkLocY], CaravanData[cidx][rParkLocZ],
+        CaravanData[cidx][rParkRX], CaravanData[cidx][rParkRY], CaravanData[cidx][rParkRZ]);
 }
 
 #define FACTION_RAR             2
@@ -2761,7 +2948,8 @@ stock DB_CreateTables()
         `driving_lic_c_exp` DATE DEFAULT NULL,\
         `driving_lic_d_exp` DATE DEFAULT NULL,\
         `diseased`         TINYINT DEFAULT 0,\
-        `disease_paydays`  INT     DEFAULT 0\
+        `disease_paydays`  INT     DEFAULT 0,\
+        `caravan_key`      INT     DEFAULT 0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
     print("[DB] Tabel `players` verificat/creat.");
@@ -2796,6 +2984,37 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `driving_lic_d_exp` DATE DEFAULT NULL", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `diseased`        TINYINT DEFAULT 0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `disease_paydays` INT     DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `caravan_key`      INT   DEFAULT 0",   "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `rulote_personale` (\
+        `rID`               INT AUTO_INCREMENT PRIMARY KEY,\
+        `rOwned`            TINYINT DEFAULT 0,\
+        `rOwner`            INT     DEFAULT 0,\
+        `rPrice`            INT     DEFAULT 0,\
+        `rCamping`          TINYINT DEFAULT 0,\
+        `rCampingStartDate` DATE    DEFAULT NULL,\
+        `rParkLocX`         FLOAT   DEFAULT 0.0,\
+        `rParkLocY`         FLOAT   DEFAULT 0.0,\
+        `rParkLocZ`         FLOAT   DEFAULT 0.0,\
+        `rCampLocX`         FLOAT   DEFAULT 0.0,\
+        `rCampLocY`         FLOAT   DEFAULT 0.0,\
+        `rCampLocZ`         FLOAT   DEFAULT 0.0,\
+        `parkRX`            FLOAT   DEFAULT 0.0,\
+        `parkRY`            FLOAT   DEFAULT 0.0,\
+        `parkRZ`            FLOAT   DEFAULT 0.0,\
+        `campRX`            FLOAT   DEFAULT 0.0,\
+        `campRY`            FLOAT   DEFAULT 0.0,\
+        `campRZ`            FLOAT   DEFAULT 0.0\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `parkRX` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `parkRY` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `parkRZ` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `campRX` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `campRY` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `campRZ` FLOAT DEFAULT 0.0", "", "", 0);
+    print("[DB] Tabel `rulote_personale` verificat/creat.");
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `factions` (\
@@ -3041,7 +3260,15 @@ stock DB_CreateTables()
         ('5', 'Shops', 'Medical Shop 3', 1920.2715, 2447.3835, 11.1782),\
         ('5', 'Shops', 'Medical Shop 4', 1378.2955, 2355.3503, 10.8203),\
         ('5', 'Shops', 'Medical Shop 5', 662.2972, 1717.1869, 7.1875),\
-        ('5', 'Shops', 'Medical Shop 6', -87.7910, 1378.0410, 10.2734);",
+        ('5', 'Shops', 'Medical Shop 6', -87.7910, 1378.0410, 10.2734),\
+        ('5', 'Shops', 'Pizza 1', 2393.1387, 2042.6146, 10.8203),\
+        ('5', 'Shops', 'Pizza 2', 2638.1370, 1849.6857, 11.0234),\
+        ('5', 'Shops', 'Pizza 3', 173.1981, 1176.2303, 14.7645),\
+        ('5', 'Shops', 'Burger 1', 2163.9583, 2795.4819, 10.8203),\
+        ('5', 'Shops', 'Burger 2', 2366.2407, 2071.1733, 10.8203),\
+        ('5', 'Shops', 'Burger 3', 2478.7034, 2034.2334, 11.0625),\
+        ('5', 'Shops', 'Burger 4', 1158.2510, 2072.0894, 11.0625),\
+        ('5', 'Shops', 'Burger 5', 1873.1813, 2071.5874, 11.0625);",
         "", "", 0);
 
     print("[DB] Tabele factiuni si payday verificate/create.");
@@ -3670,12 +3897,14 @@ public OnPlayerCheckExists(playerid)
         cache_get_value_name_int(0, "rp",          PlayerData[playerid][pRP]);
         cache_get_value_name_int(0, "admin_level", PlayerData[playerid][pAdminLevel]);
 
+        SendClientMessage(playerid, COLOR_SUCCESS, "Welcome back! From here, leave your worries aside and enjoy some quality time.");
         SendClientMessage(playerid, COLOR_INFO,
             C_INFO"Info: "C_WHITE"Account found. Use "C_INFO"/login [password]"C_WHITE" to log in.");
     }
     else
     {
         PlayerData[playerid][pRegistered] = false;
+        SendClientMessage(playerid, COLOR_SUCCESS, "Welcome! From here, leave your worries aside and enjoy some quality time.");
         SendClientMessage(playerid, COLOR_INFO,
             C_INFO"Info: "C_WHITE"You are not registered. Use "C_INFO"/register [password]"C_WHITE".");
     }
@@ -3722,6 +3951,7 @@ public OnPlayerRegister(playerid)
     PlayerData[playerid][pDrivingLicD_exp][0] = EOS;
     PlayerData[playerid][pDiseased]       = false;
     PlayerData[playerid][pDiseasePaydays] = 0;
+    PlayerData[playerid][pCaravanKey]      = 0;
     Player_RecalcSpawn(playerid);
 
     SetPlayerVirtualWorld(playerid, 0);
@@ -3753,10 +3983,11 @@ stock Player_Login(playerid, const pass[])
         return;
     }
 
-    new query[450];
+    new query[550];
     mysql_format(g_SQL, query, sizeof(query),
         "SELECT `id`,`password`,`email`,`level`,`money`,`bank`,`rp`,`admin_level`,`faction`,`faction_rank`,`faction_join`,`house`,`business`,`spawn_type`,`key1`,`key2`,`key3`,\
-         `driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`diseased`,`disease_paydays` \
+         `driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`diseased`,`disease_paydays`,\
+         `caravan_key` \
          FROM `players` WHERE `id`=%d LIMIT 1",
         PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, query, "OnPlayerLogin", "i", playerid);
@@ -3796,6 +4027,9 @@ public OnPlayerLogin(playerid)
     cache_get_value_name_int(0, "diseased",        diseasedInt);
     cache_get_value_name_int(0, "disease_paydays", PlayerData[playerid][pDiseasePaydays]);
     PlayerData[playerid][pDiseased] = bool:diseasedInt;
+
+    cache_get_value_name_int(0, "caravan_key", PlayerData[playerid][pCaravanKey]);
+    Caravan_ShowParked(playerid);
 
     PlayerData[playerid][pLogged]  = true;
     PlayerData[playerid][pOnDuty]  = false;
@@ -3989,6 +4223,11 @@ stock UpdatePlayer(playerid, E_PLAYER_DATA:field)
             mysql_format(g_SQL, query, sizeof(query),
                 "UPDATE `players` SET `disease_paydays`=%d WHERE `id`=%d",
                 PlayerData[playerid][pDiseasePaydays], PlayerData[playerid][pID]);
+
+        case pCaravanKey:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `caravan_key`=%d WHERE `id`=%d",
+                PlayerData[playerid][pCaravanKey], PlayerData[playerid][pID]);
 
         default: return;
     }
@@ -4222,6 +4461,7 @@ public OnGameModeInit()
     GPS_Load();
     VehiclesFaction_Load();
     PVehicles_Load();
+    Caravans_Load();
     PayDay_Load();
 
     SetTimer("PayDay_Check", 60000, true);
@@ -4287,6 +4527,7 @@ public OnPlayerConnect(playerid)
     PlayerData[playerid][pOnDuty]     = false;
     PlayerData[playerid][pDiseased]       = false;
     PlayerData[playerid][pDiseasePaydays] = 0;
+    PlayerData[playerid][pCaravanKey]      = 0;
     PlayerData[playerid][pPass][0]    = EOS;
     PlayerData[playerid][pEmail][0]   = EOS;
 
@@ -4453,6 +4694,43 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /fixcar ----
+    if(strcmp(cmd, "/fixcar", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        new vehid = GetPlayerVehicleID(playerid);
+        if(vehid == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a vehicle."), 1;
+
+        RepairVehicle(vehid);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Vehicle repaired.");
+        return 1;
+    }
+
+    // ---- /flipcar ----
+    if(strcmp(cmd, "/flipcar", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        new vehid = GetPlayerVehicleID(playerid);
+        if(vehid == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a vehicle."), 1;
+
+        new Float:fx, Float:fy, Float:fz, Float:fangle;
+        GetVehiclePos(vehid, fx, fy, fz);
+        GetVehicleZAngle(vehid, fangle);
+
+        SetVehiclePos(vehid, fx, fy, fz + 0.5);
+        SetVehicleZAngle(vehid, fangle);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Vehicle flipped upright.");
+        return 1;
+    }
+
     // ---- /createfire ----
     if(strcmp(cmd, "/createfire", true) == 0)
     {
@@ -4531,8 +4809,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         for(new i = 0; i < MAX_PLAYERS; i++)
             if(g_GolfJoined[i]) joined++;
 
-        if(joined < 2)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"At least 2 players must join before starting."), 1;
+        if(joined < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"At least 1 player must join before starting."), 1;
 
         g_GolfStatus = GOLF_STATUS_PROGRESS;
         for(new i = 0; i < MAX_PLAYERS; i++)
@@ -5933,6 +6211,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             C_INFO"[Vehicles] "C_WHITE"[Vehicles] /vInsurance /vMedicalKit /vExtinctor /vITP /vstats");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Licenses] "C_WHITE"/licenses /examA /examB /examC /examD");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Business] "C_WHITE"/buyBiz /sellBiz /bBank /bWithdraw");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Caravan] "C_WHITE"/attach /detach");
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"========================================");
         return 1;
@@ -5948,9 +6227,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Admin Commands ==========================================");
 
         if(alv >= 1)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /businesslist /showradars /removeradar");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /businesslist /showradars /removeradar /fixcar /flipcar");
         if(alv >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoLoc /gotoBiz /gotoHouse /gotoFaction /goto");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoLoc /gotoBiz /gotoHouse /gotoFaction /goto /openGolfTournament /startGolf");
         if(alv >= 3)
         {
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[3] "C_WHITE"/veh /rac /createDisease");
@@ -5965,9 +6244,10 @@ public OnPlayerCommandText(playerid, cmdtext[])
         }
         if(alv >= 6)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Factions] "C_WHITE"/changeFactionHQ /changeFactionhqIcon /changeFactionPickup /changeFactionLead ");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Factions] "C_WHITE"/changeFactionHQ /changeFactionhqIcon /changeFactionPickup /changeFactionLead /createFactionVeh /removeFactionLead");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Houses] "C_WHITE"/createHouse /changeHousePrice /changeHouseOwner ");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [PVehicles] "C_WHITE"/vCreate /vSetPrice");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Caravans] "C_WHITE"/createCaravan");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Business] "C_WHITE"/createBiz /changeBizName /changeBizPrice /changeBizLoc");
         }
 
@@ -7453,7 +7733,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         return 1;
     }
 
-    // ---- /hitball [power 1-3] ----
+    // ---- /hitball [numar] ----
     if(strcmp(cmd, "/hitball", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
@@ -7465,7 +7745,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(g_GolfFinishedHole[playerid])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already finished this hole."), 1;
 
-        if(g_GolfBallPhase[playerid] != 0)
+        if(g_GolfBallMoving[playerid])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your ball is still moving."), 1;
 
         if(!IsValidDynamicObject(g_GolfBallObject[playerid]))
@@ -7482,16 +7762,18 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         strmid(p1, cmdtext, idx, strlen(cmdtext), 4);
 
         if(!strlen(p1))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/hitball [power 1-3]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/hitball [numar]"C_WHITE" (0-"C_INFO#GOLF_HIT_MAX_POWER C_WHITE")."), 1;
 
-        new power = strval(p1);
-        if(power < 1 || power > 3)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Power must be 1, 2 or 3."), 1;
+        new inputPower = strval(p1);
+        if(inputPower < 0 || inputPower > GOLF_HIT_MAX_POWER)
+        {
+            new umsg[96];
+            format(umsg, sizeof(umsg), C_ERROR"Error: "C_WHITE"Power must be between 0 and %d.", GOLF_HIT_MAX_POWER);
+            return SendClientMessage(playerid, COLOR_ERROR, umsg), 1;
+        }
 
-        new Float:dist;
-        if(power == 1)      dist = 20.0 + float(random(10));  // 20-30
-        else if(power == 2) dist = 40.0 + float(random(15)); // 40-55
-        else                 dist = 60.0 + float(random(20)); // 60-80
+        new power = inputPower + random(10); // [numar] + random(10)
+        new Float:dist = float(power) * GOLF_POWER_TO_DISTANCE;
 
         new Float:angle;
         GetPlayerFacingAngle(playerid, angle);
@@ -7499,21 +7781,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         new Float:dx = dist * floatsin(-angle, degrees);
         new Float:dy = dist * floatcos(angle, degrees);
 
-        g_GolfBallStart[playerid][0] = curX;
-        g_GolfBallStart[playerid][1] = curY;
-        g_GolfBallStart[playerid][2] = curZ;
-
         g_GolfBallTarget[playerid][0] = curX + dx;
         g_GolfBallTarget[playerid][1] = curY + dy;
         g_GolfBallTarget[playerid][2] = curZ;
 
-        Golf_StartBallPhase(playerid, 1);
+        g_GolfLastPower[playerid] = power;
+        Golf_StartBallMove(playerid);
 
         g_GolfStrokes[playerid]++;
-
-        new hmsg[96];
-        format(hmsg, sizeof(hmsg), C_SUCCESS"Success: "C_WHITE"You hit the ball! ("C_INFO"Stroke #%d"C_WHITE")", g_GolfStrokes[playerid]);
-        SendClientMessage(playerid, COLOR_SUCCESS, hmsg);
         return 1;
     }
 
@@ -7545,6 +7820,98 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         mysql_tquery(g_SQL, q, "", "", 0);
 
         SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"The vehicle has been parked (position saved).");
+        return 1;
+    }
+
+    // ---- /attach ----
+    if(strcmp(cmd, "/attach", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pCaravanKey] == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a caravan."), 1;
+
+        if(g_CaravanAttachedVeh[playerid] != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your caravan is already attached."), 1;
+
+        new vehid = GetPlayerVehicleID(playerid);
+        if(vehid == 0 || GetPlayerVehicleSeat(playerid) != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be driving a vehicle."), 1;
+
+        new pvidx = g_VehicleToPVIndex[vehid];
+        if(pvidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in your personal vehicle."), 1;
+
+        if(PVehicleData[pvidx][pvOwnerId] != PlayerData[playerid][pID])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own this vehicle."), 1;
+
+        if(!IsValidDynamicObject(g_CaravanObject[playerid]))
+        {
+            new Float:px, Float:py, Float:pz;
+            GetPlayerPos(playerid, px, py, pz);
+            g_CaravanObject[playerid] = CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]), px, py, pz, 0.0, 0.0, 0.0);
+        }
+
+        AttachDynamicObjectToVehicle(g_CaravanObject[playerid], vehid, 0.0, CARAVAN_ATTACH_OFFSET_Y, CARAVAN_ATTACH_OFFSET_Z, 0.0, 0.0, 0.0);
+        g_CaravanAttachedVeh[playerid] = vehid;
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Caravan attached.");
+        return 1;
+    }
+
+    // ---- /detach ----
+    if(strcmp(cmd, "/detach", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pCaravanKey] == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a caravan."), 1;
+
+        if(g_CaravanAttachedVeh[playerid] == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your caravan is not attached."), 1;
+
+        new vehid = g_CaravanAttachedVeh[playerid];
+
+        new Float:vx, Float:vy, Float:vz;
+        GetVehiclePos(vehid, vx, vy, vz);
+
+        new Float:rx, Float:ry, Float:rz;
+        GetVehicleRotation(vehid, rx, ry, rz);
+        printf("[DEBUG /detach] vx=%f vy=%f vz=%f rx=%f ry=%f rz=%f", vx, vy, vz, rx, ry, rz);
+
+        new Float:parkZ = vz + CARAVAN_PARK_OFFSET_Z;
+
+        // In loc de SetDynamicObjectPos/Rot (care nu scoate intotdeauna corect atasarea de pe vehicul),
+        // distrugem obiectul atasat si cream unul nou direct cu pozitia si rotatia corecte
+        if(IsValidDynamicObject(g_CaravanObject[playerid]))
+            DestroyDynamicObject(g_CaravanObject[playerid]);
+        g_CaravanObject[playerid] = CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]),
+            vx, vy, parkZ, rx, rz, ry);
+
+        new cidx = Caravan_FindByOwner(PlayerData[playerid][pID]);
+        if(cidx != -1)
+        {
+            CaravanData[cidx][rParkLocX] = vx;
+            CaravanData[cidx][rParkLocY] = vy;
+            CaravanData[cidx][rParkLocZ] = parkZ;
+            CaravanData[cidx][rParkRX]   = rx;
+            CaravanData[cidx][rParkRY]   = ry;
+            CaravanData[cidx][rParkRZ]   = rz;
+
+            new cq[260];
+            mysql_format(g_SQL, cq, sizeof(cq),
+                "UPDATE `rulote_personale` SET `rParkLocX`=%.4f, `rParkLocY`=%.4f, `rParkLocZ`=%.4f, `parkRX`=%.4f, `parkRY`=%.4f, `parkRZ`=%.4f WHERE `rID`=%d",
+                vx, vy, parkZ, rx, ry, rz, CaravanData[cidx][rID]);
+            mysql_tquery(g_SQL, cq, "", "", 0);
+        }
+
+        g_CaravanAttachedVeh[playerid] = 0;
+
+        SetVehiclePos(vehid, vx, vy, vz + 5.0);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Caravan detached and parked.");
         return 1;
     }
 
@@ -7881,6 +8248,73 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         SendClientMessage(playerid, COLOR_INFO,
             C_INFO"Info: "C_WHITE"The ITP check has started. Wait "C_INFO"10 seconds"C_WHITE".");
+        return 1;
+    }
+
+    // ---- /createcaravan [playerid] [type 1-3] ----
+    if(strcmp(cmd, "/createcaravan", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8], p2[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1) || !strlen(p2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/createcaravan [playerid] [type 1-3]"C_WHITE"."), 1;
+
+        new targetid = strval(p1);
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        new type = strval(p2);
+        if(type < 1 || type > 3)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid type (1-3)."), 1;
+
+        if(PlayerData[targetid][pCaravanKey] != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This player already owns a caravan."), 1;
+
+        if(g_CaravanCount >= MAX_PERSONAL_CARAVANS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Caravan limit reached."), 1;
+
+        PlayerData[targetid][pCaravanKey] = type;
+        UpdatePlayer(targetid, pCaravanKey);
+
+        new newIdx = g_CaravanCount;
+        CaravanData[newIdx][rOwned]            = 1;
+        CaravanData[newIdx][rOwner]            = PlayerData[targetid][pID];
+        CaravanData[newIdx][rPrice]            = 0;
+        CaravanData[newIdx][rCamping]          = false;
+        CaravanData[newIdx][rCampingStartDate] = 0;
+        CaravanData[newIdx][rParkLocX]         = 0.0;
+        CaravanData[newIdx][rParkLocY]         = 0.0;
+        CaravanData[newIdx][rParkLocZ]         = 0.0;
+        CaravanData[newIdx][rCampLocX]         = 0.0;
+        CaravanData[newIdx][rCampLocY]         = 0.0;
+        CaravanData[newIdx][rCampLocZ]         = 0.0;
+        CaravanData[newIdx][rParkRX]           = 0.0;
+        CaravanData[newIdx][rParkRY]           = 0.0;
+        CaravanData[newIdx][rParkRZ]           = 0.0;
+        CaravanData[newIdx][rCampRX]           = 0.0;
+        CaravanData[newIdx][rCampRY]           = 0.0;
+        CaravanData[newIdx][rCampRZ]           = 0.0;
+        g_CaravanCount++;
+
+        new cq[128];
+        mysql_format(g_SQL, cq, sizeof(cq), "INSERT INTO `rulote_personale` (`rOwned`,`rOwner`) VALUES (1,%d)", PlayerData[targetid][pID]);
+        mysql_tquery(g_SQL, cq, "OnCaravanCreated", "ii", targetid, newIdx);
+
+        new cmsg[128];
+        format(cmsg, sizeof(cmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Gave "C_INFO"%s"C_WHITE" a type "C_INFO"%d"C_WHITE" caravan.",
+            PlayerData[targetid][pName], type);
+        SendClientMessage(playerid, COLOR_SUCCESS, cmsg);
+
+        format(cmsg, sizeof(cmsg), C_SUCCESS"Success: "C_WHITE"You received a caravan! Use "C_INFO"/attach"C_WHITE" in your personal vehicle to tow it.");
+        SendClientMessage(targetid, COLOR_SUCCESS, cmsg);
         return 1;
     }
 
