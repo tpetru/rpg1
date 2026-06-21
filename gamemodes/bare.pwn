@@ -74,6 +74,11 @@ forward OnVehiclePlateChecked(playerid, pvidx, plate[]);
 forward OnVehicleITPCheck(playerid, pvidx, vehid);
 forward OnCaravansLoaded();
 forward OnCaravanCreated(playerid, idx);
+forward OnBBallHoopsLoaded();
+forward OnBBallSpawnsLoaded();
+forward BBall_CountdownTick();
+forward BBall_ReleaseBall(playerid, power);
+forward BBall_ApplyFaceAngle(playerid);
 
 new MySQL:g_SQL;
 
@@ -1187,7 +1192,7 @@ stock Factions_RecreatePickup(fid)
     }
 }
 
-// Seteaza map icon-urile factiunilor (MAPICON_GLOBAL) pentru un player
+// Seteaza map icon-urile factiunilor (MAPICON_LOCAL) pentru un player
 stock Factions_SetPlayerIcons(playerid)
 {
     for(new i = 1; i <= MAX_FACTIONS; i++)
@@ -1195,9 +1200,9 @@ stock Factions_SetPlayerIcons(playerid)
         if(FactionData[i][fMapIconID] == -1) continue;
         if(FactionData[i][fHQX] == 0.0 && FactionData[i][fHQY] == 0.0) continue;
         SetPlayerMapIcon(playerid, i, FactionData[i][fHQX], FactionData[i][fHQY], FactionData[i][fHQZ],
-            FactionData[i][fMapIconID], FactionColors[i], MAPICON_GLOBAL);
+            FactionData[i][fMapIconID], FactionColors[i], MAPICON_LOCAL);
     }
-    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_GLOBAL); // SPAWN POINT
+    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_LOCAL); // SPAWN POINT
 }
 
 // Actualizeaza icon-urile pentru toti playerii logati
@@ -1330,7 +1335,7 @@ stock Businesses_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, BUSINESS_ICON_SLOT_BASE + i,
             BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ],
-            BusinessData[i][bOwned] ? 36 : 52, 0, MAPICON_GLOBAL);
+            BusinessData[i][bOwned] ? 36 : 52, 0, MAPICON_LOCAL);
     }
 }
 
@@ -1544,7 +1549,7 @@ stock MedShops_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, MEDSHOP_ICON_SLOT_BASE + i,
             MedShopLocations[i][0], MedShopLocations[i][1], MedShopLocations[i][2],
-            MEDSHOP_MAPICON_ID, 0, MAPICON_GLOBAL);
+            MEDSHOP_MAPICON_ID, 0, MAPICON_LOCAL);
     }
 }
 
@@ -1629,7 +1634,7 @@ stock Pizza_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, PIZZA_ICON_SLOT_BASE + i,
             PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2],
-            PIZZA_MAPICON_ID, 0, MAPICON_GLOBAL);
+            PIZZA_MAPICON_ID, 0, MAPICON_LOCAL);
     }
 }
 
@@ -1653,7 +1658,7 @@ stock Burger_SetPlayerIcons(playerid)
     {
         SetPlayerMapIcon(playerid, BURGER_ICON_SLOT_BASE + i,
             BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2],
-            BURGER_MAPICON_ID, 0, MAPICON_GLOBAL);
+            BURGER_MAPICON_ID, 0, MAPICON_LOCAL);
     }
 }
 
@@ -1662,7 +1667,7 @@ stock Burger_SetPlayerIcons(playerid)
 // ============================================================
 #define GOLF_ADMIN_LEVEL     2
 #define GOLF_MAX_ROUNDS      5
-#define GOLF_BALL_MODEL      19577 // <-- schimba aici modelul obiectului mingii de golf
+#define GOLF_BALL_MODEL      1974
 #define GOLF_HOLE_OBJECT_MODEL 19306
 #define GOLF_HOLE_RADIUS     3.0
 #define GOLF_BALL_RANGE      2.0   // cat de aproape trebuie sa fie playerul de mingea lui ca sa o loveasca
@@ -1987,7 +1992,11 @@ stock Golf_PlayerLeftMidRound(playerid)
 public OnDynamicObjectMoved(STREAMER_TAG_OBJECT:objectid)
 {
     new playerid = Golf_FindBallOwner(objectid);
-    if(playerid == -1 || !g_GolfBallMoving[playerid]) return 1;
+    if(playerid == -1 || !g_GolfBallMoving[playerid])
+    {
+        BBall_OnBallMoved(objectid);
+        return 1;
+    }
 
     g_GolfBallMoving[playerid] = false;
 
@@ -2014,6 +2023,541 @@ public OnDynamicObjectMoved(STREAMER_TAG_OBJECT:objectid)
         }
     }
     return 1;
+}
+
+// ============================================================
+//  BASCHET (runde bazate pe /joinbasket, 8 cosuri in ordine random pe runda)
+// ============================================================
+#define BBALL_MAX_HOOPS         8
+#define BBALL_SPAWNS_PER_HOOP   4
+#define BBALL_MIN_PLAYERS       1
+#define BBALL_COUNTDOWN_TIME    5     // secunde
+#define BBALL_LOBBY_RANGE       5.0   // cat de aproape de locatia din DB trebuie sa fie playerul pentru /joinbasket
+#define BBALL_HOOP_RADIUS       1.5   // raza (2D) in care mingea trebuie sa aterizeze ca sa fie considerata cos
+#define BBALL_BALL_RANGE        10.0  // cat de aproape de cosul curent trebuie sa fie playerul ca sa arunce
+#define BBALL_THROW_MAX_POWER   50    // valoarea maxima permisa pentru [putere] la /throwball
+#define BBALL_THROW_ANIM_DELAY  100   // ms intre /throwball si aparitia mingii (sincronizat cu animatia)
+#define BBALL_BALL_SPEED        4.0   // viteza mingii (unitati/secunda) pe parcursul arcului
+#define BBALL_ARC_HEIGHT        4.0   // cat de sus urca mingea fata de punctul de unde a fost aruncata
+#define BBALL_BALL_MODEL        1946
+#define BBALL_LOBBY_PICKUP_MODEL 1248 // pickup-ul de la /joinbasket
+#define BBALL_MAPICON_ID        25    // map icon-ul afisat la locatia /joinbasket
+#define BBALL_ICON_SLOT         86    // urmeaza dupa burger (81-85); vezi BUSINESS_ICON_SLOT_BASE etc.
+#define BBALL_ADMIN_LEVEL       6
+
+#define BBALL_STATUS_OPEN       0
+#define BBALL_STATUS_PROGRESS   1
+
+new g_BBallStatus = BBALL_STATUS_OPEN;
+
+new bool:g_BBallLobbyFound = false;
+new Float:g_BBallLobbyX, Float:g_BBallLobbyY, Float:g_BBallLobbyZ;
+new g_BBallLobbyPickup = -1;
+new Text3D:g_BBallLobbyLabel = Text3D:INVALID_3DTEXT_ID;
+
+new bool:g_BBallCountdownActive = false;
+new g_BBallCountdownLeft = 0;
+new g_BBallCountdownTimer = -1;
+
+new Float:BBallHoopData[BBALL_MAX_HOOPS][3];
+new Float:BBallSpawnData[BBALL_MAX_HOOPS][BBALL_SPAWNS_PER_HOOP][3];
+new bool:BBallSpawnSet[BBALL_MAX_HOOPS][BBALL_SPAWNS_PER_HOOP];
+
+new g_BBallHoopOrder[BBALL_MAX_HOOPS];
+
+new bool:g_BBallJoined[MAX_PLAYERS];
+new bool:g_BBallActive[MAX_PLAYERS];
+new g_BBallScore[MAX_PLAYERS];
+new g_BBallHoopSlot[MAX_PLAYERS];
+new bool:g_BBallSpawnedHere[MAX_PLAYERS];
+new bool:g_BBallBallMoving[MAX_PLAYERS];
+new g_BBallBallLeg[MAX_PLAYERS]; // 0 = urca spre apex, 1 = coboara spre destinatie
+new STREAMER_TAG_OBJECT:g_BBallBallObject[MAX_PLAYERS];
+new Float:g_BBallTargetX[MAX_PLAYERS];
+new Float:g_BBallTargetY[MAX_PLAYERS];
+new Float:g_BBallTargetZ[MAX_PLAYERS];
+new Float:g_BBallFaceAngle[MAX_PLAYERS];
+
+new STREAMER_TAG_3D_TEXT_LABEL:g_BBallHoopLabel[MAX_PLAYERS][BBALL_MAX_HOOPS];
+
+stock BBallHoops_Load()
+{
+    mysql_tquery(g_SQL, "SELECT `id`,`x`,`y`,`z` FROM `basket_hoops` ORDER BY `id` ASC", "OnBBallHoopsLoaded");
+}
+
+public OnBBallHoopsLoaded()
+{
+    new rows = cache_num_rows();
+    for(new i = 0; i < rows && i < BBALL_MAX_HOOPS; i++)
+    {
+        cache_get_value_name_float(i, "x", BBallHoopData[i][0]);
+        cache_get_value_name_float(i, "y", BBallHoopData[i][1]);
+        cache_get_value_name_float(i, "z", BBallHoopData[i][2]);
+    }
+    printf("[Basketball] %d cosuri incarcate.", rows);
+    return 1;
+}
+
+stock BBallSpawns_Load()
+{
+    mysql_tquery(g_SQL,
+        "SELECT `hoop_id`,`spawn_id`,`x`,`y`,`z` FROM `basket_spawns` ORDER BY `hoop_id` ASC, `spawn_id` ASC",
+        "OnBBallSpawnsLoaded");
+}
+
+public OnBBallSpawnsLoaded()
+{
+    new rows = cache_num_rows();
+    new hoopId, spawnId;
+    for(new i = 0; i < rows; i++)
+    {
+        cache_get_value_name_int(i, "hoop_id", hoopId);
+        cache_get_value_name_int(i, "spawn_id", spawnId);
+        if(hoopId < 1 || hoopId > BBALL_MAX_HOOPS || spawnId < 1 || spawnId > BBALL_SPAWNS_PER_HOOP) continue;
+
+        cache_get_value_name_float(i, "x", BBallSpawnData[hoopId-1][spawnId-1][0]);
+        cache_get_value_name_float(i, "y", BBallSpawnData[hoopId-1][spawnId-1][1]);
+        cache_get_value_name_float(i, "z", BBallSpawnData[hoopId-1][spawnId-1][2]);
+        BBallSpawnSet[hoopId-1][spawnId-1] = true;
+    }
+    printf("[Basketball] %d spawn-uri incarcate.", rows);
+    return 1;
+}
+
+// Creeaza etichetele 3D "[ #1 ]".."[ #8 ]" la fiecare cos, vizibile doar pentru acest player (cei de la /joinbasket)
+stock BBall_CreateHoopLabels(playerid)
+{
+    new text[16];
+    for(new h = 0; h < BBALL_MAX_HOOPS; h++)
+    {
+        format(text, sizeof(text), "[ #%d ]", h + 1);
+        g_BBallHoopLabel[playerid][h] = CreateDynamic3DTextLabel(text, COLOR_WHITE,
+            BBallHoopData[h][0], BBallHoopData[h][1], BBallHoopData[h][2] - 0.3, 50.0, .playerid = playerid);
+    }
+}
+
+stock BBall_DestroyHoopLabels(playerid)
+{
+    for(new h = 0; h < BBALL_MAX_HOOPS; h++)
+    {
+        if(IsValidDynamic3DTextLabel(g_BBallHoopLabel[playerid][h]))
+            DestroyDynamic3DTextLabel(g_BBallHoopLabel[playerid][h]);
+    }
+}
+
+// Cauta locatia "Basket Game" in locations_gps (adaugata manual in DB) si creeaza pickup-ul + 3D textul
+stock BBall_FindLobby()
+{
+    new idx = GPS_FindByName("Basket Game");
+    if(idx == -1)
+    {
+        print("[Basketball] Locatia 'Basket Game' nu a fost gasita in locations_gps.");
+        return;
+    }
+
+    g_BBallLobbyX = GPSData[idx][glLocX];
+    g_BBallLobbyY = GPSData[idx][glLocY];
+    g_BBallLobbyZ = GPSData[idx][glLocZ];
+    g_BBallLobbyFound = true;
+
+    BBall_CreateLobby();
+}
+
+stock BBall_CreateLobby()
+{
+    if(!g_BBallLobbyFound) return;
+
+    if(g_BBallLobbyPickup != -1) DestroyPickup(g_BBallLobbyPickup);
+    g_BBallLobbyPickup = CreatePickup(BBALL_LOBBY_PICKUP_MODEL, 1, g_BBallLobbyX, g_BBallLobbyY, g_BBallLobbyZ, -1);
+
+    BBall_UpdateLobbyLabel();
+}
+
+// Actualizeaza textul 3D al lobby-ului in functie de statusul curent (OPEN/CLOSED)
+stock BBall_UpdateLobbyLabel()
+{
+    if(!g_BBallLobbyFound) return;
+
+    new text[96];
+    if(g_BBallStatus == BBALL_STATUS_OPEN)
+        format(text, sizeof(text), "[ OPEN ]\nBasketball\nUse /joinbasket");
+    else
+        format(text, sizeof(text), "[ CLOSED ]\nBasketball\nRound in progress");
+
+    if(g_BBallLobbyLabel == Text3D:INVALID_3DTEXT_ID)
+        g_BBallLobbyLabel = Create3DTextLabel(text, COLOR_WHITE, g_BBallLobbyX, g_BBallLobbyY, g_BBallLobbyZ + 0.5, 20.0, 0, 0);
+    else
+        Update3DTextLabelText(g_BBallLobbyLabel, COLOR_WHITE, text);
+}
+
+// Map icon local (vizibil doar pentru acest player) la locatia /joinbasket
+stock BBall_SetPlayerIcon(playerid)
+{
+    if(!g_BBallLobbyFound) return;
+    SetPlayerMapIcon(playerid, BBALL_ICON_SLOT, g_BBallLobbyX, g_BBallLobbyY, g_BBallLobbyZ, BBALL_MAPICON_ID, 0, MAPICON_LOCAL);
+}
+
+stock BBall_CountJoined()
+{
+    new c = 0;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && g_BBallJoined[i]) c++;
+    return c;
+}
+
+// Amesteca ordinea celor 8 cosuri (Fisher-Yates), la fel ca la golf
+stock BBall_ShuffleHoopOrder()
+{
+    for(new i = 0; i < BBALL_MAX_HOOPS; i++)
+        g_BBallHoopOrder[i] = i;
+
+    for(new i = BBALL_MAX_HOOPS - 1; i > 0; i--)
+    {
+        new j = random(i + 1);
+        new tmp = g_BBallHoopOrder[i];
+        g_BBallHoopOrder[i] = g_BBallHoopOrder[j];
+        g_BBallHoopOrder[j] = tmp;
+    }
+}
+
+stock BBall_StartCountdown()
+{
+    g_BBallCountdownActive = true;
+    g_BBallCountdownLeft = BBALL_COUNTDOWN_TIME;
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_BBallJoined[i]) continue;
+        SendClientMessage(i, COLOR_SUCCESS, C_SUCCESS"[Basketball] "C_WHITE"There are enough players!");
+        SendClientMessage(i, COLOR_SUCCESS, C_SUCCESS"[Basketball] "C_WHITE"The basketball round starts in 5 seconds.");
+    }
+
+    g_BBallCountdownTimer = SetTimer("BBall_CountdownTick", 1000, true);
+}
+
+public BBall_CountdownTick()
+{
+    new text[8];
+    format(text, sizeof(text), "%d", g_BBallCountdownLeft);
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_BBallJoined[i]) continue;
+        GameTextForPlayer(i, text, 1100, 3);
+    }
+
+    g_BBallCountdownLeft--;
+
+    if(g_BBallCountdownLeft <= 0)
+    {
+        KillTimer(g_BBallCountdownTimer);
+        g_BBallCountdownTimer = -1;
+        g_BBallCountdownActive = false;
+
+        if(BBall_CountJoined() >= BBALL_MIN_PLAYERS)
+        {
+            BBall_StartRound();
+        }
+        else
+        {
+            SendClientMessageToAll(COLOR_ERROR, C_ERROR"[Basketball] "C_WHITE"Not enough players, the round was cancelled.");
+        }
+    }
+    return 1;
+}
+
+stock BBall_StartRound()
+{
+    g_BBallStatus = BBALL_STATUS_PROGRESS;
+    BBall_UpdateLobbyLabel();
+
+    BBall_ShuffleHoopOrder();
+
+    SendClientMessageToAll(COLOR_SUCCESS, C_SUCCESS"[Basketball] "C_WHITE"Registration closed. The round has started!");
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_BBallJoined[i]) continue;
+
+        g_BBallActive[i]       = true;
+        g_BBallScore[i]        = 0;
+        g_BBallHoopSlot[i]     = 0;
+        g_BBallSpawnedHere[i]  = false;
+        g_BBallBallMoving[i]   = false;
+
+        BBall_TeleportToCurrentHoop(i);
+    }
+}
+
+// Teleporteaza playerul la unul dintre cele 4 spawn-uri (random) ale cosului curent din ordinea sa
+stock BBall_TeleportToCurrentHoop(playerid)
+{
+    new slot = g_BBallHoopSlot[playerid];
+    new hoopIdx = g_BBallHoopOrder[slot];
+    new spawnIdx = random(BBALL_SPAWNS_PER_HOOP);
+
+    new Float:sx, Float:sy, Float:sz;
+    if(BBallSpawnSet[hoopIdx][spawnIdx])
+    {
+        sx = BBallSpawnData[hoopIdx][spawnIdx][0];
+        sy = BBallSpawnData[hoopIdx][spawnIdx][1];
+        sz = BBallSpawnData[hoopIdx][spawnIdx][2];
+    }
+    else
+    {
+        sx = BBallHoopData[hoopIdx][0];
+        sy = BBallHoopData[hoopIdx][1];
+        sz = BBallHoopData[hoopIdx][2];
+    }
+
+    SetPlayerPos(playerid, sx, sy, sz);
+    SetPlayerVirtualWorld(playerid, 0);
+
+    // SetPlayerFacingAngle imediat dupa SetPlayerPos nu se aplica vizual la client (nu apuca sa
+    // proceseze unghiul inainte de sincronizarea pozitiei) - se aplica cu o mica intarziere
+    g_BBallFaceAngle[playerid] = atan2(BBallHoopData[hoopIdx][0] - sx, BBallHoopData[hoopIdx][1] - sy);
+    SetTimerEx("BBall_ApplyFaceAngle", 200, false, "i", playerid);
+
+    g_BBallSpawnedHere[playerid] = true;
+
+    new tmsg[160];
+    format(tmsg, sizeof(tmsg), C_INFO"[Basketball] "C_WHITE"Hoop "C_INFO"%d"C_WHITE"/"C_INFO"%d"C_WHITE". Use "C_INFO"/throwball [power]"C_WHITE" to shoot.",
+        slot + 1, BBALL_MAX_HOOPS);
+    SendClientMessage(playerid, COLOR_INFO, tmsg);
+}
+
+public BBall_ApplyFaceAngle(playerid)
+{
+    if(!IsPlayerConnected(playerid) || !g_BBallActive[playerid]) return 1;
+    SetPlayerFacingAngle(playerid, g_BBallFaceAngle[playerid]);
+    return 1;
+}
+
+stock BBall_FindBallOwner(STREAMER_TAG_OBJECT:objectid)
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(g_BBallBallObject[i] == objectid) return i;
+    return -1;
+}
+
+stock Float:BBall_Distance2D(Float:x1, Float:y1, Float:x2, Float:y2)
+{
+    return floatsqroot(floatpower(x2 - x1, 2.0) + floatpower(y2 - y1, 2.0));
+}
+
+// Mingea de baschet a ajuns la destinatia curenta (MoveDynamicObject) - gestioneaza cele 2 etape ale arcului
+stock BBall_OnBallMoved(STREAMER_TAG_OBJECT:objectid)
+{
+    new playerid = BBall_FindBallOwner(objectid);
+    if(playerid == -1 || !g_BBallBallMoving[playerid]) return;
+
+    if(g_BBallBallLeg[playerid] == 0)
+    {
+        // a ajuns la apex, porneste coborarea spre destinatia finala
+        g_BBallBallLeg[playerid] = 1;
+        MoveDynamicObject(g_BBallBallObject[playerid],
+            g_BBallTargetX[playerid], g_BBallTargetY[playerid], g_BBallTargetZ[playerid], BBALL_BALL_SPEED);
+        return;
+    }
+
+    // a aterizat: verifica daca a intrat in cos (raza 2D)
+    new slot = g_BBallHoopSlot[playerid];
+    new hoopIdx = g_BBallHoopOrder[slot];
+
+    new Float:dist = BBall_Distance2D(g_BBallTargetX[playerid], g_BBallTargetY[playerid],
+        BBallHoopData[hoopIdx][0], BBallHoopData[hoopIdx][1]);
+
+    if(dist <= BBALL_HOOP_RADIUS)
+    {
+        g_BBallScore[playerid]++;
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"GOAL! "C_WHITE"You scored a point.");
+    }
+    else
+    {
+        SendClientMessage(playerid, COLOR_ERROR, C_ERROR"MISS!");
+    }
+
+    if(IsValidDynamicObject(g_BBallBallObject[playerid]))
+        DestroyDynamicObject(g_BBallBallObject[playerid]);
+
+    g_BBallBallMoving[playerid] = false;
+
+    if(IsPlayerConnected(playerid) && g_BBallActive[playerid])
+        BBall_AdvanceHoop(playerid);
+}
+
+// Apelat dupa intarzierea animatiei: creeaza mingea si porneste prima etapa a arcului (catre apex)
+public BBall_ReleaseBall(playerid, power)
+{
+    if(!IsPlayerConnected(playerid) || g_BBallStatus != BBALL_STATUS_PROGRESS || !g_BBallActive[playerid])
+    {
+        g_BBallBallMoving[playerid] = false;
+        return 1;
+    }
+
+    new Float:px, Float:py, Float:pz;
+    GetPlayerPos(playerid, px, py, pz);
+
+    new Float:angle;
+    GetPlayerFacingAngle(playerid, angle);
+
+    new slot = g_BBallHoopSlot[playerid];
+    new hoopIdx = g_BBallHoopOrder[slot];
+
+    new Float:originX = px + 0.5 * floatsin(angle, degrees);
+    new Float:originY = py + 0.5 * floatcos(angle, degrees);
+    new Float:originZ = pz + 1.1;
+
+    g_BBallTargetX[playerid] = px + floatsin(angle, degrees) * float(power);
+    g_BBallTargetY[playerid] = py + floatcos(angle, degrees) * float(power);
+    g_BBallTargetZ[playerid] = BBallHoopData[hoopIdx][2];
+
+    new Float:apexX = (originX + g_BBallTargetX[playerid]) / 2.0;
+    new Float:apexY = (originY + g_BBallTargetY[playerid]) / 2.0;
+    new Float:apexZ = originZ + BBALL_ARC_HEIGHT;
+
+    g_BBallBallLeg[playerid] = 0;
+    g_BBallBallObject[playerid] = CreateDynamicObject(BBALL_BALL_MODEL, originX, originY, originZ, 0.0, 0.0, 0.0);
+    MoveDynamicObject(g_BBallBallObject[playerid], apexX, apexY, apexZ, BBALL_BALL_SPEED);
+    return 1;
+}
+
+// Trece playerul la urmatorul cos din ordinea sa, sau il marcheaza terminat daca le-a parcurs pe toate cele 8
+stock BBall_AdvanceHoop(playerid)
+{
+    g_BBallHoopSlot[playerid]++;
+    g_BBallSpawnedHere[playerid] = false;
+
+    if(g_BBallHoopSlot[playerid] >= BBALL_MAX_HOOPS)
+    {
+        g_BBallActive[playerid] = false;
+
+        new fmsg[128];
+        format(fmsg, sizeof(fmsg), C_SUCCESS"[Basketball] "C_WHITE"%s"C_WHITE" finished all hoops with "C_INFO"%d"C_WHITE" point(s)!",
+            PlayerData[playerid][pName], g_BBallScore[playerid]);
+        SendClientMessageToAll(COLOR_INFO, fmsg);
+
+        BBall_CheckRoundComplete();
+        return;
+    }
+
+    BBall_TeleportToCurrentHoop(playerid);
+}
+
+// Verifica daca toti participantii activi au terminat cele 8 cosuri
+stock BBall_CheckRoundComplete()
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_BBallJoined[i]) continue;
+        if(g_BBallActive[i]) return; // mai e cineva activ
+    }
+
+    BBall_EndRound();
+}
+
+// Compara scorurile tuturor participantilor si anunta castigatorul (sau egalitate)
+stock BBall_EndRound()
+{
+    new best = -1, winner = -1, tieCount = 0;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !g_BBallJoined[i]) continue;
+
+        if(g_BBallScore[i] > best)
+        {
+            best = g_BBallScore[i];
+            winner = i;
+            tieCount = 1;
+        }
+        else if(g_BBallScore[i] == best)
+        {
+            tieCount++;
+        }
+    }
+
+    SendClientMessageToAll(COLOR_INFO, C_INFO"[Basketball] "C_WHITE"Round finished!");
+
+    if(winner != -1 && tieCount == 1)
+    {
+        new wmsg[128];
+        format(wmsg, sizeof(wmsg), C_SUCCESS"[Basketball] "C_WHITE"Winner: "C_INFO"%s"C_WHITE" - "C_INFO"%d"C_WHITE" point(s)",
+            PlayerData[winner][pName], best);
+        SendClientMessageToAll(COLOR_SUCCESS, wmsg);
+    }
+    else
+    {
+        SendClientMessageToAll(COLOR_INFO, C_INFO"[Basketball] "C_WHITE"It was a tie.");
+    }
+
+    BBall_ResetAll();
+}
+
+// Reseteaza tot sistemul la starea initiala (status OPEN), gata pentru o noua runda
+stock BBall_ResetAll()
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsValidDynamicObject(g_BBallBallObject[i]))
+            DestroyDynamicObject(g_BBallBallObject[i]);
+
+        BBall_DestroyHoopLabels(i);
+
+        g_BBallJoined[i]       = false;
+        g_BBallActive[i]       = false;
+        g_BBallScore[i]        = 0;
+        g_BBallHoopSlot[i]     = 0;
+        g_BBallSpawnedHere[i]  = false;
+        g_BBallBallMoving[i]   = false;
+        g_BBallBallLeg[i]      = 0;
+    }
+
+    g_BBallStatus = BBALL_STATUS_OPEN;
+    g_BBallCountdownActive = false;
+    g_BBallCountdownLeft = 0;
+    if(g_BBallCountdownTimer != -1)
+    {
+        KillTimer(g_BBallCountdownTimer);
+        g_BBallCountdownTimer = -1;
+    }
+
+    BBall_UpdateLobbyLabel();
+}
+
+// Cand un player se deconecteaza: curata mingea/starea lui si, daca era activ intr-o runda, verifica daca runda se incheie
+stock BBall_PlayerLeftMidRound(playerid)
+{
+    if(IsValidDynamicObject(g_BBallBallObject[playerid]))
+        DestroyDynamicObject(g_BBallBallObject[playerid]);
+
+    BBall_DestroyHoopLabels(playerid);
+
+    new bool:wasActiveInRound = (g_BBallStatus == BBALL_STATUS_PROGRESS && g_BBallActive[playerid]);
+
+    g_BBallJoined[playerid]      = false;
+    g_BBallActive[playerid]      = false;
+    g_BBallBallMoving[playerid]  = false;
+    g_BBallSpawnedHere[playerid] = false;
+    g_BBallHoopSlot[playerid]    = 0;
+    g_BBallScore[playerid]       = 0;
+
+    if(wasActiveInRound)
+    {
+        BBall_CheckRoundComplete();
+        return;
+    }
+
+    if(g_BBallCountdownActive && BBall_CountJoined() < BBALL_MIN_PLAYERS)
+    {
+        if(g_BBallCountdownTimer != -1)
+        {
+            KillTimer(g_BBallCountdownTimer);
+            g_BBallCountdownTimer = -1;
+        }
+        g_BBallCountdownActive = false;
+        g_BBallCountdownLeft = 0;
+        SendClientMessageToAll(COLOR_ERROR, C_ERROR"[Basketball] "C_WHITE"Not enough players left, the round start was cancelled.");
+    }
 }
 
 // ============================================================
@@ -3271,6 +3815,39 @@ stock DB_CreateTables()
         ('5', 'Shops', 'Burger 5', 1873.1813, 2071.5874, 11.0625);",
         "", "", 0);
 
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `basket_hoops` (\
+        `id` INT PRIMARY KEY,\
+        `x`  FLOAT DEFAULT 0.0,\
+        `y`  FLOAT DEFAULT 0.0,\
+        `z`  FLOAT DEFAULT 0.0\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "INSERT IGNORE INTO `basket_hoops` (`id`,`x`,`y`,`z`) VALUES \
+        (1, 2480.35010, 1297.50000, 12.86000),\
+        (2, 2480.13013, 1286.42004, 12.86000),\
+        (3, 2514.89990, 1297.55005, 12.86000),\
+        (4, 2514.69995, 1286.50000, 12.86000),\
+        (5, 2514.89990, 1277.55005, 12.86000),\
+        (6, 2514.69849, 1266.48950, 12.86000),\
+        (7, 2480.10010, 1266.43506, 12.86000),\
+        (8, 2480.28003, 1277.49500, 12.86000);",
+        "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `basket_spawns` (\
+        `id`       INT AUTO_INCREMENT PRIMARY KEY,\
+        `hoop_id`  INT NOT NULL,\
+        `spawn_id` INT NOT NULL,\
+        `x`        FLOAT DEFAULT 0.0,\
+        `y`        FLOAT DEFAULT 0.0,\
+        `z`        FLOAT DEFAULT 0.0,\
+        UNIQUE KEY `uq_hoop_spawn` (`hoop_id`,`spawn_id`)\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+
     print("[DB] Tabele factiuni si payday verificate/create.");
 }
 
@@ -3478,6 +4055,7 @@ public OnGPSLoaded()
         g_GPSCount++;
     }
     printf("[GPS] %d locatii incarcate.", g_GPSCount);
+    BBall_FindLobby();
     return 1;
 }
 
@@ -3955,13 +4533,14 @@ public OnPlayerRegister(playerid)
     Player_RecalcSpawn(playerid);
 
     SetPlayerVirtualWorld(playerid, 0);
-    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_GLOBAL);
+    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_LOCAL);
     SetPlayerColor(playerid, FactionColors[FACTION_NONE]);
     Factions_SetPlayerIcons(playerid);
     Businesses_SetPlayerIcons(playerid);
     MedShops_SetPlayerIcons(playerid);
     Pizza_SetPlayerIcons(playerid);
     Burger_SetPlayerIcons(playerid);
+    BBall_SetPlayerIcon(playerid);
 
     LoginBG_Destroy(playerid);
 
@@ -4042,6 +4621,7 @@ public OnPlayerLogin(playerid)
     MedShops_SetPlayerIcons(playerid);
     Pizza_SetPlayerIcons(playerid);
     Burger_SetPlayerIcons(playerid);
+    BBall_SetPlayerIcon(playerid);
 
     GivePlayerMoney(playerid, PlayerData[playerid][pMoney]);
     SetPlayerScore(playerid, PlayerData[playerid][pLevel]);
@@ -4424,6 +5004,43 @@ public OnGameModeInit()
 	CreateDynamicObject(3174, 1365.79578, 730.29089, 9.80984,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3172, 1390.02930, 746.44336, 9.81350,   0.00000, 0.00000, 160.00000);
 
+	CreateDynamicObject(2114, 2480.35010, 1297.50000, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(2114, 2480.13013, 1286.42004, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(2114, 2514.89990, 1297.55005, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(2114, 2514.69995, 1286.50000, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(2114, 2514.89990, 1277.55005, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(2114, 2514.69849, 1266.48950, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(2114, 2480.10010, 1266.43506, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(2114, 2480.28003, 1277.49500, 12.86000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2480.21948, 1265.64417, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2478.79590, 1267.20386, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2476.80542, 1272.44104, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2479.16333, 1282.01196, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2516.44580, 1282.23962, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2477.91504, 1291.65869, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2484.81592, 1288.32703, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2496.25562, 1301.42542, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2496.94482, 1301.64001, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2497.68848, 1302.26746, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2516.83813, 1297.27136, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2513.90967, 1283.74927, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2511.30054, 1282.73584, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2512.85425, 1283.00391, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(3065, 2513.21802, 1282.79993, 9.94500,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1598, 2479.18921, 1274.31494, 10.06000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1598, 2504.04272, 1284.12024, 10.06000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1598, 2492.30103, 1283.92395, 10.06000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1598, 2499.14063, 1282.54138, 10.06000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2486.25000, 1303.40002, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2488.75000, 1303.42004, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2506.48096, 1303.40002, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2509.00000, 1303.40002, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2486.25000, 1263.00000, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2488.75000, 1263.00000, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2488.75000, 1303.40002, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2506.50000, 1263.00000, 9.70000,   0.00000, 0.00000, 0.00000);
+	CreateDynamicObject(1237, 2509.00000, 1263.00000, 9.70000,   0.00000, 0.00000, 0.00000);
+
 
 
     for(new i = 0; i <= MAX_FACTIONS; i++) g_FactionLabel[i] = Text3D:INVALID_3DTEXT_ID;
@@ -4459,6 +5076,8 @@ public OnGameModeInit()
     Turfs_Load();
     Locations_Load();
     GPS_Load();
+    BBallHoops_Load();
+    BBallSpawns_Load();
     VehiclesFaction_Load();
     PVehicles_Load();
     Caravans_Load();
@@ -4765,7 +5384,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             if(!IsPlayerConnected(i) || !PlayerData[i][pLogged] || PlayerData[i][pFaction] != FACTION_SMURD) continue;
             if(!PlayerData[i][pOnDuty]) continue;
             SendClientMessage(i, COLOR_INFO, fmsg);
-            SetPlayerMapIcon(i, FIRE_ICON_SLOT_BASE + fidx, fx, fy, fz, FIRE_MAPICON_ID, 0, MAPICON_GLOBAL);
+            SetPlayerMapIcon(i, FIRE_ICON_SLOT_BASE + fidx, fx, fy, fz, FIRE_MAPICON_ID, 0, MAPICON_LOCAL);
         }
 
         SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Fire created.");
@@ -6249,6 +6868,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [PVehicles] "C_WHITE"/vCreate /vSetPrice");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Caravans] "C_WHITE"/createCaravan");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Business] "C_WHITE"/createBiz /changeBizName /changeBizPrice /changeBizLoc");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Basketball] "C_WHITE"/setbballspawn [hoop_id] [spawn_id]");
         }
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"=============================================================");
@@ -7792,6 +8412,148 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         return 1;
     }
 
+    // ---- /joinbasket ----
+    if(strcmp(cmd, "/joinbasket", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!g_BBallLobbyFound)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The basketball location is not configured yet."), 1;
+
+        if(!IsPlayerInRangeOfPoint(playerid, BBALL_LOBBY_RANGE, g_BBallLobbyX, g_BBallLobbyY, g_BBallLobbyZ))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the basketball court to use this command."), 1;
+
+        if(g_BBallStatus == BBALL_STATUS_PROGRESS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The round has already started. Wait for the next round."), 1;
+
+        if(g_BBallJoined[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already joined the basketball game."), 1;
+
+        g_BBallJoined[playerid] = true;
+        BBall_CreateHoopLabels(playerid);
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You joined the basketball game. Waiting for more players.");
+
+        if(BBall_CountJoined() >= BBALL_MIN_PLAYERS && !g_BBallCountdownActive)
+            BBall_StartCountdown();
+
+        return 1;
+    }
+
+    // ---- /leavebasket ----
+    if(strcmp(cmd, "/leavebasket", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!g_BBallJoined[playerid] && !g_BBallActive[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of the basketball game."), 1;
+
+        new bool:bWasActive = (g_BBallStatus == BBALL_STATUS_PROGRESS && g_BBallActive[playerid]);
+
+        BBall_PlayerLeftMidRound(playerid);
+
+        if(bWasActive)
+        {
+            new blmsg[128];
+            format(blmsg, sizeof(blmsg), C_ERROR"[Basketball] "C_WHITE"%s"C_WHITE" left the game and was eliminated.", PlayerData[playerid][pName]);
+            SendClientMessageToAll(COLOR_ERROR, blmsg);
+        }
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You left the basketball game.");
+        return 1;
+    }
+
+    // ---- /throwball [putere] ----
+    if(strcmp(cmd, "/throwball", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(g_BBallStatus != BBALL_STATUS_PROGRESS || !g_BBallActive[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not currently in an active basketball round."), 1;
+
+        if(!g_BBallSpawnedHere[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not at the current hoop yet."), 1;
+
+        if(g_BBallBallMoving[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your shot is already in the air."), 1;
+
+        new bslot = g_BBallHoopSlot[playerid];
+        if(bslot >= BBALL_MAX_HOOPS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already finished all hoops."), 1;
+
+        new bhoopIdx = g_BBallHoopOrder[bslot];
+
+        if(!IsPlayerInRangeOfPoint(playerid, BBALL_BALL_RANGE, BBallHoopData[bhoopIdx][0], BBallHoopData[bhoopIdx][1], BBallHoopData[bhoopIdx][2]))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be near the current hoop to shoot."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new bp1[6];
+        strmid(bp1, cmdtext, idx, strlen(cmdtext), 6);
+
+        if(!strlen(bp1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/throwball [power]"C_WHITE" (1-"C_INFO#BBALL_THROW_MAX_POWER C_WHITE")."), 1;
+
+        new bpower = strval(bp1);
+        if(bpower < 1 || bpower > BBALL_THROW_MAX_POWER)
+        {
+            new bumsg[96];
+            format(bumsg, sizeof(bumsg), C_ERROR"Error: "C_WHITE"Power must be between 1 and %d.", BBALL_THROW_MAX_POWER);
+            return SendClientMessage(playerid, COLOR_ERROR, bumsg), 1;
+        }
+
+        g_BBallBallMoving[playerid] = true;
+
+        ApplyAnimation(playerid, "BSKTBALL", "BBALL_Jump_Shot", 4.1, 0, 0, 0, 0, 0, 1);
+        SetTimerEx("BBall_ReleaseBall", BBALL_THROW_ANIM_DELAY, false, "ii", playerid, bpower);
+        return 1;
+    }
+
+    // ---- /setbballspawn [hoop_id] [spawn_id] ----
+    if(strcmp(cmd, "/setbballspawn", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < BBALL_ADMIN_LEVEL)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new sp1[4], sp2[4];
+        strmid(sp1, cmdtext, idx, strlen(cmdtext), 4);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(sp2, cmdtext, idx, strlen(cmdtext), 4);
+
+        if(!strlen(sp1) || !strlen(sp2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/setbballspawn [hoop_id 1-8] [spawn_id 1-4]"C_WHITE"."), 1;
+
+        new hoopId = strval(sp1);
+        new spawnId = strval(sp2);
+
+        if(hoopId < 1 || hoopId > BBALL_MAX_HOOPS || spawnId < 1 || spawnId > BBALL_SPAWNS_PER_HOOP)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid hoop_id (1-8) or spawn_id (1-4)."), 1;
+
+        new Float:sx, Float:sy, Float:sz;
+        GetPlayerPos(playerid, sx, sy, sz);
+
+        BBallSpawnData[hoopId-1][spawnId-1][0] = sx;
+        BBallSpawnData[hoopId-1][spawnId-1][1] = sy;
+        BBallSpawnData[hoopId-1][spawnId-1][2] = sz;
+        BBallSpawnSet[hoopId-1][spawnId-1] = true;
+
+        new sq[200];
+        mysql_format(g_SQL, sq, sizeof(sq),
+            "INSERT INTO `basket_spawns` (`hoop_id`,`spawn_id`,`x`,`y`,`z`) VALUES (%d,%d,%.4f,%.4f,%.4f) \
+             ON DUPLICATE KEY UPDATE `x`=%.4f,`y`=%.4f,`z`=%.4f",
+            hoopId, spawnId, sx, sy, sz, sx, sy, sz);
+        mysql_tquery(g_SQL, sq, "", "", 0);
+
+        new smsg[128];
+        format(smsg, sizeof(smsg), C_SUCCESS"[ADM] Success: "C_WHITE"Spawn point "C_INFO"%d"C_WHITE" for hoop "C_INFO"%d"C_WHITE" set to your current position.",
+            spawnId, hoopId);
+        SendClientMessage(playerid, COLOR_SUCCESS, smsg);
+        return 1;
+    }
+
     // ---- /vpark ----
     if(strcmp(cmd, "/vpark", true) == 0)
     {
@@ -7877,18 +8639,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         new Float:vx, Float:vy, Float:vz;
         GetVehiclePos(vehid, vx, vy, vz);
 
-        new Float:rx, Float:ry, Float:rz;
-        GetVehicleRotation(vehid, rx, ry, rz);
-        printf("[DEBUG /detach] vx=%f vy=%f vz=%f rx=%f ry=%f rz=%f", vx, vy, vz, rx, ry, rz);
-
         new Float:parkZ = vz + CARAVAN_PARK_OFFSET_Z;
 
         // In loc de SetDynamicObjectPos/Rot (care nu scoate intotdeauna corect atasarea de pe vehicul),
-        // distrugem obiectul atasat si cream unul nou direct cu pozitia si rotatia corecte
+        // distrugem obiectul atasat si cream unul nou direct, drept (fara rotatia masinii), in locul ei
         if(IsValidDynamicObject(g_CaravanObject[playerid]))
             DestroyDynamicObject(g_CaravanObject[playerid]);
         g_CaravanObject[playerid] = CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]),
-            vx, vy, parkZ, rx, rz, ry);
+            vx, vy, parkZ, 0.0, 0.0, 0.0);
 
         new cidx = Caravan_FindByOwner(PlayerData[playerid][pID]);
         if(cidx != -1)
@@ -7896,14 +8654,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             CaravanData[cidx][rParkLocX] = vx;
             CaravanData[cidx][rParkLocY] = vy;
             CaravanData[cidx][rParkLocZ] = parkZ;
-            CaravanData[cidx][rParkRX]   = rx;
-            CaravanData[cidx][rParkRY]   = ry;
-            CaravanData[cidx][rParkRZ]   = rz;
+            CaravanData[cidx][rParkRX]   = 0.0;
+            CaravanData[cidx][rParkRY]   = 0.0;
+            CaravanData[cidx][rParkRZ]   = 0.0;
 
             new cq[260];
             mysql_format(g_SQL, cq, sizeof(cq),
-                "UPDATE `rulote_personale` SET `rParkLocX`=%.4f, `rParkLocY`=%.4f, `rParkLocZ`=%.4f, `parkRX`=%.4f, `parkRY`=%.4f, `parkRZ`=%.4f WHERE `rID`=%d",
-                vx, vy, parkZ, rx, ry, rz, CaravanData[cidx][rID]);
+                "UPDATE `rulote_personale` SET `rParkLocX`=%.4f, `rParkLocY`=%.4f, `rParkLocZ`=%.4f, `parkRX`=0, `parkRY`=0, `parkRZ`=0 WHERE `rID`=%d",
+                vx, vy, parkZ, CaravanData[cidx][rID]);
             mysql_tquery(g_SQL, cq, "", "", 0);
         }
 
@@ -9088,6 +9846,7 @@ public OnPlayerDisconnect(playerid, reason)
     Radar_DestroyProps(playerid);
 
     Golf_PlayerLeftMidRound(playerid);
+    BBall_PlayerLeftMidRound(playerid);
 
     Speedometer_Destroy(playerid);
     LoginBG_Destroy(playerid);

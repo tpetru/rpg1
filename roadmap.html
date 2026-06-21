@@ -112,10 +112,11 @@
       al tău</strong>.</li>
     <li><code>/detach</code>:
       <ul>
-        <li>Scoate atașarea (<code>Streamer_SetIntData(..., E_STREAMER_ATTACHED_VEHICLE, INVALID_VEHICLE_ID)</code>
-          — nu există native dedicat de "detach" în streamer, se șterge direct data internă).</li>
-        <li>Pune rulota exact unde era mașina (poziție + <code>GetVehicleZAngle</code>) și salvează poziția
-          în DB (<code>caravan_x/y/z/rotation</code>), ca să reapară acolo la următoarea logare.</li>
+        <li>Distruge obiectul atașat și creează unul nou direct la poziția curentă a mașinii (nu se mai folosește
+          <code>SetDynamicObjectPos/Rot</code>, care nu scotea mereu corect atașarea).</li>
+        <li>Pune rulota la poziția X/Y/Z a mașinii, dar cu <strong>rotație fixă 0.0/0.0/0.0</strong> — rulota e
+          parcată mereu dreaptă, indiferent cum era unghiată mașina. Poziția (rotația salvată tot 0) e persistată
+          în DB ca să reapară parcată acolo la următoarea logare.</li>
         <li>Mașina e respawnată la <strong>aceeași poziție X/Y, cu Z+5</strong> (fără alte modificări).</li>
       </ul>
     </li>
@@ -124,11 +125,27 @@
   </ul>
 
   <div class="note">
-    Simplificare față de discuția inițială: la <code>/detach</code> se copiază doar <strong>unghiul Z</strong>
-    al mașinii (<code>GetVehicleZAngle</code>), nu rotația completă via quaternion
-    (<code>GetVehicleRotationQuat</code>) — pante foarte abrupte nu vor fi reflectate perfect pe rulotă.
-    Modelele celor 3 tipuri de rulote: <code>CARAVAN_MODEL_1=3174</code>, <code>CARAVAN_MODEL_2=3171</code>,
-    <code>CARAVAN_MODEL_3=3172</code>.
+    Decizie finală (revizuit față de versiunea inițială): <code>/detach</code> <strong>nu mai copiază deloc</strong>
+    rotația mașinii (nici măcar unghiul Z) — s-a renunțat la formula bazată pe quaternion
+    (<code>GetVehicleRotationQuat</code>, folosită doar intern la calcularea pantei) în favoarea unei rulote mereu
+    drepte, simplu de previzionat. Modelele celor 3 tipuri de rulote: <code>CARAVAN_MODEL_1=3174</code>,
+    <code>CARAVAN_MODEL_2=3171</code>, <code>CARAVAN_MODEL_3=3172</code>.
+  </div>
+</div>
+
+<div class="feature">
+  <h2>🏀 Sistem Baschet (runde declanșate de jucători)</h2>
+  <span class="status status-done">Implementat</span>
+
+  <p>Runde de baschet pornite de jucători (nu admin, spre deosebire de Golf): <code>/joinbasket</code> lângă locația
+  din DB (<code>locations_gps</code>, <code>glName='Basket Game'</code>), countdown automat la
+  <code>BBALL_MIN_PLAYERS</code> jucători, apoi parcurgere a 8 coșuri (ordine random per rundă) cu
+  <code>/throwball [putere]</code> — arc parabolic în 2 etape, scor comparat la final. Detalii complete (constante,
+  schema DB, flux pas cu pas) în <code>admin-docs.html</code>, secțiunea "Mini-jocuri: Golf &amp; Baschet".</p>
+
+  <div class="note">
+    Coordonatele celor 8 coșuri sunt seed-ate în cod; cele 4 spawn-uri per coș se setează din joc cu
+    <code>/setbballspawn [hoop_id] [spawn_id]</code> (admin lvl 6) — tabela <code>basket_spawns</code> pornește goală.
   </div>
 </div>
 

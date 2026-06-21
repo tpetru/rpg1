@@ -94,9 +94,9 @@
   <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
-    <span class="badge">gamemodes/bare.pwn — ~7800 linii</span>
-    <span class="badge">10 tabele MySQL</span>
-    <span class="badge">87 comenzi</span>
+    <span class="badge">gamemodes/bare.pwn — ~9700 linii</span>
+    <span class="badge">12 tabele MySQL</span>
+    <span class="badge">93 comenzi</span>
   </div>
 </header>
 
@@ -114,6 +114,8 @@
   <a href="#gps-radar">GPS / Radar / HUD</a>
   <a href="#police-rar-cmds">RAR / Poliție / SMURD</a>
   <a href="#turfs">Turfs</a>
+  <a href="#minigames">Mini-jocuri: Golf &amp; Baschet</a>
+  <a href="#caravans">Rulote personale</a>
   <a href="#database">Schema bazei de date</a>
   <a href="#admin-cmds">Comenzi admin</a>
   <a href="#known-issues">Probleme cunoscute</a>
@@ -121,6 +123,7 @@
   <a href="#cmd-account">Cont</a>
   <a href="#cmd-faction">Facțiune</a>
   <a href="#cmd-vehicle">Vehicule</a>
+  <a href="#cmd-minigames">Mini-jocuri</a>
   <a href="#cmd-misc">GPS / Diverse</a>
 </nav>
 
@@ -358,6 +361,15 @@ RP    += 1</pre>
   numărul 1-based ca string ("1","2","3","4") — populați coloana <code>glCategory</code> cu oricare din cele două.
   <code>/gps</code> e blocat total în timpul oricărui examen auto activ. Checkpoint size = 5.0.</p>
 
+  <h3>Map icons</h3>
+  <div class="note">
+    Toate map icon-urile (facțiuni, spawn point, business-uri, medshop, pizza, burger, incendii, baschet) folosesc acum
+    <code>MAPICON_LOCAL</code>, nu <code>MAPICON_GLOBAL</code> ca înainte — fiecare e setat per-player prin
+    <code>SetPlayerMapIcon</code>, apelat din funcțiile <code>*_SetPlayerIcons(playerid)</code> la login/register.
+    Diferență de comportament: cu <code>LOCAL</code>, icon-ul nu mai apare pe hartă decât când jucătorul e suficient de
+    aproape (rază de streaming), spre deosebire de <code>GLOBAL</code> care era mereu vizibil pe toată harta.
+  </div>
+
   <h3>Radar</h3>
   <p><code>/radar install [limit]</code> / <code>remove</code> — Poliție rang≥2 (nu cere duty pentru broadcast-ul de activare,
   doar pentru a instala). Creează obiect fizic (model 18654) + etichetă 3D. <code>Radar_Tick</code> rulează la 1000ms;
@@ -428,8 +440,100 @@ RP    += 1</pre>
   </div>
 </section>
 
+<section id="minigames">
+  <h2>Mini-jocuri: Golf &amp; Baschet</h2>
+
+  <h3>⛳ Golf — turneu eliminatoriu pe runde</h3>
+  <p>Turneu pornit de admin (<code>GOLF_ADMIN_LEVEL=2</code>): <code>/opengolftournament</code> deschide înscrierile
+  (<code>/joingolf</code> / <code>/leavegolf</code>), <code>/startgolf</code> amestecă ordinea celor 5 găuri
+  (<code>Golf_ShuffleHoleOrder</code>, Fisher-Yates) și pornește runda 1. La finalul fiecărei găuri, doar jucătorul/jucătorii
+  cu cele mai puține lovituri trec mai departe — restul sunt eliminați. Turneul se încheie când rămâne 1 jucător activ
+  sau s-au jucat toate cele <code>GOLF_MAX_ROUNDS=5</code> runde.</p>
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>GOLF_BALL_MODEL</td><td>1974</td></tr>
+    <tr><td>GOLF_HOLE_RADIUS</td><td>3.0 (distanță <strong>2D</strong>, Z ignorat la verificarea "minge în gaură")</td></tr>
+    <tr><td>GOLF_BALL_RANGE</td><td>2.0 (cât de aproape trebuie să fie playerul de minge ca s-o lovească)</td></tr>
+    <tr><td>GOLF_HIT_MAX_POWER</td><td>200 (la <code>/hitball [putere]</code>, putere efectivă = putere + random(10))</td></tr>
+    <tr><td>GOLF_BALL_SPEED</td><td>6.8 unități/secundă, traseu plan (fără arc)</td></tr>
+  </table>
+  <p><code>/hitball [putere]</code> mută mingea cu <code>MoveDynamicObject</code> către un punct calculat din
+  <code>GetPlayerFacingAngle</code> + putere; la oprire (<code>OnDynamicObjectMoved</code>) verifică distanța 2D față de
+  gaura curentă. Dacă nu a intrat, trimite un singur mesaj combinat: putere folosită, numărul loviturii și câți metri
+  au mai rămas până la gaură. Eticheta 3D de pe minge afișează <strong>ID-ul playerului</strong> (nu numele).</p>
+
+  <h3>🏀 Baschet — runde declanșate de jucători (<code>/joinbasket</code>)</h3>
+  <p>Spre deosebire de Golf, nu necesită admin: orice jucător dă <code>/joinbasket</code> lângă locația din DB
+  (<code>locations_gps</code>, rândul cu <code>glName='Basket Game'</code> — căutat la pornire prin
+  <code>GPS_FindByName</code>, <strong>nu</strong> hardcodat în cod). La <code>BBALL_MIN_PLAYERS</code> jucători înscriși
+  pornește un countdown de <code>BBALL_COUNTDOWN_TIME</code> secunde (GameText vizibil doar celor înscriși), apoi runda
+  pornește automat: status trece din <code>OPEN</code> în <code>PROGRESS</code>, ordinea celor 8 coșuri e amestecată
+  random (ca la Golf), iar fiecare participant trece pe rând prin toate cele 8.</p>
+
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>BBALL_MIN_PLAYERS</td><td>1</td></tr>
+    <tr><td>BBALL_COUNTDOWN_TIME</td><td>5 secunde</td></tr>
+    <tr><td>BBALL_MAX_HOOPS / BBALL_SPAWNS_PER_HOOP</td><td>8 / 4 (4 puncte de spawn random per coș)</td></tr>
+    <tr><td>BBALL_HOOP_RADIUS</td><td>1.5 (distanță 2D la aterizare, ca să conteze GOAL)</td></tr>
+    <tr><td>BBALL_BALL_RANGE</td><td>10.0 (cât de aproape de coșul curent trebuie să fii ca să arunci)</td></tr>
+    <tr><td>BBALL_THROW_MAX_POWER</td><td>50 — folosit direct ca distanță (unități), nu scalat</td></tr>
+    <tr><td>BBALL_THROW_ANIM_DELAY</td><td>100ms între <code>/throwball</code> și apariția mingii (sincronizat cu animația)</td></tr>
+    <tr><td>BBALL_BALL_SPEED / BBALL_ARC_HEIGHT</td><td>4.0 unități/s, arc în 2 etape (urcă la apex, apoi coboară)</td></tr>
+    <tr><td>BBALL_BALL_MODEL</td><td>1946 (mingea aruncată)</td></tr>
+    <tr><td>BBALL_LOBBY_PICKUP_MODEL</td><td>1248 (pickup-ul de la locația de <code>/joinbasket</code>)</td></tr>
+    <tr><td>BBALL_MAPICON_ID / BBALL_ICON_SLOT</td><td>25 / 86 (map icon LOCAL, vezi nota din secțiunea GPS/Radar/HUD)</td></tr>
+  </table>
+
+  <h4 style="margin-bottom:4px">Flux complet</h4>
+  <ol>
+    <li><code>/joinbasket</code> — doar în <code>BBALL_LOBBY_RANGE=5.0</code> de locația din DB, doar cât statusul e OPEN.</li>
+    <li><code>/leavebasket</code> — funcționează atât în așteptare cât și în rundă activă. Dacă mai rămâne <strong>cel
+    puțin un jucător activ</strong>, runda <strong>continuă</strong> normal pentru cei rămași (<code>BBall_CheckRoundComplete</code>
+    nu încheie runda decât când nimeni nu mai e activ) — la fel se întâmplă automat și la deconectare.</li>
+    <li>La start de rundă, fiecare jucător e teleportat la unul din cele 4 spawn-uri (random) ale coșului curent și e
+    orientat automat spre coș (<code>atan2</code> pe direcția spawn→coș; aplicat cu o întârziere de 200ms după
+    <code>SetPlayerPos</code>, pentru că <code>SetPlayerFacingAngle</code> apelat imediat nu se aplică vizual la client —
+    bug cunoscut SA-MP).</li>
+    <li><code>/throwball [putere 1-50]</code> — doar la coșul curent, doar dacă mingea precedentă nu mai e în aer
+    (un singur flag <code>g_BBallBallMoving</code> blochează spam și aruncări simultane). Aplică animația
+    <code>BSKTBALL</code>/<code>BBALL_Jump_Shot</code>, apoi creează mingea și o mișcă în 2 etape (apex → destinație).
+    Destinația X/Y e calculată din unghiul și puterea playerului (<strong>nu</strong> țintește automat spre coș —
+    sistem skill-based, ca la Golf), iar Z final e fixat la Z-ul coșului.</li>
+    <li>La aterizare: GOAL/MISS în funcție de distanța 2D față de coș, apoi auto-teleportare la coșul următor.
+    Fiecare coș se joacă o singură dată per jucător per rundă (nu există încercări multiple).</li>
+    <li>Etichetele 3D <code>[ #1 ]</code>..<code>[ #8 ]</code> de pe coșuri sunt <strong>per-player</strong>
+    (<code>CreateDynamic3DTextLabel(..., .playerid=playerid)</code>) — vizibile doar pentru jucătorii înscriși la
+    <code>/joinbasket</code>, create la join și distruse la leave/deconectare/final de rundă.</li>
+    <li>Final: scorurile tuturor participanților sunt comparate; câștigătorul e anunțat sau, la egalitate, se
+    anunță explicit "egalitate". Apoi reset complet (status → OPEN, scoruri, mingi, etichete, countdown).</li>
+  </ol>
+
+  <div class="note">
+    <strong>Coordonatele celor 8 coșuri</strong> (tabela <code>basket_hoops</code>) sunt seed-ate direct în cod, în
+    <code>DB_CreateTables()</code>. <strong>Spawn-urile</strong> (tabela <code>basket_spawns</code>, 4 per coș) sunt
+    goale la prima rulare — se populează din joc cu <code>/setbballspawn [hoop_id 1-8] [spawn_id 1-4]</code>
+    (admin lvl <code>BBALL_ADMIN_LEVEL=6</code>, salvează poziția curentă a adminului, upsert). Până sunt setate, un
+    spawn nesetat foloseşte ca fallback chiar coordonatele coșului respectiv.
+  </div>
+</section>
+
+<section id="caravans">
+  <h2>🚐 Rulote personale (tractare)</h2>
+  <p>O rulotă per jucător (<code>pCaravanKey</code> — 0 = nu deține, 1/2/3 = tipul deținut). E un obiect dinamic
+  (<code>CreateDynamicObject</code>, streamer), nu vehicul. <code>/attach</code> o atașează în spatele mașinii personale
+  curente cu <code>AttachDynamicObjectToVehicle</code> (offset fix pe Y/Z).</p>
+  <p><code>/detach</code> distruge obiectul atașat și creează unul nou la poziția X/Y/Z curentă a mașinii, dar cu
+  <strong>rotație fixă 0.0/0.0/0.0</strong> — rulota e parcată mereu dreaptă, <strong>nu</strong> copiază rotația
+  mașinii (indiferent cum era parcată mașina). Poziția (fără rotație, salvată tot ca 0) e persistată în DB
+  (<code>rulote_personale</code>) ca să reapară parcată acolo la următoarea logare. Mașina e respawnată la aceeași
+  poziție X/Y, cu Z+5.</p>
+  <p><code>/createcaravan [playerid] [tip 1-3]</code> (admin lvl 6) — singura cale de a atribui o rulotă unui jucător;
+  nu există încă o comandă de cumpărare.</p>
+</section>
+
 <section id="database">
-  <h2>Schema bazei de date (10 tabele)</h2>
+  <h2>Schema bazei de date (12 tabele)</h2>
 
   <h4>players</h4>
   <pre>id (PK AI), username VARCHAR(24) UNIQUE, password VARCHAR(64), email VARCHAR(64) DEFAULT '',
@@ -483,8 +587,18 @@ UNIQUE KEY uq_location_name(locName)
   <h4>locations_gps <span style="color:var(--muted); font-weight:400; font-size:0.8em">(redenumit din gps_locations)</span></h4>
   <pre>glID INT PK AI, glCategory VARCHAR(32) NOT NULL DEFAULT '', glName VARCHAR(32) NOT NULL DEFAULT '',
 glLocX/Y/Z FLOAT DEFAULT 0.0, UNIQUE KEY uq_gps_name(glName)
--- glCategory accepta "DMV"/"FACTIONS"/"BUSINESS"/"OTHERS" SAU "1"/"2"/"3"/"4"
--- seed: categoria 4, "Hospitalization" (1582.5594, 1769.1219, 10.8203)</pre>
+-- glCategory accepta "DMV"/"FACTIONS"/"BUSINESS"/"OTHERS"/"SHOPS" SAU "1".."5"
+-- printre randuri: categoria 5 "Others", glName='Basket Game' -- locatia /joinbasket, cautata la runtime
+-- prin GPS_FindByName("Basket Game"), nu hardcodata in cod</pre>
+
+  <h4>basket_hoops</h4>
+  <pre>id INT PK (1-8, fara AUTO_INCREMENT), x/y/z FLOAT DEFAULT 0.0
+-- seed direct in DB_CreateTables() cu cele 8 pozitii fixe ale cosurilor</pre>
+
+  <h4>basket_spawns</h4>
+  <pre>id INT PK AI, hoop_id INT NOT NULL, spawn_id INT NOT NULL, x/y/z FLOAT DEFAULT 0.0,
+UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
+-- gol la prima rulare; populat din joc cu /setbballspawn [hoop_id 1-8] [spawn_id 1-4] (admin lvl 6)</pre>
 </section>
 
 <section id="admin-cmds">
@@ -492,10 +606,10 @@ glLocX/Y/Z FLOAT DEFAULT 0.0, UNIQUE KEY uq_gps_name(glName)
   <table>
     <tr><th>Nivel</th><th>Comenzi</th></tr>
     <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code></td></tr>
-    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code></td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/opengolftournament</code>, <code>/startgolf</code></td></tr>
     <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code></td></tr>
     <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code></td></tr>
-    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/changebizname</code>, <code>/changebizprice</code>, <code>/changebizloc</code>, <code>/changehouseprice</code>, <code>/changehouseowner</code>, <code>/vcreate</code>, <code>/vsetprice</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code></td></tr>
+    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/changebizname</code>, <code>/changebizprice</code>, <code>/changebizloc</code>, <code>/changehouseprice</code>, <code>/changehouseowner</code>, <code>/vcreate</code>, <code>/vsetprice</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code></td></tr>
   </table>
   <div class="note">
     <strong>/changefactionlead</strong> forțează acum necondiționat <code>pSpawn=2</code> (HQ Spawn) pentru noul lider,
@@ -550,6 +664,14 @@ glLocX/Y/Z FLOAT DEFAULT 0.0, UNIQUE KEY uq_gps_name(glName)
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/vbuy /vsell /vsellto /vcolor /vplate /vinsurance /vmedicalkit /vextinctor /vitp /vpark /vstats /lock /engine</code></td><td>Vezi secțiunea Vehicule personale</td></tr>
     <tr><td><code>/rentbike /rentcar /cspawn</code></td><td>Vezi Economie / Houses</td></tr>
+  </table>
+
+  <h3 id="cmd-minigames">Mini-jocuri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/joingolf</code> / <code>/leavegolf</code> / <code>/hitball [putere]</code></td><td>Vezi secțiunea Mini-jocuri (Golf)</td></tr>
+    <tr><td><code>/joinbasket</code> / <code>/leavebasket</code> / <code>/throwball [putere]</code></td><td>Vezi secțiunea Mini-jocuri (Baschet)</td></tr>
+    <tr><td><code>/attach</code> / <code>/detach</code></td><td>Vezi secțiunea Rulote personale</td></tr>
   </table>
 
   <h3 id="cmd-misc">GPS / Diverse</h3>
