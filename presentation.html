@@ -143,6 +143,7 @@
     <span class="badge">Permise auto A/B/C/D</span>
     <span class="badge">GPS &amp; Radar</span>
     <span class="badge">Turneu de Golf</span>
+    <span class="badge">Baschet</span>
   </div>
 </header>
 
@@ -156,6 +157,7 @@
   <a href="#health">Sănătate</a>
   <a href="#food">Mâncare</a>
   <a href="#golf">Turneu Golf</a>
+  <a href="#basketball">Baschet</a>
   <a href="#gps">GPS &amp; Radar</a>
   <a href="#police">Lege &amp; Ordine</a>
   <a href="#commands">Comenzi</a>
@@ -366,9 +368,10 @@
     </div>
     <div class="card">
       <h4 style="margin-top:0">🏌️ Cum se joacă</h4>
-      <p>Fiecare jucător primește propria minge. Te apropii de ea și folosești <code>/hitball [1/2/3]</code> — puterea
-      loviturii determină cât de departe zboară mingea, iar direcția e dată de unde te uiți tu în acel moment.
-      Mingea se mișcă lin, nu se teleportează.</p>
+      <p>Fiecare jucător primește propria minge, marcată deasupra cu propriul ID. Te apropii de ea și folosești
+      <code>/hitball [putere]</code> (0-200) — puterea loviturii determină cât de departe zboară mingea, iar direcția
+      e dată de unde te uiți tu în acel moment. Mingea se mișcă lin, nu se teleportează, iar după fiecare lovitură
+      primești un mesaj cu numărul loviturii și câți metri ai mai rămas până la groapă.</p>
     </div>
   </div>
 
@@ -376,6 +379,35 @@
     Scopul fiecărei runde e să bagi mingea în groapă din cât mai puține lovituri. După ce toți jucătorii termină
     groapa, doar cei cu cele mai puține lovituri trec mai departe — restul sunt eliminați. Turneul continuă pe runde
     până rămâne un singur câștigător.
+  </div>
+</section>
+
+<section id="basketball">
+  <h2>🏀 Baschet</h2>
+  <p class="subtitle">Un mini-joc rapid, pe care îl pornești chiar tu, fără să aștepți un admin</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">📝 Cum intri în joc</h4>
+      <p>Mergi la terenul de baschet de pe hartă (marcat cu o iconiță pe minimap) și folosește <code>/joinbasket</code>.
+      Imediat ce sunt destui jucători înscriși, pornește un scurt countdown pe ecran — apoi runda începe automat.
+      Te poți răzgândi oricând cu <code>/leavebasket</code>; dacă pleci în timpul unei runde active, ești eliminat,
+      dar jocul continuă normal pentru ceilalți.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏀 Cum se joacă</h4>
+      <p>Treci, pe rând, prin cele 8 coșuri ale terenului, în ordine amestecată la fiecare rundă. La fiecare coș ești
+      teleportat automat lângă el, orientat spre el și ținut pe loc câteva clipe cât mingea îți apare în mână — apoi
+      folosești <code>/throwball [putere]</code> (0-20) ca să arunci. Puterea și direcția în care te uiți determină
+      cât de departe zboară mingea, nu se teleportează.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Fiecare coș se joacă o singură dată per rundă — fără încercări multiple. Afli imediat dacă ai înscris (GOAL) sau
+    ai ratat (MISS), plus distanța parcursă de minge și un indiciu dacă ai dat cu prea multă sau prea puțină putere.
+    La final, scorurile tuturor jucătorilor sunt comparate și e anunțat câștigătorul (sau, dacă scorurile sunt egale,
+    se anunță o egalitate).
   </div>
 </section>
 
@@ -511,7 +543,15 @@
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/joingolf</code></td><td>Te înscrii la turneu, cât timp înscrierile sunt deschise</td></tr>
     <tr><td><code>/leavegolf</code></td><td>Părăsești turneul (te elimină dacă o runda e activă)</td></tr>
-    <tr><td><code>/hitball [1/2/3]</code></td><td>Lovești mingea cu puterea aleasă, în direcția în care privești</td></tr>
+    <tr><td><code>/hitball [putere]</code></td><td>Lovești mingea cu puterea aleasă (0-200), în direcția în care privești</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🏀 Baschet</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/joinbasket</code></td><td>Te înscrii la joc, lângă terenul de baschet</td></tr>
+    <tr><td><code>/leavebasket</code></td><td>Părăsești jocul (te elimină dacă o rundă e activă)</td></tr>
+    <tr><td><code>/throwball [putere]</code></td><td>Arunci mingea spre coșul curent, cu puterea aleasă (0-20)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚓 Poliție / RAR / SMURD</h3>

@@ -114,9 +114,10 @@
       <ul>
         <li>Distruge obiectul atașat și creează unul nou direct la poziția curentă a mașinii (nu se mai folosește
           <code>SetDynamicObjectPos/Rot</code>, care nu scotea mereu corect atașarea).</li>
-        <li>Pune rulota la poziția X/Y/Z a mașinii, dar cu <strong>rotație fixă 0.0/0.0/0.0</strong> — rulota e
-          parcată mereu dreaptă, indiferent cum era unghiată mașina. Poziția (rotația salvată tot 0) e persistată
-          în DB ca să reapară parcată acolo la următoarea logare.</li>
+        <li>Pune rulota la poziția X/Y/Z a mașinii, cu <strong>rotația completă a mașinii</strong> (inclusiv
+          panta/înclinarea), calculată prin <code>GetVehicleRotation</code> din quaternion
+          (<code>GetVehicleRotationQuat</code>). Poziția + rotația sunt persistate în DB ca să reapară parcată
+          identic la următoarea logare.</li>
         <li>Mașina e respawnată la <strong>aceeași poziție X/Y, cu Z+5</strong> (fără alte modificări).</li>
       </ul>
     </li>
@@ -125,11 +126,11 @@
   </ul>
 
   <div class="note">
-    Decizie finală (revizuit față de versiunea inițială): <code>/detach</code> <strong>nu mai copiază deloc</strong>
-    rotația mașinii (nici măcar unghiul Z) — s-a renunțat la formula bazată pe quaternion
-    (<code>GetVehicleRotationQuat</code>, folosită doar intern la calcularea pantei) în favoarea unei rulote mereu
-    drepte, simplu de previzionat. Modelele celor 3 tipuri de rulote: <code>CARAVAN_MODEL_1=3174</code>,
-    <code>CARAVAN_MODEL_2=3171</code>, <code>CARAVAN_MODEL_3=3172</code>.
+    <code>GetVehicleRotation</code> nu e un native SA-MP (nu există <code>GetVehicleMatrix</code> sau echivalent
+    direct) — e o funcție proprie care reconstruiește rotația completă din quaternion, cu swap-uri de axe și semn
+    inversat pe <code>ry</code> față de formula standard, testate empiric pe <code>/detach</code>. Modelele celor 3
+    tipuri de rulote: <code>CARAVAN_MODEL_1=3174</code>, <code>CARAVAN_MODEL_2=3171</code>,
+    <code>CARAVAN_MODEL_3=3172</code>.
   </div>
 </div>
 

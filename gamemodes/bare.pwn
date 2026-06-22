@@ -77,8 +77,9 @@ forward OnCaravanCreated(playerid, idx);
 forward OnBBallHoopsLoaded();
 forward OnBBallSpawnsLoaded();
 forward BBall_CountdownTick();
+forward BBall_PlayThrowAnim(playerid, power);
 forward BBall_ReleaseBall(playerid, power);
-forward BBall_ApplyFaceAngle(playerid);
+forward BBall_StartArc(playerid);
 
 new MySQL:g_SQL;
 
@@ -2031,19 +2032,20 @@ public OnDynamicObjectMoved(STREAMER_TAG_OBJECT:objectid)
 #define BBALL_MAX_HOOPS         8
 #define BBALL_SPAWNS_PER_HOOP   4
 #define BBALL_MIN_PLAYERS       1
-#define BBALL_COUNTDOWN_TIME    5     // secunde
+#define BBALL_COUNTDOWN_TIME    1     // secunde
 #define BBALL_LOBBY_RANGE       5.0   // cat de aproape de locatia din DB trebuie sa fie playerul pentru /joinbasket
-#define BBALL_HOOP_RADIUS       1.5   // raza (2D) in care mingea trebuie sa aterizeze ca sa fie considerata cos
+#define BBALL_HOOP_RADIUS       0.6   // raza (2D) in care mingea trebuie sa aterizeze ca sa fie considerata cos
 #define BBALL_BALL_RANGE        10.0  // cat de aproape de cosul curent trebuie sa fie playerul ca sa arunce
-#define BBALL_THROW_MAX_POWER   50    // valoarea maxima permisa pentru [putere] la /throwball
+#define BBALL_THROW_MAX_POWER   20    // valoarea maxima permisa pentru [putere] la /throwball
 #define BBALL_THROW_ANIM_DELAY  100   // ms intre /throwball si aparitia mingii (sincronizat cu animatia)
-#define BBALL_BALL_SPEED        4.0   // viteza mingii (unitati/secunda) pe parcursul arcului
-#define BBALL_ARC_HEIGHT        4.0   // cat de sus urca mingea fata de punctul de unde a fost aruncata
+#define BBALL_BALL_SPEED        1.5   // viteza mingii (unitati/secunda)
 #define BBALL_BALL_MODEL        1946
 #define BBALL_LOBBY_PICKUP_MODEL 1248 // pickup-ul de la /joinbasket
 #define BBALL_MAPICON_ID        25    // map icon-ul afisat la locatia /joinbasket
 #define BBALL_ICON_SLOT         86    // urmeaza dupa burger (81-85); vezi BUSINESS_ICON_SLOT_BASE etc.
 #define BBALL_ADMIN_LEVEL       6
+#define BBALL_ATTACH_INDEX      0  // slot SetPlayerAttachedObject folosit pentru mingea tinuta in mana
+#define BBALL_ATTACH_BONE       6  // 6 = Right Hand (bone SA-MP)
 
 #define BBALL_STATUS_OPEN       0
 #define BBALL_STATUS_PROGRESS   1
@@ -2061,6 +2063,7 @@ new g_BBallCountdownTimer = -1;
 
 new Float:BBallHoopData[BBALL_MAX_HOOPS][3];
 new Float:BBallSpawnData[BBALL_MAX_HOOPS][BBALL_SPAWNS_PER_HOOP][3];
+new Float:BBallSpawnRot[BBALL_MAX_HOOPS][BBALL_SPAWNS_PER_HOOP][3]; // rx, ry, rz
 new bool:BBallSpawnSet[BBALL_MAX_HOOPS][BBALL_SPAWNS_PER_HOOP];
 
 new g_BBallHoopOrder[BBALL_MAX_HOOPS];
@@ -2071,12 +2074,16 @@ new g_BBallScore[MAX_PLAYERS];
 new g_BBallHoopSlot[MAX_PLAYERS];
 new bool:g_BBallSpawnedHere[MAX_PLAYERS];
 new bool:g_BBallBallMoving[MAX_PLAYERS];
-new g_BBallBallLeg[MAX_PLAYERS]; // 0 = urca spre apex, 1 = coboara spre destinatie
 new STREAMER_TAG_OBJECT:g_BBallBallObject[MAX_PLAYERS];
 new Float:g_BBallTargetX[MAX_PLAYERS];
 new Float:g_BBallTargetY[MAX_PLAYERS];
 new Float:g_BBallTargetZ[MAX_PLAYERS];
-new Float:g_BBallFaceAngle[MAX_PLAYERS];
+new Float:g_BBallThrowX[MAX_PLAYERS];
+new Float:g_BBallThrowY[MAX_PLAYERS];
+new Float:g_BBallThrowZ[MAX_PLAYERS];
+new Float:g_BBallThrowAngle[MAX_PLAYERS];
+new Float:g_BBallThrowDist[MAX_PLAYERS];
+new bool:g_BBallDropped[MAX_PLAYERS];
 
 new STREAMER_TAG_3D_TEXT_LABEL:g_BBallHoopLabel[MAX_PLAYERS][BBALL_MAX_HOOPS];
 
@@ -2101,7 +2108,7 @@ public OnBBallHoopsLoaded()
 stock BBallSpawns_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `hoop_id`,`spawn_id`,`x`,`y`,`z` FROM `basket_spawns` ORDER BY `hoop_id` ASC, `spawn_id` ASC",
+        "SELECT `hoop_id`,`spawn_id`,`x`,`y`,`z`,`rx`,`ry`,`rz` FROM `basket_spawns` ORDER BY `hoop_id` ASC, `spawn_id` ASC",
         "OnBBallSpawnsLoaded");
 }
 
@@ -2118,6 +2125,9 @@ public OnBBallSpawnsLoaded()
         cache_get_value_name_float(i, "x", BBallSpawnData[hoopId-1][spawnId-1][0]);
         cache_get_value_name_float(i, "y", BBallSpawnData[hoopId-1][spawnId-1][1]);
         cache_get_value_name_float(i, "z", BBallSpawnData[hoopId-1][spawnId-1][2]);
+        cache_get_value_name_float(i, "rx", BBallSpawnRot[hoopId-1][spawnId-1][0]);
+        cache_get_value_name_float(i, "ry", BBallSpawnRot[hoopId-1][spawnId-1][1]);
+        cache_get_value_name_float(i, "rz", BBallSpawnRot[hoopId-1][spawnId-1][2]);
         BBallSpawnSet[hoopId-1][spawnId-1] = true;
     }
     printf("[Basketball] %d spawn-uri incarcate.", rows);
@@ -2228,8 +2238,8 @@ stock BBall_StartCountdown()
     for(new i = 0; i < MAX_PLAYERS; i++)
     {
         if(!IsPlayerConnected(i) || !g_BBallJoined[i]) continue;
-        SendClientMessage(i, COLOR_SUCCESS, C_SUCCESS"[Basketball] "C_WHITE"There are enough players!");
-        SendClientMessage(i, COLOR_SUCCESS, C_SUCCESS"[Basketball] "C_WHITE"The basketball round starts in 5 seconds.");
+        SendClientMessage(i, COLOR_SUCCESS, C_SUCCESS"[Basket] "C_WHITE"There are enough players!");
+        SendClientMessage(i, COLOR_SUCCESS, C_SUCCESS"[Basket] "C_WHITE"The basketball round starts in 1 second.");
     }
 
     g_BBallCountdownTimer = SetTimer("BBall_CountdownTick", 1000, true);
@@ -2260,7 +2270,7 @@ public BBall_CountdownTick()
         }
         else
         {
-            SendClientMessageToAll(COLOR_ERROR, C_ERROR"[Basketball] "C_WHITE"Not enough players, the round was cancelled.");
+            SendClientMessageToAll(COLOR_ERROR, C_ERROR"[Basket] "C_WHITE"Not enough players, the round was cancelled.");
         }
     }
     return 1;
@@ -2273,7 +2283,7 @@ stock BBall_StartRound()
 
     BBall_ShuffleHoopOrder();
 
-    SendClientMessageToAll(COLOR_SUCCESS, C_SUCCESS"[Basketball] "C_WHITE"Registration closed. The round has started!");
+    SendClientMessageToAll(COLOR_SUCCESS, C_SUCCESS"[Basket] "C_WHITE"Registration closed. The round has started!");
 
     for(new i = 0; i < MAX_PLAYERS; i++)
     {
@@ -2310,27 +2320,23 @@ stock BBall_TeleportToCurrentHoop(playerid)
         sz = BBallHoopData[hoopIdx][2];
     }
 
+    // mereu orientat automat spre cosul curent, indiferent de rotatia salvata la /setbballspawn
+    new Float:faceAngle = atan2(sx - BBallHoopData[hoopIdx][0], BBallHoopData[hoopIdx][1] - sy);
+
     SetPlayerPos(playerid, sx, sy, sz);
     SetPlayerVirtualWorld(playerid, 0);
 
-    // SetPlayerFacingAngle imediat dupa SetPlayerPos nu se aplica vizual la client (nu apuca sa
-    // proceseze unghiul inainte de sincronizarea pozitiei) - se aplica cu o mica intarziere
-    g_BBallFaceAngle[playerid] = atan2(BBallHoopData[hoopIdx][0] - sx, BBallHoopData[hoopIdx][1] - sy);
-    SetTimerEx("BBall_ApplyFaceAngle", 200, false, "i", playerid);
+    SetPlayerFacingAngle(playerid, faceAngle);
+    SetCameraBehindPlayer(playerid); // forteaza si camera sa se resincronizeze pe noul unghi, imediat
+
+    TogglePlayerControllable(playerid, 0); // freeze pana la /throwball, ca sa nu se miste din unghiul de aruncare
 
     g_BBallSpawnedHere[playerid] = true;
 
-    new tmsg[160];
-    format(tmsg, sizeof(tmsg), C_INFO"[Basketball] "C_WHITE"Hoop "C_INFO"%d"C_WHITE"/"C_INFO"%d"C_WHITE". Use "C_INFO"/throwball [power]"C_WHITE" to shoot.",
-        slot + 1, BBALL_MAX_HOOPS);
+    new tmsg[128];
+    format(tmsg, sizeof(tmsg), C_INFO"[Basket] [Hole %d/%d]: "C_WHITE"Now throwing at hoop #%d. Use /throwball [power] to shoot.",
+        slot + 1, BBALL_MAX_HOOPS, hoopIdx + 1);
     SendClientMessage(playerid, COLOR_INFO, tmsg);
-}
-
-public BBall_ApplyFaceAngle(playerid)
-{
-    if(!IsPlayerConnected(playerid) || !g_BBallActive[playerid]) return 1;
-    SetPlayerFacingAngle(playerid, g_BBallFaceAngle[playerid]);
-    return 1;
 }
 
 stock BBall_FindBallOwner(STREAMER_TAG_OBJECT:objectid)
@@ -2345,36 +2351,19 @@ stock Float:BBall_Distance2D(Float:x1, Float:y1, Float:x2, Float:y2)
     return floatsqroot(floatpower(x2 - x1, 2.0) + floatpower(y2 - y1, 2.0));
 }
 
-// Mingea de baschet a ajuns la destinatia curenta (MoveDynamicObject) - gestioneaza cele 2 etape ale arcului
+// Mingea de baschet a ajuns la destinatia curenta (MoveDynamicObject). Prima oara: evalueaza imediat
+// GOAL/MISS si porneste caderea la nivelul solului (Z=9.95). A doua oara (a ajuns la sol): curata si avanseaza.
 stock BBall_OnBallMoved(STREAMER_TAG_OBJECT:objectid)
 {
     new playerid = BBall_FindBallOwner(objectid);
     if(playerid == -1 || !g_BBallBallMoving[playerid]) return;
 
-    if(g_BBallBallLeg[playerid] == 0)
+    if(!g_BBallDropped[playerid])
     {
-        // a ajuns la apex, porneste coborarea spre destinatia finala
-        g_BBallBallLeg[playerid] = 1;
-        MoveDynamicObject(g_BBallBallObject[playerid],
-            g_BBallTargetX[playerid], g_BBallTargetY[playerid], g_BBallTargetZ[playerid], BBALL_BALL_SPEED);
+        g_BBallDropped[playerid] = true;
+        BBall_EvaluateShot(playerid);
+        MoveDynamicObject(g_BBallBallObject[playerid], g_BBallTargetX[playerid], g_BBallTargetY[playerid], 9.95, BBALL_BALL_SPEED);
         return;
-    }
-
-    // a aterizat: verifica daca a intrat in cos (raza 2D)
-    new slot = g_BBallHoopSlot[playerid];
-    new hoopIdx = g_BBallHoopOrder[slot];
-
-    new Float:dist = BBall_Distance2D(g_BBallTargetX[playerid], g_BBallTargetY[playerid],
-        BBallHoopData[hoopIdx][0], BBallHoopData[hoopIdx][1]);
-
-    if(dist <= BBALL_HOOP_RADIUS)
-    {
-        g_BBallScore[playerid]++;
-        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"GOAL! "C_WHITE"You scored a point.");
-    }
-    else
-    {
-        SendClientMessage(playerid, COLOR_ERROR, C_ERROR"MISS!");
     }
 
     if(IsValidDynamicObject(g_BBallBallObject[playerid]))
@@ -2386,39 +2375,137 @@ stock BBall_OnBallMoved(STREAMER_TAG_OBJECT:objectid)
         BBall_AdvanceHoop(playerid);
 }
 
-// Apelat dupa intarzierea animatiei: creeaza mingea si porneste prima etapa a arcului (catre apex)
+// Verifica daca mingea a intrat in cos (raza 2D) si anunta imediat GOAL/MISS, de cum a ajuns la cos
+stock BBall_EvaluateShot(playerid)
+{
+    new slot = g_BBallHoopSlot[playerid];
+    new hoopIdx = g_BBallHoopOrder[slot];
+
+    new Float:dist = BBall_Distance2D(g_BBallTargetX[playerid], g_BBallTargetY[playerid],
+        BBallHoopData[hoopIdx][0], BBallHoopData[hoopIdx][1]);
+
+    new dmsg[160];
+    format(dmsg, sizeof(dmsg), C_INFO"[Basket] [Hole %d/%d]: "C_WHITE"The ball traveled "C_INFO"%.1fm"C_WHITE" - "C_INFO"%.1fm"C_WHITE" left until the hoop.",
+        slot + 1, BBALL_MAX_HOOPS, g_BBallThrowDist[playerid], dist);
+    SendClientMessage(playerid, COLOR_INFO, dmsg);
+
+    if(dist <= BBALL_HOOP_RADIUS)
+    {
+        g_BBallScore[playerid]++;
+
+        new gmsg[128];
+        format(gmsg, sizeof(gmsg), C_SUCCESS"[Basket] [Hole %d/%d]: "C_WHITE"GOAL! You scored a point.", slot + 1, BBALL_MAX_HOOPS);
+        SendClientMessage(playerid, COLOR_SUCCESS, gmsg);
+        GameTextForPlayer(playerid, "~g~GOAL!", 2000, 3);
+    }
+    else
+    {
+        GameTextForPlayer(playerid, "~r~MISS!", 2000, 3);
+
+        // compara distanta aruncata cu distanta reala pana la cos (de la punctul de unde a aruncat),
+        // ca sa-i spunem daca a dat cu prea multa/putina putere, sau doar a tintit gresit
+        new Float:neededDist = BBall_Distance2D(g_BBallThrowX[playerid], g_BBallThrowY[playerid],
+            BBallHoopData[hoopIdx][0], BBallHoopData[hoopIdx][1]);
+        new Float:powerDiff = g_BBallThrowDist[playerid] - neededDist;
+
+        new hmsg[160];
+        if(powerDiff > 1.0)
+            format(hmsg, sizeof(hmsg), C_ERROR"[Basket] [Hole %d/%d]: "C_WHITE"Too much power - the ball went past the hoop.", slot + 1, BBALL_MAX_HOOPS);
+        else if(powerDiff < -1.0)
+            format(hmsg, sizeof(hmsg), C_ERROR"[Basket] [Hole %d/%d]: "C_WHITE"Not enough power - the ball fell short.", slot + 1, BBALL_MAX_HOOPS);
+        else
+            hmsg[0] = EOS;
+
+        if(hmsg[0] != EOS)
+            SendClientMessage(playerid, COLOR_ERROR, hmsg);
+    }
+}
+
+// Apelat la 500ms dupa /throwball (cat timp mingea sta in mana): aplica animatia de aruncare
+public BBall_PlayThrowAnim(playerid, power)
+{
+    if(!IsPlayerConnected(playerid) || !g_BBallBallMoving[playerid]) return 1;
+
+    ApplyAnimation(playerid, "BSKTBALL", "BBALL_Jump_Shot", 4.1, 0, 0, 0, 0, 0, 1);
+    SetTimerEx("BBall_ReleaseBall", BBALL_THROW_ANIM_DELAY, false, "ii", playerid, power);
+    return 1;
+}
+
+// Apelat dupa intarzierea animatiei: creeaza mingea si o porneste spre destinatie
 public BBall_ReleaseBall(playerid, power)
 {
-    if(!IsPlayerConnected(playerid) || g_BBallStatus != BBALL_STATUS_PROGRESS || !g_BBallActive[playerid])
+    if(!IsPlayerConnected(playerid))
     {
         g_BBallBallMoving[playerid] = false;
         return 1;
     }
 
-    new Float:px, Float:py, Float:pz;
-    GetPlayerPos(playerid, px, py, pz);
+    RemovePlayerAttachedObject(playerid, BBALL_ATTACH_INDEX);
 
-    new Float:angle;
-    GetPlayerFacingAngle(playerid, angle);
+    if(g_BBallStatus != BBALL_STATUS_PROGRESS || !g_BBallActive[playerid])
+    {
+        g_BBallBallMoving[playerid] = false;
+        return 1;
+    }
+
+    new Float:px = g_BBallThrowX[playerid];
+    new Float:py = g_BBallThrowY[playerid];
+    new Float:pz = g_BBallThrowZ[playerid];
+    new Float:angle = g_BBallThrowAngle[playerid];
 
     new slot = g_BBallHoopSlot[playerid];
     new hoopIdx = g_BBallHoopOrder[slot];
 
-    new Float:originX = px + 0.5 * floatsin(angle, degrees);
+    new Float:throwDist = float(power) * 0.5 + float((power / 8 > 0) ? random(power / 8) : 0);
+    g_BBallThrowDist[playerid] = throwDist;
+    g_BBallDropped[playerid] = false;
+
+    new Float:originX = px + 0.5 * floatsin(-angle, degrees);
     new Float:originY = py + 0.5 * floatcos(angle, degrees);
     new Float:originZ = pz + 1.1;
 
-    g_BBallTargetX[playerid] = px + floatsin(angle, degrees) * float(power);
-    g_BBallTargetY[playerid] = py + floatcos(angle, degrees) * float(power);
-    g_BBallTargetZ[playerid] = BBallHoopData[hoopIdx][2];
+    g_BBallTargetX[playerid] = px + floatsin(-angle, degrees) * throwDist;
+    g_BBallTargetY[playerid] = py + floatcos(angle, degrees) * throwDist;
 
-    new Float:apexX = (originX + g_BBallTargetX[playerid]) / 2.0;
-    new Float:apexY = (originY + g_BBallTargetY[playerid]) / 2.0;
-    new Float:apexZ = originZ + BBALL_ARC_HEIGHT;
+    // daca puterea a fost prea mare/mica fata de distanta reala pana la cos, mingea aterizeaza
+    // vizibil deasupra (prea multa putere) sau sub (prea putina) inaltimea cosului
+    new Float:neededDist = BBall_Distance2D(px, py, BBallHoopData[hoopIdx][0], BBallHoopData[hoopIdx][1]);
+    new Float:powerDiff = throwDist - neededDist;
 
-    g_BBallBallLeg[playerid] = 0;
+    if(powerDiff > 1.0)
+        g_BBallTargetZ[playerid] = BBallHoopData[hoopIdx][2] + 1.0;
+    else if(powerDiff < -1.0)
+        g_BBallTargetZ[playerid] = BBallHoopData[hoopIdx][2] - 1.0;
+    else
+        g_BBallTargetZ[playerid] = BBallHoopData[hoopIdx][2];
+
     g_BBallBallObject[playerid] = CreateDynamicObject(BBALL_BALL_MODEL, originX, originY, originZ, 0.0, 0.0, 0.0);
-    MoveDynamicObject(g_BBallBallObject[playerid], apexX, apexY, apexZ, BBALL_BALL_SPEED);
+
+    if(!IsValidDynamicObject(g_BBallBallObject[playerid]))
+    {
+        g_BBallBallMoving[playerid] = false;
+        SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Failed to create the ball object (invalid model). Try again.");
+        return 1;
+    }
+
+    // forteaza imediat reevaluarea streamer-ului pentru acest player (altfel, daca sta nemiscat,
+    // obiectul nou-creat poate ramane nestream-uit pana la urmatorul tick automat / urmatoarea miscare)
+    Streamer_Update(playerid);
+
+    // intarziere mica intre creare si prima miscare, ca obiectul sa apuce sa fie stream-uit la client
+    // inainte sa primeasca si comanda de MoveDynamicObject (altfel risca sa nu apara deloc vizual)
+    SetTimerEx("BBall_StartArc", 100, false, "i", playerid);
+    return 1;
+}
+
+// Porneste miscarea mingii in linie dreapta (fara arc) catre destinatia finala
+public BBall_StartArc(playerid)
+{
+    if(!IsPlayerConnected(playerid) || !g_BBallBallMoving[playerid]) return 1;
+    if(!IsValidDynamicObject(g_BBallBallObject[playerid])) return 1;
+
+    MoveDynamicObject(g_BBallBallObject[playerid],
+        g_BBallTargetX[playerid], g_BBallTargetY[playerid], g_BBallTargetZ[playerid], BBALL_BALL_SPEED);
     return 1;
 }
 
@@ -2433,7 +2520,7 @@ stock BBall_AdvanceHoop(playerid)
         g_BBallActive[playerid] = false;
 
         new fmsg[128];
-        format(fmsg, sizeof(fmsg), C_SUCCESS"[Basketball] "C_WHITE"%s"C_WHITE" finished all hoops with "C_INFO"%d"C_WHITE" point(s)!",
+        format(fmsg, sizeof(fmsg), C_SUCCESS"[Basket] "C_WHITE"%s"C_WHITE" finished all hoops with "C_INFO"%d"C_WHITE" point(s)!",
             PlayerData[playerid][pName], g_BBallScore[playerid]);
         SendClientMessageToAll(COLOR_INFO, fmsg);
 
@@ -2476,18 +2563,18 @@ stock BBall_EndRound()
         }
     }
 
-    SendClientMessageToAll(COLOR_INFO, C_INFO"[Basketball] "C_WHITE"Round finished!");
+    SendClientMessageToAll(COLOR_INFO, C_INFO"[Basket] "C_WHITE"Round finished!");
 
     if(winner != -1 && tieCount == 1)
     {
         new wmsg[128];
-        format(wmsg, sizeof(wmsg), C_SUCCESS"[Basketball] "C_WHITE"Winner: "C_INFO"%s"C_WHITE" - "C_INFO"%d"C_WHITE" point(s)",
+        format(wmsg, sizeof(wmsg), C_SUCCESS"[Basket] "C_WHITE"Winner: "C_INFO"%s"C_WHITE" - "C_INFO"%d"C_WHITE" point(s)",
             PlayerData[winner][pName], best);
         SendClientMessageToAll(COLOR_SUCCESS, wmsg);
     }
     else
     {
-        SendClientMessageToAll(COLOR_INFO, C_INFO"[Basketball] "C_WHITE"It was a tie.");
+        SendClientMessageToAll(COLOR_INFO, C_INFO"[Basket] "C_WHITE"It was a tie.");
     }
 
     BBall_ResetAll();
@@ -2501,6 +2588,12 @@ stock BBall_ResetAll()
         if(IsValidDynamicObject(g_BBallBallObject[i]))
             DestroyDynamicObject(g_BBallBallObject[i]);
 
+        if(IsPlayerConnected(i))
+        {
+            RemovePlayerAttachedObject(i, BBALL_ATTACH_INDEX);
+            TogglePlayerControllable(i, 1);
+        }
+
         BBall_DestroyHoopLabels(i);
 
         g_BBallJoined[i]       = false;
@@ -2509,7 +2602,6 @@ stock BBall_ResetAll()
         g_BBallHoopSlot[i]     = 0;
         g_BBallSpawnedHere[i]  = false;
         g_BBallBallMoving[i]   = false;
-        g_BBallBallLeg[i]      = 0;
     }
 
     g_BBallStatus = BBALL_STATUS_OPEN;
@@ -2529,6 +2621,12 @@ stock BBall_PlayerLeftMidRound(playerid)
 {
     if(IsValidDynamicObject(g_BBallBallObject[playerid]))
         DestroyDynamicObject(g_BBallBallObject[playerid]);
+
+    if(IsPlayerConnected(playerid))
+    {
+        RemovePlayerAttachedObject(playerid, BBALL_ATTACH_INDEX);
+        TogglePlayerControllable(playerid, 1);
+    }
 
     BBall_DestroyHoopLabels(playerid);
 
@@ -2556,7 +2654,7 @@ stock BBall_PlayerLeftMidRound(playerid)
         }
         g_BBallCountdownActive = false;
         g_BBallCountdownLeft = 0;
-        SendClientMessageToAll(COLOR_ERROR, C_ERROR"[Basketball] "C_WHITE"Not enough players left, the round start was cancelled.");
+        SendClientMessageToAll(COLOR_ERROR, C_ERROR"[Basket] "C_WHITE"Not enough players left, the round start was cancelled.");
     }
 }
 
@@ -3844,9 +3942,16 @@ stock DB_CreateTables()
         `x`        FLOAT DEFAULT 0.0,\
         `y`        FLOAT DEFAULT 0.0,\
         `z`        FLOAT DEFAULT 0.0,\
+        `rx`       FLOAT DEFAULT 0.0,\
+        `ry`       FLOAT DEFAULT 0.0,\
+        `rz`       FLOAT DEFAULT 0.0,\
         UNIQUE KEY `uq_hoop_spawn` (`hoop_id`,`spawn_id`)\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+
+    mysql_tquery(g_SQL, "ALTER TABLE `basket_spawns` ADD COLUMN `rx` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `basket_spawns` ADD COLUMN `ry` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `basket_spawns` ADD COLUMN `rz` FLOAT DEFAULT 0.0", "", "", 0);
 
     print("[DB] Tabele factiuni si payday verificate/create.");
 }
@@ -5004,14 +5109,15 @@ public OnGameModeInit()
 	CreateDynamicObject(3174, 1365.79578, 730.29089, 9.80984,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3172, 1390.02930, 746.44336, 9.81350,   0.00000, 0.00000, 160.00000);
 
-	CreateDynamicObject(2114, 2480.35010, 1297.50000, 12.86000,   0.00000, 0.00000, 0.00000);
-	CreateDynamicObject(2114, 2480.13013, 1286.42004, 12.86000,   0.00000, 0.00000, 0.00000);
-	CreateDynamicObject(2114, 2514.89990, 1297.55005, 12.86000,   0.00000, 0.00000, 0.00000);
-	CreateDynamicObject(2114, 2514.69995, 1286.50000, 12.86000,   0.00000, 0.00000, 0.00000);
-	CreateDynamicObject(2114, 2514.89990, 1277.55005, 12.86000,   0.00000, 0.00000, 0.00000);
-	CreateDynamicObject(2114, 2514.69849, 1266.48950, 12.86000,   0.00000, 0.00000, 0.00000);
-	CreateDynamicObject(2114, 2480.10010, 1266.43506, 12.86000,   0.00000, 0.00000, 0.00000);
-	CreateDynamicObject(2114, 2480.28003, 1277.49500, 12.86000,   0.00000, 0.00000, 0.00000);
+    // Basketgame
+	// CreateDynamicObject(2114, 2480.35010, 1297.50000, 12.86000,   0.00000, 0.00000, 0.00000);
+	// CreateDynamicObject(2114, 2480.13013, 1286.42004, 12.86000,   0.00000, 0.00000, 0.00000);
+	// CreateDynamicObject(2114, 2514.89990, 1297.55005, 12.86000,   0.00000, 0.00000, 0.00000);
+	// CreateDynamicObject(2114, 2514.69995, 1286.50000, 12.86000,   0.00000, 0.00000, 0.00000);
+	// CreateDynamicObject(2114, 2514.89990, 1277.55005, 12.86000,   0.00000, 0.00000, 0.00000);
+	// CreateDynamicObject(2114, 2514.69849, 1266.48950, 12.86000,   0.00000, 0.00000, 0.00000);
+	// CreateDynamicObject(2114, 2480.10010, 1266.43506, 12.86000,   0.00000, 0.00000, 0.00000);
+	// CreateDynamicObject(2114, 2480.28003, 1277.49500, 12.86000,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3065, 2480.21948, 1265.64417, 9.94500,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3065, 2478.79590, 1267.20386, 9.94500,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3065, 2476.80542, 1272.44104, 9.94500,   0.00000, 0.00000, 0.00000);
@@ -6692,6 +6798,40 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /gotoxyz [x] [y] [z] ----
+    if(strcmp(cmd, "/gotoxyz", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 3)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 3."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new gxp1[16], gxp2[16], gxp3[16];
+        strmid(gxp1, cmdtext, idx, strlen(cmdtext), 16);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(gxp2, cmdtext, idx, strlen(cmdtext), 16);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(gxp3, cmdtext, idx, strlen(cmdtext), 16);
+
+        if(!strlen(gxp1) || !strlen(gxp2) || !strlen(gxp3))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/gotoxyz [x] [y] [z]"C_WHITE"."), 1;
+
+        new Float:gx = floatstr(gxp1);
+        new Float:gy = floatstr(gxp2);
+        new Float:gz = floatstr(gxp3);
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), gx, gy, gz);
+        else
+            SetPlayerPos(playerid, gx, gy, gz);
+
+        new gxmsg[96];
+        format(gxmsg, sizeof(gxmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Teleported to "C_INFO"%.4f, %.4f, %.4f"C_WHITE".", gx, gy, gz);
+        SendClientMessage(playerid, COLOR_SUCCESS, gxmsg);
+        return 1;
+    }
+
     // ---- /gotobiz [biz_id] ----
     if(strcmp(cmd, "/gotobiz", true) == 0)
     {
@@ -6868,7 +7008,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [PVehicles] "C_WHITE"/vCreate /vSetPrice");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Caravans] "C_WHITE"/createCaravan");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Business] "C_WHITE"/createBiz /changeBizName /changeBizPrice /changeBizLoc");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Basketball] "C_WHITE"/setbballspawn [hoop_id] [spawn_id]");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Basket] "C_WHITE"/setbballspawn [hoop_id] [spawn_id]");
         }
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"=============================================================");
@@ -8456,7 +8596,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(bWasActive)
         {
             new blmsg[128];
-            format(blmsg, sizeof(blmsg), C_ERROR"[Basketball] "C_WHITE"%s"C_WHITE" left the game and was eliminated.", PlayerData[playerid][pName]);
+            format(blmsg, sizeof(blmsg), C_ERROR"[Basket] "C_WHITE"%s"C_WHITE" left the game and was eliminated.", PlayerData[playerid][pName]);
             SendClientMessageToAll(COLOR_ERROR, blmsg);
         }
 
@@ -8493,20 +8633,28 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         strmid(bp1, cmdtext, idx, strlen(cmdtext), 6);
 
         if(!strlen(bp1))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/throwball [power]"C_WHITE" (1-"C_INFO#BBALL_THROW_MAX_POWER C_WHITE")."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/throwball [power]"C_WHITE" (0-"C_INFO#BBALL_THROW_MAX_POWER C_WHITE")."), 1;
 
         new bpower = strval(bp1);
-        if(bpower < 1 || bpower > BBALL_THROW_MAX_POWER)
+        if(bpower < 0 || bpower > BBALL_THROW_MAX_POWER)
         {
             new bumsg[96];
-            format(bumsg, sizeof(bumsg), C_ERROR"Error: "C_WHITE"Power must be between 1 and %d.", BBALL_THROW_MAX_POWER);
+            format(bumsg, sizeof(bumsg), C_ERROR"Error: "C_WHITE"Power must be between 0 and %d.", BBALL_THROW_MAX_POWER);
             return SendClientMessage(playerid, COLOR_ERROR, bumsg), 1;
         }
 
         g_BBallBallMoving[playerid] = true;
 
-        ApplyAnimation(playerid, "BSKTBALL", "BBALL_Jump_Shot", 4.1, 0, 0, 0, 0, 0, 1);
-        SetTimerEx("BBall_ReleaseBall", BBALL_THROW_ANIM_DELAY, false, "ii", playerid, bpower);
+        // capturate ACUM (la comanda), nu mai tarziu in lant, ca sa nu se schimbe directia
+        // daca playerul se mai roteste cat timp asteapta animatia/delay-urile
+        GetPlayerPos(playerid, g_BBallThrowX[playerid], g_BBallThrowY[playerid], g_BBallThrowZ[playerid]);
+        GetPlayerFacingAngle(playerid, g_BBallThrowAngle[playerid]);
+
+        TogglePlayerControllable(playerid, 1); // unfreeze, era inghetat de la teleportarea la cos
+
+        SetPlayerAttachedObject(playerid, BBALL_ATTACH_INDEX, BBALL_BALL_MODEL, BBALL_ATTACH_BONE,
+            0.05, 0.05, 0.05, 0.0, 0.0, 0.0, 0.4, 0.4, 0.4);
+        SetTimerEx("BBall_PlayThrowAnim", 500, false, "ii", playerid, bpower);
         return 1;
     }
 
@@ -8535,16 +8683,22 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         new Float:sx, Float:sy, Float:sz;
         GetPlayerPos(playerid, sx, sy, sz);
 
+        new Float:srz;
+        GetPlayerFacingAngle(playerid, srz);
+
         BBallSpawnData[hoopId-1][spawnId-1][0] = sx;
         BBallSpawnData[hoopId-1][spawnId-1][1] = sy;
         BBallSpawnData[hoopId-1][spawnId-1][2] = sz;
+        BBallSpawnRot[hoopId-1][spawnId-1][0] = 0.0;
+        BBallSpawnRot[hoopId-1][spawnId-1][1] = 0.0;
+        BBallSpawnRot[hoopId-1][spawnId-1][2] = srz;
         BBallSpawnSet[hoopId-1][spawnId-1] = true;
 
-        new sq[200];
+        new sq[260];
         mysql_format(g_SQL, sq, sizeof(sq),
-            "INSERT INTO `basket_spawns` (`hoop_id`,`spawn_id`,`x`,`y`,`z`) VALUES (%d,%d,%.4f,%.4f,%.4f) \
-             ON DUPLICATE KEY UPDATE `x`=%.4f,`y`=%.4f,`z`=%.4f",
-            hoopId, spawnId, sx, sy, sz, sx, sy, sz);
+            "INSERT INTO `basket_spawns` (`hoop_id`,`spawn_id`,`x`,`y`,`z`,`rx`,`ry`,`rz`) VALUES (%d,%d,%.4f,%.4f,%.4f,0,0,%.4f) \
+             ON DUPLICATE KEY UPDATE `x`=%.4f,`y`=%.4f,`z`=%.4f,`rx`=0,`ry`=0,`rz`=%.4f",
+            hoopId, spawnId, sx, sy, sz, srz, sx, sy, sz, srz);
         mysql_tquery(g_SQL, sq, "", "", 0);
 
         new smsg[128];
@@ -8639,14 +8793,17 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         new Float:vx, Float:vy, Float:vz;
         GetVehiclePos(vehid, vx, vy, vz);
 
+        new Float:rx, Float:ry, Float:rz;
+        GetVehicleRotation(vehid, rx, ry, rz);
+
         new Float:parkZ = vz + CARAVAN_PARK_OFFSET_Z;
 
         // In loc de SetDynamicObjectPos/Rot (care nu scoate intotdeauna corect atasarea de pe vehicul),
-        // distrugem obiectul atasat si cream unul nou direct, drept (fara rotatia masinii), in locul ei
+        // distrugem obiectul atasat si cream unul nou direct cu pozitia si rotatia (completa, inclusiv panta) a masinii
         if(IsValidDynamicObject(g_CaravanObject[playerid]))
             DestroyDynamicObject(g_CaravanObject[playerid]);
         g_CaravanObject[playerid] = CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]),
-            vx, vy, parkZ, 0.0, 0.0, 0.0);
+            vx, vy, parkZ, rx, ry, rz);
 
         new cidx = Caravan_FindByOwner(PlayerData[playerid][pID]);
         if(cidx != -1)
@@ -8654,14 +8811,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             CaravanData[cidx][rParkLocX] = vx;
             CaravanData[cidx][rParkLocY] = vy;
             CaravanData[cidx][rParkLocZ] = parkZ;
-            CaravanData[cidx][rParkRX]   = 0.0;
-            CaravanData[cidx][rParkRY]   = 0.0;
-            CaravanData[cidx][rParkRZ]   = 0.0;
+            CaravanData[cidx][rParkRX]   = rx;
+            CaravanData[cidx][rParkRY]   = ry;
+            CaravanData[cidx][rParkRZ]   = rz;
 
             new cq[260];
             mysql_format(g_SQL, cq, sizeof(cq),
-                "UPDATE `rulote_personale` SET `rParkLocX`=%.4f, `rParkLocY`=%.4f, `rParkLocZ`=%.4f, `parkRX`=0, `parkRY`=0, `parkRZ`=0 WHERE `rID`=%d",
-                vx, vy, parkZ, CaravanData[cidx][rID]);
+                "UPDATE `rulote_personale` SET `rParkLocX`=%.4f, `rParkLocY`=%.4f, `rParkLocZ`=%.4f, `parkRX`=%.4f, `parkRY`=%.4f, `parkRZ`=%.4f WHERE `rID`=%d",
+                vx, vy, parkZ, rx, ry, rz, CaravanData[cidx][rID]);
             mysql_tquery(g_SQL, cq, "", "", 0);
         }
 

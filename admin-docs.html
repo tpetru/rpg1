@@ -473,16 +473,17 @@ RP    += 1</pre>
   <table>
     <tr><th>Constantă</th><th>Valoare</th></tr>
     <tr><td>BBALL_MIN_PLAYERS</td><td>1</td></tr>
-    <tr><td>BBALL_COUNTDOWN_TIME</td><td>5 secunde</td></tr>
+    <tr><td>BBALL_COUNTDOWN_TIME</td><td>1 secundă</td></tr>
     <tr><td>BBALL_MAX_HOOPS / BBALL_SPAWNS_PER_HOOP</td><td>8 / 4 (4 puncte de spawn random per coș)</td></tr>
-    <tr><td>BBALL_HOOP_RADIUS</td><td>1.5 (distanță 2D la aterizare, ca să conteze GOAL)</td></tr>
+    <tr><td>BBALL_HOOP_RADIUS</td><td>0.6 (distanță 2D la aterizare, ca să conteze GOAL)</td></tr>
     <tr><td>BBALL_BALL_RANGE</td><td>10.0 (cât de aproape de coșul curent trebuie să fii ca să arunci)</td></tr>
-    <tr><td>BBALL_THROW_MAX_POWER</td><td>50 — folosit direct ca distanță (unități), nu scalat</td></tr>
-    <tr><td>BBALL_THROW_ANIM_DELAY</td><td>100ms între <code>/throwball</code> și apariția mingii (sincronizat cu animația)</td></tr>
-    <tr><td>BBALL_BALL_SPEED / BBALL_ARC_HEIGHT</td><td>4.0 unități/s, arc în 2 etape (urcă la apex, apoi coboară)</td></tr>
+    <tr><td>BBALL_THROW_MAX_POWER</td><td>20 (range valid: 0-20)</td></tr>
+    <tr><td>BBALL_THROW_ANIM_DELAY</td><td>100ms între pornirea animației și apariția mingii libere</td></tr>
+    <tr><td>BBALL_BALL_SPEED</td><td>1.5 unități/secundă, traseu drept (fără arc)</td></tr>
     <tr><td>BBALL_BALL_MODEL</td><td>1946 (mingea aruncată)</td></tr>
     <tr><td>BBALL_LOBBY_PICKUP_MODEL</td><td>1248 (pickup-ul de la locația de <code>/joinbasket</code>)</td></tr>
     <tr><td>BBALL_MAPICON_ID / BBALL_ICON_SLOT</td><td>25 / 86 (map icon LOCAL, vezi nota din secțiunea GPS/Radar/HUD)</td></tr>
+    <tr><td>BBALL_ATTACH_INDEX / BBALL_ATTACH_BONE</td><td>0 / 6 (mingea ținută în mâna dreaptă, <code>SetPlayerAttachedObject</code>)</td></tr>
   </table>
 
   <h4 style="margin-bottom:4px">Flux complet</h4>
@@ -491,30 +492,57 @@ RP    += 1</pre>
     <li><code>/leavebasket</code> — funcționează atât în așteptare cât și în rundă activă. Dacă mai rămâne <strong>cel
     puțin un jucător activ</strong>, runda <strong>continuă</strong> normal pentru cei rămași (<code>BBall_CheckRoundComplete</code>
     nu încheie runda decât când nimeni nu mai e activ) — la fel se întâmplă automat și la deconectare.</li>
-    <li>La start de rundă, fiecare jucător e teleportat la unul din cele 4 spawn-uri (random) ale coșului curent și e
-    orientat automat spre coș (<code>atan2</code> pe direcția spawn→coș; aplicat cu o întârziere de 200ms după
-    <code>SetPlayerPos</code>, pentru că <code>SetPlayerFacingAngle</code> apelat imediat nu se aplică vizual la client —
-    bug cunoscut SA-MP).</li>
-    <li><code>/throwball [putere 1-50]</code> — doar la coșul curent, doar dacă mingea precedentă nu mai e în aer
-    (un singur flag <code>g_BBallBallMoving</code> blochează spam și aruncări simultane). Aplică animația
-    <code>BSKTBALL</code>/<code>BBALL_Jump_Shot</code>, apoi creează mingea și o mișcă în 2 etape (apex → destinație).
-    Destinația X/Y e calculată din unghiul și puterea playerului (<strong>nu</strong> țintește automat spre coș —
-    sistem skill-based, ca la Golf), iar Z final e fixat la Z-ul coșului.</li>
-    <li>La aterizare: GOAL/MISS în funcție de distanța 2D față de coș, apoi auto-teleportare la coșul următor.
-    Fiecare coș se joacă o singură dată per jucător per rundă (nu există încercări multiple).</li>
+    <li>La start de rundă (și după fiecare aruncare), jucătorul e teleportat la unul din cele 4 spawn-uri (random) ale
+    coșului curent și orientat <strong>mereu automat</strong> spre coș (<code>atan2</code> pe direcția spawn→coș,
+    plus <code>SetCameraBehindPlayer</code> ca să se resincronizeze imediat camera) — rotația salvată la
+    <code>/setbballspawn</code> (coloanele <code>rx/ry/rz</code>) e persistată în DB dar <strong>nu mai e folosită</strong>
+    pentru orientare. Jucătorul e <strong>înghețat</strong> (<code>TogglePlayerControllable(0)</code>) imediat după
+    teleportare, ca să nu se miște din unghiul de aruncare, și dezghețat la <code>/throwball</code>.</li>
+    <li><code>/throwball [putere 0-20]</code> — doar la coșul curent, doar dacă mingea precedentă nu mai e în aer
+    (flag <code>g_BBallBallMoving</code>). Poziția și unghiul jucătorului se capturează <strong>imediat</strong> la
+    comandă (nu mai târziu în lanțul de timere, ca să nu conteze dacă jucătorul se mai mișcă/rotește cât așteaptă).
+    Mingea apare întâi atașată în mâna dreaptă (<code>SetPlayerAttachedObject</code>), ține <strong>500ms</strong>,
+    apoi pornește animația <code>BSKTBALL</code>/<code>BBALL_Jump_Shot</code>; la <code>BBALL_THROW_ANIM_DELAY</code>
+    (100ms) după animație, mingea e scoasă din mână și creată ca obiect liber. Chiar după creare se apelează
+    <code>Streamer_Update(playerid)</code> — fără asta, obiectul nou poate rămâne nestream-uit dacă jucătorul stă
+    nemișcat (bug confirmat, vezi nota de mai jos), deci mingea pur și simplu nu apare vizual.</li>
+    <li><strong>Distanța</strong> parcursă de minge = <code>putere*0.5 + random(putere/8)</code> (nu mai e
+    <code>putere</code> direct). Direcția X/Y e dată de unghiul corpului jucătorului
+    (<code>floatsin(-angle)</code>/<code>floatcos(angle)</code> — semnul negativ pe X a fost necesar, testat empiric:
+    fără el, Est/Vest erau inversate, deși Nord/Sud erau corecte). Z-ul final e Z-ul coșului curent,
+    <strong>decalat cu ±1.0</strong> dacă distanța aruncată diferă cu peste 1m de distanța reală până la coș
+    (prea multă putere → <code>hoopZ+1</code>, prea puțină → <code>hoopZ-1</code>), ca supra-/sub-aruncarea să fie
+    vizibilă pe traiectorie, nu doar în mesajul din chat.</li>
+    <li>Mingea ajunge la destinație → <strong>imediat</strong> se evaluează GOAL/MISS (raza 2D, <code>BBALL_HOOP_RADIUS</code>)
+    și se trimit mesajele (vezi mai jos) — <strong>apoi</strong> abia pornește o a doua mișcare, de coborâre la
+    <code>Z=9.95</code> (nivelul solului). Doar după ce ajunge acolo se distruge obiectul și se avansează automat la
+    coșul următor. Fiecare coș se joacă o singură dată per jucător per rundă (nu există încercări multiple).</li>
     <li>Etichetele 3D <code>[ #1 ]</code>..<code>[ #8 ]</code> de pe coșuri sunt <strong>per-player</strong>
     (<code>CreateDynamic3DTextLabel(..., .playerid=playerid)</code>) — vizibile doar pentru jucătorii înscriși la
     <code>/joinbasket</code>, create la join și distruse la leave/deconectare/final de rundă.</li>
     <li>Final: scorurile tuturor participanților sunt comparate; câștigătorul e anunțat sau, la egalitate, se
-    anunță explicit "egalitate". Apoi reset complet (status → OPEN, scoruri, mingi, etichete, countdown).</li>
+    anunță explicit "egalitate". Apoi reset complet (status → OPEN, scoruri, mingi, etichete, countdown, freeze/atașări reziduale).</li>
   </ol>
+
+  <h4 style="margin-bottom:4px">Mesaje (toate cu prefix <code>[Basket]</code>)</h4>
+  <p>Mesajele legate de o aruncare anume folosesc formatul <code>[Basket] [Hole X/8]: ...</code> (X = progresul
+  jucătorului prin runda curentă, nu ID-ul fix al coșului):</p>
+  <ul>
+    <li>La teleportare: <code>"Now throwing at hoop #ID. Use /throwball [power] to shoot."</code> (ID = ID-ul real
+    al coșului, 1-8, fix — același afișat pe eticheta 3D <code>[ #ID ]</code> și folosit la <code>/setbballspawn</code>).</li>
+    <li>La evaluare: <code>"The ball traveled X.Xm - Y.Ym left until the hoop."</code>, apoi
+    <code>"GOAL! You scored a point."</code> + GameText verde, sau GameText roșu "MISS!" + (dacă diferența de
+    putere e &gt;1m) un hint: <code>"Too much power..."</code> / <code>"Not enough power..."</code>.</li>
+  </ul>
 
   <div class="note">
     <strong>Coordonatele celor 8 coșuri</strong> (tabela <code>basket_hoops</code>) sunt seed-ate direct în cod, în
-    <code>DB_CreateTables()</code>. <strong>Spawn-urile</strong> (tabela <code>basket_spawns</code>, 4 per coș) sunt
-    goale la prima rulare — se populează din joc cu <code>/setbballspawn [hoop_id 1-8] [spawn_id 1-4]</code>
-    (admin lvl <code>BBALL_ADMIN_LEVEL=6</code>, salvează poziția curentă a adminului, upsert). Până sunt setate, un
-    spawn nesetat foloseşte ca fallback chiar coordonatele coșului respectiv.
+    <code>DB_CreateTables()</code>. <strong>Spawn-urile</strong> (tabela <code>basket_spawns</code>, 4 per coș, coloane
+    <code>x/y/z/rx/ry/rz</code>) sunt goale la prima rulare — se populează din joc cu
+    <code>/setbballspawn [hoop_id 1-8] [spawn_id 1-4]</code> (admin lvl <code>BBALL_ADMIN_LEVEL=6</code>, salvează
+    poziția + unghiul curent al adminului, upsert). Până sunt setate, un spawn nesetat folosește ca fallback chiar
+    coordonatele coșului respectiv. <code>/gotoxyz [x] [y] [z]</code> (admin lvl 3+) ajută la testarea/verificarea
+    pozițiilor exacte — teleportează direct la coordonate brute, fără să fie nevoie de o locație predefinită.
   </div>
 </section>
 
@@ -523,11 +551,12 @@ RP    += 1</pre>
   <p>O rulotă per jucător (<code>pCaravanKey</code> — 0 = nu deține, 1/2/3 = tipul deținut). E un obiect dinamic
   (<code>CreateDynamicObject</code>, streamer), nu vehicul. <code>/attach</code> o atașează în spatele mașinii personale
   curente cu <code>AttachDynamicObjectToVehicle</code> (offset fix pe Y/Z).</p>
-  <p><code>/detach</code> distruge obiectul atașat și creează unul nou la poziția X/Y/Z curentă a mașinii, dar cu
-  <strong>rotație fixă 0.0/0.0/0.0</strong> — rulota e parcată mereu dreaptă, <strong>nu</strong> copiază rotația
-  mașinii (indiferent cum era parcată mașina). Poziția (fără rotație, salvată tot ca 0) e persistată în DB
-  (<code>rulote_personale</code>) ca să reapară parcată acolo la următoarea logare. Mașina e respawnată la aceeași
-  poziție X/Y, cu Z+5.</p>
+  <p><code>/detach</code> distruge obiectul atașat și creează unul nou la poziția X/Y/Z curentă a mașinii, cu
+  <strong>rotația completă a mașinii</strong> (inclusiv panta/înclinarea), obținută din <code>GetVehicleRotation</code>
+  (funcție proprie, calculează rx/ry/rz din quaternion via <code>GetVehicleRotationQuat</code>, cu swap-uri de axe și
+  semn inversat pe <code>ry</code> — testate empiric, vezi comentariile din cod). Poziția și rotația sunt persistate în
+  DB (<code>rulote_personale</code>) ca să reapară parcată identic la următoarea logare. Mașina e respawnată la
+  aceeași poziție X/Y, cu Z+5.</p>
   <p><code>/createcaravan [playerid] [tip 1-3]</code> (admin lvl 6) — singura cale de a atribui o rulotă unui jucător;
   nu există încă o comandă de cumpărare.</p>
 </section>
@@ -597,8 +626,10 @@ glLocX/Y/Z FLOAT DEFAULT 0.0, UNIQUE KEY uq_gps_name(glName)
 
   <h4>basket_spawns</h4>
   <pre>id INT PK AI, hoop_id INT NOT NULL, spawn_id INT NOT NULL, x/y/z FLOAT DEFAULT 0.0,
-UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
--- gol la prima rulare; populat din joc cu /setbballspawn [hoop_id 1-8] [spawn_id 1-4] (admin lvl 6)</pre>
+rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
+-- gol la prima rulare; populat din joc cu /setbballspawn [hoop_id 1-8] [spawn_id 1-4] (admin lvl 6)
+-- rx/ry/rz = unghiul adminului la setare (doar rz e relevant); persistate dar NU mai sunt folosite
+-- la orientarea jucatorului (orientarea e mereu automata, calculata spre cos)</pre>
 </section>
 
 <section id="admin-cmds">
@@ -607,7 +638,7 @@ UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><th>Nivel</th><th>Comenzi</th></tr>
     <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code></td></tr>
     <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/opengolftournament</code>, <code>/startgolf</code></td></tr>
-    <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code></td></tr>
+    <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code>, <code>/gotoxyz</code></td></tr>
     <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code></td></tr>
     <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/changebizname</code>, <code>/changebizprice</code>, <code>/changebizloc</code>, <code>/changehouseprice</code>, <code>/changehouseowner</code>, <code>/vcreate</code>, <code>/vsetprice</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code></td></tr>
   </table>
