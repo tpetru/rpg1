@@ -144,6 +144,8 @@
     <span class="badge">GPS &amp; Radar</span>
     <span class="badge">Turneu de Golf</span>
     <span class="badge">Baschet</span>
+    <span class="badge">Rulote &amp; Camping</span>
+    <span class="badge">Petreceri</span>
   </div>
 </header>
 
@@ -158,6 +160,9 @@
   <a href="#food">Mâncare</a>
   <a href="#golf">Turneu Golf</a>
   <a href="#basketball">Baschet</a>
+  <a href="#caravans">Rulote</a>
+  <a href="#camping">Camping</a>
+  <a href="#party">Petreceri</a>
   <a href="#gps">GPS &amp; Radar</a>
   <a href="#police">Lege &amp; Ordine</a>
   <a href="#commands">Comenzi</a>
@@ -359,7 +364,7 @@
   <h2>⛳ Turneu de Golf</h2>
   <p class="subtitle">Un mini-joc eliminatoriu, organizat periodic de administrație</p>
 
-  <div class="grid-2">
+  <div class="grid-3">
     <div class="card">
       <h4 style="margin-top:0">📝 Înscrierea</h4>
       <p>Când un admin deschide înscrierile, vei vedea un anunț pe server. Folosește <code>/joingolf</code> ca să intri
@@ -370,8 +375,14 @@
       <h4 style="margin-top:0">🏌️ Cum se joacă</h4>
       <p>Fiecare jucător primește propria minge, marcată deasupra cu propriul ID. Te apropii de ea și folosești
       <code>/hitball [putere]</code> (0-200) — puterea loviturii determină cât de departe zboară mingea, iar direcția
-      e dată de unde te uiți tu în acel moment. Mingea se mișcă lin, nu se teleportează, iar după fiecare lovitură
-      primești un mesaj cu numărul loviturii și câți metri ai mai rămas până la groapă.</p>
+      e dată de unde te uiți tu în acel moment. Mingea se mișcă lin, în linie dreaptă, nu se teleportează, iar după
+      fiecare lovitură primești un mesaj cu numărul loviturii și câți metri ai mai rămas până la groapă.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏆 Structura turneului</h4>
+      <p>Un turneu are <strong>5 găuri</strong>, jucate pe rând într-o ordine amestecată la fiecare deschidere de
+      turneu — așa că ordinea nu e niciodată aceeași de două ori. Turneul se termină când rămâne <strong>un singur
+      câștigător</strong> sau s-au jucat toate cele 5 găuri.</p>
     </div>
   </div>
 
@@ -386,7 +397,7 @@
   <h2>🏀 Baschet</h2>
   <p class="subtitle">Un mini-joc rapid, pe care îl pornești chiar tu, fără să aștepți un admin</p>
 
-  <div class="grid-2">
+  <div class="grid-3">
     <div class="card">
       <h4 style="margin-top:0">📝 Cum intri în joc</h4>
       <p>Mergi la terenul de baschet de pe hartă (marcat cu o iconiță pe minimap) și folosește <code>/joinbasket</code>.
@@ -401,13 +412,97 @@
       folosești <code>/throwball [putere]</code> (0-20) ca să arunci. Puterea și direcția în care te uiți determină
       cât de departe zboară mingea, nu se teleportează.</p>
     </div>
+    <div class="card">
+      <h4 style="margin-top:0">🎯 Feedback la fiecare aruncare</h4>
+      <p>Imediat după ce mingea ajunge la coș, afli dacă ai înscris (<strong>GOAL</strong>) sau ai ratat
+      (<strong>MISS</strong>), plus distanța exactă parcursă de minge. Dacă ai ratat clar din cauza puterii, primești
+      și un indiciu — "prea multă putere" sau "prea puțină putere" — ca să corectezi din mers la coșul următor.</p>
+    </div>
   </div>
 
   <div class="note">
-    Fiecare coș se joacă o singură dată per rundă — fără încercări multiple. Afli imediat dacă ai înscris (GOAL) sau
-    ai ratat (MISS), plus distanța parcursă de minge și un indiciu dacă ai dat cu prea multă sau prea puțină putere.
-    La final, scorurile tuturor jucătorilor sunt comparate și e anunțat câștigătorul (sau, dacă scorurile sunt egale,
-    se anunță o egalitate).
+    Fiecare coș se joacă o singură dată per rundă — fără încercări multiple. La final, scorurile tuturor jucătorilor
+    care au terminat toate cele 8 coșuri sunt comparate și e anunțat câștigătorul (cel cu cele mai multe GOAL-uri),
+    sau, dacă scorurile sunt egale, se anunță explicit o egalitate.
+  </div>
+</section>
+
+<section id="caravans">
+  <h2>🚐 Rulote personale</h2>
+  <p class="subtitle">O casă pe roți, pe care o tractezi cu mașina ta</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🔑 Cum obții o rulotă</h4>
+      <p>Rulotele sunt momentan oferite de echipa de administrare a serverului — există 3 tipuri diferite, fiecare cu
+      propriul model. Odată ce ai primit una, e legată permanent de contul tău.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚙 Tractarea</h4>
+      <p><code>/attach</code> agață rulota chiar în spatele mașinii tale personale, cât timp ești la volan — de acolo
+      încolo, rulota te urmează oriunde mergi, atașată de mașină. <code>/detach</code> o desprinde și o parchează exact
+      acolo unde te oprești, cu mașina respawnată lângă ea.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Poziția rulotei se salvează automat la fiecare <code>/detach</code>, deci o vei regăsi parcată exact acolo
+    unde ai lăsat-o, chiar și după ce te deconectezi și revii pe server.
+  </div>
+</section>
+
+<section id="camping">
+  <h2>🏕️ Camping</h2>
+  <p class="subtitle">Setează-ți temporar punctul de spawn chiar lângă rulota ta</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">⛺ Cum faci camping</h4>
+      <p>Cu rulota atașată și tu la volanul mașinii, oprește-te pe teren drept și folosește <code>/camp</code>.
+      Locul devine noul tău punct de respawn — de fiecare dată când te conectezi sau mori, vei apărea chiar lângă
+      rulota ta, nu la spawn-ul obișnuit.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">⏳ Cât ține</h4>
+      <p>Spawn-ul de camping rămâne activ pentru <strong>3 PayDay-uri</strong> (aproximativ 3 ore de joc), apoi
+      expiră automat și punctul tău de spawn revine la normal. Poți oricând să faci din nou <code>/camp</code>
+      în altă locație, ca să-l reînnoiești.</p>
+    </div>
+  </div>
+</section>
+
+<section id="party">
+  <h2>🎉 Petreceri</h2>
+  <p class="subtitle">O locație dedicată unde te distrezi, asculți muzică și socializezi</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">🎟️ Intrarea</h4>
+    <p>Pe hartă există o <strong>locație de party</strong> cu o intrare proprie. Vino la intrare și folosește
+    <code>/joinparty</code> — plătești un bilet simbolic și intri în petrecere, într-o lume privată în care se află doar
+    ceilalți participanți. Muzica pornește automat pentru tine la intrare. Poți pleca oricând cu <code>/leaveparty</code>.</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🎵 DJ-ul ești tu</h4>
+      <p>La standul de muzică din party, <code>/changemusic [url]</code> schimbă piesa care se aude pentru
+      <strong>toți</strong> participanții la petrecere, contra unei mici taxe. Tu pui atmosfera.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍺 Barul</h4>
+      <p>La bar, <code>/buydrink</code> îți pune o bere în mână. Apoi dai <strong>click</strong> ca s-o bei — îți reface
+      puțină viață, dar ai grijă, te face și un pic amețit.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍖 Grătarul</h4>
+      <p>La grătar, <code>/buygrill</code> îți ia ceva de mâncare pentru câteva puncte de viață în plus — perfect ca să
+      te ții pe picioare în mijlocul distracției.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Fiecare comandă din party (bilet, muzică, băutură, grătar) funcționează doar dacă ești la standul potrivit, iar
+    banii cheltuiți alimentează automat banca afacerii care găzduiește petrecerea.
   </div>
 </section>
 
@@ -478,7 +573,7 @@
     <tr><td><code>/fbankwithdraw [sumă]</code></td><td>Retrage bani din banca facțiunii (rang 5)</td></tr>
     <tr><td><code>/fsetrank [playerid] [1-5]</code></td><td>Schimbă rangul unui membru (rang 5)</td></tr>
     <tr><td><code>/fhelp</code></td><td>Comenzi de facțiune disponibile pentru tine</td></tr>
-    <tr><td><code>/duty</code></td><td>Intri/ieși din tură, lângă sediul facțiunii (Poliție/RAR/SMURD)</td></tr>
+    <tr><td><code>/duty</code></td><td>Intri/ieși din tură, din interiorul sediului facțiunii (Poliție/RAR/SMURD)</td></tr>
     <tr><td><code>/factions</code></td><td>Listă cu toate cele 7 facțiuni</td></tr>
   </table>
 
@@ -552,6 +647,24 @@
     <tr><td><code>/joinbasket</code></td><td>Te înscrii la joc, lângă terenul de baschet</td></tr>
     <tr><td><code>/leavebasket</code></td><td>Părăsești jocul (te elimină dacă o rundă e activă)</td></tr>
     <tr><td><code>/throwball [putere]</code></td><td>Arunci mingea spre coșul curent, cu puterea aleasă (0-20)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚐 Rulote &amp; Camping</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/attach</code></td><td>Atașează rulota în spatele mașinii personale în care te afli</td></tr>
+    <tr><td><code>/detach</code></td><td>Desprinde și parchează rulota la poziția curentă</td></tr>
+    <tr><td><code>/camp</code></td><td>Setează spawn-ul temporar lângă rulotă, pentru 3 PayDay-uri</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🎉 Petreceri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/joinparty</code></td><td>Intri în petrecere, la intrarea locației de party (cost: bilet)</td></tr>
+    <tr><td><code>/leaveparty</code></td><td>Părăsești petrecerea și te întorci în oraș</td></tr>
+    <tr><td><code>/changemusic [url]</code></td><td>Schimbi muzica pentru toți participanții, la standul de muzică</td></tr>
+    <tr><td><code>/buydrink</code></td><td>Cumperi o bere la bar — apoi click ca s-o bei</td></tr>
+    <tr><td><code>/buygrill</code></td><td>Cumperi mâncare de la grătar (+ puțină viață)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚓 Poliție / RAR / SMURD</h3>

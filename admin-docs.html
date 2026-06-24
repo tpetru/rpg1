@@ -94,9 +94,9 @@
   <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
-    <span class="badge">gamemodes/bare.pwn — ~9700 linii</span>
+    <span class="badge">gamemodes/bare.pwn — ~11600 linii</span>
     <span class="badge">12 tabele MySQL</span>
-    <span class="badge">93 comenzi</span>
+    <span class="badge">120+ comenzi</span>
   </div>
 </header>
 
@@ -115,7 +115,7 @@
   <a href="#police-rar-cmds">RAR / Poliție / SMURD</a>
   <a href="#turfs">Turfs</a>
   <a href="#minigames">Mini-jocuri: Golf &amp; Baschet</a>
-  <a href="#caravans">Rulote personale</a>
+  <a href="#caravans">Rulote personale &amp; Camping</a>
   <a href="#database">Schema bazei de date</a>
   <a href="#admin-cmds">Comenzi admin</a>
   <a href="#known-issues">Probleme cunoscute</a>
@@ -547,7 +547,7 @@ RP    += 1</pre>
 </section>
 
 <section id="caravans">
-  <h2>🚐 Rulote personale (tractare)</h2>
+  <h2>🚐 Rulote personale (tractare) &amp; Camping</h2>
   <p>O rulotă per jucător (<code>pCaravanKey</code> — 0 = nu deține, 1/2/3 = tipul deținut). E un obiect dinamic
   (<code>CreateDynamicObject</code>, streamer), nu vehicul. <code>/attach</code> o atașează în spatele mașinii personale
   curente cu <code>AttachDynamicObjectToVehicle</code> (offset fix pe Y/Z).</p>
@@ -556,9 +556,28 @@ RP    += 1</pre>
   (funcție proprie, calculează rx/ry/rz din quaternion via <code>GetVehicleRotationQuat</code>, cu swap-uri de axe și
   semn inversat pe <code>ry</code> — testate empiric, vezi comentariile din cod). Poziția și rotația sunt persistate în
   DB (<code>rulote_personale</code>) ca să reapară parcată identic la următoarea logare. Mașina e respawnată la
-  aceeași poziție X/Y, cu Z+5.</p>
+  aceeași poziție X/Y, cu Z+5. Atât <code>/detach</code> cât și <code>/camp</code> (mai jos) refuză comanda dacă
+  mașina nu e (aproape) dreaptă — <code>rx</code>/<code>ry</code> trebuie să cadă în 5° de un multiplu de 90°.</p>
   <p><code>/createcaravan [playerid] [tip 1-3]</code> (admin lvl 6) — singura cale de a atribui o rulotă unui jucător;
   nu există încă o comandă de cumpărare.</p>
+
+  <h3>⛺ /camp — spawn temporar la rulotă</h3>
+  <p>Disponibil doar cu rulota atașată (<code>g_CaravanAttachedVeh</code>) și jucătorul aflat la volanul exact al
+  acelui vehicul. Setează <code>PlayerData[playerid][pSpawn] = CARAVAN_CAMP_SPAWN_TYPE</code> (<code>=4</code>) și
+  salvează poziția + rotația curentă a mașinii în <code>rCamping=1</code>, <code>rCampingStartDate</code> (acum) și
+  <code>rCampLocX/Y/Z</code> / <code>campRX/RY/RZ</code> din tabela <code>rulote_personale</code>.</p>
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>CARAVAN_CAMP_SPAWN_TYPE</td><td>4 (valoarea specială de <code>pSpawn</code> cât timp jucătorul campează)</td></tr>
+    <tr><td>CARAVAN_CAMP_DURATION</td><td>10800s = 3 ore (= 3 PayDay-uri, PayDay rulează o dată pe oră)</td></tr>
+  </table>
+  <p><code>Caravan_CheckCampingExpiry()</code> rulează la fiecare PayDay și verifică toate rulotele cu
+  <code>rCamping=1</code> a căror <code>rCampingStartDate</code> a depășit <code>CARAVAN_CAMP_DURATION</code>. La
+  expirare: resetează flagurile de camping în memorie + DB, recalculează <code>spawn_type</code> direct în SQL
+  (<code>LEFT JOIN houses</code> — casă deținută → 3, altfel facțiune → 2, altfel civil → 1) ca să acopere și
+  proprietarii offline, iar dacă proprietarul e online primește <code>Player_RecalcSpawn</code> +
+  mesaj de notificare. La login, dacă jucătorul are o rulotă cu poziție de camping/parcare salvată, obiectul e
+  recreat automat la acea poziție.</p>
 </section>
 
 <section id="database">
@@ -702,7 +721,7 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/joingolf</code> / <code>/leavegolf</code> / <code>/hitball [putere]</code></td><td>Vezi secțiunea Mini-jocuri (Golf)</td></tr>
     <tr><td><code>/joinbasket</code> / <code>/leavebasket</code> / <code>/throwball [putere]</code></td><td>Vezi secțiunea Mini-jocuri (Baschet)</td></tr>
-    <tr><td><code>/attach</code> / <code>/detach</code></td><td>Vezi secțiunea Rulote personale</td></tr>
+    <tr><td><code>/attach</code> / <code>/detach</code> / <code>/camp</code></td><td>Vezi secțiunea Rulote personale &amp; Camping</td></tr>
   </table>
 
   <h3 id="cmd-misc">GPS / Diverse</h3>

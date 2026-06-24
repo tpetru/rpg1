@@ -97,56 +97,71 @@
 <main>
 
 <div class="feature">
-<h2> De adaugat rotatii la rulote, in db</h2>
-  <h2>🚐 Sistem Rulote Personale (tractare)</h2>
-  <span class="status status-done">Implementat</span>
+  <h2>🚐 Restricție /detach lângă casă</h2>
+  <span class="status status-idea">Idee</span>
 
-  <p>Sistem de rulote personale, câte una per jucător (<code>pCaravanKey</code> — 0 = nu deține, 1/2/3 =
-  tipul deținut), cu posibilitatea de a fi tractate de mașina personală a jucătorului.</p>
-
-  <h4 style="margin-bottom:4px">Cum funcționează (implementat)</h4>
-  <ul>
-    <li>Rulota e un <strong>obiect dinamic</strong> (<code>CreateDynamicObject</code>, streamer), nu vehicul.</li>
-    <li><code>/attach</code>: atașează rulota în spatele mașinii cu <code>AttachDynamicObjectToVehicle</code>
-      (offset fix pe axa Y, în spatele mașinii). Necesită să fii șofer într-un <strong>vehicul personal
-      al tău</strong>.</li>
-    <li><code>/detach</code>:
-      <ul>
-        <li>Distruge obiectul atașat și creează unul nou direct la poziția curentă a mașinii (nu se mai folosește
-          <code>SetDynamicObjectPos/Rot</code>, care nu scotea mereu corect atașarea).</li>
-        <li>Pune rulota la poziția X/Y/Z a mașinii, cu <strong>rotația completă a mașinii</strong> (inclusiv
-          panta/înclinarea), calculată prin <code>GetVehicleRotation</code> din quaternion
-          (<code>GetVehicleRotationQuat</code>). Poziția + rotația sunt persistate în DB ca să reapară parcată
-          identic la următoarea logare.</li>
-        <li>Mașina e respawnată la <strong>aceeași poziție X/Y, cu Z+5</strong> (fără alte modificări).</li>
-      </ul>
-    </li>
-    <li><code>/createcaravan [playerid] [tip 1-3]</code> (admin lvl 6) — atribuie o rulotă unui jucător;
-      necesar adăugat ca să existe o cale de a obține una (nu exista încă o comandă de cumpărare).</li>
-  </ul>
+  <p><code>/detach</code> ar trebui să poată fi folosit doar dacă jucătorul se află în apropierea casei sale
+  (<code>pHouse</code> → <code>HouseData[][hLocX/hLocY/hLocZ]</code>), la o rază de <strong>50m</strong>. În prezent
+  comanda funcționează oriunde, atât timp cât mașina e pe teren drept.</p>
 
   <div class="note">
-    <code>GetVehicleRotation</code> nu e un native SA-MP (nu există <code>GetVehicleMatrix</code> sau echivalent
-    direct) — e o funcție proprie care reconstruiește rotația completă din quaternion, cu swap-uri de axe și semn
-    inversat pe <code>ry</code> față de formula standard, testate empiric pe <code>/detach</code>. Modelele celor 3
-    tipuri de rulote: <code>CARAVAN_MODEL_1=3174</code>, <code>CARAVAN_MODEL_2=3171</code>,
-    <code>CARAVAN_MODEL_3=3172</code>.
+    De văzut comportamentul pentru jucătorii fără casă (<code>pHouse == 999</code>) — fie comanda devine indisponibilă
+    complet, fie li se cere altă condiție (ex. lângă o casă oarecare).
   </div>
 </div>
 
 <div class="feature">
-  <h2>🏀 Sistem Baschet (runde declanșate de jucători)</h2>
+  <h2>🗳️ Sistem Președinte (alegeri săptămânale prin vot)</h2>
   <span class="status status-done">Implementat</span>
 
-  <p>Runde de baschet pornite de jucători (nu admin, spre deosebire de Golf): <code>/joinbasket</code> lângă locația
-  din DB (<code>locations_gps</code>, <code>glName='Basket Game'</code>), countdown automat la
-  <code>BBALL_MIN_PLAYERS</code> jucători, apoi parcurgere a 8 coșuri (ordine random per rundă) cu
-  <code>/throwball [putere]</code> — arc parabolic în 2 etape, scor comparat la final. Detalii complete (constante,
-  schema DB, flux pas cu pas) în <code>admin-docs.html</code>, secțiunea "Mini-jocuri: Golf &amp; Baschet".</p>
+  <div class="note">
+    <strong>Implementat.</strong> Comenzi: <code>/vote [nume]</code> (Duminică 08:00–19:30, ținta online, un vot/jucător),
+    <code>/settax [0-100]</code> și <code>/setcass [0-100]</code> (doar președintele, modifică <code>g_PDTax</code>/<code>g_PDCASS</code>
+    + <code>payday_setup</code>), <code>/president</code> (info). Timer <code>President_Check</code> (60s): Duminică 06:00 golește
+    <code>president_votes</code> + resetează <code>voted</code>; Duminică 20:00 calculează câștigătorul (exclude fostul președinte
+    prin <code>was_president</code>). Ziua săptămânii calculată cu Zeller (<code>getdate</code> nu o oferă).
+  </div>
+
+  <p>Sistem de președinte ales prin vot în fiecare săptămână, cu drept de a edita din joc valorile
+  <code>Impozit</code> (<code>g_PDTax</code>) și <code>CASS</code> (<code>g_PDCASS</code>) din
+  <code>payday_setup</code> — în prezent acestea se schimbă doar direct din DB, nu există nicio comandă
+  în cod care le editează.</p>
+
+  <h4 style="margin-bottom:4px">Variabile player</h4>
+  <ul>
+    <li><code>pIsPresident</code> (true/false) — dacă jucătorul e președintele curent.</li>
+    <li><code>pVoted</code> (true/false) — dacă a votat deja săptămâna asta; resetat odată cu golirea
+      tabelei de voturi, duminică la 6:00.</li>
+    <li><code>pWasPresident</code> (true/false) — dacă a fost președinte runda trecută; un jucător nu poate
+      fi ales președinte de două ori la rând (verificare la calculul câștigătorului, la 20:00).</li>
+  </ul>
+
+  <h4 style="margin-bottom:4px">Flux alegeri</h4>
+  <ul>
+    <li><code>/vote [nume_player]</code> — utilizabilă doar duminica, între orele <strong>8:00 –
+      19:30</strong>, și doar dacă <code>nume_player</code> e online. Un singur vot per jucător
+      (<code>pVoted</code>).</li>
+    <li><strong>Duminică, ora 6:00</strong> — se golește tabela de voturi (și se resetează
+      <code>pVoted</code> pentru toți).</li>
+    <li><strong>Duminică, ora 20:00</strong> — se calculează câștigătorul: jucătorul care apare de cele mai
+      multe ori în <code>vVotatPepId</code> (excluzând președintele actual, dacă <code>pWasPresident</code>
+      e adevărat pentru el). Acesta devine noul <code>pIsPresident</code>; vechiul președinte primește
+      <code>pWasPresident = true</code> și pierde <code>pIsPresident</code>.</li>
+  </ul>
+
+  <h4 style="margin-bottom:4px">Tabel DB — voturi</h4>
+  <ul>
+    <li><code>vID</code> — primary key.</li>
+    <li><code>vVotant</code> — numele celui care a votat.</li>
+    <li><code>vVotantId</code> — id-ul (cont) celui care a votat.</li>
+    <li><code>vVotatPe</code> — numele jucătorului votat ca președinte.</li>
+    <li><code>vVotatPeId</code> — id-ul (cont) jucătorului votat ca președinte.</li>
+  </ul>
 
   <div class="note">
-    Coordonatele celor 8 coșuri sunt seed-ate în cod; cele 4 spawn-uri per coș se setează din joc cu
-    <code>/setbballspawn [hoop_id] [spawn_id]</code> (admin lvl 6) — tabela <code>basket_spawns</code> pornește goală.
+    Trebuie un task/timer care verifică ziua + ora reală a serverului pentru cele 3 momente cheie
+    (duminică 6:00 golire tabel, fereastră de vot 8:00–19:30, 20:00 calcul câștigător) — de văzut dacă
+    există deja un sistem de timere bazate pe oră reală în gamemode sau trebuie adăugat de la zero.
   </div>
 </div>
 

@@ -4,17 +4,10 @@
 #include <a_mysql>
 #include <streamer>
 #include <string>
+#include <mysql_config>
 
 #pragma tabsize 0
 #pragma warning disable 239
-
-// ============================================================
-//  CONFIGURARE BAZA DE DATE
-// ============================================================
-#define MYSQL_HOST  "127.0.0.1"
-#define MYSQL_USER  "root"
-#define MYSQL_PASS  ""
-#define MYSQL_DB    "rpg1"
 
 // ============================================================
 //  CULORI - GENERAL
@@ -59,10 +52,13 @@ forward OnFactionsLoaded();
 forward OnPayDayLoaded();
 forward PayDay_Check();
 forward OnHousesLoaded();
+forward OnAnimalsLoaded();
 forward OnHouseCreated(playerid, idx);
 forward OnBusinessesLoaded();
 forward OnBusinessCreated(playerid, idx);
 forward OnTurfsLoaded();
+forward War_StartActive(tidx);
+forward War_CheckTimeUp(tidx);
 forward OnLocationsLoaded();
 forward OnGPSLoaded();
 forward OnVehiclesFactionLoaded();
@@ -80,8 +76,6 @@ forward BBall_CountdownTick();
 forward BBall_PlayThrowAnim(playerid, power);
 forward BBall_ReleaseBall(playerid, power);
 forward BBall_StartArc(playerid);
-
-new MySQL:g_SQL;
 
 // ============================================================
 //  PAYDAY - SETARI
@@ -106,6 +100,17 @@ new g_PizzaPrice       = 50;
 new g_BurgerPrice      = 55;
 
 // ============================================================
+//  PRESEDINTE (alegeri saptamanale prin vot)
+// ============================================================
+// Edge-trigger guards: retin ziua (din getdate) cand s-a rulat ultima oara fiecare moment cheie,
+// ca sa nu se declanseze de mai multe ori in acelasi minut/aceeasi duminica.
+new g_LastVoteClearDay  = -1; // duminica 06:00 - golire voturi
+new g_LastVoteWinnerDay = -1; // duminica 20:00 - calcul castigator
+#define VOTE_WINDOW_START_HOUR  8     // fereastra de vot: 08:00 ...
+#define VOTE_WINDOW_END_HOUR    19    // ... pana la 19:30
+#define VOTE_WINDOW_END_MINUTE  30
+
+// ============================================================
 //  DATE JUCATOR
 // ============================================================
 enum E_PLAYER_DATA
@@ -117,7 +122,8 @@ enum E_PLAYER_DATA
     pDrivingLicA_exp[11], pDrivingLicB_exp[11], pDrivingLicC_exp[11], pDrivingLicD_exp[11],
     bool:pLogged, bool:pRegistered, bool:pOnDuty,
     bool:pDiseased, pDiseasePaydays,
-    pCaravanKey
+    pCaravanKey,
+    bool:pIsPresident, bool:pVoted, bool:pWasPresident
 }
 new PlayerData[MAX_PLAYERS][E_PLAYER_DATA];
 
@@ -128,7 +134,9 @@ enum E_FACTION_DATA
 {
     fID, fName[32], fMembers, fLead[24], fBank,
     fPickupID, fMapIconID,
-    Float:fHQX, Float:fHQY, Float:fHQZ
+    Float:fHQX, Float:fHQY, Float:fHQZ,
+    Float:fInteriorX, Float:fInteriorY, Float:fInteriorZ,
+    fInterior, fvw
 }
 new FactionData[MAX_FACTIONS + 1][E_FACTION_DATA];
 
@@ -279,6 +287,42 @@ stock BuildDateSqlValueFromUnix(ts, out[], len)
     format(out, len, "'%s'", dateStr);
 }
 
+// Unix timestamp -> "YYYY-MM-DD HH:MM:SS" (pentru o coloana DATETIME)
+stock UnixToDateTimeStr(ts, out[], len)
+{
+    new y, m, d;
+    CivilFromDays(ts / 86400, y, m, d);
+    new secs = ts % 86400;
+    format(out, len, "%04d-%02d-%02d %02d:%02d:%02d", y, m, d, secs / 3600, (secs % 3600) / 60, secs % 60);
+}
+
+// "YYYY-MM-DD HH:MM:SS" (citit dintr-o coloana DATETIME) -> unix timestamp
+stock DateTimeStrToUnix(const datestr[])
+{
+    if(strlen(datestr) < 19) return 0;
+
+    new ys[5], ms[3], ds[3], hs[3], mis[3], ss[3];
+    strmid(ys, datestr, 0, 4, 5);
+    strmid(ms, datestr, 5, 7, 3);
+    strmid(ds, datestr, 8, 10, 3);
+    strmid(hs, datestr, 11, 13, 3);
+    strmid(mis, datestr, 14, 16, 3);
+    strmid(ss, datestr, 17, 19, 3);
+
+    return DaysFromCivil(strval(ys), strval(ms), strval(ds)) * 86400
+        + strval(hs) * 3600 + strval(mis) * 60 + strval(ss);
+}
+
+// La fel ca BuildDateSqlValueFromUnix, dar pentru o coloana DATETIME (pastreaza si ora, nu doar ziua)
+stock BuildDateTimeSqlValueFromUnix(ts, out[], len)
+{
+    if(ts <= 0) { format(out, len, "NULL"); return; }
+
+    new dtStr[20];
+    UnixToDateTimeStr(ts, dtStr, sizeof(dtStr));
+    format(out, len, "'%s'", dtStr);
+}
+
 // ============================================================
 //  PERMISE AUTO
 // ============================================================
@@ -377,15 +421,18 @@ stock Faction_AddBank(fid, amount)
 new g_TrainID = -1;
 new g_FactionPickup[MAX_FACTIONS + 1] = {-1, -1, -1, -1, -1, -1, -1, -1};
 new Text3D:g_FactionLabel[MAX_FACTIONS + 1];
+new g_FactionInteriorPickup[MAX_FACTIONS + 1] = {-1, -1, -1, -1, -1, -1, -1, -1};
+new Text3D:g_FactionInteriorLabel[MAX_FACTIONS + 1];
+#define FACTION_INTERIOR_PICKUP_MODEL 19197
 
 // ============================================================
 //  BICICLETE DE INCHIRIAT
 // ============================================================
-#define MAX_RENT_BIKES  5
+#define MAX_RENT_BIKES  9
 #define RENT_BIKE_MODEL 510
 #define RENT_BIZ_ID     1
 
-new g_RentBikeVehicle[MAX_RENT_BIKES] = {-1, -1, -1, -1, -1};
+new g_RentBikeVehicle[MAX_RENT_BIKES] = {-1, ...};
 
 // Returneaza true daca vehiculul dat e una dintre bicicletele de inchiriat
 stock bool:IsRentBikeVehicle(vehid)
@@ -425,6 +472,23 @@ stock bool:IsRentCarDesertVehicle(vehid)
 {
     for(new i = 0; i < MAX_RENT_CARS_DESERT; i++)
         if(g_RentCarDesertVehicle[i] == vehid) return true;
+    return false;
+}
+
+// ============================================================
+//  MASINI DE INCHIRIAT (zona noua, langa spawn-urile civile)
+// ============================================================
+#define MAX_RENT_CARS2    7
+#define RENT_CAR2_PRICE   30
+#define RENT_CAR2_BIZ_ID  14
+
+new g_RentCarVehicle2[MAX_RENT_CARS2] = {-1, ...};
+
+// Returneaza true daca vehiculul dat e una dintre masinile de inchiriat din zona noua
+stock bool:IsRentCarVehicle2(vehid)
+{
+    for(new i = 0; i < MAX_RENT_CARS2; i++)
+        if(g_RentCarVehicle2[i] == vehid) return true;
     return false;
 }
 
@@ -1046,6 +1110,7 @@ stock GPS_FindByName(const name[])
 #define DIALOG_GPS_LOCATION  9002
 #define DIALOG_BUSINESS_LIST 9003
 #define DIALOG_RADAR_LIST    9004
+#define DIALOG_BIZZLIST      9005
 
 // Nume afisate playerului (titlul celui de-al doilea dialog)
 new const GPS_CATEGORY_NAMES[5][16] = {"DMV Locations", "FACTIONS", "BUSINESS", "Others", "Shops"};
@@ -1169,12 +1234,40 @@ stock Factions_RecreateLabel(fid)
     }
     if(FactionData[fid][fHQX] == 0.0 && FactionData[fid][fHQY] == 0.0) return;
 
-    new label[48], colorcode[9];
+    new label[96], colorcode[9];
     GetFactionColorCode(fid, colorcode, sizeof(colorcode));
-    format(label, sizeof(label), "%s[ %s ]", colorcode, FactionData[fid][fName]);
+    // Daca interiorul e configurat, afiseaza si invitatia de a intra
+    if(FactionData[fid][fInteriorX] != 0.0 || FactionData[fid][fInteriorY] != 0.0)
+        format(label, sizeof(label), "%s[ %s ]\n"C_WHITE"[ Press ENTER to enter ]", colorcode, FactionData[fid][fName]);
+    else
+        format(label, sizeof(label), "%s[ %s ]", colorcode, FactionData[fid][fName]);
     g_FactionLabel[fid] = Create3DTextLabel(label, FactionColors[fid],
         FactionData[fid][fHQX], FactionData[fid][fHQY], FactionData[fid][fHQZ]-1,
         15.0, 0, 0);
+}
+
+// Distruge si recreeaza pickup-ul + eticheta din interiorul factiunii
+stock Factions_RecreateInteriorPickup(fid)
+{
+    if(g_FactionInteriorPickup[fid] != -1)
+    {
+        DestroyPickup(g_FactionInteriorPickup[fid]);
+        g_FactionInteriorPickup[fid] = -1;
+    }
+    if(g_FactionInteriorLabel[fid] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(g_FactionInteriorLabel[fid]);
+        g_FactionInteriorLabel[fid] = Text3D:INVALID_3DTEXT_ID;
+    }
+    if(FactionData[fid][fInteriorX] == 0.0 && FactionData[fid][fInteriorY] == 0.0) return;
+
+    g_FactionInteriorPickup[fid] = CreatePickup(FACTION_INTERIOR_PICKUP_MODEL, 1,
+        FactionData[fid][fInteriorX], FactionData[fid][fInteriorY], FactionData[fid][fInteriorZ],
+        FactionData[fid][fvw]);
+
+    g_FactionInteriorLabel[fid] = Create3DTextLabel(C_WHITE"[ Press ENTER to exit ]", FactionColors[fid],
+        FactionData[fid][fInteriorX], FactionData[fid][fInteriorY], FactionData[fid][fInteriorZ]-1,
+        15.0, FactionData[fid][fvw], 0);
 }
 
 // Distruge si recreeaza pickup-ul pentru o factiune
@@ -1193,6 +1286,47 @@ stock Factions_RecreatePickup(fid)
     }
 }
 
+// Membru de factiune: intra/iesi din interiorul factiunii (apasand KEY_SECONDARY_ATTACK langa pickup)
+stock Factions_InteriorToggle(playerid)
+{
+    new fid = PlayerData[playerid][pFaction];
+    if(fid < 1 || fid > MAX_FACTIONS) return;
+
+    new bool:hqSet  = (FactionData[fid][fHQX] != 0.0 || FactionData[fid][fHQY] != 0.0);
+    new bool:intSet = (FactionData[fid][fInteriorX] != 0.0 || FactionData[fid][fInteriorY] != 0.0);
+    if(!hqSet || !intSet) return;
+
+    // Langa HQ-ul exterior (vw 0) -> intra in interior
+    if(GetPlayerVirtualWorld(playerid) == 0 &&
+       IsPlayerInRangeOfPoint(playerid, 2.5, FactionData[fid][fHQX], FactionData[fid][fHQY], FactionData[fid][fHQZ]))
+    {
+        SetPlayerPos(playerid, FactionData[fid][fInteriorX], FactionData[fid][fInteriorY], FactionData[fid][fInteriorZ]);
+        SetPlayerVirtualWorld(playerid, FactionData[fid][fvw]);
+        SetPlayerInterior(playerid, FactionData[fid][fInterior]);
+        return;
+    }
+
+    // Langa pickup-ul din interior (vw-ul factiunii) -> iesi afara
+    if(GetPlayerVirtualWorld(playerid) == FactionData[fid][fvw] &&
+       IsPlayerInRangeOfPoint(playerid, 2.5, FactionData[fid][fInteriorX], FactionData[fid][fInteriorY], FactionData[fid][fInteriorZ]))
+    {
+        SetPlayerPos(playerid, FactionData[fid][fHQX], FactionData[fid][fHQY], FactionData[fid][fHQZ]);
+        SetPlayerVirtualWorld(playerid, 0);
+        SetPlayerInterior(playerid, 0);
+    }
+}
+
+// Returneaza true daca playerul se afla in interiorul HQ-ului propriei factiuni
+stock bool:Factions_IsInOwnInterior(playerid)
+{
+    new fid = PlayerData[playerid][pFaction];
+    if(fid < 1 || fid > MAX_FACTIONS) return false;
+    if(FactionData[fid][fInteriorX] == 0.0 && FactionData[fid][fInteriorY] == 0.0) return false;
+    if(GetPlayerVirtualWorld(playerid) != FactionData[fid][fvw]) return false;
+    if(GetPlayerInterior(playerid) != FactionData[fid][fInterior]) return false;
+    return (IsPlayerInRangeOfPoint(playerid, 50.0, FactionData[fid][fInteriorX], FactionData[fid][fInteriorY], FactionData[fid][fInteriorZ]) != 0);
+}
+
 // Seteaza map icon-urile factiunilor (MAPICON_LOCAL) pentru un player
 stock Factions_SetPlayerIcons(playerid)
 {
@@ -1203,7 +1337,7 @@ stock Factions_SetPlayerIcons(playerid)
         SetPlayerMapIcon(playerid, i, FactionData[i][fHQX], FactionData[i][fHQY], FactionData[i][fHQZ],
             FactionData[i][fMapIconID], FactionColors[i], MAPICON_LOCAL);
     }
-    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_LOCAL); // SPAWN POINT
+    SetPlayerMapIcon(playerid, 0, 1385.0, 750.0, 10.8203, 35, 0, MAPICON_LOCAL); // SPAWN POINT
 }
 
 // Actualizeaza icon-urile pentru toti playerii logati
@@ -1222,6 +1356,7 @@ stock Factions_UpdatePlayersIcons()
 enum E_HOUSE_DATA
 {
     hID, hName[32], hOwner[24], hOwnerId, hOwned, hPrice,
+    hType, hMaxPets, hPets,
     Float:hLocX, Float:hLocY, Float:hLocZ
 }
 new HouseData[MAX_HOUSES][E_HOUSE_DATA];
@@ -1259,7 +1394,7 @@ stock Houses_RecreatePickup(idx)
             HouseData[idx][hID], HouseData[idx][hName], MoneyStr(HouseData[idx][hPrice]));
     }
     g_HouseLabel[idx] = Create3DTextLabel(label, COLOR_WHITE,
-        HouseData[idx][hLocX], HouseData[idx][hLocY], HouseData[idx][hLocZ]-1.0, 15.0, 0, 0);
+        HouseData[idx][hLocX], HouseData[idx][hLocY], HouseData[idx][hLocZ]-0.5, 15.0, 0, 0);
 }
 
 // Returneaza indexul (in HouseData) al casei cu hID == hid, sau -1
@@ -1277,6 +1412,53 @@ stock Houses_FindPlayerByPID(pid)
         if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pID] == pid)
             return i;
     return INVALID_PLAYER_ID;
+}
+
+// ============================================================
+//  ANIMALE (pets la case de tip 1) - obiecte dinamice
+// ============================================================
+#define MAX_ANIMALS    200
+#define ANIMAL_PRICE   5000   // pretul unui animal la /buyanimal (modificabil)
+
+// Catalog de animale: /buyanimal [nr] foloseste pozitia (1-based) din acest tabel.
+// aType stocat in DB = modelul obiectului.
+enum E_ANIMAL_CATALOG { acModel, acName[32] }
+new const g_AnimalCatalog[][E_ANIMAL_CATALOG] = {
+    { 1609,  "Broasca" },
+    { 19833, "Vaca" },
+    { 19315, "Caprioara" }
+};
+
+enum E_ANIMAL_DATA
+{
+    aID, aType, aPlayerID, aHouseID, aName[32]
+}
+new AnimalData[MAX_ANIMALS][E_ANIMAL_DATA];
+new STREAMER_TAG_OBJECT:g_AnimalObject[MAX_ANIMALS];
+new g_AnimalCount = 0;
+
+// Spawneaza obiectul (animalul) la casa lui, la coordonate usor randomizate
+stock Animals_Spawn(idx)
+{
+    new hidx = Houses_FindByID(AnimalData[idx][aHouseID]);
+    if(hidx == -1) { g_AnimalObject[idx] = STREAMER_TAG_OBJECT:INVALID_STREAMER_ID; return; }
+
+    new Float:x = HouseData[hidx][hLocX] + float(random(10));
+    new Float:y = HouseData[hidx][hLocY] + float(random(10));
+    new Float:z = HouseData[hidx][hLocZ];
+    g_AnimalObject[idx] = CreateDynamicObject(AnimalData[idx][aType], x, y, z, 0.0, 0.0, float(random(360)));
+}
+
+// Distruge toate obiectele-animale din lume si reseteaza contorul (datele din DB raman intacte)
+stock Animals_DestroyAll()
+{
+    for(new i = 0; i < g_AnimalCount; i++)
+    {
+        if(IsValidDynamicObject(g_AnimalObject[i]))
+            DestroyDynamicObject(g_AnimalObject[i]);
+        g_AnimalObject[i] = STREAMER_TAG_OBJECT:INVALID_STREAMER_ID;
+    }
+    g_AnimalCount = 0;
 }
 
 // ============================================================
@@ -1361,11 +1543,26 @@ stock Businesses_FindByID(bid)
 // ============================================================
 #define MAX_TURFS 50
 
+// Constante razboi de teritorii (folosite mai jos in functiile Turfs_* si War_*)
+#define MAFIA_FID_MIN             4
+#define MAFIA_FID_MAX             7
+#define WAR_MIN_FACTION_ONLINE    2
+#define WAR_PENDING_DURATION      120  // 2 minute, inainte sa inceapa lupta efectiva
+#define WAR_ACTIVE_DURATION       900  // 15 minute de lupta
+#define WAR_SURRENDER_MIN_TIME    300  // 5 minute de la inceputul fazei active, ca /warsurrender sa fie permis
+#define WAR_OVERTIME_KILLS_TO_WIN 3    // la egalitate dupa cele 15 minute, prima factiune cu atatea kill-uri castiga
+#define WAR_FLASH_COLOR           0xFF0000AA // culoarea cu care flashuieste gangzone-ul cat timp turful e in razboi
+
 enum E_TURF_DATA
 {
     tID, tFactionID, tName[32],
     Float:tX1, Float:tY1, Float:tX2, Float:tY2,
-    bool:tAttackable, tColor[9]
+    bool:tAttackable, tColor[9],
+    // stare razboi (0=niciunul, 1=pending/2min, 2=activ/15min, 3=sudden death) - tranzitorie, nu se salveaza in DB
+    tWarState, tWarAttackerFaction, tWarDefenderFaction,
+    tWarAttackerScore, tWarDefenderScore,
+    tWarOvertimeAttackerKills, tWarOvertimeDefenderKills,
+    tWarActiveStartTime, tWarPhaseEndTime
 }
 new TurfData[MAX_TURFS][E_TURF_DATA];
 new g_TurfZone[MAX_TURFS] = {-1, ...};
@@ -1411,8 +1608,281 @@ stock Turfs_FindByID(tid)
 stock Turfs_ShowToPlayer(playerid)
 {
     for(new i = 0; i < g_TurfCount; i++)
-        if(g_TurfZone[i] != -1)
-            GangZoneShowForPlayer(playerid, g_TurfZone[i], HexStrToInt(TurfData[i][tColor]));
+    {
+        if(g_TurfZone[i] == -1) continue;
+        GangZoneShowForPlayer(playerid, g_TurfZone[i], HexStrToInt(TurfData[i][tColor]));
+
+        // resincronizeaza flash-ul de razboi pt playerii care se conecteaza in timp ce un turf e deja in razboi
+        if(TurfData[i][tWarState] != 0)
+            GangZoneFlashForPlayer(playerid, g_TurfZone[i], WAR_FLASH_COLOR);
+    }
+}
+
+// ============================================================
+//  RAZBOI DE TERITORII (intre mafii, factiunile 4-7)
+// ============================================================
+#define WAR_STATE_NONE     0
+#define WAR_STATE_PENDING  1
+#define WAR_STATE_ACTIVE   2
+#define WAR_STATE_OVERTIME 3
+
+stock bool:IsMafiaFaction(fid)
+{
+    return (fid >= MAFIA_FID_MIN && fid <= MAFIA_FID_MAX);
+}
+
+// Numara membrii online+logati ai unei factiuni
+stock War_CountOnline(fid)
+{
+    new c = 0;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pFaction] == fid) c++;
+    return c;
+}
+
+// Trimite un mesaj tuturor membrilor online ai unei factiuni
+stock War_NotifyFaction(fid, color, const text[])
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pFaction] == fid)
+            SendClientMessage(i, color, text);
+}
+
+// O factiune poate avea un singur razboi activ (ca atacator sau aparator) in orice moment -
+// verifica daca fid e deja implicata in vreun razboi nerezolvat (pending/activ/overtime), pe orice turf
+stock bool:War_FactionHasActiveWar(fid)
+{
+    for(new i = 0; i < g_TurfCount; i++)
+    {
+        if(TurfData[i][tWarState] == WAR_STATE_NONE) continue;
+        if(TurfData[i][tWarAttackerFaction] == fid || TurfData[i][tWarDefenderFaction] == fid) return true;
+    }
+    return false;
+}
+
+// Initializeaza starea de razboi (pending) pe turful tidx si anunta ambele factiuni - folosit de /war si /forcewar
+stock War_Declare(tidx, atkFid, defFid)
+{
+    TurfData[tidx][tWarState]                 = WAR_STATE_PENDING;
+    TurfData[tidx][tWarAttackerFaction]        = atkFid;
+    TurfData[tidx][tWarDefenderFaction]        = defFid;
+    TurfData[tidx][tWarAttackerScore]          = 0;
+    TurfData[tidx][tWarDefenderScore]          = 0;
+    TurfData[tidx][tWarOvertimeAttackerKills]  = 0;
+    TurfData[tidx][tWarOvertimeDefenderKills]  = 0;
+    TurfData[tidx][tWarActiveStartTime]        = 0;
+    TurfData[tidx][tWarPhaseEndTime]           = gettime() + WAR_PENDING_DURATION;
+
+    if(g_TurfZone[tidx] != -1)
+        GangZoneFlashForAll(g_TurfZone[tidx], WAR_FLASH_COLOR);
+
+    new warMsg[220];
+    format(warMsg, sizeof(warMsg), C_ERROR"[War] "C_WHITE"%s"C_WHITE" is attacking territory "C_INFO"#%d"C_WHITE" (%s) of "C_WHITE"%s"C_WHITE"! The war starts in "C_INFO"2 minutes"C_WHITE".",
+        FactionData[atkFid][fName], TurfData[tidx][tID], TurfData[tidx][tName], FactionData[defFid][fName]);
+    War_NotifyFaction(atkFid, COLOR_ERROR, warMsg);
+    War_NotifyFaction(defFid, COLOR_ERROR, warMsg);
+
+    SetTimerEx("War_StartActive", WAR_PENDING_DURATION * 1000, false, "i", tidx);
+}
+
+// Verifica daca punctul (x,y) e in interiorul dreptunghiului turfului (indiferent de ordinea colturilor in DB)
+stock bool:War_PointInTurf(tidx, Float:x, Float:y)
+{
+    new Float:minX = (TurfData[tidx][tX1] < TurfData[tidx][tX2]) ? TurfData[tidx][tX1] : TurfData[tidx][tX2];
+    new Float:maxX = (TurfData[tidx][tX1] < TurfData[tidx][tX2]) ? TurfData[tidx][tX2] : TurfData[tidx][tX1];
+    new Float:minY = (TurfData[tidx][tY1] < TurfData[tidx][tY2]) ? TurfData[tidx][tY1] : TurfData[tidx][tY2];
+    new Float:maxY = (TurfData[tidx][tY1] < TurfData[tidx][tY2]) ? TurfData[tidx][tY2] : TurfData[tidx][tY1];
+    return (x >= minX && x <= maxX && y >= minY && y <= maxY);
+}
+
+// Gaseste turful in interiorul caruia se afla playerul acum (sau -1)
+stock War_FindTurfPlayerStandsIn(playerid)
+{
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(playerid, x, y, z);
+    for(new i = 0; i < g_TurfCount; i++)
+        if(War_PointInTurf(i, x, y)) return i;
+    return -1;
+}
+
+// Gaseste turful cu razboi activ/overtime a carui zona contine (x,y) si in care factionId e implicata (atacator/aparator)
+stock War_FindActiveWarForFactionAt(factionId, Float:x, Float:y)
+{
+    for(new i = 0; i < g_TurfCount; i++)
+    {
+        if(TurfData[i][tWarState] != WAR_STATE_ACTIVE && TurfData[i][tWarState] != WAR_STATE_OVERTIME) continue;
+        if(TurfData[i][tWarAttackerFaction] != factionId && TurfData[i][tWarDefenderFaction] != factionId) continue;
+        if(War_PointInTurf(i, x, y)) return i;
+    }
+    return -1;
+}
+
+// Construieste culoarea de gangzone (RRGGBB88) corespunzatoare unei factiuni, pe baza FactionColors
+stock War_FactionTurfColor(fid, out[], len)
+{
+    format(out, len, "%06X88", (FactionColors[fid] >> 8) & 0xFFFFFF);
+}
+
+// Aplica delta la scorul factiunii date pe turful tidx; in overtime, verifica si pragul de victorie
+stock War_AddScore(tidx, factionId, delta)
+{
+    new bool:isAttacker = (factionId == TurfData[tidx][tWarAttackerFaction]);
+    if(isAttacker) TurfData[tidx][tWarAttackerScore] += delta;
+    else TurfData[tidx][tWarDefenderScore] += delta;
+
+    if(TurfData[tidx][tWarState] == WAR_STATE_OVERTIME && delta > 0)
+    {
+        if(isAttacker)
+        {
+            TurfData[tidx][tWarOvertimeAttackerKills]++;
+            if(TurfData[tidx][tWarOvertimeAttackerKills] >= WAR_OVERTIME_KILLS_TO_WIN)
+                War_EndWar(tidx, TurfData[tidx][tWarAttackerFaction], false);
+        }
+        else
+        {
+            TurfData[tidx][tWarOvertimeDefenderKills]++;
+            if(TurfData[tidx][tWarOvertimeDefenderKills] >= WAR_OVERTIME_KILLS_TO_WIN)
+                War_EndWar(tidx, TurfData[tidx][tWarDefenderFaction], false);
+        }
+    }
+}
+
+// Incheie razboiul: anunta ambele factiuni, transfera turful daca atacatorul a castigat, reseteaza starea
+stock War_EndWar(tidx, winnerFid, bool:surrendered)
+{
+    if(g_TurfZone[tidx] != -1)
+        GangZoneStopFlashForAll(g_TurfZone[tidx]);
+
+    new atkFid = TurfData[tidx][tWarAttackerFaction];
+    new defFid = TurfData[tidx][tWarDefenderFaction];
+    new loserFid = (winnerFid == atkFid) ? defFid : atkFid;
+
+    new wmsg[250];
+    wmsg[0] = EOS;
+    if(surrendered)
+        format(wmsg, sizeof(wmsg), C_ERROR"[War] "C_WHITE"%s"C_WHITE" surrendered! ", FactionData[loserFid][fName]);
+
+    new tail[200];
+    if(winnerFid == atkFid)
+        format(tail, sizeof(tail), C_SUCCESS"%s"C_WHITE" has conquered territory "C_INFO"#%d"C_WHITE" (%s) from "C_WHITE"%s"C_WHITE"!",
+            FactionData[atkFid][fName], TurfData[tidx][tID], TurfData[tidx][tName], FactionData[defFid][fName]);
+    else
+        format(tail, sizeof(tail), C_SUCCESS"%s"C_WHITE" successfully defended territory "C_INFO"#%d"C_WHITE" (%s) against "C_WHITE"%s"C_WHITE"!",
+            FactionData[defFid][fName], TurfData[tidx][tID], TurfData[tidx][tName], FactionData[atkFid][fName]);
+    strcat(wmsg, tail);
+
+    War_NotifyFaction(atkFid, COLOR_SUCCESS, wmsg);
+    War_NotifyFaction(defFid, COLOR_SUCCESS, wmsg);
+
+    if(winnerFid == atkFid)
+    {
+        TurfData[tidx][tFactionID] = winnerFid;
+        War_FactionTurfColor(winnerFid, TurfData[tidx][tColor], 9);
+        Turfs_RecreateZone(tidx);
+
+        new tq[200];
+        mysql_format(g_SQL, tq, sizeof(tq), "UPDATE `turfs` SET `faction_id`=%d, `color`='%s' WHERE `id`=%d",
+            winnerFid, TurfData[tidx][tColor], TurfData[tidx][tID]);
+        mysql_tquery(g_SQL, tq, "", "", 0);
+    }
+
+    TurfData[tidx][tWarState]                 = WAR_STATE_NONE;
+    TurfData[tidx][tWarAttackerFaction]       = 0;
+    TurfData[tidx][tWarDefenderFaction]       = 0;
+    TurfData[tidx][tWarAttackerScore]         = 0;
+    TurfData[tidx][tWarDefenderScore]         = 0;
+    TurfData[tidx][tWarOvertimeAttackerKills] = 0;
+    TurfData[tidx][tWarOvertimeDefenderKills] = 0;
+    TurfData[tidx][tWarActiveStartTime]       = 0;
+    TurfData[tidx][tWarPhaseEndTime]          = 0;
+}
+
+// La 2 minute dupa /war: incepe faza activa de 15 minute
+public War_StartActive(tidx)
+{
+    if(TurfData[tidx][tWarState] != WAR_STATE_PENDING) return 1;
+
+    TurfData[tidx][tWarState] = WAR_STATE_ACTIVE;
+    TurfData[tidx][tWarActiveStartTime] = gettime();
+    TurfData[tidx][tWarPhaseEndTime] = gettime() + WAR_ACTIVE_DURATION;
+
+    new atkFid = TurfData[tidx][tWarAttackerFaction];
+    new defFid = TurfData[tidx][tWarDefenderFaction];
+
+    new wmsg[200];
+    format(wmsg, sizeof(wmsg), C_ERROR"[War] "C_WHITE"The war for territory "C_INFO"#%d"C_WHITE" (%s) has begun! Fight for "C_INFO"15 minutes"C_WHITE".",
+        TurfData[tidx][tID], TurfData[tidx][tName]);
+    War_NotifyFaction(atkFid, COLOR_ERROR, wmsg);
+    War_NotifyFaction(defFid, COLOR_ERROR, wmsg);
+
+    SetTimerEx("War_CheckTimeUp", WAR_ACTIVE_DURATION * 1000, false, "i", tidx);
+    return 1;
+}
+
+// La 15 minute dupa inceperea fazei active: declara castigatorul, sau intra in sudden death daca e egalitate
+public War_CheckTimeUp(tidx)
+{
+    if(TurfData[tidx][tWarState] != WAR_STATE_ACTIVE) return 1;
+
+    if(TurfData[tidx][tWarAttackerScore] != TurfData[tidx][tWarDefenderScore])
+    {
+        new winnerFid = (TurfData[tidx][tWarAttackerScore] > TurfData[tidx][tWarDefenderScore])
+            ? TurfData[tidx][tWarAttackerFaction] : TurfData[tidx][tWarDefenderFaction];
+        War_EndWar(tidx, winnerFid, false);
+        return 1;
+    }
+
+    TurfData[tidx][tWarState] = WAR_STATE_OVERTIME;
+    TurfData[tidx][tWarOvertimeAttackerKills] = 0;
+    TurfData[tidx][tWarOvertimeDefenderKills] = 0;
+    TurfData[tidx][tWarPhaseEndTime] = 0;
+
+    new atkFid = TurfData[tidx][tWarAttackerFaction];
+    new defFid = TurfData[tidx][tWarDefenderFaction];
+
+    new wmsg[200];
+    format(wmsg, sizeof(wmsg), C_ERROR"[War] "C_WHITE"The war for territory "C_INFO"#%d"C_WHITE" is "C_INFO"tied"C_WHITE"! Sudden death - first faction to "C_INFO"%d kills"C_WHITE" wins.",
+        TurfData[tidx][tID], WAR_OVERTIME_KILLS_TO_WIN);
+    War_NotifyFaction(atkFid, COLOR_ERROR, wmsg);
+    War_NotifyFaction(defFid, COLOR_ERROR, wmsg);
+    return 1;
+}
+
+// Aplica scorul corespunzator unei morti, daca victima (si, daca aplicabil, ucigasul) erau intr-un razboi activ relevant
+stock War_HandleDeath(victimid, killerid)
+{
+    if(!PlayerData[victimid][pLogged]) return;
+
+    new vFid = PlayerData[victimid][pFaction];
+    if(!IsMafiaFaction(vFid)) return;
+
+    new Float:vx, Float:vy, Float:vz;
+    GetPlayerPos(victimid, vx, vy, vz);
+
+    new tidx = War_FindActiveWarForFactionAt(vFid, vx, vy);
+    if(tidx == -1) return;
+
+    if(killerid == INVALID_PLAYER_ID || killerid == victimid)
+    {
+        War_AddScore(tidx, vFid, -1);
+        return;
+    }
+
+    if(!IsPlayerConnected(killerid) || !PlayerData[killerid][pLogged]) return;
+
+    new kFid = PlayerData[killerid][pFaction];
+    new atkFid = TurfData[tidx][tWarAttackerFaction];
+    new defFid = TurfData[tidx][tWarDefenderFaction];
+    if(kFid != atkFid && kFid != defFid) return;
+
+    new Float:kx, Float:ky, Float:kz;
+    GetPlayerPos(killerid, kx, ky, kz);
+    if(!War_PointInTurf(tidx, kx, ky)) return; // ucigasul nu era in zona turfului
+
+    if(kFid == vFid)
+        War_AddScore(tidx, kFid, -1); // friendly fire
+    else
+        War_AddScore(tidx, kFid, 1);  // kill pe inamic
 }
 
 // ============================================================
@@ -1499,7 +1969,6 @@ stock VehiclesFaction_Create(idx)
 #define FIRE_MAPICON_ID         20
 #define FIRE_ICON_SLOT_BASE     60
 #define FIRE_EXTINGUISH_RANGE   25.0
-#define DUTY_HQ_RANGE           10.0
 #define FACTION_SMURD           3
 
 // ---- Boli (Diseases) ----
@@ -1585,7 +2054,7 @@ new Float:PizzaLocations[MAX_FOOD_LOCATIONS][3] = {
     {2393.1387, 2042.6146, 10.8203}, // pizza1
     {2638.1370, 1849.6857, 11.0234}, // pizza2
     {173.1981,  1176.2303, 14.7645}, // pizza3
-    {0.0, 0.0, 0.0},
+    {1368.8596, 685.2029,  10.8203}, // pizza4
     {0.0, 0.0, 0.0}
 };
 
@@ -1661,6 +2130,63 @@ stock Burger_SetPlayerIcons(playerid)
             BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2],
             BURGER_MAPICON_ID, 0, MAPICON_LOCAL);
     }
+}
+
+// ============================================================
+//  PARTY (camera privata, virtual world izolat)
+// ============================================================
+#define VW_PARTY                 501
+#define PARTY_RANGE              5.0
+#define PARTY_TICKET_PRICE       5
+#define PARTY_MUSIC_PRICE        25
+#define PARTY_DRINK_PRICE        10
+#define PARTY_BIZ_ID             15
+#define PARTY_DRINK_MODEL        19570 // <-- schimba aici modelul paharului de bere (placeholder)
+#define PARTY_ATTACH_INDEX       1     // diferit de BBALL_ATTACH_INDEX (0), ca sa nu se suprapuna
+#define PARTY_ATTACH_BONE        6     // 6 = Right Hand (bone SA-MP)
+#define PARTY_DRINK_HEAL         2.0
+#define PARTY_DRINK_DRUNK_AMOUNT 1000  // cat de "beat" te face un pahar (vezi SetPlayerDrunkLevel)
+#define PARTY_GRILL_PRICE        10
+#define PARTY_GRILL_HEAL         5.0
+
+new Float:PartyJoinLoc[3]  = {-690.6676, 941.6799, 13.6328};
+new Float:PartyMusicLoc[3] = {-684.4459, 935.7082, 12.5};
+new Float:PartyDrinkLoc[3] = {-691.6090, 933.9803, 12.5};
+new Float:PartyGrillLoc[3] = {-688.4540, 920.1392, 11.5};
+
+new bool:g_PartyHoldingDrink[MAX_PLAYERS];
+new g_PartyMusicURL[128];
+
+// Trimite suma data catre banca business-ului PARTY_BIZ_ID (daca exista), si persista in DB
+stock Party_AddBizIncome(amount)
+{
+    new bidx = Businesses_FindByID(PARTY_BIZ_ID);
+    if(bidx == -1) return;
+
+    BusinessData[bidx][bBank] += amount;
+
+    new q[128];
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+        BusinessData[bidx][bBank], BusinessData[bidx][bID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+}
+
+// Consuma berea pe care o tine playerul in mana: +drunk, +HP, scoate obiectul din mana
+stock Party_DrinkBeer(playerid)
+{
+    RemovePlayerAttachedObject(playerid, PARTY_ATTACH_INDEX);
+    g_PartyHoldingDrink[playerid] = false;
+
+    new drunk = GetPlayerDrunkLevel(playerid);
+    SetPlayerDrunkLevel(playerid, drunk + PARTY_DRINK_DRUNK_AMOUNT);
+
+    new Float:health;
+    GetPlayerHealth(playerid, health);
+    health += PARTY_DRINK_HEAL;
+    if(health > 100.0) health = 100.0;
+    SetPlayerHealth(playerid, health);
+
+    SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"You drink the beer. Cheers!");
 }
 
 // ============================================================
@@ -2666,12 +3192,15 @@ stock BBall_PlayerLeftMidRound(playerid)
 #define CARAVAN_MODEL_3          3172
 #define CARAVAN_ATTACH_OFFSET_Y -6  // distanta in spatele masinii unde sta rulota cand e atasata
 #define CARAVAN_ATTACH_OFFSET_Z -0.8 // cat de jos sta rulota fata de masina cand e atasata
-#define CARAVAN_PARK_OFFSET_Z   -0.45  // cat de jos se pozitioneaza rulota fata de masina la /detach
+#define CARAVAN_PARK_OFFSET_Z   -0.5  // cat de jos se pozitioneaza rulota fata de masina la /detach
 #define MAX_PERSONAL_CARAVANS   100
+#define CARAVAN_CAMP_DURATION   10800 // 3 ore (= 3 payday-uri, paydayul ruleaza o data pe ora) - vezi /camp
+#define CARAVAN_CAMP_SPAWN_TYPE 4     // valoarea pSpawn cat timp playerul "campeaza" la rulota lui
+#define CARAVAN_ATTACH_RANGE    10.0  // cat de aproape de rulota (deja existenta undeva) trebuie sa fii ca s-o atasezi
 
 enum E_CARAVAN_DATA
 {
-    rID, rOwned, rOwner, rPrice, bool:rCamping, rCampingStartDate,
+    rID, rOwned, rOwner, rType, rPrice, bool:rCamping, rCampingStartDate,
     Float:rParkLocX, Float:rParkLocY, Float:rParkLocZ,
     Float:rCampLocX, Float:rCampLocY, Float:rCampLocZ,
     Float:rParkRX, Float:rParkRY, Float:rParkRZ,
@@ -2682,6 +3211,7 @@ new g_CaravanCount = 0;
 
 new STREAMER_TAG_OBJECT:g_CaravanObject[MAX_PLAYERS]; // un singur obiect per owner (un singur pCaravanKey per player)
 new g_CaravanAttachedVeh[MAX_PLAYERS]; // 0 = parcata (neatasata), altfel = vehicleid de care e atasata in acest moment
+new STREAMER_TAG_OBJECT:g_CaravanOfflineObject[MAX_PERSONAL_CARAVANS]; // obiect persistent pt rulotele cu owner offline (vezi Caravans_RebuildAll)
 
 stock Caravan_GetModel(type)
 {
@@ -2733,7 +3263,7 @@ stock Caravan_FindByOwner(ownerId)
 stock Caravans_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `rID`,`rOwned`,`rOwner`,`rPrice`,`rCamping`,`rCampingStartDate`,\
+        "SELECT `rID`,`rOwned`,`rOwner`,`rType`,`rPrice`,`rCamping`,`rCampingStartDate`,\
          `rParkLocX`,`rParkLocY`,`rParkLocZ`,`rCampLocX`,`rCampLocY`,`rCampLocZ`,\
          `parkRX`,`parkRY`,`parkRZ`,`campRX`,`campRY`,`campRZ` \
          FROM `rulote_personale` ORDER BY `rID` ASC",
@@ -2750,15 +3280,16 @@ public OnCaravansLoaded()
         cache_get_value_name_int(i, "rID",    CaravanData[idx][rID]);
         cache_get_value_name_int(i, "rOwned", CaravanData[idx][rOwned]);
         cache_get_value_name_int(i, "rOwner", CaravanData[idx][rOwner]);
+        cache_get_value_name_int(i, "rType",  CaravanData[idx][rType]);
         cache_get_value_name_int(i, "rPrice", CaravanData[idx][rPrice]);
 
         new campingInt;
         cache_get_value_name_int(i, "rCamping", campingInt);
         CaravanData[idx][rCamping] = bool:campingInt;
 
-        new dateBuf[11];
+        new dateBuf[20];
         cache_get_value_name(i, "rCampingStartDate", dateBuf, sizeof(dateBuf));
-        CaravanData[idx][rCampingStartDate] = DateStrToUnix(dateBuf);
+        CaravanData[idx][rCampingStartDate] = DateTimeStrToUnix(dateBuf);
 
         cache_get_value_name_float(i, "rParkLocX", CaravanData[idx][rParkLocX]);
         cache_get_value_name_float(i, "rParkLocY", CaravanData[idx][rParkLocY]);
@@ -2786,19 +3317,144 @@ public OnCaravanCreated(playerid, idx)
     return 1;
 }
 
-// La login: daca playerul detine o rulota si a fost parcata cel putin o data, o recreeaza la ultima pozitie salvata
+// La fiecare payday: reseteaza camping-ul rulotelor care au depasit CARAVAN_CAMP_DURATION (3 ore = 3 payday-uri)
+stock Caravan_CheckCampingExpiry()
+{
+    new now = gettime();
+    for(new i = 0; i < g_CaravanCount; i++)
+    {
+        if(!CaravanData[i][rOwned] || !CaravanData[i][rCamping]) continue;
+        if(CaravanData[i][rCampingStartDate] <= 0) continue;
+        if(now - CaravanData[i][rCampingStartDate] < CARAVAN_CAMP_DURATION) continue;
+
+        CaravanData[i][rCamping]          = false;
+        CaravanData[i][rCampingStartDate] = 0;
+        CaravanData[i][rCampLocX]         = 0.0;
+        CaravanData[i][rCampLocY]         = 0.0;
+        CaravanData[i][rCampLocZ]         = 0.0;
+        CaravanData[i][rCampRX]           = 0.0;
+        CaravanData[i][rCampRY]           = 0.0;
+        CaravanData[i][rCampRZ]           = 0.0;
+
+        new cq[256];
+        mysql_format(g_SQL, cq, sizeof(cq),
+            "UPDATE `rulote_personale` SET `rCamping`=0, `rCampingStartDate`=NULL, `rCampLocX`=0, `rCampLocY`=0, `rCampLocZ`=0, `campRX`=0, `campRY`=0, `campRZ`=0 WHERE `rID`=%d",
+            CaravanData[i][rID]);
+        mysql_tquery(g_SQL, cq, "", "", 0);
+
+        new ownerId = CaravanData[i][rOwner];
+
+        // acopera si playerii offline: casa daca are, altfel factiune daca are, altfel civil
+        new oq[300];
+        mysql_format(g_SQL, oq, sizeof(oq),
+            "UPDATE `players` p LEFT JOIN `houses` h ON h.owner_id = p.id AND h.owned = 1 \
+             SET p.spawn_type = CASE WHEN h.id IS NOT NULL THEN 3 WHEN p.faction != 0 THEN 2 ELSE 1 END \
+             WHERE p.id = %d",
+            ownerId);
+        mysql_tquery(g_SQL, oq, "", "", 0);
+
+        new ownerPlayerid = Houses_FindPlayerByPID(ownerId);
+        if(ownerPlayerid != INVALID_PLAYER_ID)
+        {
+            new newSpawn = 1;
+            if(PlayerData[ownerPlayerid][pHouse] != 999 && Houses_FindByID(PlayerData[ownerPlayerid][pHouse]) != -1)
+                newSpawn = 3;
+            else if(PlayerData[ownerPlayerid][pFaction] >= 1 && PlayerData[ownerPlayerid][pFaction] <= MAX_FACTIONS)
+                newSpawn = 2;
+
+            PlayerData[ownerPlayerid][pSpawn] = newSpawn;
+            Player_RecalcSpawn(ownerPlayerid);
+
+            SendClientMessage(ownerPlayerid, COLOR_INFO,
+                C_INFO"Info: "C_WHITE"Your camping spot at the caravan has expired. Your spawn point has been reset.");
+        }
+    }
+}
+
+// La login: daca playerul detine o rulota si a fost parcata/campata cel putin o data, o recreeaza la ultima
+// pozitie salvata (rCampLoc daca e populat, altfel rParkLoc) si curata obiectul "offline" lasat de payday
 stock Caravan_ShowParked(playerid)
 {
     if(PlayerData[playerid][pCaravanKey] == 0) return;
-    if(IsValidDynamicObject(g_CaravanObject[playerid])) return;
 
     new cidx = Caravan_FindByOwner(PlayerData[playerid][pID]);
     if(cidx == -1) return;
-    if(CaravanData[cidx][rParkLocX] == 0.0 && CaravanData[cidx][rParkLocY] == 0.0 && CaravanData[cidx][rParkLocZ] == 0.0) return;
 
-    g_CaravanObject[playerid] = CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]),
-        CaravanData[cidx][rParkLocX], CaravanData[cidx][rParkLocY], CaravanData[cidx][rParkLocZ],
-        CaravanData[cidx][rParkRX], CaravanData[cidx][rParkRY], CaravanData[cidx][rParkRZ]);
+    if(IsValidDynamicObject(g_CaravanOfflineObject[cidx]))
+        DestroyDynamicObject(g_CaravanOfflineObject[cidx]);
+
+    if(IsValidDynamicObject(g_CaravanObject[playerid])) return;
+
+    new bool:useCamp = (CaravanData[cidx][rCampLocX] != 0.0 || CaravanData[cidx][rCampLocY] != 0.0 || CaravanData[cidx][rCampLocZ] != 0.0);
+    if(!useCamp && CaravanData[cidx][rParkLocX] == 0.0 && CaravanData[cidx][rParkLocY] == 0.0 && CaravanData[cidx][rParkLocZ] == 0.0) return;
+
+    g_CaravanObject[playerid] = useCamp
+        ? CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]),
+            CaravanData[cidx][rCampLocX], CaravanData[cidx][rCampLocY], CaravanData[cidx][rCampLocZ],
+            CaravanData[cidx][rCampRX], CaravanData[cidx][rCampRY], CaravanData[cidx][rCampRZ])
+        : CreateDynamicObject(Caravan_GetModel(PlayerData[playerid][pCaravanKey]),
+            CaravanData[cidx][rParkLocX], CaravanData[cidx][rParkLocY], CaravanData[cidx][rParkLocZ],
+            CaravanData[cidx][rParkRX], CaravanData[cidx][rParkRY], CaravanData[cidx][rParkRZ]);
+}
+
+// La fiecare payday: distruge si recreeaza obiectele TUTUROR rulotelor detinute (online sau offline),
+// neatasate de un vehicul in acel moment - la rCampLoc daca e populat, altfel la rParkLoc
+stock Caravans_RebuildAll()
+{
+    new countPark = 0, countCamp = 0;
+
+    for(new cidx = 0; cidx < g_CaravanCount; cidx++)
+    {
+        if(!CaravanData[cidx][rOwned]) continue;
+
+        new ownerPlayerid = Houses_FindPlayerByPID(CaravanData[cidx][rOwner]);
+        new bool:online = (ownerPlayerid != INVALID_PLAYER_ID);
+
+        if(online && g_CaravanAttachedVeh[ownerPlayerid] != 0) continue; // atasata de un vehicul acum - nu o atingem
+
+        new bool:useCamp = (CaravanData[cidx][rCampLocX] != 0.0 || CaravanData[cidx][rCampLocY] != 0.0 || CaravanData[cidx][rCampLocZ] != 0.0);
+
+        new Float:px, Float:py, Float:pz, Float:rx, Float:ry, Float:rz;
+        if(useCamp)
+        {
+            px = CaravanData[cidx][rCampLocX];
+            py = CaravanData[cidx][rCampLocY];
+            pz = CaravanData[cidx][rCampLocZ];
+            rx = CaravanData[cidx][rCampRX];
+            ry = CaravanData[cidx][rCampRY];
+            rz = CaravanData[cidx][rCampRZ];
+            countCamp++;
+        }
+        else
+        {
+            if(CaravanData[cidx][rParkLocX] == 0.0 && CaravanData[cidx][rParkLocY] == 0.0 && CaravanData[cidx][rParkLocZ] == 0.0) continue; // niciodata parcata
+
+            px = CaravanData[cidx][rParkLocX];
+            py = CaravanData[cidx][rParkLocY];
+            pz = CaravanData[cidx][rParkLocZ];
+            rx = CaravanData[cidx][rParkRX];
+            ry = CaravanData[cidx][rParkRY];
+            rz = CaravanData[cidx][rParkRZ];
+            countPark++;
+        }
+
+        new model = Caravan_GetModel(CaravanData[cidx][rType]);
+
+        if(online)
+        {
+            if(IsValidDynamicObject(g_CaravanObject[ownerPlayerid]))
+                DestroyDynamicObject(g_CaravanObject[ownerPlayerid]);
+            g_CaravanObject[ownerPlayerid] = CreateDynamicObject(model, px, py, pz, rx, ry, rz);
+        }
+        else
+        {
+            if(IsValidDynamicObject(g_CaravanOfflineObject[cidx]))
+                DestroyDynamicObject(g_CaravanOfflineObject[cidx]);
+            g_CaravanOfflineObject[cidx] = CreateDynamicObject(model, px, py, pz, rx, ry, rz);
+        }
+    }
+
+    printf("[Rulote] Caravanele au fost refacute: %d la rParkLoc, %d la rCampLoc.", countPark, countCamp);
 }
 
 #define FACTION_RAR             2
@@ -3503,21 +4159,58 @@ stock PVehicles_ClearKeySlot(playerid, vid)
     else if(PlayerData[playerid][pKey3] == vid) { PlayerData[playerid][pKey3] = 0; UpdatePlayer(playerid, pKey3); }
 }
 
+// Cele 8 locatii intre care se alege random spawn-ul civil (pSpawn==1)
+#define CIVIL_SPAWN_COUNT 8
+new Float:CivilSpawnLocations[CIVIL_SPAWN_COUNT][4] = {
+    {1362.4468, 788.8919, 10.8203, 288.7621}, // spawn1
+    {1370.1937, 791.0197, 10.8203, 168.5368}, // spawn2
+    {1389.8796, 790.6416, 10.8203, 111.1963}, // spawn3
+    {1389.8354, 781.3478, 10.8203, 90.8294},  // spawn4
+    {1392.5699, 746.9161, 10.8203, 190.8562}, // spawn5
+    {1388.7506, 731.7965, 10.8203, 44.4323},  // spawn6
+    {1364.1913, 728.9312, 10.8203, 11.2420},  // spawn7
+    {1366.0541, 750.7808, 10.8203, 263.0685}  // spawn8
+};
+
 // Recalculeaza si cacheaza pSpawnX/Y/Z in functie de pSpawn, ca sa nu se mai interogheze
 // FactionData/HouseData la fiecare spawn. Cade pe civil daca tipul selectat nu e disponibil.
 stock Player_RecalcSpawn(playerid)
 {
     new type = PlayerData[playerid][pSpawn];
 
+    if(type == CARAVAN_CAMP_SPAWN_TYPE)
+    {
+        new cidx = Caravan_FindByOwner(PlayerData[playerid][pID]);
+        if(cidx != -1 && (CaravanData[cidx][rCampLocX] != 0.0 || CaravanData[cidx][rCampLocY] != 0.0 || CaravanData[cidx][rCampLocZ] != 0.0))
+        {
+            PlayerData[playerid][pSpawnX] = CaravanData[cidx][rCampLocX];
+            PlayerData[playerid][pSpawnY] = CaravanData[cidx][rCampLocY];
+            PlayerData[playerid][pSpawnZ] = CaravanData[cidx][rCampLocZ] + 4.0;
+            return;
+        }
+        type = 1;
+    }
+
     if(type == 2)
     {
         new fid = PlayerData[playerid][pFaction];
-        if(fid >= 1 && fid <= MAX_FACTIONS && (FactionData[fid][fHQX] != 0.0 || FactionData[fid][fHQY] != 0.0))
+        if(fid >= 1 && fid <= MAX_FACTIONS)
         {
-            PlayerData[playerid][pSpawnX] = FactionData[fid][fHQX];
-            PlayerData[playerid][pSpawnY] = FactionData[fid][fHQY];
-            PlayerData[playerid][pSpawnZ] = FactionData[fid][fHQZ];
-            return;
+            // Prefera locatia interiorului (daca e setata), altfel cade pe HQ-ul exterior
+            if(FactionData[fid][fInteriorX] != 0.0 || FactionData[fid][fInteriorY] != 0.0)
+            {
+                PlayerData[playerid][pSpawnX] = FactionData[fid][fInteriorX];
+                PlayerData[playerid][pSpawnY] = FactionData[fid][fInteriorY];
+                PlayerData[playerid][pSpawnZ] = FactionData[fid][fInteriorZ];
+                return;
+            }
+            if(FactionData[fid][fHQX] != 0.0 || FactionData[fid][fHQY] != 0.0)
+            {
+                PlayerData[playerid][pSpawnX] = FactionData[fid][fHQX];
+                PlayerData[playerid][pSpawnY] = FactionData[fid][fHQY];
+                PlayerData[playerid][pSpawnZ] = FactionData[fid][fHQZ];
+                return;
+            }
         }
         type = 3;
     }
@@ -3535,10 +4228,11 @@ stock Player_RecalcSpawn(playerid)
         type = 1;
     }
 
-    // Civil (implicit)
-    PlayerData[playerid][pSpawnX] = 2859.2053;
-    PlayerData[playerid][pSpawnY] = 1290.6671;
-    PlayerData[playerid][pSpawnZ] = 11.3906;
+    // Civil (implicit) - random intre cele 8 locatii
+    new civIdx = random(CIVIL_SPAWN_COUNT);
+    PlayerData[playerid][pSpawnX] = CivilSpawnLocations[civIdx][0];
+    PlayerData[playerid][pSpawnY] = CivilSpawnLocations[civIdx][1];
+    PlayerData[playerid][pSpawnZ] = CivilSpawnLocations[civIdx][2];
 }
 
 // ============================================================
@@ -3591,7 +4285,10 @@ stock DB_CreateTables()
         `driving_lic_d_exp` DATE DEFAULT NULL,\
         `diseased`         TINYINT DEFAULT 0,\
         `disease_paydays`  INT     DEFAULT 0,\
-        `caravan_key`      INT     DEFAULT 0\
+        `caravan_key`      INT     DEFAULT 0,\
+        `is_president`     TINYINT DEFAULT 0,\
+        `voted`            TINYINT DEFAULT 0,\
+        `was_president`    TINYINT DEFAULT 0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
     print("[DB] Tabel `players` verificat/creat.");
@@ -3627,15 +4324,19 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `diseased`        TINYINT DEFAULT 0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `disease_paydays` INT     DEFAULT 0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `caravan_key`      INT   DEFAULT 0",   "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `is_president`  TINYINT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `voted`         TINYINT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN `was_president` TINYINT DEFAULT 0", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `rulote_personale` (\
         `rID`               INT AUTO_INCREMENT PRIMARY KEY,\
         `rOwned`            TINYINT DEFAULT 0,\
         `rOwner`            INT     DEFAULT 0,\
+        `rType`             INT     DEFAULT 1,\
         `rPrice`            INT     DEFAULT 0,\
-        `rCamping`          TINYINT DEFAULT 0,\
-        `rCampingStartDate` DATE    DEFAULT NULL,\
+        `rCamping`          TINYINT  DEFAULT 0,\
+        `rCampingStartDate` DATETIME DEFAULT NULL,\
         `rParkLocX`         FLOAT   DEFAULT 0.0,\
         `rParkLocY`         FLOAT   DEFAULT 0.0,\
         `rParkLocZ`         FLOAT   DEFAULT 0.0,\
@@ -3656,6 +4357,12 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `campRX` FLOAT DEFAULT 0.0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `campRY` FLOAT DEFAULT 0.0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `campRZ` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` MODIFY `rCampingStartDate` DATETIME DEFAULT NULL", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `rulote_personale` ADD COLUMN `rType` INT DEFAULT 1", "", "", 0);
+    // backfill o singura data pentru randurile vechi (dinainte sa existe coloana rType), din players.caravan_key
+    mysql_tquery(g_SQL,
+        "UPDATE `rulote_personale` r JOIN `players` p ON p.id = r.rOwner SET r.rType = p.caravan_key WHERE p.caravan_key > 0",
+        "", "", 0);
     print("[DB] Tabel `rulote_personale` verificat/creat.");
 
     mysql_tquery(g_SQL,
@@ -3669,7 +4376,12 @@ stock DB_CreateTables()
         `mapicon_id` INT DEFAULT -1,\
         `hq_x`       FLOAT DEFAULT 0.0,\
         `hq_y`       FLOAT DEFAULT 0.0,\
-        `hq_z`       FLOAT DEFAULT 0.0\
+        `hq_z`       FLOAT DEFAULT 0.0,\
+        `interior_x` FLOAT DEFAULT 0.0,\
+        `interior_y` FLOAT DEFAULT 0.0,\
+        `interior_z` FLOAT DEFAULT 0.0,\
+        `interior`   INT DEFAULT 0,\
+        `vw`         INT DEFAULT 0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
@@ -3678,6 +4390,11 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `hq_x`       FLOAT DEFAULT 0.0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `hq_y`       FLOAT DEFAULT 0.0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `hq_z`       FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `interior_x` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `interior_y` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `interior_z` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `interior`   INT   DEFAULT 0",   "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `factions` ADD COLUMN `vw`         INT   DEFAULT 0",   "", "", 0);
 
     mysql_tquery(g_SQL,
         "INSERT IGNORE INTO `factions` (`id`,`name`) VALUES \
@@ -3737,12 +4454,28 @@ stock DB_CreateTables()
         `price`    INT DEFAULT 50000,\
         `loc_x`    FLOAT DEFAULT 0.0,\
         `loc_y`    FLOAT DEFAULT 0.0,\
-        `loc_z`    FLOAT DEFAULT 0.0\
+        `loc_z`    FLOAT DEFAULT 0.0,\
+        `type`     INT DEFAULT 1,\
+        `max_pets` INT DEFAULT 0,\
+        `pets`     INT DEFAULT 0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
     mysql_tquery(g_SQL, "ALTER TABLE `houses` ADD COLUMN `owner_id` INT DEFAULT 0",    "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `houses` ADD COLUMN `price`    INT DEFAULT 50000", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `houses` ADD COLUMN `type`     INT DEFAULT 1",     "", "", 0); // 1=casa, 2=apartament, 3=other
+    mysql_tquery(g_SQL, "ALTER TABLE `houses` ADD COLUMN `max_pets` INT DEFAULT 0",     "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `houses` ADD COLUMN `pets`     INT DEFAULT 0",     "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `animals` (\
+        `aID`       INT AUTO_INCREMENT PRIMARY KEY,\
+        `aType`     INT DEFAULT 0,\
+        `aPlayerID` INT DEFAULT 0,\
+        `aHouseID`  INT DEFAULT 0,\
+        `aName`     VARCHAR(32) NOT NULL DEFAULT 'Animal'\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `businesses` (\
@@ -3811,6 +4544,16 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `vehicles_personal` ADD COLUMN `locked`       TINYINT DEFAULT 0", "", "", 0);
 
     mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `president_votes` (\
+        `vID`        INT AUTO_INCREMENT PRIMARY KEY,\
+        `vVotant`    VARCHAR(24) NOT NULL DEFAULT '',\
+        `vVotantId`  INT DEFAULT 0,\
+        `vVotatPe`   VARCHAR(24) NOT NULL DEFAULT '',\
+        `vVotatPeId` INT DEFAULT 0\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+
+    mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `turfs` (\
         `id`         INT AUTO_INCREMENT PRIMARY KEY,\
         `faction_id` INT DEFAULT 0,\
@@ -3821,11 +4564,13 @@ stock DB_CreateTables()
         `y2`         FLOAT DEFAULT 0.0,\
         `attackable` TINYINT(1) DEFAULT 1,\
         `color`      VARCHAR(8) DEFAULT '000000FF',\
+        `label_z`    FLOAT DEFAULT 15.0,\
         UNIQUE KEY `uq_turf_name` (`name`)\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
     mysql_tquery(g_SQL, "ALTER TABLE `turfs` MODIFY `color` VARCHAR(8) DEFAULT '000000FF'", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `turfs` ADD COLUMN `label_z` FLOAT DEFAULT 15.0", "", "", 0); // <-- ajusteaza per-turf daca eticheta #ID apare ingropata/plutind
 
     // mysql_tquery(g_SQL,
     //     "INSERT IGNORE INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) VALUES \
@@ -3839,6 +4584,54 @@ stock DB_CreateTables()
     // mysql_tquery(g_SQL, "UPDATE `turfs` SET `faction_id`=5,`color`='AA44AA88' WHERE `name`='HQ {Factiune 5}'", "", "", 0);
     // mysql_tquery(g_SQL, "UPDATE `turfs` SET `faction_id`=6,`color`='44AA4488' WHERE `name`='HQ {Factiune 6}'", "", "", 0);
     // mysql_tquery(g_SQL, "UPDATE `turfs` SET `faction_id`=7,`color`='FFCC0088' WHERE `name`='HQ {Factiune 7}'", "", "", 0);
+
+    // 8 turfuri noi atacabile, faction_id distribuit 4/5/6/7, culoarea = culoarea factiunii respective.
+    // `name` e UNIQUE NOT NULL si trebuie cunoscut ID-ul (AUTO_INCREMENT) inainte sa-l folosim ca nume, deci
+    // inseram cu un nume temporar unic, apoi il redenumim cu id-ul real alocat de DB. Idempotenta NU se poate
+    // baza pe INSERT IGNORE + numele temporar (dupa redenumire, numele temporar e liber din nou si s-ar
+    // reinsera la fiecare restart) - verificam in schimb pe coordonate (x1,y1), care raman fixe.
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 4,'TurfSeed_1',-1129,2241.171875,-1037,2359.171875,1,'3366CC88' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=-1129 AND `y1`=2241.171875)",
+        "", "", 0);
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 5,'TurfSeed_2',-829,2369.5,-749,2465.5,1,'AA44AA88' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=-829 AND `y1`=2369.5)",
+        "", "", 0);
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 6,'TurfSeed_3',-460,2196.1000061035156,-345,2271.1000061035156,1,'44AA4488' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=-460 AND `y1`=2196.1000061035156)",
+        "", "", 0);
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 7,'TurfSeed_4',85.0001220703125,2386.0999908447266,224.0001220703125,2468.0999908447266,1,'FFCC0088' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=85.0001220703125 AND `y1`=2386.0999908447266)",
+        "", "", 0);
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 4,'TurfSeed_5',224.0001220703125,2386.0999908447266,372.0001220703125,2468.0999908447266,1,'3366CC88' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=224.0001220703125 AND `y1`=2386.0999908447266)",
+        "", "", 0);
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 5,'TurfSeed_6',261.64306640625,2560.785701751709,347.64306640625,2666.785701751709,1,'AA44AA88' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=261.64306640625 AND `y1`=2560.785701751709)",
+        "", "", 0);
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 6,'TurfSeed_7',189.640625,2560.7890625,262.640625,2666.7890625,1,'44AA4488' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=189.640625 AND `y1`=2560.7890625)",
+        "", "", 0);
+    mysql_tquery(g_SQL,
+        "INSERT INTO `turfs` (`faction_id`,`name`,`x1`,`y1`,`x2`,`y2`,`attackable`,`color`) \
+         SELECT 7,'TurfSeed_8',967.9307861328125,959.3505554199219,1170.9307861328125,1163.3505554199219,1,'FFCC0088' \
+         WHERE NOT EXISTS (SELECT 1 FROM `turfs` WHERE `x1`=967.9307861328125 AND `y1`=959.3505554199219)",
+        "", "", 0);
+
+    mysql_tquery(g_SQL, "UPDATE `turfs` SET `name` = CONVERT(`id`, CHAR) WHERE `name` LIKE 'TurfSeed\\_%'", "", "", 0);
 
     // Migrare: redenumeste tabelele vechi daca exista (pastreaza datele); nu face nimic daca tabela noua
     // exista deja sau daca cea veche nu a existat niciodata (eroarea e doar logata, nu opreste serverul)
@@ -3963,7 +4756,8 @@ stock Factions_Load()
 {
     print("[Factions] Se incarca factiunile din baza de date...");
     mysql_tquery(g_SQL,
-        "SELECT `id`,`name`,`members`,`lead`,`bank`,`pickup_id`,`mapicon_id`,`hq_x`,`hq_y`,`hq_z` \
+        "SELECT `id`,`name`,`members`,`lead`,`bank`,`pickup_id`,`mapicon_id`,`hq_x`,`hq_y`,`hq_z`,\
+         `interior_x`,`interior_y`,`interior_z`,`interior`,`vw` \
          FROM `factions` ORDER BY `id` ASC",
         "OnFactionsLoaded");
 }
@@ -3986,9 +4780,15 @@ public OnFactionsLoaded()
         cache_get_value_name_float(i, "hq_x",    FactionData[fid][fHQX]);
         cache_get_value_name_float(i, "hq_y",    FactionData[fid][fHQY]);
         cache_get_value_name_float(i, "hq_z",    FactionData[fid][fHQZ]);
+        cache_get_value_name_float(i, "interior_x", FactionData[fid][fInteriorX]);
+        cache_get_value_name_float(i, "interior_y", FactionData[fid][fInteriorY]);
+        cache_get_value_name_float(i, "interior_z", FactionData[fid][fInteriorZ]);
+        cache_get_value_name_int  (i, "interior",   FactionData[fid][fInterior]);
+        cache_get_value_name_int  (i, "vw",         FactionData[fid][fvw]);
 
         Factions_RecreatePickup(fid);
         Factions_RecreateLabel(fid);
+        Factions_RecreateInteriorPickup(fid);
     }
     printf("[Factions] %d factiuni incarcate.", rows);
     return 1;
@@ -4000,7 +4800,7 @@ public OnFactionsLoaded()
 stock Houses_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`price`,`loc_x`,`loc_y`,`loc_z` FROM `houses` ORDER BY `id` ASC",
+        "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`price`,`type`,`max_pets`,`pets`,`loc_x`,`loc_y`,`loc_z` FROM `houses` ORDER BY `id` ASC",
         "OnHousesLoaded");
 }
 
@@ -4017,6 +4817,9 @@ public OnHousesLoaded()
         cache_get_value_name_int  (i, "owner_id", HouseData[idx][hOwnerId]);
         cache_get_value_name_int  (i, "owned",    HouseData[idx][hOwned]);
         cache_get_value_name_int  (i, "price",    HouseData[idx][hPrice]);
+        cache_get_value_name_int  (i, "type",     HouseData[idx][hType]);
+        cache_get_value_name_int  (i, "max_pets", HouseData[idx][hMaxPets]);
+        cache_get_value_name_int  (i, "pets",     HouseData[idx][hPets]);
         cache_get_value_name_float(i, "loc_x", HouseData[idx][hLocX]);
         cache_get_value_name_float(i, "loc_y", HouseData[idx][hLocY]);
         cache_get_value_name_float(i, "loc_z", HouseData[idx][hLocZ]);
@@ -4025,6 +4828,40 @@ public OnHousesLoaded()
         g_HouseCount++;
     }
     printf("[Houses] %d case incarcate.", g_HouseCount);
+
+    // Animalele depind de case (Houses_FindByID), deci le incarcam dupa ce casele sunt gata
+    Animals_Load();
+    return 1;
+}
+
+// ============================================================
+//  INCARCARE ANIMALE
+// ============================================================
+stock Animals_Load()
+{
+    mysql_tquery(g_SQL,
+        "SELECT `aID`,`aType`,`aPlayerID`,`aHouseID`,`aName` FROM `animals` ORDER BY `aID` ASC",
+        "OnAnimalsLoaded");
+}
+
+public OnAnimalsLoaded()
+{
+    Animals_DestroyAll(); // curata actorii existenti (relevant la respawn-ul de payday)
+
+    new rows = cache_num_rows();
+    for(new i = 0; i < rows && g_AnimalCount < MAX_ANIMALS; i++)
+    {
+        new idx = g_AnimalCount;
+        cache_get_value_name_int(i, "aID",       AnimalData[idx][aID]);
+        cache_get_value_name_int(i, "aType",     AnimalData[idx][aType]);
+        cache_get_value_name_int(i, "aPlayerID", AnimalData[idx][aPlayerID]);
+        cache_get_value_name_int(i, "aHouseID",  AnimalData[idx][aHouseID]);
+        cache_get_value_name    (i, "aName",     AnimalData[idx][aName], 32);
+        g_AnimalObject[idx] = STREAMER_TAG_OBJECT:INVALID_STREAMER_ID;
+        Animals_Spawn(idx);
+        g_AnimalCount++;
+    }
+    printf("[Animals] %d animale incarcate.", g_AnimalCount);
     return 1;
 }
 
@@ -4106,6 +4943,7 @@ public OnTurfsLoaded()
 
         g_TurfZone[idx] = -1;
         Turfs_RecreateZone(idx);
+
         g_TurfCount++;
     }
     printf("[Turfs] %d turf-uri incarcate.", g_TurfCount);
@@ -4466,6 +5304,12 @@ stock PayDay_Apply()
     gettime(hour, minute, second);
     printf("[PayDay] Distribuit la %02d:00.", hour);
 
+    Caravan_CheckCampingExpiry();
+    Caravans_RebuildAll();
+
+    // La fiecare payday: sterge toti actorii-animale si recreeaza-i din DB (re-randomizeaza pozitiile)
+    Animals_Load();
+
     for(new i = 0; i < MAX_PLAYERS; i++)
     {
         if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
@@ -4523,6 +5367,199 @@ public PayDay_Check()
     {
         g_LastPayDayHour = hour;
         PayDay_Apply();
+    }
+}
+
+// ============================================================
+//  PRESEDINTE (alegeri saptamanale prin vot)
+// ============================================================
+// getdate() nu returneaza ziua saptamanii, deci o calculam din y/m/d (congruenta lui Zeller).
+// Returneaza 0 = Duminica, 1 = Luni, ... 6 = Sambata.
+stock DayOfWeek(year, month, day)
+{
+    if(month < 3) { month += 12; year -= 1; }
+    new k = year % 100;
+    new j = year / 100;
+    // h: 0 = Sambata, 1 = Duminica, ...  (-2*j mod 7 == +5*j mod 7, evitam negativele)
+    new h = (day + (13 * (month + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
+    return (h + 6) % 7; // remapeaza la 0 = Duminica
+}
+
+// Returneaza true daca acum suntem in fereastra de vot (Duminica, 08:00 - 19:30)
+stock bool:President_IsVoteWindowOpen()
+{
+    new year, month, day;
+    getdate(year, month, day);
+    if(DayOfWeek(year, month, day) != 0) return false; // doar Duminica
+
+    new hour, minute, second;
+    gettime(hour, minute, second);
+    if(hour < VOTE_WINDOW_START_HOUR) return false;
+    if(hour > VOTE_WINDOW_END_HOUR) return false;
+    if(hour == VOTE_WINDOW_END_HOUR && minute >= VOTE_WINDOW_END_MINUTE) return false;
+    return true;
+}
+
+// Cauta un player online & logat dupa nume exact (case-insensitive). Returneaza playerid sau -1.
+stock Player_FindByName(const name[])
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+        if(strcmp(PlayerData[i][pName], name, true) == 0) return i;
+    }
+    return -1;
+}
+
+// Gaseste presedintele curent online (sau -1)
+stock President_FindCurrentOnline()
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pIsPresident]) return i;
+    return -1;
+}
+
+// Trimite un mesaj tuturor jucatorilor logati
+stock President_BroadcastAll(color, const text[])
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged])
+            SendClientMessage(i, color, text);
+}
+
+// Duminica 06:00 - goleste tabela de voturi si reseteaza flag-ul `voted` pentru toti (DB + online)
+stock President_ClearVotes()
+{
+    mysql_tquery(g_SQL, "DELETE FROM `president_votes`", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `players` SET `voted`=0", "", "", 0);
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged])
+            PlayerData[i][pVoted] = false;
+
+    President_BroadcastAll(COLOR_INFO,
+        C_INFO"[President] "C_WHITE"Voting is now open! Use "C_INFO"/vote [player name]"C_WHITE" until "C_INFO"19:30"C_WHITE" to elect this week's President.");
+}
+
+// Duminica 20:00 - declanseaza calculul castigatorului (interogare async)
+stock President_ComputeWinner()
+{
+    // Numara voturile per candidat, excluzand candidatii care au fost presedinti runda trecuta (was_president=1).
+    // Presedintele care tocmai isi incheie mandatul e marcat was_president=1 inainte sa rulam asta (vezi mai jos).
+    mysql_tquery(g_SQL,
+        "UPDATE `players` SET `was_president` = `is_president`",
+        "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "SELECT v.`vVotatPeId` AS pid, COUNT(*) AS cnt \
+         FROM `president_votes` v \
+         JOIN `players` p ON p.`id` = v.`vVotatPeId` \
+         WHERE p.`was_president` = 0 \
+         GROUP BY v.`vVotatPeId` \
+         ORDER BY cnt DESC LIMIT 1",
+        "OnPresidentWinnerComputed");
+}
+
+forward OnPresidentWinnerComputed();
+public OnPresidentWinnerComputed()
+{
+    if(cache_num_rows() == 0)
+    {
+        // Niciun vot valid: nu se schimba presedintele, dar mandatul vechi s-a incheiat (deja marcat was_president).
+        // Pastram presedintele actual? Spec spune ca se calculeaza un nou presedinte; fara voturi, ramane vacant.
+        mysql_tquery(g_SQL, "UPDATE `players` SET `is_president`=0", "", "", 0);
+        for(new i = 0; i < MAX_PLAYERS; i++)
+            if(IsPlayerConnected(i) && PlayerData[i][pLogged])
+            {
+                PlayerData[i][pWasPresident] = PlayerData[i][pIsPresident];
+                PlayerData[i][pIsPresident]  = false;
+            }
+        President_BroadcastAll(COLOR_INFO,
+            C_INFO"[President] "C_WHITE"No valid votes this week - the presidency remains vacant.");
+        return 1;
+    }
+
+    new winnerId, voteCount;
+    cache_get_value_name_int(0, "pid", winnerId);
+    cache_get_value_name_int(0, "cnt", voteCount);
+
+    // DB: vechiul presedinte deja marcat was_president=1 (in President_ComputeWinner); acum setam noul presedinte.
+    new q[160];
+    mysql_tquery(g_SQL, "UPDATE `players` SET `is_president`=0", "", "", 0);
+    mysql_format(g_SQL, q, sizeof(q),
+        "UPDATE `players` SET `is_president`=1, `was_president`=0 WHERE `id`=%d", winnerId);
+    mysql_tquery(g_SQL, q, "", "", 0);
+
+    // Sincronizeaza starea in memorie pentru jucatorii online
+    new winnerName[24]; winnerName[0] = EOS;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+        PlayerData[i][pWasPresident] = PlayerData[i][pIsPresident]; // cine era presedinte devine "fost presedinte"
+        PlayerData[i][pIsPresident]  = (PlayerData[i][pID] == winnerId);
+        if(PlayerData[i][pID] == winnerId)
+        {
+            PlayerData[i][pWasPresident] = false;
+            format(winnerName, sizeof(winnerName), "%s", PlayerData[i][pName]);
+        }
+    }
+
+    new msg[160];
+    if(strlen(winnerName))
+        format(msg, sizeof(msg),
+            C_SUCCESS"[President] "C_WHITE"%s"C_WHITE" has been elected President for this week with "C_INFO"%d"C_WHITE" vote(s)!",
+            winnerName, voteCount);
+    else
+        format(msg, sizeof(msg),
+            C_SUCCESS"[President] "C_WHITE"A new President has been elected with "C_INFO"%d"C_WHITE" vote(s)! (currently offline)",
+            voteCount);
+    President_BroadcastAll(COLOR_SUCCESS, msg);
+    return 1;
+}
+
+// Raspuns la /president - afiseaza presedintele curent + impozitul/CASS la zi
+forward OnPresidentInfo(playerid);
+public OnPresidentInfo(playerid)
+{
+    if(!IsPlayerConnected(playerid)) return 0;
+
+    new presName[24];
+    if(cache_num_rows() > 0)
+        cache_get_value_name(0, "username", presName, sizeof(presName));
+
+    new msg[160];
+    if(strlen(presName))
+        format(msg, sizeof(msg), C_INFO"[President] "C_WHITE"Current President: "C_INFO"%s"C_WHITE".", presName);
+    else
+        format(msg, sizeof(msg), C_INFO"[President] "C_WHITE"There is no President elected at the moment.");
+    SendClientMessage(playerid, COLOR_INFO, msg);
+
+    format(msg, sizeof(msg), C_INFO"[President] "C_WHITE"Income tax: "C_INFO"%d%%"C_WHITE" | CASS: "C_INFO"%d%%"C_WHITE".", g_PDTax, g_PDCASS);
+    SendClientMessage(playerid, COLOR_INFO, msg);
+    return 1;
+}
+
+// Tick la fiecare minut (acelasi cadou ca PayDay_Check) - declanseaza momentele cheie de Duminica
+forward President_Check();
+public President_Check()
+{
+    new year, month, day;
+    getdate(year, month, day);
+    if(DayOfWeek(year, month, day) != 0) return; // doar Duminica
+
+    new hour, minute, second;
+    gettime(hour, minute, second);
+
+    if(hour == 6 && minute == 0 && g_LastVoteClearDay != day)
+    {
+        g_LastVoteClearDay = day;
+        President_ClearVotes();
+    }
+
+    if(hour == 20 && minute == 0 && g_LastVoteWinnerDay != day)
+    {
+        g_LastVoteWinnerDay = day;
+        President_ComputeWinner();
     }
 }
 
@@ -4638,7 +5675,7 @@ public OnPlayerRegister(playerid)
     Player_RecalcSpawn(playerid);
 
     SetPlayerVirtualWorld(playerid, 0);
-    SetPlayerMapIcon(playerid, 0, 2859.2053, 1290.6671, 11.3906, 35, 0, MAPICON_LOCAL);
+    SetPlayerMapIcon(playerid, 0, 1385.0, 750.0, 10.8203, 35, 0, MAPICON_LOCAL);
     SetPlayerColor(playerid, FactionColors[FACTION_NONE]);
     Factions_SetPlayerIcons(playerid);
     Businesses_SetPlayerIcons(playerid);
@@ -4667,11 +5704,11 @@ stock Player_Login(playerid, const pass[])
         return;
     }
 
-    new query[550];
+    new query[650];
     mysql_format(g_SQL, query, sizeof(query),
         "SELECT `id`,`password`,`email`,`level`,`money`,`bank`,`rp`,`admin_level`,`faction`,`faction_rank`,`faction_join`,`house`,`business`,`spawn_type`,`key1`,`key2`,`key3`,\
          `driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`diseased`,`disease_paydays`,\
-         `caravan_key` \
+         `caravan_key`,`is_president`,`voted`,`was_president` \
          FROM `players` WHERE `id`=%d LIMIT 1",
         PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, query, "OnPlayerLogin", "i", playerid);
@@ -4714,6 +5751,14 @@ public OnPlayerLogin(playerid)
 
     cache_get_value_name_int(0, "caravan_key", PlayerData[playerid][pCaravanKey]);
     Caravan_ShowParked(playerid);
+
+    new presInt, votedInt, wasPresInt;
+    cache_get_value_name_int(0, "is_president",  presInt);
+    cache_get_value_name_int(0, "voted",         votedInt);
+    cache_get_value_name_int(0, "was_president", wasPresInt);
+    PlayerData[playerid][pIsPresident]  = bool:presInt;
+    PlayerData[playerid][pVoted]        = bool:votedInt;
+    PlayerData[playerid][pWasPresident] = bool:wasPresInt;
 
     PlayerData[playerid][pLogged]  = true;
     PlayerData[playerid][pOnDuty]  = false;
@@ -4914,6 +5959,21 @@ stock UpdatePlayer(playerid, E_PLAYER_DATA:field)
                 "UPDATE `players` SET `caravan_key`=%d WHERE `id`=%d",
                 PlayerData[playerid][pCaravanKey], PlayerData[playerid][pID]);
 
+        case pIsPresident:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `is_president`=%d WHERE `id`=%d",
+                PlayerData[playerid][pIsPresident], PlayerData[playerid][pID]);
+
+        case pVoted:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `voted`=%d WHERE `id`=%d",
+                PlayerData[playerid][pVoted], PlayerData[playerid][pID]);
+
+        case pWasPresident:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `was_president`=%d WHERE `id`=%d",
+                PlayerData[playerid][pWasPresident], PlayerData[playerid][pID]);
+
         default: return;
     }
     mysql_tquery(g_SQL, query, "", "", 0);
@@ -4937,7 +5997,14 @@ public OnGameModeInit()
     AllowAdminTeleport(1);
     DisableInteriorEnterExits();
 
-    AddPlayerClass(7, 2859.2053, 1290.6671, 11.3906, 88.9431, 0, 0, 0, 0, 0, 0);
+    AddPlayerClass(7,1362.4468,788.8919,10.8203,288.7621,0,0,0,0,0,0); // spawn1
+    AddPlayerClass(7,1370.1937,791.0197,10.8203,168.5368,0,0,0,0,0,0); // spawn2
+    AddPlayerClass(7,1389.8796,790.6416,10.8203,111.1963,0,0,0,0,0,0); // spawn3
+    AddPlayerClass(7,1389.8354,781.3478,10.8203,90.8294,0,0,0,0,0,0); // spawn4
+    AddPlayerClass(7,1392.5699,746.9161,10.8203,190.8562,0,0,0,0,0,0); // spawn5
+    AddPlayerClass(7,1388.7506,731.7965,10.8203,44.4323,0,0,0,0,0,0); // spawn6
+    AddPlayerClass(7,1364.1913,728.9312,10.8203,11.2420,0,0,0,0,0,0); // spawn7
+    AddPlayerClass(7,1366.0541,750.7808,10.8203,263.0685,0,0,0,0,0,0); // spawn8
 
     AddStaticVehicle(559, 2794.7180, 1295.5698, 10.3750, 180.9595, 3, 8);
     AddStaticVehicle(565, 2791.6089, 1295.4680, 10.3748, 179.1351, 6, 8);
@@ -4946,11 +6013,15 @@ public OnGameModeInit()
     g_TrainID = AddStaticVehicle(538, 2864.7500, 1329.6376, 12.1256, 0.0009,0, 0); // tren
 
     // Biciclete de inchiriat
-    g_RentBikeVehicle[0] = AddStaticVehicle(510, 2840.0, 1287.0, 11.0, 45.5, 6, 6);
-    g_RentBikeVehicle[1] = AddStaticVehicle(510, 2845.0, 1287.0, 11.0, 45.0, 6, 6);
-    g_RentBikeVehicle[2] = AddStaticVehicle(510, 2850.0, 1287.0, 11.0, 45.0, 6, 6);
-    g_RentBikeVehicle[3] = AddStaticVehicle(510, 2855.0, 1287.0, 11.0, 45.0, 6, 6);
-    g_RentBikeVehicle[4] = AddStaticVehicle(510, 2840.0, 1286.0, 11.0, 45.0, 6, 6);
+    g_RentBikeVehicle[0] = AddStaticVehicle(510,1358.3551,762.0198,10.4325,336.0049,6,6); // bike1
+    g_RentBikeVehicle[1] = AddStaticVehicle(510,1359.5782,784.4636,10.4287,166.2988,6,6); // bike2
+    g_RentBikeVehicle[2] = AddStaticVehicle(510,1385.8171,796.8197,10.4368,115.3072,6,6); // bike3
+    g_RentBikeVehicle[3] = AddStaticVehicle(510,1395.8231,758.8390,10.4292,79.9039,6,6); // bike4
+    g_RentBikeVehicle[4] = AddStaticVehicle(510,1395.8622,756.7565,10.4291,66.2207,6,6); // bike5
+    g_RentBikeVehicle[5] = AddStaticVehicle(510,1368.0385,727.4263,10.4290,322.6002,6,6); // bike6
+    g_RentBikeVehicle[6] = AddStaticVehicle(510,1383.4104,729.2195,10.4292,77.7136,6,6); // bike7
+    g_RentBikeVehicle[7] = AddStaticVehicle(510,1386.5029,740.6320,10.4292,73.3423,6,6); // bike8
+    g_RentBikeVehicle[8] = AddStaticVehicle(510,1358.5907,732.5933,10.4291,319.0235,6,6); // bike9
 
     // Masini de inchiriat piramida
     g_RentCarVehicle[0] = AddStaticVehicle(545, 2200.0, 1278.0, 10.6, 90.0, 6, 6);
@@ -4963,6 +6034,25 @@ public OnGameModeInit()
     g_RentCarDesertVehicle[1] = AddStaticVehicle(471, -19.7723, 2325.7161, 23.6209, 359.8743, 6, 6);
     g_RentCarDesertVehicle[2] = AddStaticVehicle(468, -26.1589, 2324.3223, 23.8033, 2.3033, 6, 6);
     g_RentCarDesertVehicle[3] = AddStaticVehicle(468, -28.8546, 2324.5056, 23.8053, 2.8901, 6, 6);
+
+    // Masini de inchiriat, zona noua (langa spawn-urile civile)
+    g_RentCarVehicle2[0] = AddStaticVehicle(562,1412.9662,768.6681,10.4794,268.9738,6,6); // rent car spawn 1
+    g_RentCarVehicle2[1] = AddStaticVehicle(561,1413.1460,759.1260,10.6338,269.5908,6,6); // rent car spawn 2
+    g_RentCarVehicle2[2] = AddStaticVehicle(565,1412.9193,752.6339,10.4452,270.2829,6,6); // rent car spawn 3
+    g_RentCarVehicle2[3] = AddStaticVehicle(402,1413.1685,746.3370,10.6520,270.2584,6,6); // rent car spawn 4
+    g_RentCarVehicle2[4] = AddStaticVehicle(603,1413.1903,771.8915,10.6585,269.6379,6,6); // rent car spawn 5
+    g_RentCarVehicle2[5] = AddStaticVehicle(579,1413.4404,778.2606,10.7516,269.4717,6,6); // rent car spawn 6
+    g_RentCarVehicle2[6] = AddStaticVehicle(489,1413.0236,784.7442,10.9637,270.7792,6,6); // rent car spawn 7
+
+    // Decor pe apa, langa spawn
+    CreateDynamicObject(10230, 1355.31726, 547.89276, 0.00000,   10.00000, -6.00000, 180.00000);
+    CreateDynamicObject(10231, 1356.17529, 549.27856, -0.66410,   10.00000, -6.00000, 180.00000);
+    CreateDynamicObject(17299, 1285.12878, 554.87238, -15.00000,   0.00000, 0.00000, 180.00000);
+    CreateDynamicObject(19913, 1390.33057, 536.59735, 1.00000,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(19913, 1365.49426, 561.35529, 1.00000,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(19913, 1315.76086, 561.43927, -1.00000,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(19913, 1315.76086, 561.43927, 1.00000,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(5126, 1363.92078, 613.57062, 14.66000,   0.00000, 0.00000, -100.00000);
 
     // Motociclete scoala (examen categoria A)
     g_ExamACar[0] = AddStaticVehicle(468, -13.5, 2340.0, 23.8097, 91.1855, 226, 226);
@@ -5025,6 +6115,61 @@ public OnGameModeInit()
     MedShops_CreateWorld();
     Pizza_CreateWorld();
     Burger_CreateWorld();
+
+    // Party - eticheta de join e vizibila in toate lumile virtuale (-1); cele de muzica/bautura
+    // doar in VW_PARTY, ca sa nu le vada decat cei care au dat deja /joinparty
+    Create3DTextLabel("[ /joinparty ]\n[ /leaveparty ]", COLOR_WHITE,
+        PartyJoinLoc[0], PartyJoinLoc[1], PartyJoinLoc[2] + 0.5, 20.0, -1, 0);
+    Create3DTextLabel("[ /changemusic ]\n[ Price: 25$ ]", COLOR_WHITE,
+        PartyMusicLoc[0], PartyMusicLoc[1], PartyMusicLoc[2] + 0.5, 20.0, VW_PARTY, 0);
+    Create3DTextLabel("[ /buydrink ]\n[ Price: 10$ ]", COLOR_WHITE,
+        PartyDrinkLoc[0], PartyDrinkLoc[1], PartyDrinkLoc[2] + 0.5, 20.0, VW_PARTY, 0);
+    Create3DTextLabel("[ /buygrill ]\n[ Price: 10$ ]", COLOR_WHITE,
+        PartyGrillLoc[0], PartyGrillLoc[1], PartyGrillLoc[2] + 0.5, 20.0, VW_PARTY, 0);
+
+    // Decor party - vizibil doar in VW_PARTY (.worldid), nu se vede pe harta normala
+    CreateDynamicObject(669, -697.82471, 919.30432, 11.53906,   356.85840, 0.00000, 3.14159);
+    CreateDynamicObject(669, -710.14233, 907.04150, 11.53906,   356.85840, 0.00000, 3.14159);
+    CreateDynamicObject(669, -694.93127, 897.79358, 11.43910,   0.00000, 0.00000, 3.14160);
+    CreateDynamicObject(669, -681.81653, 897.28412, 10.90000,   0.00000, 0.00000, 3.14160);
+    CreateDynamicObject(669, -666.29932, 901.91235, 10.00000,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(700, -667.02325, 931.74896, 11.25000,   356.85840, 0.00000, 3.14159);
+    CreateDynamicObject(700, -675.36865, 926.49701, 11.25000,   356.85840, 0.00000, 3.14159);
+    CreateDynamicObject(700, -658.59790, 944.37335, 11.25000,   356.85840, 0.00000, 3.14159);
+    CreateDynamicObject(700, -662.18799, 951.68652, 11.17000,   0.00000, 0.00000, 3.14160);
+    CreateDynamicObject(700, -661.13959, 957.93469, 11.17000,   0.00000, 0.00000, 3.14160);
+    CreateDynamicObject(700, -662.48218, 964.67023, 11.09000,   0.00000, 0.00000, 3.14160);
+    CreateDynamicObject(700, -663.60480, 971.57697, 11.09000,   0.00000, 0.00000, 3.14160);
+    CreateDynamicObject(705, -752.52667, 783.40259, 16.00000,   3.14160, 0.00000, 1.04720);
+    CreateDynamicObject(705, -749.01703, 818.98468, 13.00000,   3.14160, 0.00000, 1.04720);
+    CreateDynamicObject(700, -742.21515, 719.21057, 16.28125,   356.85840, 0.00000, 3.14159);
+    CreateDynamicObject(700, -749.48773, 723.33759, 16.28125,   356.85840, 0.00000, 3.14159);
+    CreateDynamicObject(700, -764.00842, 735.01819, 16.50000,   356.85840, 0.00000, 3.14160);
+    CreateDynamicObject(700, -770.76611, 741.18671, 17.00000,   356.85840, 0.00000, 3.14160);
+    CreateDynamicObject(669, -704.81152, 884.03088, 11.57910,   0.00000, 0.00000, 3.14160);
+    CreateDynamicObject(18691, -688.06659, 931.67896, 12.62701,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(19632, -688.11292, 931.62531, 12.59670,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(19831, -689.13800, 920.72089, 11.10020,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(1481, -689.10449, 919.61829, 11.77790,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(1432, -692.81409, 923.10620, 11.23950,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(1432, -692.59967, 916.79077, 11.23950,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(1432, -679.56982, 925.78668, 11.13950,   0.00000, 0.00000, 20.00000);
+    CreateDynamicObject(1281, -687.26160, 913.02972, 11.87090,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(1281, -681.11902, 912.40302, 11.85090,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(1281, -673.65692, 912.79742, 11.75090,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(2531, -692.29999, 934.31720, 12.59880,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(2531, -692.29999, 933.32758, 12.59880,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(1280, -665.99512, 924.37323, 11.53590,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(1280, -656.99335, 923.46490, 11.47590,   0.00000, 0.00000, 60.00000);
+    CreateDynamicObject(19143, -692.64539, 934.50000, 15.82000,   0.00000, 0.00000, -80.00000);
+    CreateDynamicObject(19143, -692.59119, 935.00000, 15.82000,   0.00000, 0.00000, -80.00000);
+    CreateDynamicObject(19143, -684.82532, 941.90002, 15.66000,   0.00000, 0.00000, 160.00000);
+    CreateDynamicObject(19143, -691.81769, 941.90002, 15.66000,   0.00000, 0.00000, 200.00000);
+    CreateDynamicObject(19145, -683.68372, 934.50000, 15.82000,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(19145, -683.68372, 935.00000, 15.82000,   0.00000, 0.00000, 90.00000);
+    CreateDynamicObject(12957, -674.72119, 946.11768, 11.72000,   0.00000, 0.00000, -90.00000);
+    CreateDynamicObject(1331, -669.25140, 943.71295, 11.84560,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(3434, -695.07397, 965.68945, 12.10630,   0.00000, 0.00000, -90.00000);
 
 	// HQ RAR
     CreateDynamicObject(19817, 932.00000, 2081.00000, 9.70000,   0.00000, 0.00000, 90.00000);
@@ -5110,14 +6255,6 @@ public OnGameModeInit()
 	CreateDynamicObject(3172, 1390.02930, 746.44336, 9.81350,   0.00000, 0.00000, 160.00000);
 
     // Basketgame
-	// CreateDynamicObject(2114, 2480.35010, 1297.50000, 12.86000,   0.00000, 0.00000, 0.00000);
-	// CreateDynamicObject(2114, 2480.13013, 1286.42004, 12.86000,   0.00000, 0.00000, 0.00000);
-	// CreateDynamicObject(2114, 2514.89990, 1297.55005, 12.86000,   0.00000, 0.00000, 0.00000);
-	// CreateDynamicObject(2114, 2514.69995, 1286.50000, 12.86000,   0.00000, 0.00000, 0.00000);
-	// CreateDynamicObject(2114, 2514.89990, 1277.55005, 12.86000,   0.00000, 0.00000, 0.00000);
-	// CreateDynamicObject(2114, 2514.69849, 1266.48950, 12.86000,   0.00000, 0.00000, 0.00000);
-	// CreateDynamicObject(2114, 2480.10010, 1266.43506, 12.86000,   0.00000, 0.00000, 0.00000);
-	// CreateDynamicObject(2114, 2480.28003, 1277.49500, 12.86000,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3065, 2480.21948, 1265.64417, 9.94500,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3065, 2478.79590, 1267.20386, 9.94500,   0.00000, 0.00000, 0.00000);
 	CreateDynamicObject(3065, 2476.80542, 1272.44104, 9.94500,   0.00000, 0.00000, 0.00000);
@@ -5150,6 +6287,7 @@ public OnGameModeInit()
 
 
     for(new i = 0; i <= MAX_FACTIONS; i++) g_FactionLabel[i] = Text3D:INVALID_3DTEXT_ID;
+    for(new i = 0; i <= MAX_FACTIONS; i++) g_FactionInteriorLabel[i] = Text3D:INVALID_3DTEXT_ID;
 
     for(new i = 0; i < MAX_HOUSES; i++)
     {
@@ -5190,6 +6328,7 @@ public OnGameModeInit()
     PayDay_Load();
 
     SetTimer("PayDay_Check", 60000, true);
+    SetTimer("President_Check", 60000, true);
     SetTimer("HealthDecay_Tick", HEALTH_DECAY_TICK, true);
     SetTimer("Fires_Tick", 1000, true);
     SetTimer("Radar_Tick", RADAR_TICK, true);
@@ -5253,6 +6392,9 @@ public OnPlayerConnect(playerid)
     PlayerData[playerid][pDiseased]       = false;
     PlayerData[playerid][pDiseasePaydays] = 0;
     PlayerData[playerid][pCaravanKey]      = 0;
+    PlayerData[playerid][pIsPresident]  = false;
+    PlayerData[playerid][pVoted]        = false;
+    PlayerData[playerid][pWasPresident] = false;
     PlayerData[playerid][pPass][0]    = EOS;
     PlayerData[playerid][pEmail][0]   = EOS;
 
@@ -5644,6 +6786,316 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /equip (mafii, in interiorul HQ-ului propriu) ----
+    if(strcmp(cmd, "/equip", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!IsMafiaFaction(PlayerData[playerid][pFaction]))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Only mafia factions can use this."), 1;
+
+        if(!Factions_IsInOwnInterior(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be inside your faction HQ interior."), 1;
+
+        SetPlayerHealth(playerid, 100.0);
+        GivePlayerWeapon(playerid, WEAPON_GRENADE, 1);
+        GivePlayerWeapon(playerid, WEAPON_TEARGAS, 1);
+        GivePlayerWeapon(playerid, WEAPON_DEAGLE, 350);
+        GivePlayerWeapon(playerid, WEAPON_AK47,  300);
+        if(PlayerData[playerid][pFactionRank] >= 4)
+            GivePlayerWeapon(playerid, WEAPON_SNIPER, 20);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You have been equipped.");
+        return 1;
+    }
+
+    // ---- /war (declara razboi pe turful in care te afli) ----
+    if(strcmp(cmd, "/war", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new warAtkFid = PlayerData[playerid][pFaction];
+        if(!IsMafiaFaction(warAtkFid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Only mafia factions can declare turf wars."), 1;
+
+        new warTidx = War_FindTurfPlayerStandsIn(playerid);
+        if(warTidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be standing inside a territory to declare war on it."), 1;
+
+        new warDefFid = TurfData[warTidx][tFactionID];
+        if(warDefFid == warAtkFid)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't declare war on your own territory."), 1;
+
+        if(!IsMafiaFaction(warDefFid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This territory doesn't belong to a mafia faction."), 1;
+
+        if(!TurfData[warTidx][tAttackable])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This territory cannot be attacked."), 1;
+
+        if(TurfData[warTidx][tWarState] != WAR_STATE_NONE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This territory is already at war."), 1;
+
+        if(War_FactionHasActiveWar(warAtkFid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your faction is already involved in another war."), 1;
+
+        if(War_FactionHasActiveWar(warDefFid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"That faction is already involved in another war."), 1;
+
+        if(War_CountOnline(warAtkFid) < WAR_MIN_FACTION_ONLINE || War_CountOnline(warDefFid) < WAR_MIN_FACTION_ONLINE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Both factions need at least 2 members online to start a war."), 1;
+
+        War_Declare(warTidx, warAtkFid, warDefFid);
+        return 1;
+    }
+
+    // ---- /forcewar [turf_id] [attacker_faction_id] [defender_faction_id] (admin lvl 4+) ----
+    if(strcmp(cmd, "/forcewar", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 4)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 4."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new fwP1[8], fwP2[8], fwP3[8];
+        strmid(fwP1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(fwP2, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(fwP3, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(fwP1) || !strlen(fwP2) || !strlen(fwP3))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/forcewar [turf_id] [attacker_faction_id] [defender_faction_id]"C_WHITE"."), 1;
+
+        new fwTid = strval(fwP1);
+        new fwAtkFid = strval(fwP2);
+        new fwDefFid = strval(fwP3);
+
+        new fwTidx = Turfs_FindByID(fwTid);
+        if(fwTidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid territory ID."), 1;
+
+        if(!IsMafiaFaction(fwAtkFid) || !IsMafiaFaction(fwDefFid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Both factions must be mafia factions (4-7)."), 1;
+
+        if(fwAtkFid == fwDefFid)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Attacker and defender must be different factions."), 1;
+
+        if(TurfData[fwTidx][tWarState] != WAR_STATE_NONE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This territory is already at war."), 1;
+
+        War_Declare(fwTidx, fwAtkFid, fwDefFid);
+
+        new fwmsg[160];
+        format(fwmsg, sizeof(fwmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Forced a war on territory "C_INFO"#%d"C_WHITE": "C_INFO"%s"C_WHITE" vs "C_INFO"%s"C_WHITE".",
+            fwTid, FactionData[fwAtkFid][fName], FactionData[fwDefFid][fName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, fwmsg);
+        return 1;
+    }
+
+    // ---- /warsurrender ----
+    if(strcmp(cmd, "/warsurrender", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new wsFid = PlayerData[playerid][pFaction];
+        if(!IsMafiaFaction(wsFid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Only mafia factions take part in turf wars."), 1;
+
+        if(PlayerData[playerid][pFactionRank] < 4)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You need rank 4 or 5 in the faction to surrender a war."), 1;
+
+        new wsTidx = -1;
+        for(new i = 0; i < g_TurfCount; i++)
+        {
+            if((TurfData[i][tWarState] == WAR_STATE_ACTIVE || TurfData[i][tWarState] == WAR_STATE_OVERTIME) &&
+               (TurfData[i][tWarAttackerFaction] == wsFid || TurfData[i][tWarDefenderFaction] == wsFid))
+            {
+                wsTidx = i;
+                break;
+            }
+        }
+
+        if(wsTidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your faction is not currently in an active war."), 1;
+
+        if(gettime() - TurfData[wsTidx][tWarActiveStartTime] < WAR_SURRENDER_MIN_TIME)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can only surrender after the first 5 minutes of the war."), 1;
+
+        new wsWinnerFid = (TurfData[wsTidx][tWarAttackerFaction] == wsFid) ? TurfData[wsTidx][tWarDefenderFaction] : TurfData[wsTidx][tWarAttackerFaction];
+        War_EndWar(wsTidx, wsWinnerFid, true);
+        return 1;
+    }
+
+    // ---- /warscore ----
+    if(strcmp(cmd, "/warscore", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new wcFid = PlayerData[playerid][pFaction];
+        if(!IsMafiaFaction(wcFid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Only mafia factions take part in turf wars."), 1;
+
+        new wcFound = 0;
+        for(new i = 0; i < g_TurfCount; i++)
+        {
+            if(TurfData[i][tWarState] == WAR_STATE_NONE) continue;
+            if(TurfData[i][tWarAttackerFaction] != wcFid && TurfData[i][tWarDefenderFaction] != wcFid) continue;
+
+            wcFound++;
+            new wcAtkFid = TurfData[i][tWarAttackerFaction];
+            new wcDefFid = TurfData[i][tWarDefenderFaction];
+            new wcLeft;
+            new wcMsg[230];
+
+            if(TurfData[i][tWarState] == WAR_STATE_PENDING)
+            {
+                wcLeft = TurfData[i][tWarPhaseEndTime] - gettime();
+                if(wcLeft < 0) wcLeft = 0;
+                format(wcMsg, sizeof(wcMsg), C_INFO"[War] "C_WHITE"Territory "C_INFO"#%d"C_WHITE" (%s): "C_WHITE"%s"C_WHITE" vs "C_WHITE"%s"C_WHITE" - starts in "C_INFO"%d:%02d"C_WHITE".",
+                    TurfData[i][tID], TurfData[i][tName], FactionData[wcAtkFid][fName], FactionData[wcDefFid][fName], wcLeft / 60, wcLeft % 60);
+            }
+            else if(TurfData[i][tWarState] == WAR_STATE_ACTIVE)
+            {
+                wcLeft = TurfData[i][tWarPhaseEndTime] - gettime();
+                if(wcLeft < 0) wcLeft = 0;
+                format(wcMsg, sizeof(wcMsg), C_INFO"[War] "C_WHITE"Territory "C_INFO"#%d"C_WHITE" (%s): "C_INFO"%s %d"C_WHITE" - "C_INFO"%d %s"C_WHITE" | Time left: "C_INFO"%d:%02d"C_WHITE".",
+                    TurfData[i][tID], TurfData[i][tName], FactionData[wcAtkFid][fName], TurfData[i][tWarAttackerScore],
+                    TurfData[i][tWarDefenderScore], FactionData[wcDefFid][fName], wcLeft / 60, wcLeft % 60);
+            }
+            else
+            {
+                format(wcMsg, sizeof(wcMsg), C_INFO"[War] "C_WHITE"Territory "C_INFO"#%d"C_WHITE" (%s): "C_INFO"SUDDEN DEATH"C_WHITE" - "C_WHITE"%s "C_INFO"%d"C_WHITE" kills, "C_WHITE"%s "C_INFO"%d"C_WHITE" kills (first to "C_INFO"%d"C_WHITE" wins).",
+                    TurfData[i][tID], TurfData[i][tName], FactionData[wcAtkFid][fName], TurfData[i][tWarOvertimeAttackerKills],
+                    FactionData[wcDefFid][fName], TurfData[i][tWarOvertimeDefenderKills], WAR_OVERTIME_KILLS_TO_WIN);
+            }
+
+            SendClientMessage(playerid, COLOR_INFO, wcMsg);
+        }
+
+        if(!wcFound)
+            SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Your faction is not currently involved in any turf war.");
+        return 1;
+    }
+
+    // ---- /vote [player name] (alegeri presedinte, Duminica 08:00-19:30) ----
+    if(strcmp(cmd, "/vote", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!President_IsVoteWindowOpen())
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Voting is only open on Sunday between 08:00 and 19:30."), 1;
+
+        if(PlayerData[playerid][pVoted])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You have already voted this week."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new voteName[24];
+        strmid(voteName, cmdtext, idx, strlen(cmdtext), 24);
+        if(!strlen(voteName))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/vote [player name]"C_WHITE"."), 1;
+
+        new targetid = Player_FindByName(voteName);
+        if(targetid == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"That player is not online."), 1;
+
+        new vq[256];
+        mysql_format(g_SQL, vq, sizeof(vq),
+            "INSERT INTO `president_votes` (`vVotant`,`vVotantId`,`vVotatPe`,`vVotatPeId`) VALUES ('%e',%d,'%e',%d)",
+            PlayerData[playerid][pName], PlayerData[playerid][pID],
+            PlayerData[targetid][pName], PlayerData[targetid][pID]);
+        mysql_tquery(g_SQL, vq, "", "", 0);
+
+        PlayerData[playerid][pVoted] = true;
+        UpdatePlayer(playerid, pVoted);
+
+        new vmsg[128];
+        format(vmsg, sizeof(vmsg),
+            C_SUCCESS"Success: "C_WHITE"You voted for "C_INFO"%s"C_WHITE" as President. Results are announced Sunday at 20:00.",
+            PlayerData[targetid][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, vmsg);
+        return 1;
+    }
+
+    // ---- /settax [0-100] (doar presedinte) ----
+    if(strcmp(cmd, "/settax", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!PlayerData[playerid][pIsPresident])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Only the President can change the tax rate."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new taxStr[8];
+        strmid(taxStr, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(taxStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/settax [0-100]"C_WHITE"."), 1;
+
+        new newTax = strval(taxStr);
+        if(newTax < 0 || newTax > 100)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Tax must be between 0 and 100."), 1;
+
+        g_PDTax = newTax;
+        new tq[96];
+        mysql_format(g_SQL, tq, sizeof(tq), "UPDATE `payday_setup` SET `tax`=%d WHERE `id`=1", newTax);
+        mysql_tquery(g_SQL, tq, "", "", 0);
+
+        new tmsg[128];
+        format(tmsg, sizeof(tmsg),
+            C_INFO"[President] "C_WHITE"The President set the income tax to "C_INFO"%d%%"C_WHITE".", newTax);
+        President_BroadcastAll(COLOR_INFO, tmsg);
+        return 1;
+    }
+
+    // ---- /setcass [0-100] (doar presedinte) ----
+    if(strcmp(cmd, "/setcass", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!PlayerData[playerid][pIsPresident])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Only the President can change the CASS rate."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new cassStr[8];
+        strmid(cassStr, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(cassStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/setcass [0-100]"C_WHITE"."), 1;
+
+        new newCass = strval(cassStr);
+        if(newCass < 0 || newCass > 100)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"CASS must be between 0 and 100."), 1;
+
+        g_PDCASS = newCass;
+        new cq[96];
+        mysql_format(g_SQL, cq, sizeof(cq), "UPDATE `payday_setup` SET `cass`=%d WHERE `id`=1", newCass);
+        mysql_tquery(g_SQL, cq, "", "", 0);
+
+        new cmsg[128];
+        format(cmsg, sizeof(cmsg),
+            C_INFO"[President] "C_WHITE"The President set the CASS to "C_INFO"%d%%"C_WHITE".", newCass);
+        President_BroadcastAll(COLOR_INFO, cmsg);
+        return 1;
+    }
+
+    // ---- /president (info: presedintele curent + impozit/CASS) ----
+    if(strcmp(cmd, "/president", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        mysql_tquery(g_SQL,
+            "SELECT `username` FROM `players` WHERE `is_president`=1 LIMIT 1",
+            "OnPresidentInfo", "i", playerid);
+        return 1;
+    }
+
     // ---- /finvite [targetid] ----
     if(strcmp(cmd, "/finvite", true) == 0)
     {
@@ -6018,11 +7470,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(fid < 1 || fid > 3)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Only factions 1-3 have a duty system."), 1;
 
-        if(FactionData[fid][fHQX] == 0.0 && FactionData[fid][fHQY] == 0.0)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your faction doesn't have an HQ set."), 1;
-
-        if(!IsPlayerInRangeOfPoint(playerid, DUTY_HQ_RANGE, FactionData[fid][fHQX], FactionData[fid][fHQY], FactionData[fid][fHQZ]))
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be near the faction HQ to change your duty status."), 1;
+        if(!Factions_IsInOwnInterior(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be inside your faction HQ interior to change your duty status."), 1;
 
         PlayerData[playerid][pOnDuty] = !PlayerData[playerid][pOnDuty];
 
@@ -6698,6 +8147,32 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /bizzlist (lista business-uri cu teleport, admin 2+) ----
+    if(strcmp(cmd, "/bizzlist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        if(g_BusinessCount == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no businesses on the server."), 1;
+
+        new list[4096];
+        for(new i = 0; i < g_BusinessCount; i++)
+        {
+            new bizState[24];
+            if(BusinessData[i][bOwned]) format(bizState, sizeof(bizState), "%s", BusinessData[i][bOwner]);
+            else format(bizState, sizeof(bizState), "For Sale");
+
+            new line[160];
+            format(line, sizeof(line), "#%d. %s - %s - $%s\n",
+                BusinessData[i][bID], BusinessData[i][bName], bizState, MoneyStr(BusinessData[i][bPrice]));
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_BIZZLIST, DIALOG_STYLE_LIST, "Business List", list, "Teleport", "Close");
+        return 1;
+    }
+
     // ---- /aheal [playerid] ----
     if(strcmp(cmd, "/aheal", true) == 0)
     {
@@ -6956,6 +8431,80 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /setinterior [playerid] [interiorid] ----
+    if(strcmp(cmd, "/setinterior", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new si1[8], si2[8];
+        strmid(si1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(si2, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(si1) || !strlen(si2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/setinterior [playerid] [interiorid]"C_WHITE"."), 1;
+
+        new targetid = strval(si1);
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        new interiorid = strval(si2);
+        SetPlayerInterior(targetid, interiorid);
+
+        new smsg[96];
+        format(smsg, sizeof(smsg), C_SUCCESS"[ADM]Success: "C_WHITE"Set "C_INFO"%s"C_WHITE"'s interior to "C_INFO"%d"C_WHITE".",
+            PlayerData[targetid][pName], interiorid);
+        SendClientMessage(playerid, COLOR_SUCCESS, smsg);
+
+        if(targetid != playerid)
+        {
+            new tmsg[96];
+            format(tmsg, sizeof(tmsg), C_INFO"Info: "C_WHITE"An admin set your interior to "C_INFO"%d"C_WHITE".", interiorid);
+            SendClientMessage(targetid, COLOR_INFO, tmsg);
+        }
+        return 1;
+    }
+
+    // ---- /setvirtualworld | /setvw [playerid] [vw_id] ----
+    if(strcmp(cmd, "/setvirtualworld", true) == 0 || strcmp(cmd, "/setvw", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new sv1[8], sv2[8];
+        strmid(sv1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(sv2, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(sv1) || !strlen(sv2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/setvw [playerid] [vw_id]"C_WHITE"."), 1;
+
+        new targetid = strval(sv1);
+        if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        new vwid = strval(sv2);
+        SetPlayerVirtualWorld(targetid, vwid);
+
+        new smsg[96];
+        format(smsg, sizeof(smsg), C_SUCCESS"[ADM]Success: "C_WHITE"Set "C_INFO"%s"C_WHITE"'s virtual world to "C_INFO"%d"C_WHITE".",
+            PlayerData[targetid][pName], vwid);
+        SendClientMessage(playerid, COLOR_SUCCESS, smsg);
+
+        if(targetid != playerid)
+        {
+            new tmsg[96];
+            format(tmsg, sizeof(tmsg), C_INFO"Info: "C_WHITE"An admin set your virtual world to "C_INFO"%d"C_WHITE".", vwid);
+            SendClientMessage(targetid, COLOR_INFO, tmsg);
+        }
+        return 1;
+    }
+
     // ---- /help ----
     if(strcmp(cmd, "/help", true) == 0)
     {
@@ -6970,7 +8519,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             C_INFO"[Vehicles] "C_WHITE"[Vehicles] /vInsurance /vMedicalKit /vExtinctor /vITP /vstats");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Licenses] "C_WHITE"/licenses /examA /examB /examC /examD");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Business] "C_WHITE"/buyBiz /sellBiz /bBank /bWithdraw");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Caravan] "C_WHITE"/attach /detach");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Caravan] "C_WHITE"/attach /detach /camp /findmycaravan");
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"========================================");
         return 1;
@@ -6986,15 +8535,17 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Admin Commands ==========================================");
 
         if(alv >= 1)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /businesslist /showradars /removeradar /fixcar /flipcar");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /businesslist /showradars /removeradar /fixcar /flipcar /setInterior /setVw");
         if(alv >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoLoc /gotoBiz /gotoHouse /gotoFaction /goto /openGolfTournament /startGolf");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoLoc /gotoBiz /gotoHouse /gotoFaction /goto /bizzlist /openGolfTournament /startGolf");
         if(alv >= 3)
         {
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[3] "C_WHITE"/veh /rac /createDisease");
             SendClientMessage(playerid, COLOR_WHITE,
                 C_INFO"[3] [DrivingLic] "C_WHITE"/setDrivingLicAexp /setDrivingLicBexp /setDrivingLicCexp /setDrivingLicDexp");
         }
+        if(alv >= 4)
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[4] [Turfs] "C_WHITE"/forcewar [turf_id] [attacker_faction_id] [defender_faction_id]");
         if(alv >= 5)
         {
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[5] "C_WHITE"/payday");
@@ -7003,8 +8554,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         }
         if(alv >= 6)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Factions] "C_WHITE"/changeFactionHQ /changeFactionhqIcon /changeFactionPickup /changeFactionLead /createFactionVeh /removeFactionLead");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Houses] "C_WHITE"/createHouse /changeHousePrice /changeHouseOwner ");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Factions] "C_WHITE"/changeFaction[HQ/hqIcon/Pickup/Lead/Veh/InteriorLoc/interior/vw] /removeFactionLead");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Houses] "C_WHITE"/createHouse /changeHousePrice /changeHouseOwner /changeHouseLoc");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [PVehicles] "C_WHITE"/vCreate /vSetPrice");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Caravans] "C_WHITE"/createCaravan");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] [Business] "C_WHITE"/createBiz /changeBizName /changeBizPrice /changeBizLoc");
@@ -7040,6 +8591,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
         HouseData[newIdx][hOwnerId]  = 0;
         HouseData[newIdx][hOwned]    = 0;
         HouseData[newIdx][hPrice]    = 999999999;
+        HouseData[newIdx][hType]     = 1;
+        HouseData[newIdx][hMaxPets]  = 0;
+        HouseData[newIdx][hPets]     = 0;
         HouseData[newIdx][hLocX]     = hx;
         HouseData[newIdx][hLocY]     = hy;
         HouseData[newIdx][hLocZ]     = hz;
@@ -7052,6 +8606,44 @@ public OnPlayerCommandText(playerid, cmdtext[])
              VALUES ('%e','',0,0,50000,%.4f,%.4f,%.4f)",
             hname, hx, hy, hz);
         mysql_tquery(g_SQL, q, "OnHouseCreated", "ii", playerid, newIdx);
+        return 1;
+    }
+
+    // ---- /changehouseloc [id] (muta casa la pozitia ta) ----
+    if(strcmp(cmd, "/changehouseloc", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new chlStr[8];
+        strmid(chlStr, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(chlStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changehouseloc [id]"C_WHITE"."), 1;
+
+        new chlIdx = Houses_FindByID(strval(chlStr));
+        if(chlIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid house ID."), 1;
+
+        new Float:chx, Float:chy, Float:chz;
+        GetPlayerPos(playerid, chx, chy, chz);
+
+        HouseData[chlIdx][hLocX] = chx;
+        HouseData[chlIdx][hLocY] = chy;
+        HouseData[chlIdx][hLocZ] = chz;
+        Houses_RecreatePickup(chlIdx);
+
+        new chq[160];
+        mysql_format(g_SQL, chq, sizeof(chq),
+            "UPDATE `houses` SET `loc_x`=%.4f, `loc_y`=%.4f, `loc_z`=%.4f WHERE `id`=%d",
+            chx, chy, chz, HouseData[chlIdx][hID]);
+        mysql_tquery(g_SQL, chq, "", "", 0);
+
+        new chmsg[128];
+        format(chmsg, sizeof(chmsg),
+            C_SUCCESS"Success: "C_WHITE"House "C_INFO"#%d"C_WHITE" (%s) moved to your location.",
+            HouseData[chlIdx][hID], HouseData[chlIdx][hName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, chmsg);
         return 1;
     }
 
@@ -7154,6 +8746,71 @@ public OnPlayerCommandText(playerid, cmdtext[])
         format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought the house "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE".",
             HouseData[hidx][hName], MoneyStr(HouseData[hidx][hPrice]));
         SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
+    // ---- /buyanimal [type] (doar pentru casa proprie de tip 1) ----
+    if(strcmp(cmd, "/buyanimal", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pHouse] == 999)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a house."), 1;
+
+        new ahidx = Houses_FindByID(PlayerData[playerid][pHouse]);
+        if(ahidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your house could not be found."), 1;
+
+        if(HouseData[ahidx][hType] != 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can only buy animals for a type 1 house."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new typeStr[8];
+        strmid(typeStr, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(typeStr))
+        {
+            SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/buyanimal [nr]"C_WHITE". Available animals:");
+            for(new c = 0; c < sizeof(g_AnimalCatalog); c++)
+            {
+                new linfo[96];
+                format(linfo, sizeof(linfo), C_INFO"  %d"C_WHITE" - %s ("C_INFO"$%s"C_WHITE")",
+                    c + 1, g_AnimalCatalog[c][acName], MoneyStr(ANIMAL_PRICE));
+                SendClientMessage(playerid, COLOR_WHITE, linfo);
+            }
+            return 1;
+        }
+
+        new anr = strval(typeStr);
+        if(anr < 1 || anr > sizeof(g_AnimalCatalog))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid animal number. Use "C_INFO"/buyanimal"C_WHITE" to see the list."), 1;
+
+        new acIdx = anr - 1;
+
+        if(g_AnimalCount >= MAX_ANIMALS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The animal limit on the server has been reached."), 1;
+
+        if(PlayerData[playerid][pMoney] < ANIMAL_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= ANIMAL_PRICE;
+        GivePlayerMoney(playerid, -ANIMAL_PRICE);
+        UpdatePlayer(playerid, pMoney);
+
+        new aq[256];
+        mysql_format(g_SQL, aq, sizeof(aq),
+            "INSERT INTO `animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`) VALUES (%d,%d,%d,'%e')",
+            g_AnimalCatalog[acIdx][acModel], PlayerData[playerid][pID], HouseData[ahidx][hID], g_AnimalCatalog[acIdx][acName]);
+        mysql_tquery(g_SQL, aq, "", "", 0);
+
+        // Reincarca toate animalele din DB (recreeaza si obiectele) - include si noul animal
+        Animals_Load();
+
+        new amsg[128];
+        format(amsg, sizeof(amsg),
+            C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE". It will appear at your house.",
+            g_AnimalCatalog[acIdx][acName], MoneyStr(ANIMAL_PRICE));
+        SendClientMessage(playerid, COLOR_SUCCESS, amsg);
         return 1;
     }
 
@@ -7573,6 +9230,11 @@ public OnPlayerCommandText(playerid, cmdtext[])
         {
             price = g_RentCarDesertPrice;
             bizid = RENT_CAR_DESERT_BIZ_ID;
+        }
+        else if(vehid != 0 && IsRentCarVehicle2(vehid))
+        {
+            price = RENT_CAR2_PRICE;
+            bizid = RENT_CAR2_BIZ_ID;
         }
         else
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a rental car."), 1;
@@ -8452,6 +10114,172 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         return 1;
     }
 
+    // ---- /joinparty ----
+    if(strcmp(cmd, "/joinparty", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(GetPlayerVirtualWorld(playerid) == VW_PARTY)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are already at the party."), 1;
+
+        if(!IsPlayerInRangeOfPoint(playerid, PARTY_RANGE, PartyJoinLoc[0], PartyJoinLoc[1], PartyJoinLoc[2]))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the party entrance to join."), 1;
+
+        if(PlayerData[playerid][pMoney] < PARTY_TICKET_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= PARTY_TICKET_PRICE;
+        GivePlayerMoney(playerid, -PARTY_TICKET_PRICE);
+        UpdatePlayer(playerid, pMoney);
+
+        Party_AddBizIncome(PARTY_TICKET_PRICE);
+
+        SetPlayerVirtualWorld(playerid, VW_PARTY);
+
+        if(strlen(g_PartyMusicURL))
+            PlayAudioStreamForPlayer(playerid, g_PartyMusicURL);
+
+        new pjmsg[128];
+        format(pjmsg, sizeof(pjmsg), C_SUCCESS"Success: "C_WHITE"You joined the party for "C_INFO"$%s"C_WHITE". Use /changemusic and /buydrink here.",
+            MoneyStr(PARTY_TICKET_PRICE));
+        SendClientMessage(playerid, COLOR_SUCCESS, pjmsg);
+        return 1;
+    }
+
+    // ---- /leaveparty ----
+    if(strcmp(cmd, "/leaveparty", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(GetPlayerVirtualWorld(playerid) != VW_PARTY)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not at the party."), 1;
+
+        SetPlayerVirtualWorld(playerid, 0);
+        StopAudioStreamForPlayer(playerid);
+
+        if(g_PartyHoldingDrink[playerid])
+        {
+            RemovePlayerAttachedObject(playerid, PARTY_ATTACH_INDEX);
+            g_PartyHoldingDrink[playerid] = false;
+        }
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You left the party.");
+        return 1;
+    }
+
+    // ---- /changemusic [url] ----
+    if(strcmp(cmd, "/changemusic", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(GetPlayerVirtualWorld(playerid) != VW_PARTY)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must join the party first. Use "C_INFO"/joinparty"C_WHITE"."), 1;
+
+        if(!IsPlayerInRangeOfPoint(playerid, PARTY_RANGE, PartyMusicLoc[0], PartyMusicLoc[1], PartyMusicLoc[2]))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the music stand to do this."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new musUrl[128];
+        strmid(musUrl, cmdtext, idx, strlen(cmdtext), 128);
+
+        if(!strlen(musUrl))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changemusic [url]"C_WHITE"."), 1;
+
+        if(PlayerData[playerid][pMoney] < PARTY_MUSIC_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= PARTY_MUSIC_PRICE;
+        GivePlayerMoney(playerid, -PARTY_MUSIC_PRICE);
+        UpdatePlayer(playerid, pMoney);
+
+        Party_AddBizIncome(PARTY_MUSIC_PRICE);
+
+        format(g_PartyMusicURL, sizeof(g_PartyMusicURL), "%s", musUrl);
+
+        new musCount = 0;
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+            if(GetPlayerVirtualWorld(i) != VW_PARTY) continue;
+            PlayAudioStreamForPlayer(i, g_PartyMusicURL);
+            musCount++;
+        }
+
+        new musmsg[160];
+        format(musmsg, sizeof(musmsg), C_SUCCESS"Success: "C_WHITE"You changed the music for "C_INFO"%d"C_WHITE" player(s) at the party.", musCount);
+        SendClientMessage(playerid, COLOR_SUCCESS, musmsg);
+        return 1;
+    }
+
+    // ---- /buydrink ----
+    if(strcmp(cmd, "/buydrink", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(GetPlayerVirtualWorld(playerid) != VW_PARTY)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must join the party first. Use "C_INFO"/joinparty"C_WHITE"."), 1;
+
+        if(!IsPlayerInRangeOfPoint(playerid, PARTY_RANGE, PartyDrinkLoc[0], PartyDrinkLoc[1], PartyDrinkLoc[2]))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the bar to do this."), 1;
+
+        if(g_PartyHoldingDrink[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You're already holding a drink."), 1;
+
+        if(PlayerData[playerid][pMoney] < PARTY_DRINK_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= PARTY_DRINK_PRICE;
+        GivePlayerMoney(playerid, -PARTY_DRINK_PRICE);
+        UpdatePlayer(playerid, pMoney);
+
+        Party_AddBizIncome(PARTY_DRINK_PRICE);
+
+        SetPlayerAttachedObject(playerid, PARTY_ATTACH_INDEX, PARTY_DRINK_MODEL, PARTY_ATTACH_BONE,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.4, 0.4);
+        g_PartyHoldingDrink[playerid] = true;
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You bought a drink. Click to drink it.");
+        return 1;
+    }
+
+    // ---- /buygrill ----
+    if(strcmp(cmd, "/buygrill", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(GetPlayerVirtualWorld(playerid) != VW_PARTY)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must join the party first. Use "C_INFO"/joinparty"C_WHITE"."), 1;
+
+        if(!IsPlayerInRangeOfPoint(playerid, PARTY_RANGE, PartyGrillLoc[0], PartyGrillLoc[1], PartyGrillLoc[2]))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the grill to do this."), 1;
+
+        if(PlayerData[playerid][pMoney] < PARTY_GRILL_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= PARTY_GRILL_PRICE;
+        GivePlayerMoney(playerid, -PARTY_GRILL_PRICE);
+        UpdatePlayer(playerid, pMoney);
+
+        Party_AddBizIncome(PARTY_GRILL_PRICE);
+
+        new Float:grillHealth;
+        GetPlayerHealth(playerid, grillHealth);
+        grillHealth += PARTY_GRILL_HEAL;
+        if(grillHealth > 100.0) grillHealth = 100.0;
+        SetPlayerHealth(playerid, grillHealth);
+
+        new grillmsg[128];
+        format(grillmsg, sizeof(grillmsg), C_SUCCESS"Success: "C_WHITE"You bought food from the grill for "C_INFO"$%s"C_WHITE" (+%d HP).",
+            MoneyStr(PARTY_GRILL_PRICE), floatround(PARTY_GRILL_HEAL));
+        SendClientMessage(playerid, COLOR_SUCCESS, grillmsg);
+        return 1;
+    }
+
     // ---- /joingolf ----
     if(strcmp(cmd, "/joingolf", true) == 0)
     {
@@ -8762,7 +10590,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(PVehicleData[pvidx][pvOwnerId] != PlayerData[playerid][pID])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own this vehicle."), 1;
 
-        if(!IsValidDynamicObject(g_CaravanObject[playerid]))
+        if(IsValidDynamicObject(g_CaravanObject[playerid]))
+        {
+            new Float:cox, Float:coy, Float:coz;
+            GetDynamicObjectPos(g_CaravanObject[playerid], cox, coy, coz);
+            if(!IsPlayerInRangeOfPoint(playerid, CARAVAN_ATTACH_RANGE, cox, coy, coz))
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be near your caravan to attach it."), 1;
+        }
+        else
         {
             new Float:px, Float:py, Float:pz;
             GetPlayerPos(playerid, px, py, pz);
@@ -8795,6 +10630,18 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         new Float:rx, Float:ry, Float:rz;
         GetVehicleRotation(vehid, rx, ry, rz);
+        rz = -rz;
+
+        // permite /detach doar daca masina e (aproape) drepata - rx/ry aproape de un multiplu de 90 grade,
+        // adica fara panta/inclinare semnificativa
+        new Float:rxMod90 = rx - float(floatround(rx / 90.0, floatround_floor)) * 90.0;
+        new Float:ryMod90 = ry - float(floatround(ry / 90.0, floatround_floor)) * 90.0;
+        if((rxMod90 > 5.0 && rxMod90 < 85.0) || (ryMod90 > 5.0 && ryMod90 < 85.0))
+        {
+            new flatMsg[160];
+            format(flatMsg, sizeof(flatMsg), C_ERROR"Error: "C_WHITE"The vehicle must be on flat ground to detach the caravan. (rx=%.2f, ry=%.2f)", rx, ry);
+            return SendClientMessage(playerid, COLOR_ERROR, flatMsg), 1;
+        }
 
         new Float:parkZ = vz + CARAVAN_PARK_OFFSET_Z;
 
@@ -8827,6 +10674,110 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         SetVehiclePos(vehid, vx, vy, vz + 5.0);
 
         SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Caravan detached and parked.");
+        return 1;
+    }
+
+    // ---- /camp ----
+    if(strcmp(cmd, "/camp", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pCaravanKey] == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a caravan."), 1;
+
+        if(g_CaravanAttachedVeh[playerid] == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your caravan must be attached to your vehicle."), 1;
+
+        new campVehid = GetPlayerVehicleID(playerid);
+        if(campVehid == 0 || campVehid != g_CaravanAttachedVeh[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in the vehicle your caravan is attached to."), 1;
+
+        new Float:cvx, Float:cvy, Float:cvz;
+        GetVehiclePos(campVehid, cvx, cvy, cvz);
+
+        new Float:crx, Float:cry, Float:crz;
+        GetVehicleRotation(campVehid, crx, cry, crz);
+        crz = -crz;
+
+        // permite /camp doar daca masina e (aproape) dreapta - la fel ca la /detach
+        new Float:crxMod90 = crx - float(floatround(crx / 90.0, floatround_floor)) * 90.0;
+        new Float:cryMod90 = cry - float(floatround(cry / 90.0, floatround_floor)) * 90.0;
+        if((crxMod90 > 5.0 && crxMod90 < 85.0) || (cryMod90 > 5.0 && cryMod90 < 85.0))
+        {
+            new campFlatMsg[160];
+            format(campFlatMsg, sizeof(campFlatMsg), C_ERROR"Error: "C_WHITE"The vehicle must be on flat ground to set up camp. (rx=%.2f, ry=%.2f)", crx, cry);
+            return SendClientMessage(playerid, COLOR_ERROR, campFlatMsg), 1;
+        }
+
+        new campIdx = Caravan_FindByOwner(PlayerData[playerid][pID]);
+        if(campIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Caravan data not found."), 1;
+
+        new campNow = gettime();
+        CaravanData[campIdx][rCamping]          = true;
+        CaravanData[campIdx][rCampingStartDate] = campNow;
+        CaravanData[campIdx][rCampLocX]         = cvx;
+        CaravanData[campIdx][rCampLocY]         = cvy;
+        CaravanData[campIdx][rCampLocZ]         = cvz;
+        CaravanData[campIdx][rCampRX]           = crx;
+        CaravanData[campIdx][rCampRY]           = cry;
+        CaravanData[campIdx][rCampRZ]           = crz;
+
+        new campDtVal[24];
+        BuildDateTimeSqlValueFromUnix(campNow, campDtVal, sizeof(campDtVal));
+
+        new campQ[300];
+        mysql_format(g_SQL, campQ, sizeof(campQ),
+            "UPDATE `rulote_personale` SET `rCamping`=1, `rCampingStartDate`=%s, `rCampLocX`=%.4f, `rCampLocY`=%.4f, `rCampLocZ`=%.4f, `campRX`=%.4f, `campRY`=%.4f, `campRZ`=%.4f WHERE `rID`=%d",
+            campDtVal, cvx, cvy, cvz, crx, cry, crz, CaravanData[campIdx][rID]);
+        mysql_tquery(g_SQL, campQ, "", "", 0);
+
+        PlayerData[playerid][pSpawn] = CARAVAN_CAMP_SPAWN_TYPE;
+        Player_RecalcSpawn(playerid);
+        UpdatePlayer(playerid, pSpawn);
+
+        SendClientMessage(playerid, COLOR_SUCCESS,
+            C_SUCCESS"Success: "C_WHITE"You set up camp here. You will spawn at your caravan for the next 3 paydays.");
+        return 1;
+    }
+
+    // ---- /findmycaravan ----
+    if(strcmp(cmd, "/findmycaravan", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pCaravanKey] == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a caravan."), 1;
+
+        new fmcIdx = Caravan_FindByOwner(PlayerData[playerid][pID]);
+        if(fmcIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Caravan data not found."), 1;
+
+        new bool:fmcUseCamp = (CaravanData[fmcIdx][rCampLocX] != 0.0 || CaravanData[fmcIdx][rCampLocY] != 0.0 || CaravanData[fmcIdx][rCampLocZ] != 0.0);
+
+        new Float:fmcX, Float:fmcY, Float:fmcZ;
+        if(fmcUseCamp)
+        {
+            fmcX = CaravanData[fmcIdx][rCampLocX];
+            fmcY = CaravanData[fmcIdx][rCampLocY];
+            fmcZ = CaravanData[fmcIdx][rCampLocZ];
+        }
+        else
+        {
+            if(CaravanData[fmcIdx][rParkLocX] == 0.0 && CaravanData[fmcIdx][rParkLocY] == 0.0 && CaravanData[fmcIdx][rParkLocZ] == 0.0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Your caravan hasn't been parked anywhere yet."), 1;
+
+            fmcX = CaravanData[fmcIdx][rParkLocX];
+            fmcY = CaravanData[fmcIdx][rParkLocY];
+            fmcZ = CaravanData[fmcIdx][rParkLocZ];
+        }
+
+        SetPlayerCheckpoint(playerid, fmcX, fmcY, fmcZ, GPS_CP_SIZE);
+        g_GPSActive[playerid] = true;
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Checkpoint set to your caravan.");
         return 1;
     }
 
@@ -9217,10 +11168,11 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         CaravanData[newIdx][rCampRX]           = 0.0;
         CaravanData[newIdx][rCampRY]           = 0.0;
         CaravanData[newIdx][rCampRZ]           = 0.0;
+        CaravanData[newIdx][rType]             = type;
         g_CaravanCount++;
 
-        new cq[128];
-        mysql_format(g_SQL, cq, sizeof(cq), "INSERT INTO `rulote_personale` (`rOwned`,`rOwner`) VALUES (1,%d)", PlayerData[targetid][pID]);
+        new cq[160];
+        mysql_format(g_SQL, cq, sizeof(cq), "INSERT INTO `rulote_personale` (`rOwned`,`rOwner`,`rType`) VALUES (1,%d,%d)", PlayerData[targetid][pID], type);
         mysql_tquery(g_SQL, cq, "OnCaravanCreated", "ii", targetid, newIdx);
 
         new cmsg[128];
@@ -9732,6 +11684,114 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         return 1;
     }
 
+    // ---- /changefactionInteriorLoc [faction_id] (seteaza coordonatele interiorului la pozitia ta) ----
+    if(strcmp(cmd, "/changefactionInteriorLoc", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new param[8];
+        strmid(param, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(param))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changefactionInteriorLoc [faction_id]"C_WHITE"."), 1;
+
+        new fid = strval(param);
+        if(fid < 1 || fid > MAX_FACTIONS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid faction ID (1-"#MAX_FACTIONS")."), 1;
+
+        new Float:ix, Float:iy, Float:iz;
+        GetPlayerPos(playerid, ix, iy, iz);
+
+        FactionData[fid][fInteriorX] = ix;
+        FactionData[fid][fInteriorY] = iy;
+        FactionData[fid][fInteriorZ] = iz;
+
+        new q[256];
+        mysql_format(g_SQL, q, sizeof(q),
+            "UPDATE `factions` SET `interior_x`=%.4f, `interior_y`=%.4f, `interior_z`=%.4f WHERE `id`=%d",
+            ix, iy, iz, fid);
+        mysql_tquery(g_SQL, q, "", "", 0);
+
+        Factions_RecreateInteriorPickup(fid);
+        Factions_RecreateLabel(fid); // eticheta exterioara include acum "[ Press ENTER to enter ]"
+
+        new lmsg[128];
+        format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"Interior location for "C_INFO"%s"C_WHITE" set to your position.", FactionData[fid][fName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
+    // ---- /changefactioninterior [faction_id] [new interior id] ----
+    if(strcmp(cmd, "/changefactioninterior", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8], p2[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1) || !strlen(p2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changefactioninterior [faction_id] [interior_id]"C_WHITE"."), 1;
+
+        new fid = strval(p1);
+        if(fid < 1 || fid > MAX_FACTIONS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid faction ID (1-"#MAX_FACTIONS")."), 1;
+
+        new interiorid = strval(p2);
+        FactionData[fid][fInterior] = interiorid;
+
+        new q[160];
+        mysql_format(g_SQL, q, sizeof(q),
+            "UPDATE `factions` SET `interior`=%d WHERE `id`=%d", interiorid, fid);
+        mysql_tquery(g_SQL, q, "", "", 0);
+
+        new lmsg[128];
+        format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"Interior for "C_INFO"%s"C_WHITE" set to "C_INFO"%d"C_WHITE".", FactionData[fid][fName], interiorid);
+        SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
+    // ---- /changefactionvw [faction_id] [new virtual world] ----
+    if(strcmp(cmd, "/changefactionvw", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8], p2[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(p1) || !strlen(p2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/changefactionvw [faction_id] [vw_id]"C_WHITE"."), 1;
+
+        new fid = strval(p1);
+        if(fid < 1 || fid > MAX_FACTIONS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid faction ID (1-"#MAX_FACTIONS")."), 1;
+
+        new vwid = strval(p2);
+        FactionData[fid][fvw] = vwid;
+
+        new q[160];
+        mysql_format(g_SQL, q, sizeof(q),
+            "UPDATE `factions` SET `vw`=%d WHERE `id`=%d", vwid, fid);
+        mysql_tquery(g_SQL, q, "", "", 0);
+
+        Factions_RecreateInteriorPickup(fid); // pickup-ul/eticheta interiorului depind de vw
+
+        new lmsg[128];
+        format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"Virtual world for "C_INFO"%s"C_WHITE" set to "C_INFO"%d"C_WHITE".", FactionData[fid][fName], vwid);
+        SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
     // ---- /changefactionhqicon [id] [icon_id] ----
     if(strcmp(cmd, "/changefactionhqicon", true) == 0)
     {
@@ -9955,6 +12015,17 @@ public OnPlayerSpawn(playerid)
             PlayerData[playerid][pSpawnX],
             PlayerData[playerid][pSpawnY],
             PlayerData[playerid][pSpawnZ]);
+
+        // La spawn-ul de factiune (tip 2), aplica vw-ul si interiorul factiunii din DB
+        if(PlayerData[playerid][pSpawn] == 2)
+        {
+            new fid = PlayerData[playerid][pFaction];
+            if(fid >= 1 && fid <= MAX_FACTIONS)
+            {
+                SetPlayerVirtualWorld(playerid, FactionData[fid][fvw]);
+                SetPlayerInterior(playerid, FactionData[fid][fInterior]);
+            }
+        }
     }
     return 1;
 }
@@ -9982,6 +12053,19 @@ public OnPlayerText(playerid, text[])
 
 public OnPlayerDeath(playerid, killerid, reason)
 {
+    War_HandleDeath(playerid, killerid);
+    return 1;
+}
+
+public OnPlayerUpdate(playerid)
+{
+    if(!PlayerData[playerid][pLogged]) return 1;
+
+    // Dezactiveaza heal-ul de la automate (vending machines): anuleaza animatia inainte sa se aplice viata
+    new anim = GetPlayerAnimationIndex(playerid);
+    if(anim >= 1142 && anim <= 1145) // animatiile "VENDING" (VEND_Drink/Drink2/Eat1)
+        ClearAnimations(playerid, 1);
+
     return 1;
 }
 
@@ -10005,6 +12089,24 @@ public OnPlayerDisconnect(playerid, reason)
     Golf_PlayerLeftMidRound(playerid);
     BBall_PlayerLeftMidRound(playerid);
 
+    // daca avea o rulota parcata/campata (nu atasata), transfera obiectul ei catre slotul "offline"
+    // (Caravans_RebuildAll), ca sa nu ramana orfan in g_CaravanObject[playerid] dupa deconectare
+    if(PlayerData[playerid][pCaravanKey] != 0 && g_CaravanAttachedVeh[playerid] == 0)
+    {
+        new dcCidx = Caravan_FindByOwner(PlayerData[playerid][pID]);
+        if(dcCidx != -1 && IsValidDynamicObject(g_CaravanObject[playerid]))
+        {
+            g_CaravanOfflineObject[dcCidx] = g_CaravanObject[playerid];
+            g_CaravanObject[playerid] = STREAMER_TAG_OBJECT:INVALID_STREAMER_ID;
+        }
+    }
+
+    if(g_PartyHoldingDrink[playerid])
+    {
+        RemovePlayerAttachedObject(playerid, PARTY_ATTACH_INDEX);
+        g_PartyHoldingDrink[playerid] = false;
+    }
+
     Speedometer_Destroy(playerid);
     LoginBG_Destroy(playerid);
 
@@ -10024,6 +12126,10 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
     {
         if(PlayerData[playerid][pLogged] && PlayerData[playerid][pFaction] == FACTION_POLICE)
             Police_GarageEntranceToggle(playerid);
+
+        if(PlayerData[playerid][pLogged] &&
+           PlayerData[playerid][pFaction] >= 1 && PlayerData[playerid][pFaction] <= MAX_FACTIONS)
+            Factions_InteriorToggle(playerid);
     }
 
     if((newkeys & KEY_HANDBRAKE) && !(oldkeys & KEY_HANDBRAKE))
@@ -10031,11 +12137,34 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
         if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
             Vehicle_ToggleLights(playerid);
     }
+
+    if((newkeys & KEY_FIRE) && !(oldkeys & KEY_FIRE))
+    {
+        if(PlayerData[playerid][pLogged] && g_PartyHoldingDrink[playerid])
+            Party_DrinkBeer(playerid);
+    }
     return 1;
 }
 
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 {
+    if(dialogid == DIALOG_BIZZLIST)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_BusinessCount) return 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), BusinessData[listitem][bLocX], BusinessData[listitem][bLocY], BusinessData[listitem][bLocZ] + 0.1);
+        else
+            SetPlayerPos(playerid, BusinessData[listitem][bLocX], BusinessData[listitem][bLocY], BusinessData[listitem][bLocZ] + 0.1);
+
+        new bmsg[96];
+        format(bmsg, sizeof(bmsg), C_SUCCESS"[ADM]Success: "C_WHITE"Teleported to business "C_INFO"%s"C_WHITE".", BusinessData[listitem][bName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, bmsg);
+        return 1;
+    }
+
     if(dialogid == DIALOG_GPS_CATEGORY)
     {
         if(!response) return 1; // Cancel
@@ -10263,7 +12392,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
                     C_ERROR"Error: "C_WHITE"This vehicle has not been bought yet. Use "C_INFO"/vbuy"C_WHITE" to be able to start it.");
             }
 
-            if(!IsExamACarVehicle(vehid) && !IsExamBCarVehicle(vehid) && !IsExamCTruckVehicle(vehid) && !IsExamDCarVehicle(vehid) && !IsRentCarVehicle(vehid) && !IsRentCarDesertVehicle(vehid))
+            if(!IsExamACarVehicle(vehid) && !IsExamBCarVehicle(vehid) && !IsExamCTruckVehicle(vehid) && !IsExamDCarVehicle(vehid) && !IsRentCarVehicle(vehid) && !IsRentCarDesertVehicle(vehid) && !IsRentCarVehicle2(vehid))
             {
                 new category = GetVehicleLicenseCategory(GetVehicleModel(vehid));
                 if(!Player_HasValidLicense(playerid, category))
@@ -10286,7 +12415,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
                     C_INFO"Info: "C_WHITE"This bike is for rent. Use "C_INFO"/rentbike"C_WHITE" to be able to use it.");
             }
 
-            if(IsRentCarVehicle(vehid) || IsRentCarDesertVehicle(vehid))
+            if(IsRentCarVehicle(vehid) || IsRentCarDesertVehicle(vehid) || IsRentCarVehicle2(vehid))
             {
                 TogglePlayerControllable(playerid, 0);
                 SendClientMessage(playerid, COLOR_INFO,
