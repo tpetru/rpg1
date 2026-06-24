@@ -165,6 +165,48 @@
   </div>
 </div>
 
+<div class="feature">
+  <h2>💼 Sistem de joburi</h2>
+  <span class="status status-progress">În lucru</span>
+
+  <p>Fundația e implementată: fiecare jucător are <code>pJob</code> (persistat în coloana <code>job</code> din
+  <code>players</code>), îl ia cu <code>/getjob [1-10]</code> (doar dacă <code>pJob == 0</code>) și renunță cu
+  <code>/quitjob</code> (doar dacă are un job). Comanda <code>/job</code> (prin care începi munca) are deja scheletul cu
+  <code>switch(pJob)</code> pentru cele 10 joburi.</p>
+
+  <ul>
+    <li>De implementat efectiv fiecare din cele <strong>10 joburi</strong> (cazurile 1-10 din <code>/job</code>) — le completăm treptat.</li>
+    <li><strong>De schimbat distanța de <code>/job</code></strong> — verificarea de proximitate față de locația de muncă a fiecărui job.</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>💰 Taxe la PayDay (proprietăți)</h2>
+  <span class="status status-idea">Idee</span>
+
+  <p>La fiecare PayDay, pe lângă impozit și CASS pe salariu, de adăugat și taxe pe proprietățile deținute:</p>
+  <ul>
+    <li>Impozit mașini personale: <code>0.0002% * price</code></li>
+    <li>Impozit casă personală: <code>0.0004% * price</code></li>
+    <li>Impozit business personal: <code>0.006% * price</code></li>
+  </ul>
+
+  <div class="note">
+    Procentele sunt foarte mici (ex. 0.0002% = <code>price * 0.000002</code>), deci pe prețuri mici taxa ajunge sub 1$ și
+    se rotunjește la 0 cu aritmetică întreagă — de decis rotunjirea (ex. <code>floatround</code>) sau un minim de taxă.
+  </div>
+</div>
+
+<div class="feature">
+  <h2>🎮 Ajustări mini-jocuri</h2>
+  <span class="status status-idea">Idee</span>
+
+  <ul>
+    <li><strong>De schimbat limita de jucători la Golf</strong> — momentan turneul pornește cu minim 1 jucător (<code>joined &lt; 1</code> în <code>/startgolf</code>).</li>
+    <li><strong>De schimbat limita de jucători la Baschet</strong> — momentan <code>BBALL_MIN_PLAYERS = 1</code>.</li>
+  </ul>
+</div>
+
 </main>
 
 <footer>
