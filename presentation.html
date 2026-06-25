@@ -140,6 +140,10 @@
   <div class="badges">
     <span class="badge">7 Facțiuni</span>
     <span class="badge">Economie reală</span>
+    <span class="badge">Președinte ales</span>
+    <span class="badge">Joburi</span>
+    <span class="badge">Războaie de teritoriu</span>
+    <span class="badge">Droguri &amp; Seif</span>
     <span class="badge">Permise auto A/B/C/D</span>
     <span class="badge">GPS &amp; Radar</span>
     <span class="badge">Turneu de Golf</span>
@@ -153,6 +157,10 @@
   <a href="#start">Primii pași</a>
   <a href="#factions">Facțiuni</a>
   <a href="#economy">Economie</a>
+  <a href="#president">Președinte</a>
+  <a href="#jobs">Joburi</a>
+  <a href="#wars">Războaie</a>
+  <a href="#drugs">Droguri</a>
   <a href="#houses-biz">Case &amp; Afaceri</a>
   <a href="#vehicles">Vehicule</a>
   <a href="#exams">Permise auto</a>
@@ -220,18 +228,154 @@
   <div class="card">
     <h4 style="margin-top:0">💵 PayDay — salariul tău orar</h4>
     <p>O dată pe oră, toți jucătorii conectați primesc automat un salariu, calculat în funcție de nivelul personajului tău
-    (cu cât ești mai experimentat, cu atât câștigi mai mult). Din salariu se scad impozit și CASS, iar banii din contul tău
-    bancar produc dobândă — chiar și fără să faci nimic.</p>
+    (cu cât ești mai experimentat, cu atât câștigi mai mult). Din salariu se scad impozit și CASS (procente stabilite de
+    Președintele ales — vezi mai jos), iar banii din contul tău bancar produc dobândă — chiar și fără să faci nimic.</p>
+  </div>
+
+  <div class="card">
+    <h4 style="margin-top:0">🏘️ Taxe pe proprietăți</h4>
+    <p>Dacă deții mașini, o casă sau afaceri, la fiecare PayDay se scade și o mică taxă pe proprietate, proporțională cu
+    valoarea fiecărui bun. Apare defalcat în chitanța de PayDay (mașini / casă / afaceri), așa că vezi mereu exact cât plătești.</p>
   </div>
 
   <div class="grid-2">
     <div class="card">
-      <h4 style="margin-top:0">🏦 Cont bancar</h4>
-      <p style="color:var(--muted); margin:0">Banii pot fi ținuți în numerar sau în bancă. Banca produce dobândă la fiecare PayDay.</p>
+      <h4 style="margin-top:0">🏦 Cont bancar &amp; ATM</h4>
+      <p style="color:var(--muted); margin:0">Banii pot fi ținuți în numerar sau în bancă. Banca produce dobândă la fiecare
+      PayDay. La orice <strong>bancomat (ATM)</strong> din oraș poți muta bani între numerar și cont cu
+      <code>/deposit [sumă]</code> și <code>/withdraw [sumă]</code> (min. $100, max. $100.000 pe tranzacție, cu un mic comision).</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">📈 Nivel &amp; RP</h4>
       <p style="color:var(--muted); margin:0">Fiecare PayDay îți crește și RP-ul (Role-Play Points) — un semn al experienței tale pe server.</p>
+    </div>
+  </div>
+</section>
+
+<section id="president">
+  <h2>🗳️ Președinte</h2>
+  <p class="subtitle">În fiecare săptămână, jucătorii își aleg prin vot un Președinte care controlează taxele orașului</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🗳️ Votul</h4>
+      <p>În fiecare <strong>duminică, între 08:00 și 19:30</strong>, poți vota cu <code>/vote [nume jucător]</code>.
+      Ținta trebuie să fie online, iar fiecare jucător are <strong>un singur vot</strong> pe săptămână.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏛️ Rezultatul</h4>
+      <p>Duminică la <strong>20:00</strong> se anunță câștigătorul — jucătorul cu cele mai multe voturi devine noul
+      Președinte. Președintele în funcție nu poate câștiga două mandate la rând, ca să se rotească rolul.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">💼 Puterea Președintelui</h4>
+      <p>Președintele poate stabili din joc <strong>impozitul</strong> (<code>/settax [0-100]</code>) și
+      <strong>CASS</strong> (<code>/setcass [0-100]</code>) care se aplică tuturor la PayDay. Orice schimbare e
+      anunțată întregului server.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Oricine poate vedea oricând cine e Președintele curent și ce procente de impozit/CASS sunt active, cu
+    <code>/president</code>.
+  </div>
+</section>
+
+<section id="jobs">
+  <h2>💼 Joburi</h2>
+  <p class="subtitle">Câștigă-ți pâinea cinstit — sau aproape</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">📋 Cum îți iei un job</h4>
+    <p>Mergi la <strong>Job Center</strong>-ul din City Hall și folosește <code>/getjob [id sau nume]</code> ca să te
+    angajezi (<code>/jobs</code> îți arată lista completă). Poți avea un singur job o dată; renunți cu <code>/quitjob</code>.
+    Odată angajat, începi munca cu <code>/job</code> și o oprești oricând cu <code>/stopwork</code>.</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🛵 Glovo</h4>
+      <p>Livrări: mergi cu vehiculul de lucru la restaurant, apoi duci comanda la o casă. Ești plătit în funcție de
+      distanța parcursă, iar o mică parte din fiecare livrare alimentează afacerea care găzduiește jobul.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚧 Cement Truck Driver</h4>
+      <p>Încarci ciment de la fabrică și îl duci la unul dintre șantierele din oraș. Curse bine plătite, cu bonus pe distanță.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔫 Gun Delivery</h4>
+      <p>Iei marfa dintr-un punct fix de încărcare și o livrezi la HQ-ul unei mafii. Plată de bază plus bonus pe distanță.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚚 Car Transportator</h4>
+      <p>Transporți mașini de la punctele de încărcare către afaceri din oraș, cu plată proporțională cu drumul făcut.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚕 Uber</h4>
+      <p>Devii șofer cu mașina ta personală: <code>/fare [sumă]</code> te pune „în serviciu" la prețul cerut la fiecare
+      20 de secunde. Cine are nevoie de o cursă dă <code>/service uber</code>, iar tu accepți cu <code>/accept uber</code>.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚑 Emergency Logistics Driver</h4>
+      <p>Pleci de la depou (ai la dispoziție Bobcat-uri și Burrito-uri), încarci marfă de la punctele de încărcare și o
+      duci la magazine. Plată de bază bună, plus bonus pe distanța parcursă.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🆕 Mai multe pe drum</h4>
+      <p>Din cele 10 sloturi de job, 6 sunt deja active. Restul (7-10) urmează să fie deschise treptat.</p>
+    </div>
+  </div>
+</section>
+
+<section id="wars">
+  <h2>⚔️ Războaie de teritoriu</h2>
+  <p class="subtitle">Doar pentru mafii — cucerește teritoriile rivalilor cu forța</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🔫 Pregătirea</h4>
+      <p>În interiorul HQ-ului mafiei tale, <code>/equip</code> îți reface viața și îți dă armament de luptă
+      (rangurile înalte primesc și pușcă cu lunetă). De aici pleci la atac.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📣 Declararea războiului</h4>
+      <p>Stai în interiorul unui teritoriu inamic (al altei mafii, marcat pe hartă) și dă <code>/war</code>. Ambele
+      facțiuni au nevoie de cel puțin 2 membri online. După o scurtă fază de pregătire, începe lupta propriu-zisă de
+      <strong>15 minute</strong>.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏆 Cucerirea</h4>
+      <p>Câștigă facțiunea cu cele mai multe ucideri în zonă la finalul celor 15 minute. La egalitate se intră în
+      <strong>moarte subită</strong> (prima la 3 ucideri câștigă). Dacă atacatorii înving, teritoriul își schimbă proprietarul.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Urmărești scorul în timp real cu <code>/warscore</code>. Liderii (rang 4-5) pot capitula cu <code>/warsurrender</code>,
+    dar abia după primele 5 minute de luptă.
+  </div>
+</section>
+
+<section id="drugs">
+  <h2>🌿 Droguri &amp; Seif (doar mafii)</h2>
+  <p class="subtitle">Economia subterană a mafiilor — alimentează lupta de teritoriu</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🔒 Seiful mafiei</h4>
+      <p>Fiecare mafie are un <strong>seif</strong> propriu unde se strâng iarba și drogurile. Verifici stocul cu
+      <code>/seif</code> (rang 4+).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚚 Transport &amp; Producție</h4>
+      <p>Rangurile 1, 2 și 5 aduc marfă cu <code>/drugs transport</code> (doar seara, 19:00–23:59, cu Huntley-ul facțiunii
+      și un al doilea membru la bord). Rangurile 3-5 transformă iarba în droguri la mașina de craft cu
+      <code>/drugs craft</code>.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">💉 În luptă</h4>
+      <p>Cât timp facțiunea ta e într-un război, scoți droguri din seif cu <code>/drugs get</code> și le folosești pe
+      teritoriul în conflict cu <code>/drugs use</code> pentru un plus rapid de viață (+30 HP).</p>
     </div>
   </div>
 </section>
@@ -279,7 +423,7 @@
     <div class="card">
       <h4 style="margin-top:0">🔧 Motor &amp; Încuiere</h4>
       <p>Mașina ta are stare reală de <strong>motor pornit/oprit</strong> și <strong>încuiat/descuiat</strong>:
-      <code>/engine</code> (sau tasta Numpad 2) pornește/oprește motorul, <code>/lock</code> încuie/descuie ușile —
+      <code>/engine</code> (sau tasta de submisie, implicit <strong>2</strong>) pornește/oprește motorul, <code>/lock</code> încuie/descuie ușile —
       poți folosi <code>/lock</code> fie din interiorul mașinii, fie de afară, dacă ești la maxim 5m de ea.
       Totul vizibil live pe bordul tău.</p>
     </div>
@@ -519,7 +663,7 @@
   <div class="grid-2">
     <div class="card">
       <h4 style="margin-top:0">🧭 Navigație GPS</h4>
-      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele, Magazine) — alegi categoria, apoi
+      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele, Magazine, Bancă / ATM, Joburi) — alegi categoria, apoi
       locația, și primești un punct de control direct pe hartă. Categoriile Facțiuni și Afaceri sunt actualizate
       automat (orice facțiune cu sediu sau afacere existentă apare acolo), iar fiecare locație din listă îți arată și
       <strong>distanța</strong> până la ea, în metri. <code>/killcp</code> anulează oricând checkpoint-ul activ.</p>
@@ -564,6 +708,8 @@
     <tr><td><code>/register [parolă]</code></td><td>Creează un cont nou</td></tr>
     <tr><td><code>/login [parolă]</code></td><td>Te loghezi pe contul tău</td></tr>
     <tr><td><code>/stats</code></td><td>Informații despre contul tău</td></tr>
+    <tr><td><code>/deposit [sumă]</code></td><td>Depui bani în bancă, la un ATM (min $100, max $100.000)</td></tr>
+    <tr><td><code>/withdraw [sumă]</code></td><td>Retragi bani din bancă, la un ATM (min $100, max $100.000)</td></tr>
     <tr><td><code>/cspawn</code></td><td>Schimbă punctul de spawn (civil / HQ facțiune / casă proprie)</td></tr>
     <tr><td><code>/help</code></td><td>Listă de comenzi pentru jucători</td></tr>
   </table>
@@ -581,6 +727,47 @@
     <tr><td><code>/fhelp</code></td><td>Comenzi de facțiune disponibile pentru tine</td></tr>
     <tr><td><code>/duty</code></td><td>Intri/ieși din tură, din interiorul sediului facțiunii (Poliție/RAR/SMURD)</td></tr>
     <tr><td><code>/factions</code></td><td>Listă cu toate cele 7 facțiuni</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🗳️ Președinte</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/vote [nume]</code></td><td>Votezi un jucător ca Președinte (Duminică 08:00–19:30, un vot/săptămână)</td></tr>
+    <tr><td><code>/president</code></td><td>Vezi Președintele curent + impozitul și CASS active</td></tr>
+    <tr><td><code>/settax [0-100]</code></td><td>Setează impozitul la PayDay (doar Președintele)</td></tr>
+    <tr><td><code>/setcass [0-100]</code></td><td>Setează CASS la PayDay (doar Președintele)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">💼 Joburi</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/jobs</code></td><td>Lista celor 10 joburi</td></tr>
+    <tr><td><code>/getjob [id/nume]</code></td><td>Te angajezi, la Job Center-ul din City Hall</td></tr>
+    <tr><td><code>/quitjob</code></td><td>Renunți la job, la Job Center</td></tr>
+    <tr><td><code>/job</code></td><td>Începi munca la jobul tău</td></tr>
+    <tr><td><code>/stopwork</code></td><td>Oprești munca / ieși din serviciul de Uber</td></tr>
+    <tr><td><code>/fare [sumă]</code></td><td>Uber: intri în serviciu cu mașina personală (preț per 20s)</td></tr>
+    <tr><td><code>/service uber</code></td><td>Ceri o cursă de Uber</td></tr>
+    <tr><td><code>/accept uber</code></td><td>Uber: accepți o cerere de cursă</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">⚔️ Războaie de teritoriu <span style="color:var(--muted); font-size:0.8em">(doar mafii)</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/equip</code></td><td>Te echipezi cu arme, în interiorul HQ-ului mafiei tale</td></tr>
+    <tr><td><code>/war</code></td><td>Declari război pe teritoriul inamic în care te afli</td></tr>
+    <tr><td><code>/warscore</code></td><td>Scorul războaielor în care e implicată facțiunea ta</td></tr>
+    <tr><td><code>/warsurrender</code></td><td>Capitulezi într-un război activ (rang 4-5, după primele 5 min)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🌿 Droguri &amp; Seif <span style="color:var(--muted); font-size:0.8em">(doar mafii)</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/seif</code></td><td>Vezi stocul de iarbă și droguri din seiful mafiei (rang 4+)</td></tr>
+    <tr><td><code>/drugs transport</code></td><td>Aduci marfă cu Huntley-ul facțiunii (rang 1/2/5, 19:00–23:59, cu un al doilea membru)</td></tr>
+    <tr><td><code>/drugs craft</code></td><td>Transformi iarba în droguri la mașina de craft (rang 3-5)</td></tr>
+    <tr><td><code>/drugs get</code></td><td>Scoți droguri din seif (rang oricare, doar în timpul unui război)</td></tr>
+    <tr><td><code>/drugs use</code></td><td>Folosești droguri pe teritoriul unui război activ (+30 HP)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🏠 Case &amp; Afaceri</h3>
@@ -609,7 +796,7 @@
     <tr><td><code>/vitp</code></td><td>Verificare tehnică (ITP), la sediul RAR</td></tr>
     <tr><td><code>/vpark</code></td><td>Salvează poziția curentă ca punct de respawn al mașinii</td></tr>
     <tr><td><code>/vstats</code></td><td>Listă vehicule deținute + starea documentelor</td></tr>
-    <tr><td><code>/engine</code> <span style="color:var(--muted)">(sau tasta Numpad 2)</span></td><td>Pornește/oprește motorul</td></tr>
+    <tr><td><code>/engine</code> <span style="color:var(--muted)">(sau tasta de submisie, implicit 2)</span></td><td>Pornește/oprește motorul</td></tr>
     <tr><td><code>/lock</code></td><td>Încuie/descuie ușile (doar proprietar) — din interior sau din apropiere, max 5m</td></tr>
     <tr><td><code>/rentbike</code></td><td>Închiriază o bicicletă din apropiere</td></tr>
     <tr><td><code>/rentcar</code></td><td>Închiriază o mașină din apropiere</td></tr>
@@ -661,6 +848,7 @@
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/attach</code></td><td>Atașează rulota în spatele mașinii personale în care te afli</td></tr>
     <tr><td><code>/detach</code></td><td>Desprinde și parchează rulota la poziția curentă</td></tr>
+    <tr><td><code>/findmycaravan</code></td><td>Îți arată unde e parcată rulota ta</td></tr>
     <tr><td><code>/camp</code></td><td>Setează spawn-ul temporar lângă rulotă, pentru 3 PayDay-uri</td></tr>
   </table>
 

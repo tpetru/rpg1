@@ -111,99 +111,40 @@
 </div>
 
 <div class="feature">
-  <h2>🗳️ Sistem Președinte (alegeri săptămânale prin vot)</h2>
-  <span class="status status-done">Implementat</span>
-
-  <div class="note">
-    <strong>Implementat.</strong> Comenzi: <code>/vote [nume]</code> (Duminică 08:00–19:30, ținta online, un vot/jucător),
-    <code>/settax [0-100]</code> și <code>/setcass [0-100]</code> (doar președintele, modifică <code>g_PDTax</code>/<code>g_PDCASS</code>
-    + <code>payday_setup</code>), <code>/president</code> (info). Timer <code>President_Check</code> (60s): Duminică 06:00 golește
-    <code>president_votes</code> + resetează <code>voted</code>; Duminică 20:00 calculează câștigătorul (exclude fostul președinte
-    prin <code>was_president</code>). Ziua săptămânii calculată cu Zeller (<code>getdate</code> nu o oferă).
-  </div>
-
-  <p>Sistem de președinte ales prin vot în fiecare săptămână, cu drept de a edita din joc valorile
-  <code>Impozit</code> (<code>g_PDTax</code>) și <code>CASS</code> (<code>g_PDCASS</code>) din
-  <code>payday_setup</code> — în prezent acestea se schimbă doar direct din DB, nu există nicio comandă
-  în cod care le editează.</p>
-
-  <h4 style="margin-bottom:4px">Variabile player</h4>
-  <ul>
-    <li><code>pIsPresident</code> (true/false) — dacă jucătorul e președintele curent.</li>
-    <li><code>pVoted</code> (true/false) — dacă a votat deja săptămâna asta; resetat odată cu golirea
-      tabelei de voturi, duminică la 6:00.</li>
-    <li><code>pWasPresident</code> (true/false) — dacă a fost președinte runda trecută; un jucător nu poate
-      fi ales președinte de două ori la rând (verificare la calculul câștigătorului, la 20:00).</li>
-  </ul>
-
-  <h4 style="margin-bottom:4px">Flux alegeri</h4>
-  <ul>
-    <li><code>/vote [nume_player]</code> — utilizabilă doar duminica, între orele <strong>8:00 –
-      19:30</strong>, și doar dacă <code>nume_player</code> e online. Un singur vot per jucător
-      (<code>pVoted</code>).</li>
-    <li><strong>Duminică, ora 6:00</strong> — se golește tabela de voturi (și se resetează
-      <code>pVoted</code> pentru toți).</li>
-    <li><strong>Duminică, ora 20:00</strong> — se calculează câștigătorul: jucătorul care apare de cele mai
-      multe ori în <code>vVotatPepId</code> (excluzând președintele actual, dacă <code>pWasPresident</code>
-      e adevărat pentru el). Acesta devine noul <code>pIsPresident</code>; vechiul președinte primește
-      <code>pWasPresident = true</code> și pierde <code>pIsPresident</code>.</li>
-  </ul>
-
-  <h4 style="margin-bottom:4px">Tabel DB — voturi</h4>
-  <ul>
-    <li><code>vID</code> — primary key.</li>
-    <li><code>vVotant</code> — numele celui care a votat.</li>
-    <li><code>vVotantId</code> — id-ul (cont) celui care a votat.</li>
-    <li><code>vVotatPe</code> — numele jucătorului votat ca președinte.</li>
-    <li><code>vVotatPeId</code> — id-ul (cont) jucătorului votat ca președinte.</li>
-  </ul>
-
-  <div class="note">
-    Trebuie un task/timer care verifică ziua + ora reală a serverului pentru cele 3 momente cheie
-    (duminică 6:00 golire tabel, fereastră de vot 8:00–19:30, 20:00 calcul câștigător) — de văzut dacă
-    există deja un sistem de timere bazate pe oră reală în gamemode sau trebuie adăugat de la zero.
-  </div>
-</div>
-
-<div class="feature">
   <h2>💼 Sistem de joburi</h2>
   <span class="status status-progress">În lucru</span>
 
-  <p>Fundația e implementată: fiecare jucător are <code>pJob</code> (persistat în coloana <code>job</code> din
-  <code>players</code>), îl ia cu <code>/getjob [1-10]</code> (doar dacă <code>pJob == 0</code>) și renunță cu
-  <code>/quitjob</code> (doar dacă are un job). Comanda <code>/job</code> (prin care începi munca) are deja scheletul cu
-  <code>switch(pJob)</code> pentru cele 10 joburi.</p>
+  <p>Fundația și primele <strong>6 joburi</strong> sunt implementate. Fiecare jucător are <code>pJob</code> (persistat în
+  coloana <code>job</code> din <code>players</code>), îl ia cu <code>/getjob [id sau nume]</code> de la Job Center-ul din
+  City Hall (doar dacă <code>pJob == 0</code>) și renunță cu <code>/quitjob</code>. <code>/jobs</code> listează cele 10
+  sloturi, <code>/job</code> începe munca, <code>/stopwork</code> o oprește.</p>
 
+  <h4 style="margin-bottom:4px">Joburi gata (1-6)</h4>
   <ul>
-    <li>De implementat efectiv fiecare din cele <strong>10 joburi</strong> (cazurile 1-10 din <code>/job</code>) — le completăm treptat.</li>
-    <li><strong>De schimbat distanța de <code>/job</code></strong> — verificarea de proximitate față de locația de muncă a fiecărui job.</li>
+    <li><strong>1. Glovo Delivery</strong> — livrări (pickup restaurant → casă), plată pe distanță, cotă către business 16.</li>
+    <li><strong>2. Cement Truck Driver</strong> — curse de ciment între puncte de încărcare și șantiere.</li>
+    <li><strong>3. Gun Delivery</strong> — livrare de arme dintr-un punct fix către HQ-uri de mafie.</li>
+    <li><strong>4. Car Transportator</strong> — transport de mașini între puncte de încărcare și business-uri.</li>
+    <li><strong>5. Uber</strong> — serviciu de transport între jucători (<code>/fare</code>, <code>/service uber</code>, taxare la 20s).</li>
+    <li><strong>6. Emergency Logistics Driver</strong> — depou cu 2 Bobcat + 2 Burrito, 3 puncte de încărcare → livrare la shop, plată de bază 700 + distanță.</li>
+  </ul>
+
+  <h4 style="margin-bottom:4px">Rămas de făcut</h4>
+  <ul>
+    <li>De implementat efectiv <strong>joburile 7-10</strong> (cazurile 7-10 din <code>/job</code> sunt încă placeholder „not available yet").</li>
+    <li><strong>De schimbat distanța de <code>/job</code></strong> — verificarea de proximitate față de locația de muncă a fiecărui job (TODO încă prezent în cod).</li>
   </ul>
 </div>
 
 <div class="feature">
-  <h2>💰 Taxe la PayDay (proprietăți)</h2>
-  <span class="status status-idea">Idee</span>
+  <h2>🎮 Limite temporare de jucători (de readus)</h2>
+  <span class="status status-idea">De readus</span>
 
-  <p>La fiecare PayDay, pe lângă impozit și CASS pe salariu, de adăugat și taxe pe proprietățile deținute:</p>
+  <p>Limite reduse temporar pentru testare — de readus la valorile normale:</p>
   <ul>
-    <li>Impozit mașini personale: <code>0.0002% * price</code></li>
-    <li>Impozit casă personală: <code>0.0004% * price</code></li>
-    <li>Impozit business personal: <code>0.006% * price</code></li>
-  </ul>
-
-  <div class="note">
-    Procentele sunt foarte mici (ex. 0.0002% = <code>price * 0.000002</code>), deci pe prețuri mici taxa ajunge sub 1$ și
-    se rotunjește la 0 cu aritmetică întreagă — de decis rotunjirea (ex. <code>floatround</code>) sau un minim de taxă.
-  </div>
-</div>
-
-<div class="feature">
-  <h2>🎮 Ajustări mini-jocuri</h2>
-  <span class="status status-idea">Idee</span>
-
-  <ul>
-    <li><strong>De schimbat limita de jucători la Golf</strong> — momentan turneul pornește cu minim 1 jucător (<code>joined &lt; 1</code> în <code>/startgolf</code>).</li>
-    <li><strong>De schimbat limita de jucători la Baschet</strong> — momentan <code>BBALL_MIN_PLAYERS = 1</code>.</li>
+    <li><strong>Golf</strong> — momentan turneul pornește cu minim 1 jucător (<code>joined &lt; 1</code> în <code>/startgolf</code>).</li>
+    <li><strong>Baschet</strong> — momentan <code>BBALL_MIN_PLAYERS = 1</code>.</li>
+    <li><strong>Război de teritorii (<code>/war</code>)</strong> — <code>WAR_MIN_FACTION_ONLINE = 0</code> (TEMPORAR), de readus la <strong>2</strong> membri online per facțiune.</li>
   </ul>
 </div>
 

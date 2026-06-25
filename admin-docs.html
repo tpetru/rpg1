@@ -94,9 +94,9 @@
   <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
-    <span class="badge">gamemodes/bare.pwn — ~11600 linii</span>
-    <span class="badge">12 tabele MySQL</span>
-    <span class="badge">120+ comenzi</span>
+    <span class="badge">gamemodes/bare.pwn — ~14600 linii</span>
+    <span class="badge">16 tabele MySQL</span>
+    <span class="badge">150+ comenzi</span>
   </div>
 </header>
 
@@ -105,6 +105,9 @@
   <h3>Cuprins</h3>
   <a href="#factions">Facțiuni</a>
   <a href="#economy">Economie / PayDay</a>
+  <a href="#atm">Bancă / ATM</a>
+  <a href="#president">Sistem Președinte</a>
+  <a href="#jobs">Sistem joburi</a>
   <a href="#houses-biz">Case &amp; Business-uri</a>
   <a href="#vehicles">Vehicule personale</a>
   <a href="#exams">Examene auto</a>
@@ -113,7 +116,8 @@
   <a href="#police-garage">Garaj Poliție</a>
   <a href="#gps-radar">GPS / Radar / HUD</a>
   <a href="#police-rar-cmds">RAR / Poliție / SMURD</a>
-  <a href="#turfs">Turfs</a>
+  <a href="#turfs">Turfs &amp; Războaie</a>
+  <a href="#drugs">Droguri &amp; Seif</a>
   <a href="#minigames">Mini-jocuri: Golf &amp; Baschet</a>
   <a href="#caravans">Rulote personale &amp; Camping</a>
   <a href="#database">Schema bazei de date</a>
@@ -149,8 +153,8 @@
   <table>
     <tr><th>Rang</th><th>Acces</th></tr>
     <tr><td>1+</td><td><code>/f</code>, <code>/fmembers</code>, <code>/fhelp</code> (toți membrii)</td></tr>
-    <tr><td>2+</td><td><code>/radar install/remove</code> — doar Poliție</td></tr>
-    <tr><td>3+</td><td><code>/confiscate</code> — RAR (extinctor/medkit/itp) și Poliție (doar insurance)</td></tr>
+    <tr><td>2+</td><td><code>/radar install/remove</code>, <code>/showradars</code>, <code>/removeradar</code> — doar Poliție; <code>/confiscate insurance|licence</code> — doar Poliție (rang 2+)</td></tr>
+    <tr><td>3+</td><td><code>/confiscate extinctor/medkit/itp</code> — doar RAR (rang 3+)</td></tr>
     <tr><td>4+</td><td><code>/finvite</code>, <code>/fbank</code> (vizualizare)</td></tr>
     <tr><td>5 (Lead)</td><td><code>/fbankwithdraw</code>, <code>/fsetrank</code></td></tr>
   </table>
@@ -168,16 +172,28 @@
 
   <h3>Formula PayDay (PayDay_Apply, fiecare oră reală)</h3>
   <pre>salary   = min_salary + 2500*level + random(2501)
-tax      = salary * tax% / 100
+tax      = salary * tax% / 100        // tax%/cass% setate de Presedinte (vezi sectiunea Presedinte)
 cass     = salary * cass% / 100
-net      = salary - tax - cass
 interest = floatround(bank * bank_interest% / 100.0)
+
+// --- Taxe pe proprietati (floatround pe fiecare componenta) ---
+carTax   = SUM( pvPrice * 0.000002 )  pe toate vehiculele personale detinute   // 0.0002%
+houseTax = hPrice  * 0.000004         daca detine casa (pHouse != 999)          // 0.0004%
+bizTax   = SUM( bPrice * 0.00006 )    pe toate business-urile detinute          // 0.006%
+propTax  = floatround(carTax) + floatround(houseTax) + floatround(bizTax)
+
+net      = salary - tax - cass - propTax
 
 money += net
 bank  += interest
 RP    += 1</pre>
   <p><code>PayDay_Check()</code> rulează la fiecare 60000ms, declanșează <code>PayDay_Apply()</code> doar când <code>minute==0 && hour != g_LastPayDayHour</code>.
   Poate fi forțat manual cu <code>/payday</code> (admin lvl 5).</p>
+  <div class="note">
+    Linia <strong>„Property tax"</strong> din chitanța de PayDay (defalcată pe cars/house/biz) e afișată doar dacă
+    <code>propTax &gt; 0</code>. Iterează peste <code>g_PVehicleCount</code> / <code>g_BusinessCount</code> pentru a aduna
+    bunurile după <code>pvOwnerId</code> / <code>bOwnerId == pID</code>, și peste <code>Houses_FindByID(pHouse)</code> pentru casă.
+  </div>
 
   <h3>Tabel payday_setup (rând unic, id=1)</h3>
   <table>
@@ -197,6 +213,8 @@ RP    += 1</pre>
     <tr><td>exam_b_price</td><td>300</td></tr>
     <tr><td>exam_c_price</td><td>500</td></tr>
     <tr><td>exam_d_price</td><td>400</td></tr>
+    <tr><td>pizza_price</td><td>50</td></tr>
+    <tr><td>burger_price</td><td>55</td></tr>
   </table>
   <div class="note">Nota: chiria mașinii "Piramida" obișnuite (<code>/rentcar</code>, varianta non-desert) folosește o constantă hardcodată <code>RENT_CAR_PRICE=30</code>, NU e citită din DB.</div>
   <div class="note">
@@ -205,6 +223,109 @@ RP    += 1</pre>
     buffere statice (suportă mai multe sume într-un singur <code>format()</code>). Log-urile de consolă (<code>printf</code>,
     ex. dump-ul de prețuri la pornire) <strong>NU</strong> trec prin acest helper — rămân numere brute, intenționat,
     pentru lizibilitate la debugging.
+  </div>
+</section>
+
+<section id="atm">
+  <h2>Bancă / ATM</h2>
+  <p>ATM-uri fizice (pickup model <code>1212</code>) plasate în lume, stocate în tabela <code>atms</code>
+  (<code>atmType</code>, <code>atmLocX/Y/Z</code>, <code>atmBankOwner</code> = ID-ul business-ului care primește o cotă din
+  comisioane). <code>MAX_ATMS=100</code>, rază de folosire <code>ATM_RANGE=5.0</code>. Create/mutate/șterse din joc cu
+  <code>/createatm</code> / <code>/moveatm</code> / <code>/deleteatm</code> (admin lvl 6).</p>
+
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>ATM_MIN_TRANSACTION</td><td>100 (minim per <code>/deposit</code> sau <code>/withdraw</code>)</td></tr>
+    <tr><td>ATM_MAX_TRANSACTION</td><td>100000 (maxim per tranzacție)</td></tr>
+    <tr><td>ATM_DEPOSIT_BASE</td><td>40 (taxă fixă la depunere)</td></tr>
+    <tr><td>ATM_WITHDRAW_BASE</td><td>60 (taxă fixă la retragere)</td></tr>
+    <tr><td>ATM_BANK_BIZ_A / _B</td><td>19 / 20 (business-urile „bancă")</td></tr>
+  </table>
+
+  <h3>Comenzi <code>/deposit [sumă]</code> / <code>/withdraw [sumă]</code></h3>
+  <p>Necesită să fii lângă un ATM (<code>ATM_FindNearbyIndex</code>). Comisionul efectiv e
+  <strong>taxă fixă + suma/1000</strong> (deci <code>40 + suma/1000</code> la depunere, <code>60 + suma/1000</code> la
+  retragere); dacă suma nu acoperă comisionul, tranzacția e refuzată. Suma netă (suma − comision) se mută între
+  <code>pMoney</code> și <code>pBank</code> (ambele persistate via <code>UpdatePlayer</code>). <strong>10% din comision</strong>
+  merge în banca business-ului indicat de <code>atmBankOwner</code> al ATM-ului folosit (<code>Job_AddBizIncome</code>).</p>
+  <div class="note">
+    Comentariile din cod de la calculul taxei („90$" la depunere, „110$" la retragere) sunt rămase din altă variantă —
+    valorile reale sunt constantele <code>ATM_DEPOSIT_BASE=40</code> / <code>ATM_WITHDRAW_BASE=60</code>.
+  </div>
+</section>
+
+<section id="president">
+  <h2>Sistem Președinte</h2>
+  <p>Președinte ales săptămânal prin vot. Singura cale prin care <code>g_PDTax</code> / <code>g_PDCASS</code> se modifică
+  din joc (în rest doar direct din DB). Câmpuri în <code>players</code>: <code>is_president</code>, <code>voted</code>,
+  <code>was_president</code> (toate <code>TINYINT</code>, mapate pe <code>pIsPresident</code>/<code>pVoted</code>/<code>pWasPresident</code>).</p>
+
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>VOTE_WINDOW_START_HOUR</td><td>8</td></tr>
+    <tr><td>VOTE_WINDOW_END_HOUR / _MINUTE</td><td>19 / 30 (fereastră de vot: Duminică 08:00–19:30)</td></tr>
+  </table>
+
+  <h3>Comenzi</h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/vote [nume]</code></td><td>Doar dacă <code>President_IsVoteWindowOpen()</code> (Duminică 08:00–19:30), ținta online (<code>Player_FindByName</code>), <code>pVoted==false</code>. INSERT în <code>president_votes</code>, setează <code>pVoted=true</code> (persistat via <code>UpdatePlayer</code>).</td></tr>
+    <tr><td><code>/settax [0-100]</code></td><td>Doar <code>pIsPresident</code>. Setează <code>g_PDTax</code> + <code>UPDATE payday_setup SET tax</code>, broadcast la tot serverul.</td></tr>
+    <tr><td><code>/setcass [0-100]</code></td><td>Doar <code>pIsPresident</code>. Setează <code>g_PDCASS</code> + <code>UPDATE payday_setup SET cass</code>, broadcast.</td></tr>
+    <tr><td><code>/president</code></td><td>Info: SELECT async (<code>OnPresidentInfo</code>) pe <code>is_president=1</code> → numele + <code>g_PDTax</code>/<code>g_PDCASS</code> curent.</td></tr>
+  </table>
+
+  <h3>Timer President_Check (60000ms)</h3>
+  <p>Pornit din <code>OnGameModeInit</code> (<code>SetTimer("President_Check", 60000, true)</code>). Verifică ziua reală cu
+  <code>DayOfWeek(y,m,d)</code> (algoritm Zeller — <code>getdate</code> nu oferă ziua săptămânii; 0 = Duminică) și ora cu <code>gettime</code>:</p>
+  <ul>
+    <li><strong>Duminică 06:00</strong> (o singură dată/zi, gardat de <code>g_LastVoteClearDay</code>): <code>President_ClearVotes()</code> —
+    <code>DELETE FROM president_votes</code>, resetează <code>voted=0</code> pentru toți + broadcast „voting is open".</li>
+    <li><strong>Duminică 20:00</strong> (gardat de <code>g_LastVoteWinnerDay</code>): <code>President_ComputeWinner()</code>.</li>
+  </ul>
+
+  <h3>President_ComputeWinner (async)</h3>
+  <p>Întâi <code>UPDATE players SET was_president = is_president</code> (mandatul curent devine „fost"). Apoi numără voturile
+  per candidat din <code>president_votes</code> cu <code>GROUP BY vVotatPeId</code>, <strong>excluzând</strong> candidații cu
+  <code>was_president=1</code> (deci câștigătorul precedent nu poate fi reales două runde la rând), ordonat descrescător,
+  callback <code>OnPresidentWinnerComputed</code>. Câștigătorul: <code>is_president=1, was_president=0 WHERE id=winnerId</code>;
+  restul <code>is_president=0</code>. Fără voturi valide → președinția rămâne vacantă. Memoria (<code>pIsPresident</code>/<code>pWasPresident</code>)
+  se sincronizează pentru jucătorii online.</p>
+
+  <h3>Tabel president_votes</h3>
+  <pre>vID INT PK AI, vVotant VARCHAR(24), vVotantId INT, vVotatPe VARCHAR(24), vVotatPeId INT</pre>
+</section>
+
+<section id="jobs">
+  <h2>Sistem joburi</h2>
+  <p><code>MAX_JOBS=10</code>. <code>pJob</code> (0 = fără job) persistat în coloana <code>job</code> din <code>players</code>.
+  <code>/getjob</code> și <code>/quitjob</code> necesită <code>Job_AtJobCenter(playerid)</code> (pickup + etichetă în interiorul
+  City Hall, interior 3). <code>/jobs</code> listează catalogul (<code>g_JobNames</code>). 6 din 10 sloturi sunt implementate;
+  7-10 răspund „not available yet" în <code>switch</code>-ul din <code>/job</code>.</p>
+
+  <table>
+    <tr><th>ID</th><th>Job</th><th>Mecanică</th><th>Plată</th><th>Biz cut</th></tr>
+    <tr><td>1</td><td>Glovo Delivery</td><td>Pickup restaurant → casă (stages PICKUP/DELIVER, checkpoint 3.0)</td><td><code>100 + 2*dist2D</code></td><td>$5 → biz ID 16</td></tr>
+    <tr><td>2</td><td>Cement Truck Driver</td><td>3 puncte load → 5 șantiere</td><td><code>2000 + 1*dist2D</code></td><td>—</td></tr>
+    <tr><td>3</td><td>Gun Delivery</td><td>Punct fix load (-1387.5, 2106.8, 42.1) → HQ mafie</td><td><code>500 + 1*dist2D</code></td><td>—</td></tr>
+    <tr><td>4</td><td>Car Transportator</td><td>2 puncte load → business 8/17/18</td><td><code>1500 + 1*dist2D</code></td><td>—</td></tr>
+    <tr><td>5</td><td>Uber</td><td>Serviciu player-to-player cu vehicul personal</td><td><code>/fare</code> per 20s</td><td>—</td></tr>
+    <tr><td>6</td><td>Emergency Logistics Driver</td><td>Depou (2 Bobcat + 2 Burrito), 3 puncte de încărcare → livrare la shop</td><td><code>700 + 1*dist2D</code></td><td>—</td></tr>
+  </table>
+
+  <h3>Comenzi player</h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/job</code></td><td>Pornește munca: jobs 1-4 → <code>Job_StartWork</code>; job 5 (Uber) → hint către <code>/fare</code>. <strong>TODO încă în cod</strong>: verificarea de proximitate față de locația jobului nu e implementată.</td></tr>
+    <tr><td><code>/stopwork</code></td><td>Oprește <code>g_IsWorking</code> (<code>Job_StopWork</code>) sau scoate din serviciul Uber (<code>Uber_GoOffDuty</code>).</td></tr>
+    <tr><td><code>/fare [sumă]</code></td><td>Uber: necesită <code>pJob==JOB_UBER</code> + să conducă vehicul personal propriu. Setează <code>g_UberOnDuty</code>, broadcast la tot serverul.</td></tr>
+    <tr><td><code>/service uber</code></td><td>Cere o cursă: doar dacă există măcar un șofer Uber liber online; notifică toți șoferii liberi.</td></tr>
+    <tr><td><code>/accept uber</code></td><td>Șofer: acceptă cererea (sub-cuvânt al comenzii partajate <code>/accept</code>). Taxare la <code>UBER_CHARGE_INTERVAL=20</code>s.</td></tr>
+  </table>
+  <div class="note">
+    Vehiculele de lucru sunt pool-uri fixe (<code>MAX_GLOVO_VEHICLES=8</code>, cement 4, gun 3, transport 3). <code>Job_VehicleRequiredJob(veh)</code>
+    leagă fiecare vehicul de jobul corespunzător; munca se oprește dacă jucătorul iese din vehiculul de lucru peste
+    <code>JOB_RETURN_GRACE=30</code>s (timer <code>g_JobReturnTimer</code>).
   </div>
 </section>
 
@@ -316,7 +437,7 @@ RP    += 1</pre>
   <h2>Motor &amp; Lock</h2>
   <ul>
     <li><code>/engine</code> — doar din scaunul șoferului; blocat complet dacă vehiculul personal nu e încă cumpărat ("Use /vbuy").</li>
-    <li><strong>Keybind</strong>: <code>KEY_SUBMISSION</code> (NU un keybind specific de numpad — verificați configurația de control efectivă dacă promovați public "Numpad 2").</li>
+    <li><strong>Keybind</strong>: <code>KEY_SUBMISSION</code> (tasta de submisie, implicit „2" — NU un keybind de numpad; documentația publică a fost aliniată la „tasta 2").</li>
     <li><code>/lock</code> — doar proprietarul. Funcționează <strong>din interiorul vehiculului</strong> (ca înainte) SAU
     <strong>de afară, în raza <code>LOCK_RANGE=5.0</code></strong> — în acest caz comanda caută printre cele 3 vehicule
     personale ale jucătorului (<code>pKey1/2/3</code>) pe cel mai apropiat, folosind poziția lui <strong>live</strong>
@@ -356,9 +477,12 @@ RP    += 1</pre>
     folosit <strong>exclusiv</strong> de <code>/gps</code> (player-facing) — rândul seed e categoria 4 "Hospitalization".
     Nu există nicio suprapunere de cod între cele două.
   </div>
-  <p><code>/gps</code> fără argument deschide dialog categorii: "DMV\nFactions\nBusiness\nOthers". Potrivirea categoriei
-  (<code>GPS_CategoryMatches</code>) acceptă <strong>ambele formate</strong> din DB: textul ("DMV", case-insensitive) SAU
-  numărul 1-based ca string ("1","2","3","4") — populați coloana <code>glCategory</code> cu oricare din cele două.
+  <p><code>/gps</code> fără argument deschide dialog cu <strong>7 categorii</strong>:
+  "DMV Locations\nFactions\nBusiness\nOthers\nShops\nBank / ATM\nJobs". Categoriile Factions, Business, Bank / ATM și Jobs
+  sunt populate dinamic (din facțiunile/business-urile/ATM-urile/joburile existente, prin <code>GPSITEM_*</code>), nu din
+  <code>locations_gps</code>. Potrivirea categoriei text (<code>GPS_CategoryMatches</code>, pentru rândurile din
+  <code>locations_gps</code>) acceptă <strong>ambele formate</strong> din DB: textul ("DMV"/"SHOPS"/..., case-insensitive)
+  SAU numărul 1-based ca string ("1".."7") — populați coloana <code>glCategory</code> cu oricare din cele două.
   <code>/gps</code> e blocat total în timpul oricărui examen auto activ. Checkpoint size = 5.0.</p>
 
   <h3>Map icons</h3>
@@ -400,11 +524,14 @@ RP    += 1</pre>
     <tr><td><code>/m [id]</code></td><td>On-duty ȘI ofițerul trebuie să fie într-un vehicul de facțiune. Target în 50m (M_RANGE). Mesaj text simplu — nu există mecanism real de oprire forțată.</td></tr>
   </table>
 
-  <h3><span class="pill pill-rar">RAR</span> + <span class="pill pill-police">Poliție</span> rang 3+</h3>
+  <h3><span class="pill pill-rar">RAR</span> rang 3+ &nbsp;/&nbsp; <span class="pill pill-police">Poliție</span> rang 2+</h3>
+  <p>Comandă partajată <code>/confiscate</code>, on-duty obligatoriu. <strong>Rangul minim diferă pe facțiune</strong>:
+  RAR necesită <code>pFactionRank&gt;=3</code>, Poliția <code>pFactionRank&gt;=2</code>. Sub-cuvintele disponibile diferă și ele.</p>
   <table>
     <tr><th>Comandă</th><th>Detalii</th></tr>
-    <tr><td><code>/confiscate [extinctor/medkit/itp] [id]</code></td><td>RAR, on-duty, <code>pFactionRank&gt;=3</code>, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează coloana aleasă (<code>extinguisher_exp</code> / <code>medkit_exp</code> / <code>itp_exp</code>) la <code>gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători.</td></tr>
-    <tr><td><code>/confiscate insurance [id]</code></td><td>Poliție, on-duty, <code>pFactionRank&gt;=3</code>. Aceeași comandă <code>/confiscate</code>, dar sub-cuvântul cheie disponibil diferă pe facțiune: RAR poate alege extinctor/medkit/itp, Poliția poate alege <strong>doar</strong> insurance.</td></tr>
+    <tr><td><code>/confiscate [extinctor/medkit/itp] [id]</code></td><td><strong>RAR</strong>, rang 3+, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează coloana aleasă (<code>extinguisher_exp</code> / <code>medkit_exp</code> / <code>itp_exp</code>) la <code>gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători.</td></tr>
+    <tr><td><code>/confiscate insurance [id]</code></td><td><strong>Poliție</strong>, rang 2+, target în 15m. Expiră imediat asigurarea (<code>insurance_exp</code>) vehiculului personal al țintei.</td></tr>
+    <tr><td><code>/confiscate licence [A/B/C/D/all] [id]</code></td><td><strong>Poliție</strong>, rang 2+, target în 15m. Anulează (NULL) data de expirare a permisului ales (sau toate) — revocare permanentă, identică cu <code>/suspendlic</code>.</td></tr>
   </table>
 
   <h3><span class="pill pill-police">Poliție</span></h3>
@@ -429,15 +556,80 @@ RP    += 1</pre>
 </section>
 
 <section id="turfs">
-  <h2>Turfs</h2>
-  <div class="note bug">
-    <strong>Confirmat: nu există niciun mecanism de capturare/atac.</strong> Coloana <code>attackable</code> din tabela
-    <code>turfs</code> e încărcată în memorie (<code>tAttackable</code>) dar <strong>nu e citită nicăieri altundeva</strong> —
-    e dată moartă. Nu există <code>OnPlayerEnterDynamicArea</code>, nicio comandă <code>/turf*</code>, niciun cod de
-    capturare. Turfs sunt pur vizuale: <code>GangZoneCreate</code>/<code>GangZoneShowForAll</code> cu dreptunghi + culoare
-    stocate în DB, legate de un <code>faction_id</code> doar pentru afișare. Singura "gestionare" sunt niște SQL-uri
-    brute comentate în cod (linii ~2403-2413), folosite o singură dată manual pentru seed — nu e tooling live.
-  </div>
+  <h2>Turfs &amp; Războaie de teritoriu</h2>
+  <p>Turfs sunt dreptunghiuri <code>GangZone</code> (x1/y1/x2/y2 + culoare) legate de un <code>faction_id</code>, stocate în
+  tabela <code>turfs</code>. Coloana <code>attackable</code> (<code>tAttackable</code>) e acum <strong>activă</strong>:
+  controlează dacă un turf poate fi ținta unui război. Sistemul de război e exclusiv pentru <strong>mafii</strong>
+  (<code>IsMafiaFaction(fid)</code> = facțiunile 4-7).</p>
+
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>WAR_MIN_FACTION_ONLINE</td><td><strong>0 (TEMPORAR</strong>, de readus la 2 — vezi roadmap; ambele facțiuni ar trebui să aibă ≥2 membri online ca să pornească)</td></tr>
+    <tr><td>WAR_PENDING_DURATION</td><td>120s (faza de pregătire, înainte de luptă)</td></tr>
+    <tr><td>WAR_ACTIVE_DURATION</td><td>900s = 15 min (faza activă de luptă)</td></tr>
+    <tr><td>WAR_SURRENDER_MIN_TIME</td><td>300s (5 min de la începutul fazei active până când <code>/warsurrender</code> e permis)</td></tr>
+    <tr><td>WAR_OVERTIME_KILLS_TO_WIN</td><td>3 (la egalitate după 15 min → sudden death, prima facțiune la 3 kills)</td></tr>
+    <tr><td>WAR_FLASH_COLOR</td><td>0xFF0000AA (gangzone flash cât turful e în război)</td></tr>
+  </table>
+
+  <h3>Stările unui război (tWarState)</h3>
+  <p><code>WAR_STATE_NONE=0</code>, <code>WAR_STATE_PENDING=1</code>, <code>WAR_STATE_ACTIVE=2</code>, <code>WAR_STATE_OVERTIME=3</code>.
+  Câmpuri de război în enum-ul turfului: <code>tWarAttackerFaction</code>/<code>tWarDefenderFaction</code>,
+  <code>tWarAttackerScore</code>/<code>tWarDefenderScore</code>, <code>tWarOvertimeAttackerKills</code>/<code>...DefenderKills</code>,
+  <code>tWarActiveStartTime</code>, <code>tWarPhaseEndTime</code> (toate în memorie, NU persistate — doar <code>faction_id</code>/<code>color</code> ajung în DB la cucerire).</p>
+
+  <h3>Flux complet</h3>
+  <ol>
+    <li><code>/war</code> — atacatorul stă în interiorul unui turf inamic atacabil. Verifică: mafie, turf ≠ propriu, defender e mafie,
+    <code>tAttackable</code>, niciun război deja activ pe turf, niciuna din facțiuni deja în alt război, ≥2 online fiecare.
+    <code>War_Declare</code> → <code>WAR_STATE_PENDING</code>, <code>tWarPhaseEndTime = gettime()+120</code>, gangzone flash, timer <code>War_StartActive</code> la 120s.</li>
+    <li><code>War_StartActive</code> (după 120s) → <code>WAR_STATE_ACTIVE</code>, 15 min, timer <code>War_CheckTimeUp</code>.</li>
+    <li><strong>Scor</strong> (<code>War_HandleDeath</code> din <code>OnPlayerDeath</code>): victima trebuie să fie mafie și moartă în zona turfului.
+    Kill pe inamic (ucigaș din facțiunea rivală, aflat fizic în turf) = +1; suicid/fără killer sau friendly fire = −1.</li>
+    <li><code>War_CheckTimeUp</code> (după 15 min): scor diferit → câștigă scorul mai mare; egalitate → <code>WAR_STATE_OVERTIME</code> (sudden death, prima la 3 kills via <code>War_AddScore</code>).</li>
+    <li><code>War_EndWar(tidx, winnerFid, surrendered)</code>: oprește flash, anunță ambele facțiuni. Dacă <strong>atacatorul</strong> câștigă →
+    <code>tFactionID = winner</code>, recolorează + <code>Turfs_RecreateZone</code> + <code>UPDATE turfs SET faction_id, color</code>. Apărarea câștigată nu schimbă proprietarul. Resetează toate câmpurile de război.</li>
+  </ol>
+
+  <h3>Comenzi</h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/equip</code></td><td>Mafie, în interiorul HQ-ului propriu (<code>Factions_IsInOwnInterior</code>). HP 100 + grenadă, teargas, Deagle(350), AK47(300); rang ≥4 primește și Sniper(20).</td></tr>
+    <tr><td><code>/war</code></td><td>Declară război (vezi flux). <code>War_FindTurfPlayerStandsIn</code>.</td></tr>
+    <tr><td><code>/warscore</code></td><td>Listează războaiele active ale facțiunii (PENDING: countdown start; ACTIVE: scor + timp; OVERTIME: kills sudden death).</td></tr>
+    <tr><td><code>/warsurrender</code></td><td>Mafie, rang ≥4, doar după <code>WAR_SURRENDER_MIN_TIME</code> (5 min). Adversarul câștigă (<code>War_EndWar(..., true)</code>).</td></tr>
+    <tr><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code></td><td><span class="pill pill-admin">Admin lvl 4</span> — forțează un război între două mafii pe un turf, fără verificările de proximitate/online.</td></tr>
+  </table>
+</section>
+
+<section id="drugs">
+  <h2>Droguri &amp; Seif (exclusiv mafii)</h2>
+  <p>Economie de droguri legată de sistemul de război. Stocul fiecărei mafii e ținut în tabela <code>factions</code>
+  (coloanele <code>seif_herbs</code> / <code>seif_drugs</code>, mapate pe <code>fSeifHerbs</code>/<code>fSeifDrugs</code>,
+  persistate via <code>Faction_SaveSeif</code>). <code>IsMafiaFaction(fid)</code> = facțiunile 4-7.</p>
+
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>SEIF_MAX_HERBS</td><td>10000 (capacitate iarbă, g)</td></tr>
+    <tr><td>SEIF_MAX_DRUGS</td><td>1000 (capacitate drugs, g)</td></tr>
+    <tr><td>DRUG_HUNTLEY_MODEL</td><td>579 (Huntley — vehiculul de transport)</td></tr>
+    <tr><td>DRUG_TRANSPORT_HOUR_MIN / _MAX</td><td>19 / 23 (transport doar între 19:00 și 23:59)</td></tr>
+    <tr><td>DRUG_CRAFT_FREEZE / _USE_FREEZE</td><td>30s / 1s</td></tr>
+    <tr><td>DRUG_USE_HEAL</td><td>30.0 HP la <code>/drugs use</code></td></tr>
+    <tr><td>DRUG_GET_AMOUNT</td><td>2 (g luate din seif la <code>/drugs get</code> și consumate la <code>/drugs use</code>)</td></tr>
+    <tr><td>DRUG_CRAFT_LOC</td><td>2543.0, -1293.8, 1045.5 (mașina de craft, rază 3.0)</td></tr>
+    <tr><td>DRUG_SEIF_LOC</td><td>2532.1270, -1282.2848, 1048.2891 (seiful)</td></tr>
+  </table>
+
+  <h3>Comenzi</h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/seif</code></td><td>Mafie, <code>pFactionRank&gt;=4</code>. Afișează stocul curent de iarbă/drugs vs. capacitatea maximă.</td></tr>
+    <tr><td><code>/drugs transport</code></td><td>Mafie, doar rang <strong>1, 2 sau 5</strong>. Doar între 19:00–23:59. Trebuie să conduci Huntley-ul facțiunii (model 579, deținut de facțiune) cu un <strong>al doilea membru</strong> al facțiunii în vehicul. Pornește un traseu cu checkpoint la <code>g_DrugPickup[fid]</code> → HQ (stages <code>DRUG_STAGE_*</code>).</td></tr>
+    <tr><td><code>/drugs craft</code></td><td>Mafie, rang <strong>3-5</strong>, la mașina de craft (rază 3.0). Consumă <code>200 + random(100)</code> g de iarbă din seif, îngheață 30s (<code>DrugCraft_Finish</code>), produce drugs.</td></tr>
+    <tr><td><code>/drugs get</code></td><td>Mafie (orice rang), la seif (rază 3.0), <strong>doar dacă facțiunea e într-un război activ</strong> (<code>War_FactionHasActiveWar</code>). Scoate <code>DRUG_GET_AMOUNT=2</code> g din seif în inventarul personal (<code>g_PlayerDrugs</code>).</td></tr>
+    <tr><td><code>/drugs use</code></td><td>Mafie, doar <strong>în interiorul turfului unui război activ</strong> al facțiunii (<code>War_FindActiveWarForFactionAt</code>). Consumă 2 g, +30 HP (plafonat la 100), animație <code>CRACK/crckidle2</code>, freeze 1s.</td></tr>
+  </table>
 </section>
 
 <section id="minigames">
@@ -581,7 +773,10 @@ RP    += 1</pre>
 </section>
 
 <section id="database">
-  <h2>Schema bazei de date (12 tabele)</h2>
+  <h2>Schema bazei de date (16 tabele)</h2>
+  <p class="lead" style="margin-top:-8px">16 tabele create în <code>DB_CreateTables()</code>: players, rulote_personale, factions, payday_setup,
+  houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, locations_admin, locations_gps,
+  basket_hoops, basket_spawns.</p>
 
   <h4>players</h4>
   <pre>id (PK AI), username VARCHAR(24) UNIQUE, password VARCHAR(64), email VARCHAR(64) DEFAULT '',
@@ -590,23 +785,45 @@ admin_level INT DEFAULT 0, faction INT DEFAULT 0, faction_rank INT DEFAULT 1,
 faction_join DATE DEFAULT NULL, house INT DEFAULT 999, business INT DEFAULT 999,
 spawn_type INT DEFAULT 1, key1/key2/key3 INT DEFAULT 0,
 driving_lic_a/b/c/d_exp DATE DEFAULT NULL,
-diseased TINYINT DEFAULT 0, disease_paydays INT DEFAULT 0</pre>
+diseased TINYINT DEFAULT 0, disease_paydays INT DEFAULT 0,
+caravan_key INT DEFAULT 0, job INT DEFAULT 0,
+is_president TINYINT DEFAULT 0, voted TINYINT DEFAULT 0, was_president TINYINT DEFAULT 0
+-- ultimele coloane (is_president/voted/was_president) adaugate si prin ALTER TABLE ... ADD COLUMN
+-- de migrare, pentru DB-uri existente</pre>
+
+  <h4>president_votes <span style="color:var(--muted); font-weight:400; font-size:0.8em">(golită Duminică 06:00)</span></h4>
+  <pre>vID INT PK AI, vVotant VARCHAR(24) DEFAULT '', vVotantId INT DEFAULT 0,
+vVotatPe VARCHAR(24) DEFAULT '', vVotatPeId INT DEFAULT 0
+-- un rand per vot; agregat la 20:00 prin GROUP BY vVotatPeId (vezi sectiunea Presedinte)</pre>
 
   <h4>factions</h4>
   <pre>id INT PK, name VARCHAR(32) DEFAULT '', members INT DEFAULT 0, lead VARCHAR(24) DEFAULT '',
 bank BIGINT DEFAULT 0, pickup_id INT DEFAULT -1, mapicon_id INT DEFAULT -1,
-hq_x/hq_y/hq_z FLOAT DEFAULT 0.0</pre>
+hq_x/hq_y/hq_z FLOAT DEFAULT 0.0,
+interior_x/interior_y/interior_z FLOAT DEFAULT 0.0, interior INT DEFAULT 0, vw INT DEFAULT 0,
+seif_herbs INT DEFAULT 0, seif_drugs INT DEFAULT 0
+-- interior_*/interior/vw + seif_herbs/seif_drugs adaugate si prin ALTER TABLE de migrare
+-- seif_herbs/seif_drugs = stocul de droguri al mafiei (vezi sectiunea Droguri &amp; Seif)</pre>
 
   <h4>payday_setup</h4>
   <pre>id INT PK DEFAULT 1, min_salary INT DEFAULT 5000, tax INT DEFAULT 10, cass INT DEFAULT 10,
 bank_interest FLOAT DEFAULT 0.25, insurance_price INT DEFAULT 500, medkit_price INT DEFAULT 500,
 extinguisher_price INT DEFAULT 500, itp_price INT DEFAULT 750, plate_price INT DEFAULT 250,
 rent_bike_price INT DEFAULT 15, rent_car_desert_price INT DEFAULT 20,
-exam_a/b/c/d_price INT DEFAULT 200/300/500/400</pre>
+exam_a/b/c/d_price INT DEFAULT 200/300/500/400,
+pizza_price INT DEFAULT 50, burger_price INT DEFAULT 55</pre>
 
   <h4>houses</h4>
   <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Casa', owner VARCHAR(24) DEFAULT '', owner_id INT DEFAULT 0,
-owned TINYINT DEFAULT 0, price INT DEFAULT 50000, loc_x/y/z FLOAT DEFAULT 0.0</pre>
+owned TINYINT DEFAULT 0, price INT DEFAULT 50000, loc_x/y/z FLOAT DEFAULT 0.0,
+type INT DEFAULT 1, max_pets INT DEFAULT 0, pets INT DEFAULT 0
+-- type/max_pets/pets adaugate si prin ALTER TABLE; type: 1=casa, 2=apartament, 3=other
+-- max_pets &gt; 0 = casa cu curte (permite /buyanimal); pets = nr. animale curente</pre>
+
+  <h4>animals</h4>
+  <pre>aID INT PK AI, aType INT DEFAULT 0, aPlayerID INT DEFAULT 0, aHouseID INT DEFAULT 0,
+aName VARCHAR(32) NOT NULL DEFAULT 'Animal'
+-- MAX_ANIMALS=200, ANIMAL_PRICE=5000; un animal cumparat cu /buyanimal sta in curtea casei (aHouseID)</pre>
 
   <h4>businesses</h4>
   <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Business', owned TINYINT DEFAULT 0, owner VARCHAR(24) DEFAULT '',
@@ -625,7 +842,13 @@ locked TINYINT DEFAULT 0</pre>
   <h4>turfs</h4>
   <pre>id INT PK AI, faction_id INT DEFAULT 0, name VARCHAR(32) NOT NULL DEFAULT '',
 x1/y1/x2/y2 FLOAT DEFAULT 0.0, attackable TINYINT(1) DEFAULT 1, color VARCHAR(8) DEFAULT '000000FF',
-UNIQUE KEY uq_turf_name(name)</pre>
+label_z FLOAT DEFAULT 15.0, UNIQUE KEY uq_turf_name(name)
+-- label_z adaugat prin ALTER TABLE (inaltimea etichetei 3D #ID per-turf)</pre>
+
+  <h4>atms</h4>
+  <pre>atmID INT PK AI, atmType INT DEFAULT 0, atmLocX/atmLocY/atmLocZ FLOAT DEFAULT 0.0,
+atmBankOwner INT DEFAULT 0
+-- atmBankOwner = ID-ul business-ului care primeste 10% din comisioane (vezi sectiunea Banca / ATM)</pre>
 
   <h4>locations_admin <span style="color:var(--muted); font-weight:400; font-size:0.8em">(redenumit din locations)</span></h4>
   <pre>locID INT PK AI, locName VARCHAR(32) NOT NULL DEFAULT '', locX/Y/Z FLOAT DEFAULT 0.0,
@@ -655,12 +878,17 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
   <h2>Comenzi admin (complet, după nivel)</h2>
   <table>
     <tr><th>Nivel</th><th>Comenzi</th></tr>
-    <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code></td></tr>
-    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/opengolftournament</code>, <code>/startgolf</code></td></tr>
+    <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code></td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code></td></tr>
     <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code>, <code>/gotoxyz</code></td></tr>
+    <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie)</td></tr>
     <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code></td></tr>
-    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/changebizname</code>, <code>/changebizprice</code>, <code>/changebizloc</code>, <code>/changehouseprice</code>, <code>/changehouseowner</code>, <code>/vcreate</code>, <code>/vsetprice</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code></td></tr>
+    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code></td></tr>
   </table>
+  <div class="note">
+    <code>/showradars</code> și <code>/removeradar</code> nu cer un nivel fix de admin — sunt accesibile fie cu admin lvl 1+,
+    fie membrilor Poliției cu rang 4+ (<code>pAdminLevel &gt;= 1 || isPoliceRank4</code>).
+  </div>
   <div class="note">
     <strong>/changefactionlead</strong> forțează acum necondiționat <code>pSpawn=2</code> (HQ Spawn) pentru noul lider,
     recalculează coordonatele de spawn pe HQ-ul noii facțiuni (<code>Player_RecalcSpawn</code>) și îl respawnează pe loc
@@ -670,18 +898,20 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
 
 <section id="known-issues">
   <h2>Probleme cunoscute / de verificat</h2>
-  <div class="note bug">
-    <strong>/createhouse — preț implicit inconsecvent.</strong> Valoarea în memorie e setată la 999.999.999, dar
-    INSERT-ul SQL efectiv folosește 50.000 ca literal. Până la următorul reload din DB, prețul afișat în joc
-    (din memorie) și cel din baza de date diferă.
+  <div class="note ok">
+    <strong>/createhouse — preț implicit consecvent.</strong> Atât valoarea din memorie cât și INSERT-ul SQL folosesc
+    acum <code>2.000.000</code> (vechea neconcordanță 999.999.999 vs 50.000 a fost remediată). Casa creată pornește cu
+    <code>hType=1</code>, <code>hMaxPets=0</code>; <code>DEFAULT price</code> al coloanei (50.000) e suprascris explicit la INSERT.
   </div>
   <div class="note bug">
     <strong>/removefactionlead</strong> face update-ul DB direct după username (string), nu după ID — fragil dacă
     liderul e offline sau și-a schimbat numele între timp.
   </div>
-  <div class="note warn">
-    <strong>Turfs</strong> au coloana <code>attackable</code> complet nefolosită — dacă promovați public un sistem de
-    "teritorii capturabile", el nu există încă în cod (vezi secțiunea Turfs).
+  <div class="note ok">
+    <strong>Turfs — sistemul de război e acum implementat</strong> (vezi secțiunea Turfs &amp; Războaie): coloana
+    <code>attackable</code> e folosită activ, există <code>/war</code>/<code>/warsurrender</code>/<code>/warscore</code>/<code>/forcewar</code>
+    și cucerirea schimbă <code>faction_id</code> în DB. De reținut: starea de război (scor, fază, timere) e doar în memorie —
+    un restart de server în timpul unui război îl pierde, fără să schimbe proprietarul turfului.
   </div>
   <div class="note warn">
     <strong>Business ID 8</strong> primește comision la <code>/vbuy</code> necondiționat, chiar dacă acel business nu
@@ -698,6 +928,7 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><td><code>/register [parolă]</code></td><td>Parolă stocată în clar (fără hashing vizibil în cod)</td></tr>
     <tr><td><code>/login [parolă]</code></td><td>Comparație directă cu strcmp</td></tr>
     <tr><td><code>/stats</code></td><td>Read-only</td></tr>
+    <tr><td><code>/deposit</code> / <code>/withdraw</code></td><td>Bani între cash și bancă, la ATM — vezi secțiunea Bancă / ATM</td></tr>
   </table>
 
   <h3 id="cmd-faction">Facțiune</h3>
@@ -730,6 +961,12 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><td><code>/gps [nume]</code> / <code>/killcp</code></td><td>Vezi secțiunea GPS</td></tr>
     <tr><td><code>/radar install/remove [limită]</code></td><td>Vezi secțiunea Radar</td></tr>
     <tr><td><code>/licenses /examA /examB /examC /examD</code></td><td>Vezi secțiunea Examene</td></tr>
+    <tr><td><code>/vote /president /settax /setcass</code></td><td>Vezi secțiunea Sistem Președinte</td></tr>
+    <tr><td><code>/jobs /getjob /quitjob /job /stopwork /fare /service /accept uber</code></td><td>Vezi secțiunea Sistem joburi</td></tr>
+    <tr><td><code>/equip /war /warscore /warsurrender</code></td><td>Vezi secțiunea Turfs &amp; Războaie</td></tr>
+    <tr><td><code>/seif /drugs [transport/craft/get/use]</code></td><td>Vezi secțiunea Droguri &amp; Seif (doar mafii)</td></tr>
+    <tr><td><code>/pizza /burger</code></td><td>Mâncare (+20 / +25 HP), la un punct [ Shop ] de tip food</td></tr>
+    <tr><td><code>/joinparty /leaveparty /changemusic /buydrink /buygrill</code></td><td>Sistem de petreceri (VW 501)</td></tr>
     <tr><td><code>/help</code></td><td>Listă generală jucător</td></tr>
   </table>
 </section>
