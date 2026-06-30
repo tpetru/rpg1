@@ -150,6 +150,7 @@
     <span class="badge">Baschet</span>
     <span class="badge">Rulote &amp; Camping</span>
     <span class="badge">Petreceri</span>
+    <span class="badge">Telefonie</span>
   </div>
 </header>
 
@@ -172,6 +173,7 @@
   <a href="#camping">Camping</a>
   <a href="#party">Petreceri</a>
   <a href="#gps">GPS &amp; Radar</a>
+  <a href="#phone">Telefonie</a>
   <a href="#police">Lege &amp; Ordine</a>
   <a href="#commands">Comenzi</a>
 </nav>
@@ -682,6 +684,46 @@
   </div>
 </section>
 
+<section id="phone">
+  <h2>📱 Telefonie</h2>
+  <p class="subtitle">Sună-ți prietenii și trimite mesaje, oriunde ai fi pe hartă</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">📲 Cumpără-ți un telefon</h4>
+      <p><code>/buyphone</code> îți deschide magazinul de telefoane. Alege dintre 5 mărci:</p>
+      <table>
+        <tr><th>Model</th><th>Preț</th></tr>
+        <tr><td>Motorola 67</td><td>$500</td></tr>
+        <tr><td>Samsung A70</td><td>$1.000</td></tr>
+        <tr><td>iPhone 16</td><td>$1.600</td></tr>
+        <tr><td>Samsung S27</td><td>$2.000</td></tr>
+        <tr><td>iPhone 17</td><td>$2.200</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📇 Ia-ți un număr (SIM)</h4>
+      <p>După ce ai un telefon, folosește <code>/buysim</code> ca să primești un <strong>număr unic de 7 cifre</strong>,
+      generat aleatoriu. Acesta e numărul la care te pot suna sau trimite SMS ceilalți jucători.</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">📞 Apeluri</h4>
+      <p><code>/call [număr]</code> sună jucătorul care deține acel număr (și e online). Cel apelat răspunde cu
+      <code>/pickup</code> — apoi puteți vorbi: tot ce scrii pe durata convorbirii ajunge direct la interlocutor.
+      Închizi oricând cu <code>/hangup</code>. Dacă nimeni nu răspunde în <strong>30 de secunde</strong>, apelul se
+      încheie singur. Apelul costă <strong>$3 la fiecare 10 secunde</strong>, plătit de cel care a sunat.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">✉️ SMS</h4>
+      <p><code>/sms [număr] [mesaj]</code> trimite un mesaj scris unui jucator online după numărul lui de telefon.
+      Costă <strong>$5</strong> per mesaj. Atât tu cât și destinatarul vedeți mesajul în chat, marcat cu marca telefonului.</p>
+    </div>
+  </div>
+</section>
+
 <section id="police">
   <h2>🚓 Lege &amp; Ordine</h2>
   <p class="subtitle">Ce te așteaptă dacă încalci regulile</p>
@@ -818,6 +860,17 @@
     <tr><td><code>/gps [nume]</code></td><td>Setează un checkpoint (fără argument = meniu pe categorii)</td></tr>
     <tr><td><code>/killcp</code></td><td>Anulează checkpoint-ul GPS activ</td></tr>
     <tr><td><code>/curedisease</code></td><td>Te vindecă, la spitalul SMURD (dacă ești bolnav)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">📱 Telefonie</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/buyphone</code></td><td>Deschide magazinul de telefoane (5 mărci)</td></tr>
+    <tr><td><code>/buysim</code></td><td>Primești un număr de telefon unic, de 7 cifre</td></tr>
+    <tr><td><code>/call [număr]</code></td><td>Suni un jucător online după numărul lui ($3 / 10s)</td></tr>
+    <tr><td><code>/pickup</code></td><td>Răspunzi la un apel primit</td></tr>
+    <tr><td><code>/hangup</code></td><td>Închizi apelul curent</td></tr>
+    <tr><td><code>/sms [număr] [mesaj]</code></td><td>Trimiți un SMS unui jucător online ($5)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🍔 Mâncare</h3>

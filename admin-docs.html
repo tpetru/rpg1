@@ -94,9 +94,9 @@
   <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
-    <span class="badge">gamemodes/bare.pwn — ~14600 linii</span>
+    <span class="badge">gamemodes/bare.pwn — ~15100 linii</span>
     <span class="badge">16 tabele MySQL</span>
-    <span class="badge">150+ comenzi</span>
+    <span class="badge">155+ comenzi</span>
   </div>
 </header>
 
@@ -115,6 +115,7 @@
   <a href="#engine-lock">Motor &amp; Lock</a>
   <a href="#police-garage">Garaj Poliție</a>
   <a href="#gps-radar">GPS / Radar / HUD</a>
+  <a href="#phone">Telefonie</a>
   <a href="#police-rar-cmds">RAR / Poliție / SMURD</a>
   <a href="#turfs">Turfs &amp; Războaie</a>
   <a href="#drugs">Droguri &amp; Seif</a>
@@ -512,6 +513,57 @@ RP    += 1</pre>
   distrus la login/register reușit.</p>
 </section>
 
+<section id="phone">
+  <h2>Telefonie</h2>
+  <p>Fiecare jucător are un telefon (marcă, index 0-4 în <code>pPhoneModel</code>, <code>-1</code> = fără telefon) și un
+  număr unic de 7 cifre (<code>pPhoneNumber</code>, <code>0</code> = fără SIM). Ambele sunt persistate în
+  <code>players.phone_model</code> / <code>players.phone_number</code>. Starea apelurilor e <strong>doar în memorie</strong>.</p>
+
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>PHONE_NUMBER_MIN / _MAX</td><td>1000000 / 9999999 (numere de 7 cifre)</td></tr>
+    <tr><td>PHONE_SHOP_BIZ_ID</td><td>21 (primește <strong>5%</strong> din vânzarea telefoanelor)</td></tr>
+    <tr><td>PHONE_CARRIER_BIZ_ID</td><td>22 (primește <strong>50%</strong> din SMS-uri și apeluri)</td></tr>
+    <tr><td>PHONE_SMS_PRICE</td><td>5 ($ per SMS)</td></tr>
+    <tr><td>PHONE_CALL_PRICE</td><td>3 ($ per interval de taxare)</td></tr>
+    <tr><td>PHONE_CALL_CHARGE_INTERVAL</td><td>10 (secunde între taxări pe durata apelului)</td></tr>
+    <tr><td>PHONE_CALL_RING_TIMEOUT</td><td>30 (secunde până când un apel nerăspuns se închide automat)</td></tr>
+  </table>
+
+  <h3>Mărci de telefon (dialog <code>/buyphone</code>, <code>DIALOG_PHONE_BUY</code>)</h3>
+  <table>
+    <tr><th>Index</th><th>Marcă</th><th>Preț</th></tr>
+    <tr><td>0</td><td>Samsung A70</td><td>1000</td></tr>
+    <tr><td>1</td><td>Samsung S27</td><td>2000</td></tr>
+    <tr><td>2</td><td>iPhone 16</td><td>1600</td></tr>
+    <tr><td>3</td><td>iPhone 17</td><td>2200</td></tr>
+    <tr><td>4</td><td>Motorola 67</td><td>500</td></tr>
+  </table>
+
+  <h3>Comenzi</h3>
+  <table>
+    <tr><th>Comandă</th><th>Detalii</th></tr>
+    <tr><td><code>/buyphone</code></td><td>Deschide dialogul cu mărcile. La selectare: scade prețul integral, setează <code>pPhoneModel</code>, rutează <strong>5%</strong> către business ID 21 (<code>Job_AddBizIncome</code>).</td></tr>
+    <tr><td><code>/buysim</code></td><td>Necesită telefon, fără SIM existent. Generează un număr aleatoriu de 7 cifre și verifică unicitatea <strong>async</strong> (<code>OnPhoneSimChecked</code> — re-rulează dacă numărul există deja în DB; evită și coliziunile cu numerele online). La succes: <code>pPhoneNumber</code> setat și persistat.</td></tr>
+    <tr><td><code>/call [număr]</code></td><td>Necesită telefon + SIM, să nu fii deja într-un apel. Ținta trebuie să fie online și liberă. Pornește faza de „ring": timer <code>Phone_RingTimeout</code> la 30s. Apelantul vede „L-ai sunat pe ...", apelatul „Te sună ... foloseste /pickup".</td></tr>
+    <tr><td><code>/pickup</code></td><td>Doar apelatul, cât timp apelul sună. Marchează apelul ca activ, oprește timer-ul de ring și pornește taxarea: <code>Phone_CallCharge</code> (repetat la 10s) pe <strong>inițiator</strong> — $3/interval, cu <strong>50%</strong> către business ID 22. Dacă inițiatorul rămâne fără bani, apelul se închide.</td></tr>
+    <tr><td><code>/hangup</code></td><td>Închide apelul curent (ring sau activ) pentru ambii participanți (<code>Phone_EndCall</code>).</td></tr>
+    <tr><td><code>/sms [număr] [mesaj]</code></td><td>Necesită telefon + SIM. Costă $5 (scădere imediată), cu <strong>50%</strong> către business ID 22. Mesaj galben la destinatar („SMS de la ..."), confirmare albă la expeditor („SMS către ...").</td></tr>
+  </table>
+
+  <h3>Convorbire (chat pe durata apelului)</h3>
+  <p>Cât timp un jucător e într-un apel <strong>activ</strong> (după <code>/pickup</code>), tot ce scrie în chat e
+  interceptat în <code>OnPlayerText</code> și trimis ca mesaj de telefon ambilor participanți, în formatul
+  <code>Nume[Marcă]: text</code> — chatul local normal e suprimat (<code>return 1</code>) cât timp ești la telefon.
+  La deconectare, apelul se închide automat și interlocutorul e notificat.</p>
+
+  <div class="note warn">
+    Banii din telefonie folosesc <code>Job_AddBizIncome(bizId, ...)</code>, care <strong>nu face nimic dacă business-ul
+    cu ID 21 / 22 nu există</strong> în tabela <code>businesses</code> (la fel ca business ID 8). Creează aceste două
+    business-uri ca veniturile să fie efectiv colectate.
+  </div>
+</section>
+
 <section id="police-rar-cmds">
   <h2>RAR / Poliție / SMURD — detalii comenzi</h2>
 
@@ -787,9 +839,11 @@ spawn_type INT DEFAULT 1, key1/key2/key3 INT DEFAULT 0,
 driving_lic_a/b/c/d_exp DATE DEFAULT NULL,
 diseased TINYINT DEFAULT 0, disease_paydays INT DEFAULT 0,
 caravan_key INT DEFAULT 0, job INT DEFAULT 0,
-is_president TINYINT DEFAULT 0, voted TINYINT DEFAULT 0, was_president TINYINT DEFAULT 0
--- ultimele coloane (is_president/voted/was_president) adaugate si prin ALTER TABLE ... ADD COLUMN
--- de migrare, pentru DB-uri existente</pre>
+is_president TINYINT DEFAULT 0, voted TINYINT DEFAULT 0, was_president TINYINT DEFAULT 0,
+phone_model INT DEFAULT -1, phone_number INT DEFAULT 0
+-- ultimele coloane (is_president/voted/was_president/job/phone_*) adaugate si prin ALTER TABLE ... ADD COLUMN
+-- de migrare, pentru DB-uri existente
+-- phone_model: index marca (0-4), -1 = fara telefon; phone_number: 7 cifre, 0 = fara SIM (vezi sectiunea Telefonie)</pre>
 
   <h4>president_votes <span style="color:var(--muted); font-weight:400; font-size:0.8em">(golită Duminică 06:00)</span></h4>
   <pre>vID INT PK AI, vVotant VARCHAR(24) DEFAULT '', vVotantId INT DEFAULT 0,
@@ -929,6 +983,7 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><td><code>/login [parolă]</code></td><td>Comparație directă cu strcmp</td></tr>
     <tr><td><code>/stats</code></td><td>Read-only</td></tr>
     <tr><td><code>/deposit</code> / <code>/withdraw</code></td><td>Bani între cash și bancă, la ATM — vezi secțiunea Bancă / ATM</td></tr>
+    <tr><td><code>/buyphone /buysim /call /pickup /hangup /sms</code></td><td>Vezi secțiunea Telefonie</td></tr>
   </table>
 
   <h3 id="cmd-faction">Facțiune</h3>

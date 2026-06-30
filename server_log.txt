@@ -10071,3 +10071,254 @@ Console input: gmx
 [19:00:27] [PayDay] Distribuit la 19:00.
 [19:00:27] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
 [19:00:27] [Animals] 2 animale incarcate.
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[14:08:11] filterscripts = ""  (string)
+[14:08:11] 
+[14:08:11] Server Plugins
+[14:08:11] --------------
+[14:08:11]  Loading plugin: mysql
+[14:08:11]  >> plugin.mysql: R41-4 successfully loaded.
+[14:08:11]   Loaded.
+[14:08:11]  Loading plugin: streamer
+[14:08:11] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[14:08:11]   Loaded.
+[14:08:11]  Loaded 2 plugins.
+
+[14:08:11] 
+[14:08:11] Filterscripts
+[14:08:11] ---------------
+[14:08:11]   Loaded 0 filterscripts.
+
+[14:08:11] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[14:08:44] filterscripts = ""  (string)
+[14:08:44] 
+[14:08:44] Server Plugins
+[14:08:44] --------------
+[14:08:44]  Loading plugin: mysql
+[14:08:44]  >> plugin.mysql: R41-4 successfully loaded.
+[14:08:44]   Loaded.
+[14:08:44]  Loading plugin: streamer
+[14:08:44] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[14:08:44]   Loaded.
+[14:08:44]  Loaded 2 plugins.
+
+[14:08:44] 
+[14:08:44] Filterscripts
+[14:08:44] ---------------
+[14:08:44]   Loaded 0 filterscripts.
+
+[14:08:44] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[14:08:44] [DB] Conectat la MySQL cu succes!
+[14:08:44] [DB] Tabel `players` verificat/creat.
+[14:08:44] [DB] Tabel `rulote_personale` verificat/creat.
+[14:08:44] [DB] Tabele factiuni si payday verificate/create.
+[14:08:44] [Factions] Se incarca factiunile din baza de date...
+[14:08:44] 
+----------------------------------
+[14:08:44]   NostalgiaRP by Nikolas Maduro  
+
+[14:08:44] ----------------------------------
+
+[14:08:44] Number of vehicle models: 27
+[14:08:45] [Factions] 7 factiuni incarcate.
+[14:08:45] [Houses] 8 case incarcate.
+[14:08:45] [Businesses] 20 business-uri incarcate.
+[14:08:45] [Turfs] 12 turf-uri incarcate.
+[14:08:45] [ATMs] 8 ATM-uri incarcate.
+[14:08:45] [Locations] 11 locatii incarcate.
+[14:08:45] [GPS] 24 locatii incarcate.
+[14:08:45] [Basketball] 8 cosuri incarcate.
+[14:08:45] [Basketball] 32 spawn-uri incarcate.
+[14:08:45] [VehiculeFactiuni] 85 vehicule incarcate.
+[14:08:45] [VehiculePersonale] 36 vehicule incarcate.
+[14:08:45] [Rulote] 1 rulote incarcate.
+[14:08:45] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[14:08:45] [VehiculePersonale] Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Numar inmatriculare $250 | Bicicleta $15 | RentCarDMVDesert $20 | Examen A $200 | Examen B $300 | Examen C $500 | Examen D $400 | Pizza $50 | Burger $55
+[14:08:45] [Animals] 2 animale incarcate.
+[14:09:04] [connection] 127.0.0.1:65218 requests connection cookie.
+[14:09:05] [connection] incoming connection: 127.0.0.1:65218 id: 0
+[14:09:05] [join] Punctulet has joined the server (0:127.0.0.1)
+[15:00:27] [PayDay] Distribuit la 15:00.
+[15:00:27] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[15:00:27] [Animals] 2 animale incarcate.
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:07:50] filterscripts = ""  (string)
+[15:07:50] 
+[15:07:50] Server Plugins
+[15:07:50] --------------
+[15:07:50]  Loading plugin: mysql
+[15:07:50]  >> plugin.mysql: R41-4 successfully loaded.
+[15:07:50]   Loaded.
+[15:07:50]  Loading plugin: streamer
+[15:07:50] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:07:50]   Loaded.
+[15:07:50]  Loaded 2 plugins.
+
+[15:07:50] 
+[15:07:50] Filterscripts
+[15:07:50] ---------------
+[15:07:50]   Loaded 0 filterscripts.
+
+[15:07:51] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:08:11] filterscripts = ""  (string)
+[15:08:11] 
+[15:08:11] Server Plugins
+[15:08:11] --------------
+[15:08:11]  Loading plugin: mysql
+[15:08:11]  >> plugin.mysql: R41-4 successfully loaded.
+[15:08:11]   Loaded.
+[15:08:11]  Loading plugin: streamer
+[15:08:11] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:08:11]   Loaded.
+[15:08:11]  Loaded 2 plugins.
+
+[15:08:11] 
+[15:08:11] Filterscripts
+[15:08:11] ---------------
+[15:08:11]   Loaded 0 filterscripts.
+
+[15:08:11] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[15:08:11] [DB] Conectat la MySQL cu succes!
+[15:08:11] [DB] Tabel `players` verificat/creat.
+[15:08:11] [DB] Tabel `rulote_personale` verificat/creat.
+[15:08:11] [DB] Tabele factiuni si payday verificate/create.
+[15:08:11] [Factions] Se incarca factiunile din baza de date...
+[15:08:11] 
+----------------------------------
+[15:08:11]   NostalgiaRP by Nikolas Maduro  
+
+[15:08:11] ----------------------------------
+
+[15:08:11] Number of vehicle models: 27
+[15:08:11] [Factions] 7 factiuni incarcate.
+[15:08:11] [Houses] 8 case incarcate.
+[15:08:11] [Businesses] 22 business-uri incarcate.
+[15:08:11] [Turfs] 8 turf-uri incarcate.
+[15:08:11] [ATMs] 8 ATM-uri incarcate.
+[15:08:11] [Locations] 11 locatii incarcate.
+[15:08:11] [GPS] 24 locatii incarcate.
+[15:08:11] [Basketball] 8 cosuri incarcate.
+[15:08:11] [Basketball] 32 spawn-uri incarcate.
+[15:08:11] [VehiculeFactiuni] 85 vehicule incarcate.
+[15:08:11] [VehiculePersonale] 36 vehicule incarcate.
+[15:08:11] [Rulote] 1 rulote incarcate.
+[15:08:11] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[15:08:11] [VehiculePersonale] Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Numar inmatriculare $250 | Bicicleta $15 | RentCarDMVDesert $20 | Examen A $200 | Examen B $300 | Examen C $500 | Examen D $400 | Pizza $50 | Burger $55
+[15:08:11] [Animals] 2 animale incarcate.
+[15:08:30] [connection] 127.0.0.1:54051 requests connection cookie.
+[15:08:31] [connection] incoming connection: 127.0.0.1:54051 id: 0
+[15:08:32] [join] Punctulet has joined the server (0:127.0.0.1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:33:45] filterscripts = ""  (string)
+[15:33:45] 
+[15:33:45] Server Plugins
+[15:33:45] --------------
+[15:33:45]  Loading plugin: mysql
+[15:33:45]  >> plugin.mysql: R41-4 successfully loaded.
+[15:33:45]   Loaded.
+[15:33:45]  Loading plugin: streamer
+[15:33:45] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:33:45]   Loaded.
+[15:33:45]  Loaded 2 plugins.
+
+[15:33:45] 
+[15:33:45] Filterscripts
+[15:33:45] ---------------
+[15:33:45]   Loaded 0 filterscripts.
+
+[15:33:45] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[15:33:45] [DB] Conectat la MySQL cu succes!
+[15:33:45] [DB] Tabel `players` verificat/creat.
+[15:33:45] [DB] Tabel `rulote_personale` verificat/creat.
+[15:33:45] [DB] Tabele factiuni si payday verificate/create.
+[15:33:45] [Factions] Se incarca factiunile din baza de date...
+[15:33:45] 
+----------------------------------
+[15:33:45]   NostalgiaRP by Nikolas Maduro  
+
+[15:33:45] ----------------------------------
+
+[15:33:45] Number of vehicle models: 27
+[15:33:45] [Factions] 7 factiuni incarcate.
+[15:33:45] [Houses] 8 case incarcate.
+[15:33:45] [Businesses] 22 business-uri incarcate.
+[15:33:45] [Turfs] 8 turf-uri incarcate.
+[15:33:45] [ATMs] 8 ATM-uri incarcate.
+[15:33:45] [Shops] 6 shop-uri incarcate.
+[15:33:45] [Locations] 11 locatii incarcate.
+[15:33:45] [GPS] 24 locatii incarcate.
+[15:33:45] [Basketball] 8 cosuri incarcate.
+[15:33:45] [Basketball] 32 spawn-uri incarcate.
+[15:33:45] [VehiculeFactiuni] 85 vehicule incarcate.
+[15:33:45] [VehiculePersonale] 36 vehicule incarcate.
+[15:33:45] [Rulote] 1 rulote incarcate.
+[15:33:45] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.25%
+[15:33:45] [VehiculePersonale] Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Numar inmatriculare $250 | Bicicleta $15 | RentCarDMVDesert $20 | Examen A $200 | Examen B $300 | Examen C $500 | Examen D $400 | Pizza $50 | Burger $55
+[15:33:45] [Animals] 2 animale incarcate.
+[15:34:44] [connection] 127.0.0.1:51797 requests connection cookie.
+[15:34:45] [connection] incoming connection: 127.0.0.1:51797 id: 0
+[15:34:45] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:00:28] [PayDay] Distribuit la 16:00.
+[16:00:28] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[16:00:28] [Animals] 2 animale incarcate.
+[16:13:20] [part] Punctulet has left the server (0:1)
+[17:00:02] [PayDay] Distribuit la 17:00.
+[17:00:02] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[17:00:02] [Animals] 2 animale incarcate.
