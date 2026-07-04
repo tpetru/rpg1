@@ -94,9 +94,9 @@
   <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
-    <span class="badge">gamemodes/bare.pwn — ~15100 linii</span>
-    <span class="badge">16 tabele MySQL</span>
-    <span class="badge">155+ comenzi</span>
+    <span class="badge">gamemodes/bare.pwn — ~17000 linii</span>
+    <span class="badge">18 tabele MySQL</span>
+    <span class="badge">175+ comenzi</span>
   </div>
 </header>
 
@@ -136,7 +136,7 @@
 
 <section id="factions">
   <h2>Facțiuni</h2>
-  <p>Defines: <code>MAX_FACTIONS=7</code>, <code>FACTION_POLICE=1</code>, <code>FACTION_RAR=2</code>, <code>FACTION_SMURD=3</code>.
+  <p>Defines: <code>MAX_FACTIONS=8</code>, <code>FACTION_POLICE=1</code>, <code>FACTION_RAR=2</code>, <code>FACTION_SMURD=3</code>, <code>NEWS_FACTION_ID=8</code>.
   Facțiunile 4-7 (Mafii) sunt referite doar prin ID numeric brut, fără <code>#define</code>.</p>
 
   <table>
@@ -148,6 +148,17 @@
     <tr><td>5</td><td>Mafia Americana</td><td>0xAA44AAFF</td></tr>
     <tr><td>6</td><td>Mafia Africana</td><td>0x44AA44FF</td></tr>
     <tr><td>7</td><td>Mafia Asiatica</td><td>0xFFCC00FF</td></tr>
+    <tr><td>8</td><td>News Reporters</td><td>0x85648CFF (mov deschis)</td></tr>
+  </table>
+
+  <h3>News Reporters (facțiune 8)</h3>
+  <p>Facțiune de presă. Spawn direct în interior (interior id 5, VW = 8, coord <code>322.5, 303.7, 999.2</code>); HQ exterior <code>0,0,0</code> (nesetat momentan, deci ușa interior→exterior nu funcționează până se setează un HQ cu <code>/fc</code>). Nu e mafie (mafia = 4-7), fără drog/turf.</p>
+  <table>
+    <tr><th>Rang</th><th>Acces News Reporters</th></tr>
+    <tr><td>1+</td><td><code>/news [text]</code> — difuzare live către toți jucătorii</td></tr>
+    <tr><td>2+</td><td><code>/newspaper create</code>, <code>/newspaper edit [1-5] [text]</code> (max 5 știri), <code>/newspaper sell [id] [sumă]</code>. Ziarele se resetează la payday-ul de la ora 00:00.</td></tr>
+    <tr><td>3+</td><td><code>/qa [id]</code> live Q&amp;A + <code>/qa list/ask/del/end</code></td></tr>
+    <tr><td>oricine</td><td><code>/newspaper open</code> (dacă a cumpărat), <code>/accept newspaper [id]</code>, <code>/question [text]</code> &amp; <code>/answer [text]</code> (în timpul unui Q&amp;A)</td></tr>
   </table>
 
   <h3>Ranguri (pFactionRank, 1-5)</h3>
@@ -337,6 +348,15 @@ RP    += 1</pre>
       <h4 style="margin-top:0">🏠 Case</h4>
       <p><code>/buyhouse</code>: preț exact listat, fără formulă. <code>/sellhouse</code>: refund <strong>100%</strong>.
       Un jucător poate deține o singură casă (<code>pHouse==999</code> = fără casă).</p>
+      <p><strong>Frigider</strong> (<code>/houseupgrade frigde</code>, $10.000, o casă = un frigider). Coloane DB pe <code>houses</code>: <code>has_fridge</code>, <code>fridge_milk/banana/water/juice/beer</code>. Comenzi la casa proprie (rază 20m): <code>/frigde buy [item] [qty]</code> (doar 15:00–20:00), <code>/frigde use [item]</code>, <code>/frigde</code> (status).</p>
+      <table>
+        <tr><th>Item</th><th>Max</th><th>Preț/unit</th><th>+HP</th></tr>
+        <tr><td>Milk / lapte</td><td>20 L</td><td>100</td><td>+20</td></tr>
+        <tr><td>Banana / banane</td><td>30 pcs</td><td>50</td><td>+10</td></tr>
+        <tr><td>Water / apa</td><td>25 L</td><td>150</td><td>+25</td></tr>
+        <tr><td>Juice / suc</td><td>20 L</td><td>200</td><td>+15</td></tr>
+        <tr><td>Beer / bere</td><td>50 L</td><td>250</td><td>+10</td></tr>
+      </table>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🏢 Business-uri</h4>
@@ -826,9 +846,11 @@ RP    += 1</pre>
 
 <section id="database">
   <h2>Schema bazei de date (16 tabele)</h2>
-  <p class="lead" style="margin-top:-8px">16 tabele create în <code>DB_CreateTables()</code>: players, rulote_personale, factions, payday_setup,
-  houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, locations_admin, locations_gps,
+  <p class="lead" style="margin-top:-8px">18 tabele create în <code>DB_CreateTables()</code>: players, bans, rulote_personale, factions, payday_setup,
+  houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, shops, locations_admin, locations_gps,
   basket_hoops, basket_spawns.</p>
+  <div class="note"><strong>Refactorizare <code>DB_CreateTables()</code>:</strong> toate coloanele sunt acum direct în <code>CREATE TABLE IF NOT EXISTS</code> — s-au eliminat toate <code>ALTER TABLE ADD COLUMN</code>-urile de migrare și toate <code>INSERT</code>-urile de seed (facțiuni, payday, shops, locations, basket). Apelul funcției din startup e <strong>momentan comentat</strong> (DB-ul e deja configurat); pentru un DB nou, decomentează-l.</div>
+  <div class="note"><strong>factions</strong> conține acum 8 rânduri (id 8 = News Reporters, interior 5 / VW 8). Seed-urile fiind eliminate din cod, rândurile trebuie să existe deja în DB.</div>
 
   <h4>players</h4>
   <pre>id (PK AI), username VARCHAR(24) UNIQUE, password VARCHAR(64), email VARCHAR(64) DEFAULT '',
@@ -870,9 +892,11 @@ pizza_price INT DEFAULT 50, burger_price INT DEFAULT 55</pre>
   <h4>houses</h4>
   <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Casa', owner VARCHAR(24) DEFAULT '', owner_id INT DEFAULT 0,
 owned TINYINT DEFAULT 0, price INT DEFAULT 50000, loc_x/y/z FLOAT DEFAULT 0.0,
-type INT DEFAULT 1, max_pets INT DEFAULT 0, pets INT DEFAULT 0
--- type/max_pets/pets adaugate si prin ALTER TABLE; type: 1=casa, 2=apartament, 3=other
--- max_pets &gt; 0 = casa cu curte (permite /buyanimal); pets = nr. animale curente</pre>
+type INT DEFAULT 1, max_pets INT DEFAULT 0, pets INT DEFAULT 0,
+has_fridge INT DEFAULT 0,
+fridge_milk/fridge_banana/fridge_water/fridge_juice/fridge_beer INT DEFAULT 0
+-- type: 1=casa, 2=apartament, 3=other; max_pets &gt; 0 = casa cu curte (permite /buyanimal)
+-- has_fridge + fridge_* = sistemul de frigider (vezi sectiunea Case &amp; Business-uri)</pre>
 
   <h4>animals</h4>
   <pre>aID INT PK AI, aType INT DEFAULT 0, aPlayerID INT DEFAULT 0, aHouseID INT DEFAULT 0,
@@ -933,10 +957,10 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
   <table>
     <tr><th>Nivel</th><th>Comenzi</th></tr>
     <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code></td></tr>
-    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code></td></tr>
-    <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code>, <code>/gotoxyz</code></td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code></td></tr>
+    <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh [nume sau model id]</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code>, <code>/gotoxyz</code>, <code>/forceunlock</code></td></tr>
     <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie)</td></tr>
-    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code></td></tr>
+    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>. <code>/vc price</code> necesită nivel 6.</td></tr>
     <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code></td></tr>
   </table>
   <div class="note">
@@ -979,8 +1003,8 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
   <h3>Cont</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
-    <tr><td><code>/register [parolă]</code></td><td>Parolă stocată în clar (fără hashing vizibil în cod)</td></tr>
-    <tr><td><code>/login [parolă]</code></td><td>Comparație directă cu strcmp</td></tr>
+    <tr><td>Dialog login/register</td><td>La conectare apare automat un dialog cu câmp de parolă (<code>DIALOG_STYLE_PASSWORD</code>): Register dacă contul nu există, Login dacă există. „Quit"/ESC = kick; parolă greșită/prea scurtă re-afișează dialogul. Parolă în clar, comparație <code>strcmp</code>.</td></tr>
+    <tr><td><code>/register [parolă]</code> / <code>/login [parolă]</code></td><td>Fallback opțional prin comandă (dialogul e calea principală)</td></tr>
     <tr><td><code>/stats</code></td><td>Read-only</td></tr>
     <tr><td><code>/deposit</code> / <code>/withdraw</code></td><td>Bani între cash și bancă, la ATM — vezi secțiunea Bancă / ATM</td></tr>
     <tr><td><code>/buyphone /buysim /call /pickup /hangup /sms</code></td><td>Vezi secțiunea Telefonie</td></tr>
@@ -993,14 +1017,18 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><td><code>/finvite [id]</code></td><td>Rang 4+, target în 15m (FINVITE_RANGE), fără facțiune</td></tr>
     <tr><td><code>/accept finvite/fine [id]</code></td><td>Comandă partajată, vezi secțiunea RAR/Poliție</td></tr>
     <tr><td><code>/fmembers</code> / <code>/fhelp</code> / <code>/factions</code> / <code>/duty</code></td><td>Vezi sus</td></tr>
+    <tr><td><code>/news</code> / <code>/newspaper</code> / <code>/qa</code> / <code>/question</code> / <code>/answer</code> / <code>/accept newspaper|qa</code></td><td>News Reporters (facțiune 8) — vezi secțiunea Facțiuni</td></tr>
   </table>
 
   <h3 id="cmd-vehicle">Vehicule</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
-    <tr><td><code>/vbuy /vsell /vsellto /vcolor /vplate /vinsurance /vmedicalkit /vextinctor /vitp /vpark /vstats /lock /engine</code></td><td>Vezi secțiunea Vehicule personale</td></tr>
+    <tr><td><code>/vbuy /vsell /vsellto /vcolor /vplate /vinsurance /vmedicalkit /vextinctor /vpark /vstats /lock /engine</code></td><td>Vezi secțiunea Vehicule personale</td></tr>
+    <tr><td><code>/vitp</code></td><td>La R.A.R., șofer al mașinii proprii. Cere: motor oprit, <strong>capotă deschisă</strong> (KEY_ANALOG_UP) și <strong>faruri pornite</strong> (KEY_ACTION), ITP expirat, bani.</td></tr>
+    <tr><td><code>/towpark</code></td><td>Doar R.A.R. rang 3+, șofer de Towtruck (525) care tractează un vehicul personal cu ITP expirat. Detașează mașina și îi salvează noua locație de spawn. Detecția vehiculului tractat: <code>GetVehicleTrailer</code>.</td></tr>
     <tr><td><code>/rentbike /rentcar /cspawn</code></td><td>Vezi Economie / Houses</td></tr>
   </table>
+  <div class="note">Vehiculele de job (Glovo/Cement/Gun/Transport/Emergency) pot fi <strong>conduse</strong> doar de cei cu jobul corespunzător — la intrarea pe scaunul de șofer, ceilalți sunt scoși automat (<code>OnPlayerStateChange</code> + <code>Job_VehicleRequiredJob</code>).</div>
 
   <h3 id="cmd-minigames">Mini-jocuri</h3>
   <table>
@@ -1021,6 +1049,7 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><td><code>/equip /war /warscore /warsurrender</code></td><td>Vezi secțiunea Turfs &amp; Războaie</td></tr>
     <tr><td><code>/seif /drugs [transport/craft/get/use]</code></td><td>Vezi secțiunea Droguri &amp; Seif (doar mafii)</td></tr>
     <tr><td><code>/pizza /burger</code></td><td>Mâncare (+20 / +25 HP), la un punct [ Shop ] de tip food</td></tr>
+    <tr><td><code>/houseupgrade frigde</code> / <code>/frigde [buy/use]</code></td><td>Frigider casă — vezi secțiunea Case &amp; Business-uri</td></tr>
     <tr><td><code>/joinparty /leaveparty /changemusic /buydrink /buygrill</code></td><td>Sistem de petreceri (VW 501)</td></tr>
     <tr><td><code>/help</code></td><td>Listă generală jucător</td></tr>
   </table>

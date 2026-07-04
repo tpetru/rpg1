@@ -114,12 +114,12 @@
   <h2>💼 Sistem de joburi</h2>
   <span class="status status-progress">În lucru</span>
 
-  <p>Fundația și primele <strong>6 joburi</strong> sunt implementate. Fiecare jucător are <code>pJob</code> (persistat în
+  <p>Fundația și primele <strong>7 joburi</strong> sunt implementate. Fiecare jucător are <code>pJob</code> (persistat în
   coloana <code>job</code> din <code>players</code>), îl ia cu <code>/getjob [id sau nume]</code> de la Job Center-ul din
   City Hall (doar dacă <code>pJob == 0</code>) și renunță cu <code>/quitjob</code>. <code>/jobs</code> listează cele 10
-  sloturi, <code>/job</code> începe munca, <code>/stopwork</code> o oprește.</p>
+  sloturi, <code>/job</code> începe munca, <code>/stopwork</code> o oprește. Adminii pot seta jobul cu <code>/setjob [id] [jobid]</code>.</p>
 
-  <h4 style="margin-bottom:4px">Joburi gata (1-6)</h4>
+  <h4 style="margin-bottom:4px">Joburi gata (1-7)</h4>
   <ul>
     <li><strong>1. Glovo Delivery</strong> — livrări (pickup restaurant → casă), plată pe distanță, cotă către business 16.</li>
     <li><strong>2. Cement Truck Driver</strong> — curse de ciment între puncte de încărcare și șantiere.</li>
@@ -127,13 +127,15 @@
     <li><strong>4. Car Transportator</strong> — transport de mașini între puncte de încărcare și business-uri.</li>
     <li><strong>5. Uber</strong> — serviciu de transport între jucători (<code>/fare</code>, <code>/service uber</code>, taxare la 20s).</li>
     <li><strong>6. Emergency Logistics Driver</strong> — depou cu 2 Bobcat + 2 Burrito, 3 puncte de încărcare → livrare la shop, plată de bază 700 + distanță.</li>
+    <li><strong>7. Bus Driver</strong> — <code>/bus [1-3]</code>, rute cu checkpoint-uri; câștig la finalul rutei + $100 pentru fiecare pasager care se urcă.</li>
   </ul>
 
   <h4 style="margin-bottom:4px">Rămas de făcut</h4>
   <ul>
-    <li>De implementat efectiv <strong>joburile 7-10</strong> (cazurile 7-10 din <code>/job</code> sunt încă placeholder „not available yet").</li>
+    <li>De implementat efectiv <strong>joburile 8-10</strong> (cazurile 8-10 din <code>/job</code> sunt încă placeholder „not available yet").</li>
     <li><strong>De schimbat distanța de <code>/job</code></strong> — verificarea de proximitate față de locația de muncă a fiecărui job (TODO încă prezent în cod).</li>
   </ul>
+  <div class="note">Vehiculele de job pot fi conduse doar de jucătorii cu jobul corespunzător (implementat în <code>OnPlayerStateChange</code>).</div>
 </div>
 
 <div class="feature">

@@ -138,7 +138,9 @@
   <h1>🏙️ NostalgiaRP</h1>
   <p>Un server de roleplay construit de la zero, cu o economie reală, facțiuni active, examene auto cu adevărat funcționale și un sistem de viață care nu te lasă să stai degeaba.</p>
   <div class="badges">
-    <span class="badge">7 Facțiuni</span>
+    <span class="badge">8 Facțiuni</span>
+    <span class="badge">Presă &amp; Ziare</span>
+    <span class="badge">Frigider casă</span>
     <span class="badge">Economie reală</span>
     <span class="badge">Președinte ales</span>
     <span class="badge">Joburi</span>
@@ -157,6 +159,7 @@
 <nav class="toc">
   <a href="#start">Primii pași</a>
   <a href="#factions">Facțiuni</a>
+  <a href="#news">Presă &amp; Ziare</a>
   <a href="#economy">Economie</a>
   <a href="#president">Președinte</a>
   <a href="#jobs">Joburi</a>
@@ -187,7 +190,7 @@
     <div class="card">
       <div class="feature-icon">📝</div>
       <h4>Creează-ți contul</h4>
-      <p style="color:var(--muted); margin:0"><code>/register [parolă]</code> la prima conectare, apoi <code>/login [parolă]</code> de fiecare dată după aceea.</p>
+      <p style="color:var(--muted); margin:0">La conectare îți apare automat un <strong>dialog</strong> unde îți pui parola: <em>Register</em> dacă e prima dată, sau <em>Login</em> dacă ai deja cont. Nu mai trebuie să scrii nicio comandă.</p>
     </div>
     <div class="card">
       <div class="feature-icon">📊</div>
@@ -214,12 +217,35 @@
   <div class="faction-row"><span class="dot" style="background:#aa44aa"></span><strong>Mafia Americana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
   <div class="faction-row"><span class="dot" style="background:#44aa44"></span><strong>Mafia Africana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
   <div class="faction-row"><span class="dot" style="background:#ffcc00"></span><strong>Mafia Asiatica</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#85648c"></span><strong>News Reporters</strong><span style="color:var(--muted); margin-left:auto">Presa orașului — știri, ziare și interviuri live</span></div>
 
   <div class="card" style="margin-top:20px">
     <h4 style="margin-top:0">Cum funcționează</h4>
     <p>Fiecare facțiune are un sediu (HQ), o bancă proprie și un sistem de ranguri (1 până la 5, unde 5 e liderul).
     Membri mai vechi cu rang ridicat pot invita jucători noi (<code>/finvite</code>), gestiona banca facțiunii și avansa pe alți membri.
     Pentru Poliție, RAR și SMURD există și un sistem de <strong>tură</strong> — folosești <code>/duty</code> lângă sediu ca să intri "la muncă" și să ai acces la comenzile speciale ale facțiunii tale.</p>
+  </div>
+</section>
+
+<section id="news">
+  <h2>📰 Presă &amp; Ziare</h2>
+  <p class="subtitle">Facțiunea News Reporters ține orașul la curent</p>
+  <div class="grid-3">
+    <div class="card">
+      <div class="feature-icon">📢</div>
+      <h4>Știri live</h4>
+      <p style="color:var(--muted); margin:0">Reporterii (rang 1+) difuzează știri tuturor jucătorilor cu <code>/news [text]</code>.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">🗞️</div>
+      <h4>Ziare</h4>
+      <p style="color:var(--muted); margin:0">Rang 2+: <code>/newspaper create</code>, adaugă până la 5 știri cu <code>/newspaper edit [1-5] [text]</code> și vinde ziarul cu <code>/newspaper sell [id] [sumă]</code>. Cumperi cu <code>/accept newspaper [id]</code> și citești cu <code>/newspaper open</code>. Ziarele se resetează în fiecare zi la miezul nopții.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">🎤</div>
+      <h4>Interviuri live (Q&amp;A)</h4>
+      <p style="color:var(--muted); margin:0">Rang 3+: <code>/qa [id]</code> invită un jucător la un interviu live (acceptă cu <code>/accept qa [id]</code>). Ceilalți trimit întrebări cu <code>/question [text]</code>, reporterul le alege din <code>/qa list</code>, iar invitatul răspunde cu <code>/answer [text]</code>.</p>
+    </div>
   </div>
 </section>
 
@@ -398,6 +424,13 @@
       viață locului. Folosește <code>/buyanimal</code> fără număr ca să vezi lista disponibilă.</p>
     </div>
     <div class="card">
+      <h4 style="margin-top:0">🧊 Frigider</h4>
+      <p>Cumpără-ți un frigider pentru casă cu <code>/houseupgrade frigde</code> ($10.000, unul singur per casă). Îl umpli cu
+      <strong>lapte, banane, apă, suc și bere</strong> prin <code>/frigde buy [item] [cantitate]</code> (doar între orele
+      <strong>15:00 și 20:00</strong>), iar când ți-e foame consumi câte unul cu <code>/frigde use [item]</code> ca să-ți
+      recuperezi viața. <code>/frigde</code> îți arată ce ai în frigider.</p>
+    </div>
+    <div class="card">
       <h4 style="margin-top:0">🏢 Afaceri</h4>
       <p><code>/buybiz</code> îți cumpără o afacere lângă tine — poți deține mai multe simultan. Fiecare afacere are propria
       bancă (<code>/bbank</code>, <code>/bwithdraw</code>), alimentată automat de serviciile orașului (școli de șoferi,
@@ -420,7 +453,8 @@
       <h4 style="margin-top:0">📋 Acte la zi</h4>
       <p><code>/vinsurance</code> o reînnoiești oriunde, dar <code>/vmedicalkit</code> și <code>/vextinctor</code>
       necesită să fii lângă unul dintre punctele <strong>[ Shop ]</strong> de pe hartă. <code>/vitp</code>
-      (la sediul RAR) verifică toate actele odată și starea mașinii.</p>
+      (la sediul RAR) verifică toate actele odată și starea mașinii — trebuie să ai <strong>motorul oprit,
+      capota deschisă și farurile pornite</strong> ca la o inspecție reală.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🔧 Motor &amp; Încuiere</h4>
@@ -440,6 +474,12 @@
     <h4 style="margin-top:0">🚲 🚙 Închirieri</h4>
     <p><code>/rentbike</code> și <code>/rentcar</code> îți pun la dispoziție biciclete și mașini de închiriat în mai multe
     locații din oraș — ideal când nu ai (încă) propriul vehicul.</p>
+  </div>
+
+  <div class="card" style="margin-top:8px">
+    <h4 style="margin-top:0">🚚 Tractări RAR</h4>
+    <p>Membrii RAR cu rang mare pot tracta cu un <strong>Towtruck</strong> mașinile personale cu ITP-ul expirat și le pot
+    reparca în altă locație cu <code>/towpark</code>. Ține-ți actele la zi ca să nu-ți găsești mașina mutată!</p>
   </div>
 </section>
 
@@ -747,8 +787,8 @@
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">👤 Cont</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
-    <tr><td><code>/register [parolă]</code></td><td>Creează un cont nou</td></tr>
-    <tr><td><code>/login [parolă]</code></td><td>Te loghezi pe contul tău</td></tr>
+    <tr><td>Dialog la conectare</td><td>Îți pui parola într-un dialog (Register / Login) care apare automat</td></tr>
+    <tr><td><code>/register [parolă]</code> / <code>/login [parolă]</code></td><td>Alternativă prin comandă (dialogul e calea principală)</td></tr>
     <tr><td><code>/stats</code></td><td>Informații despre contul tău</td></tr>
     <tr><td><code>/deposit [sumă]</code></td><td>Depui bani în bancă, la un ATM (min $100, max $100.000)</td></tr>
     <tr><td><code>/withdraw [sumă]</code></td><td>Retragi bani din bancă, la un ATM (min $100, max $100.000)</td></tr>
@@ -768,7 +808,23 @@
     <tr><td><code>/fsetrank [playerid] [1-5]</code></td><td>Schimbă rangul unui membru (rang 5)</td></tr>
     <tr><td><code>/fhelp</code></td><td>Comenzi de facțiune disponibile pentru tine</td></tr>
     <tr><td><code>/duty</code></td><td>Intri/ieși din tură, din interiorul sediului facțiunii (Poliție/RAR/SMURD)</td></tr>
-    <tr><td><code>/factions</code></td><td>Listă cu toate cele 7 facțiuni</td></tr>
+    <tr><td><code>/factions</code></td><td>Listă cu toate cele 8 facțiuni</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">📰 News Reporters <span style="color:var(--muted); font-size:0.8em">(facțiune 8)</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/news [text]</code></td><td>Difuzează o știre tuturor jucătorilor (rang 1+)</td></tr>
+    <tr><td><code>/newspaper create</code></td><td>Creează un ziar nou (rang 2+)</td></tr>
+    <tr><td><code>/newspaper edit [1-5] [text]</code></td><td>Adaugă/schimbă o știre în ziar (max 5)</td></tr>
+    <tr><td><code>/newspaper sell [id] [sumă]</code></td><td>Oferă ziarul spre vânzare unui jucător</td></tr>
+    <tr><td><code>/accept newspaper [id]</code></td><td>Cumperi ziarul oferit</td></tr>
+    <tr><td><code>/newspaper open</code></td><td>Citești ziarul (cumpărat sau propriu)</td></tr>
+    <tr><td><code>/qa [id]</code></td><td>Pornești un interviu live cu un jucător (rang 3+)</td></tr>
+    <tr><td><code>/accept qa [id]</code></td><td>Accepți să fii invitatul unui interviu</td></tr>
+    <tr><td><code>/qa list / ask [nr] / del [nr] / end</code></td><td>Reporterul gestionează întrebările și interviul</td></tr>
+    <tr><td><code>/question [text]</code></td><td>Trimiți o întrebare în timpul unui interviu live</td></tr>
+    <tr><td><code>/answer [text]</code></td><td>Invitatul răspunde la întrebări (difuzat tuturor)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🗳️ Președinte</h3>
@@ -818,6 +874,9 @@
     <tr><td><code>/buyhouse</code></td><td>Cumpără casa liberă din apropiere</td></tr>
     <tr><td><code>/sellhouse</code></td><td>Vinde-ți casa, la preț integral</td></tr>
     <tr><td><code>/buyanimal [număr]</code></td><td>Cumperi un animal pentru curtea casei tale (casă cu curte)</td></tr>
+    <tr><td><code>/houseupgrade frigde</code></td><td>Cumperi un frigider pentru casă ($10.000)</td></tr>
+    <tr><td><code>/frigde buy [item] [qty]</code></td><td>Umpli frigiderul (lapte/banane/apă/suc/bere), doar 15:00–20:00</td></tr>
+    <tr><td><code>/frigde use [item]</code></td><td>Consumi 1 bucată → +HP</td></tr>
     <tr><td><code>/buybiz</code></td><td>Cumpără afacerea liberă din apropiere</td></tr>
     <tr><td><code>/sellbiz</code></td><td>Vinde o afacere deținută, la 50% din preț</td></tr>
     <tr><td><code>/bbank</code></td><td>Sold bancă afacere, lângă ea</td></tr>
@@ -835,7 +894,8 @@
     <tr><td><code>/vinsurance</code></td><td>Reînnoiește asigurarea</td></tr>
     <tr><td><code>/vmedicalkit</code></td><td>Reînnoiește kitul medical</td></tr>
     <tr><td><code>/vextinctor</code></td><td>Reînnoiește extinctorul</td></tr>
-    <tr><td><code>/vitp</code></td><td>Verificare tehnică (ITP), la sediul RAR</td></tr>
+    <tr><td><code>/vitp</code></td><td>Verificare tehnică (ITP), la sediul RAR — motor oprit, capotă deschisă, faruri pornite</td></tr>
+    <tr><td><code>/towpark</code></td><td>RAR rang 3+: parchează o mașină cu ITP expirat, tractată cu Towtruck</td></tr>
     <tr><td><code>/vpark</code></td><td>Salvează poziția curentă ca punct de respawn al mașinii</td></tr>
     <tr><td><code>/vstats</code></td><td>Listă vehicule deținute + starea documentelor</td></tr>
     <tr><td><code>/engine</code> <span style="color:var(--muted)">(sau tasta de submisie, implicit 2)</span></td><td>Pornește/oprește motorul</td></tr>
