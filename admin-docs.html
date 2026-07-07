@@ -220,7 +220,6 @@ RP    += 1</pre>
     <tr><td>itp_price</td><td>750</td></tr>
     <tr><td>plate_price</td><td>250</td></tr>
     <tr><td>rent_bike_price</td><td>15</td></tr>
-    <tr><td>rent_car_desert_price</td><td>20</td></tr>
     <tr><td>exam_a_price</td><td>200</td></tr>
     <tr><td>exam_b_price</td><td>300</td></tr>
     <tr><td>exam_c_price</td><td>500</td></tr>
@@ -228,7 +227,7 @@ RP    += 1</pre>
     <tr><td>pizza_price</td><td>50</td></tr>
     <tr><td>burger_price</td><td>55</td></tr>
   </table>
-  <div class="note">Nota: chiria mașinii "Piramida" obișnuite (<code>/rentcar</code>, varianta non-desert) folosește o constantă hardcodată <code>RENT_CAR_PRICE=30</code>, NU e citită din DB.</div>
+  <div class="note">Nota: chiria mașinii (<code>/rentcar</code>) folosește o constantă hardcodată <code>RENT_CAR_PRICE=30</code>, NU e citită din DB.</div>
   <div class="note">
     Toate sumele afișate jucătorilor (chat, label-uri 3D, HUD) trec prin <code>MoneyStr(amount)</code> — formatare cu
     separator de mii ("."), ex: <code>1000000</code> → <code>1.000.000</code>. Implementată cu un pool rotativ de 6
@@ -370,18 +369,36 @@ RP    += 1</pre>
     <tr><th>ID</th><th>Sursă</th><th>Detaliu</th></tr>
     <tr><td>1</td><td><code>/rentbike</code></td><td>g_RentBikePrice (15)</td></tr>
     <tr><td>2</td><td><code>/examB</code></td><td>g_ExamBPrice (300)</td></tr>
-    <tr><td>3</td><td><code>/rentcar</code> (Piramida)</td><td>RENT_CAR_PRICE hardcodat (30)</td></tr>
+    <tr><td>3</td><td><code>/rentcar</code></td><td>RENT_CAR_PRICE hardcodat (30)</td></tr>
     <tr><td>4</td><td><code>/examC</code></td><td>g_ExamCPrice (500)</td></tr>
     <tr><td>5</td><td><code>/examA</code></td><td>g_ExamAPrice (200)</td></tr>
-    <tr><td>6</td><td><code>/rentcar</code> (DMVDesert)</td><td>g_RentCarDesertPrice (20)</td></tr>
+    <tr><td>6</td><td>—</td><td>neutilizat (era RentCarDMVDesert, eliminat)</td></tr>
     <tr><td>7</td><td><code>/examD</code></td><td>g_ExamDPrice (400)</td></tr>
-    <tr><td>8</td><td><code>/vbuy</code></td><td>vezi nota de mai jos</td></tr>
+    <tr><td>8 / 17 / 18</td><td><code>/vbuy</code></td><td>0.001% din prețul mașinii cumpărate de la acel business (<code>from_biz</code>) — dealere auto. Vezi nota.</td></tr>
+    <tr><td>9</td><td><code>/shop</code> → Medical Kit</td><td>g_MedkitPrice (500) — <code>Businesses_FindByID(9)</code></td></tr>
+    <tr><td>10</td><td><code>/shop</code> → Extinctor</td><td>g_ExtinguisherPrice (500) — <code>Businesses_FindByID(10)</code></td></tr>
+    <tr><td>11</td><td><code>/vinsurance</code></td><td>g_InsurancePrice (500) — <code>Businesses_FindByID(11)</code></td></tr>
+    <tr><td>12</td><td><code>/pizza</code></td><td>g_PizzaPrice (50) — PIZZA_BIZ_ID</td></tr>
+    <tr><td>13</td><td><code>/burger</code></td><td>g_BurgerPrice (55) — BURGER_BIZ_ID</td></tr>
+    <tr><td>15</td><td>Petreceri</td><td><code>/buydrink</code>, <code>/buygrill</code> — PARTY_BIZ_ID</td></tr>
+    <tr><td>16</td><td>Job Glovo</td><td>JOB_GLOVO_BIZ_CUT (5) per livrare — JOB_GLOVO_BIZ_ID</td></tr>
+    <tr><td>19 / 20</td><td>Bănci ATM</td><td>10% din taxa de <code>/withdraw</code>, către business-ul care deține ATM-ul (<code>atmBankOwner</code>) — ATM_BANK_BIZ_A/B</td></tr>
+    <tr><td>21</td><td>Vânzare telefoane (<code>/buyphone</code>)</td><td>5% (PHONE_SHOP_BIZ_CUT_PCT) — PHONE_SHOP_BIZ_ID</td></tr>
+    <tr><td>22</td><td><code>/sms</code>, <code>/call</code>, <code>/buysim</code></td><td>50% — PHONE_CARRIER_BIZ_ID</td></tr>
   </table>
   <div class="note">
-    <strong>Business ID 8</strong> primește la fiecare <code>/vbuy</code> suma <code>floatround(pvPrice * 0.001 / 100.0)</code>
-    — efectiv <code>pvPrice × 0.00001</code>, o sumă neglijabilă (ex: la $50,000 → $0). Se aplică <strong>necondiționat</strong>,
-    indiferent dacă business-ul cu ID 8 există sau nu (dacă nu există, query-ul pur și simplu nu găsește rândul și nu se întâmplă nimic).
-    Plata <code>/vplate</code> și <code>/vitp</code> merg <strong>integral</strong> către banca facțiunii RAR (nu către un business), via <code>Faction_AddBank</code>.
+    <strong>Business 8 / 17 / 18</strong> primesc la fiecare <code>/vbuy</code> suma <code>floatround(pvPrice * 0.001 / 100.0)</code>
+    — efectiv <code>pvPrice × 0.00001</code>, o sumă neglijabilă (ex: la $50,000 → $0), către business-ul din <code>from_biz</code> al mașinii.
+    Se aplică <strong>necondiționat</strong>; dacă business-ul nu există, query-ul nu găsește rândul și nu se întâmplă nimic. Jobul Car Transport
+    (care descarcă la 8/17/18) plătește <strong>doar șoferul</strong>, nu business-ul.
+  </div>
+  <div class="note">
+    <strong>Nu merg către business, ci către banca facțiunii RAR</strong> (via <code>Faction_AddBank</code>): <code>/vplate</code> (g_PlatePrice)
+    și <code>/vitp</code> (g_ITPPrice).
+  </div>
+  <div class="note">
+    Business <strong>14, 23+</strong> nu au nicio sursă de venit atribuită în cod. Sumele fixe (exam/rent/shop/pizza/burger etc.) sunt
+    configurabile din <code>payday_setup</code>; <code>/rentcar</code> (30) e hardcodat.
   </div>
 </section>
 
@@ -476,14 +493,16 @@ RP    += 1</pre>
   <h2>Garaj Poliție</h2>
   <table>
     <tr><th>Punct</th><th>Coordonate</th></tr>
-    <tr><td>Garaj</td><td>2287.2419, 2431.6370, 10.9</td></tr>
-    <tr><td>Intrare</td><td>2296.5811, 2451.4043, 10.9</td></tr>
+    <tr><td>Garaj (exterior)</td><td>1525.4200, -1677.7400, 5.9100 — interior 0</td></tr>
+    <tr><td>Intrare (interior LSPD)</td><td>243.2428, 66.3187, 1003.6406 — interior 6</td></tr>
   </table>
-  <p>Rază <code>POLICE_TP_RANGE = 7.0</code>. <code>/garage</code> (la garaj) teleportă la intrare; <code>/entrace</code>
-  (typo în sursă pentru "entrance", la intrare) teleportă înapoi la garaj. Aceeași logică e declanșată și de
-  apăsarea tastei <strong>ENTER</strong> (<code>KEY_ACTION</code>) prin <code>Police_GarageEntranceToggle</code>.
-  <strong>Niciuna dintre cele 3 metode nu cere tură activă</strong> — doar apartenență la facțiunea Poliție.
-  Dacă jucătorul e în vehicul, vehiculul se teleportează odată cu el.</p>
+  <p>Rază <code>POLICE_TP_RANGE = 7.0</code>. <code>/garage</code> (la garaj) teleportă în interiorul LSPD (interior 6);
+  <code>/entrace</code> (typo în sursă pentru "entrance", în interior) teleportă înapoi la garaj (interior 0). Aceeași
+  logică e declanșată și de apăsarea tastei <strong>ENTER</strong> (<code>KEY_SECONDARY_ATTACK</code>) prin
+  <code>Police_GarageEntranceToggle</code>. <code>Police_TeleportTo</code> setează și interiorul. <strong>Funcționează
+  doar pe jos</strong> — dacă jucătorul e într-un vehicul, teleportul e blocat. <strong>Niciuna dintre cele 3 metode nu
+  cere tură activă</strong> — doar apartenență la facțiunea Poliție. Distinct de HQ-ul de facțiune (mapicon/pickup,
+  <code>hq_x</code> în DB).</p>
 </section>
 
 <section id="gps-radar">
@@ -845,9 +864,9 @@ RP    += 1</pre>
 </section>
 
 <section id="database">
-  <h2>Schema bazei de date (16 tabele)</h2>
-  <p class="lead" style="margin-top:-8px">18 tabele create în <code>DB_CreateTables()</code>: players, bans, rulote_personale, factions, payday_setup,
-  houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, shops, locations_admin, locations_gps,
+  <h2>Schema bazei de date (19 tabele)</h2>
+  <p class="lead" style="margin-top:-8px">19 tabele create în <code>DB_CreateTables()</code>: players, bans, rulote_personale, factions, payday_setup,
+  houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, shops, fastfood, locations_admin, locations_gps,
   basket_hoops, basket_spawns.</p>
   <div class="note"><strong>Refactorizare <code>DB_CreateTables()</code>:</strong> toate coloanele sunt acum direct în <code>CREATE TABLE IF NOT EXISTS</code> — s-au eliminat toate <code>ALTER TABLE ADD COLUMN</code>-urile de migrare și toate <code>INSERT</code>-urile de seed (facțiuni, payday, shops, locations, basket). Apelul funcției din startup e <strong>momentan comentat</strong> (DB-ul e deja configurat); pentru un DB nou, decomentează-l.</div>
   <div class="note"><strong>factions</strong> conține acum 8 rânduri (id 8 = News Reporters, interior 5 / VW 8). Seed-urile fiind eliminate din cod, rândurile trebuie să existe deja în DB.</div>
@@ -885,7 +904,7 @@ seif_herbs INT DEFAULT 0, seif_drugs INT DEFAULT 0
   <pre>id INT PK DEFAULT 1, min_salary INT DEFAULT 5000, tax INT DEFAULT 10, cass INT DEFAULT 10,
 bank_interest FLOAT DEFAULT 0.25, insurance_price INT DEFAULT 500, medkit_price INT DEFAULT 500,
 extinguisher_price INT DEFAULT 500, itp_price INT DEFAULT 750, plate_price INT DEFAULT 250,
-rent_bike_price INT DEFAULT 15, rent_car_desert_price INT DEFAULT 20,
+rent_bike_price INT DEFAULT 15,
 exam_a/b/c/d_price INT DEFAULT 200/300/500/400,
 pizza_price INT DEFAULT 50, burger_price INT DEFAULT 55</pre>
 
@@ -928,6 +947,13 @@ label_z FLOAT DEFAULT 15.0, UNIQUE KEY uq_turf_name(name)
 atmBankOwner INT DEFAULT 0
 -- atmBankOwner = ID-ul business-ului care primeste 10% din comisioane (vezi sectiunea Banca / ATM)</pre>
 
+  <h4>fastfood</h4>
+  <pre>ffID INT PK AI, ffName VARCHAR(32) NOT NULL DEFAULT '', ffType INT DEFAULT 1,
+ffLocX/ffLocY/ffLocZ FLOAT DEFAULT 0.0
+-- ffType: 1 = pizza, 2 = burger. Locatiile /pizza si /burger se incarca de aici la pornire
+-- (FastFood_Load -> OnFastFoodLoaded), max MAX_FOOD_LOCATIONS (5) per tip.
+-- Administrat live cu /ffcreate (lvl 6) si /ffc &lt;ffID&gt; loc|name|type (lvl 5).</pre>
+
   <h4>locations_admin <span style="color:var(--muted); font-weight:400; font-size:0.8em">(redenumit din locations)</span></h4>
   <pre>locID INT PK AI, locName VARCHAR(32) NOT NULL DEFAULT '', locX/Y/Z FLOAT DEFAULT 0.0,
 UNIQUE KEY uq_location_name(locName)
@@ -958,10 +984,10 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><th>Nivel</th><th>Comenzi</th></tr>
     <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code></td></tr>
     <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code></td></tr>
-    <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh [nume sau model id]</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setdrivingLicAexp</code>, <code>/setdrivingLicBexp</code>, <code>/setdrivingLicCexp</code>, <code>/setdrivingLicDexp</code>, <code>/gotoxyz</code>, <code>/forceunlock</code></td></tr>
-    <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie)</td></tr>
-    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>. <code>/vc price</code> necesită nivel 6.</td></tr>
-    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/createfactionveh</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code></td></tr>
+    <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh [nume sau model id]</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setlic [playerid] [all/A/B/C/D/H/P] [YYYY-MM-DD]</code> (A/B/C/D=auto, P=avion, H=elicopter), <code>/gotoxyz</code>, <code>/forceunlock</code>, <code>/changecar [engine/lights/alarm/doors/hood/boot]</code> — comută o componentă a vehiculului în care ești</td></tr>
+    <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie); <code>/adminuninvite [playerid]</code> — scoate un player din facțiune (faction=0, scade fMembers, resetează fLead dacă era lider)</td></tr>
+    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;ffID&gt; &lt;loc|name|type&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger). <code>/vc price</code> necesită nivel 6.</td></tr>
+    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/fc createveh [faction_id]</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code>, <code>/shopcreate</code>, <code>/shopChangeLoc [id]</code>, <code>/shopDelete [id]</code>, <code>/ffcreate [pizza/burger] [name]</code> — creează o locație fast-food la poziția ta (implicit pizza; max 5 per tip)</td></tr>
   </table>
   <div class="note">
     <code>/showradars</code> și <code>/removeradar</code> nu cer un nivel fix de admin — sunt accesibile fie cu admin lvl 1+,
@@ -992,9 +1018,9 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     un restart de server în timpul unui război îl pierde, fără să schimbe proprietarul turfului.
   </div>
   <div class="note warn">
-    <strong>Business ID 8</strong> primește comision la <code>/vbuy</code> necondiționat, chiar dacă acel business nu
-    a fost încă creat în DB (query-ul pur și simplu nu afectează nimic) — nu generează eroare, dar nici venit, până
-    nu există efectiv un rând cu <code>id=8</code> în <code>businesses</code>.
+    <strong>Business 8 / 17 / 18</strong> (dealere auto) primesc comisionul <code>/vbuy</code> prin <code>from_biz</code>,
+    necondiționat — dacă business-ul nu există în DB, query-ul nu afectează nimic (nici eroare, nici venit). Vezi
+    tabelul complet „Rutarea veniturilor pe ID de business" din secțiunea Case &amp; Business-uri.
   </div>
 </section>
 
@@ -1048,7 +1074,7 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><td><code>/jobs /getjob /quitjob /job /stopwork /fare /service /accept uber</code></td><td>Vezi secțiunea Sistem joburi</td></tr>
     <tr><td><code>/equip /war /warscore /warsurrender</code></td><td>Vezi secțiunea Turfs &amp; Războaie</td></tr>
     <tr><td><code>/seif /drugs [transport/craft/get/use]</code></td><td>Vezi secțiunea Droguri &amp; Seif (doar mafii)</td></tr>
-    <tr><td><code>/pizza /burger</code></td><td>Mâncare (+20 / +25 HP), la un punct [ Shop ] de tip food</td></tr>
+    <tr><td><code>/pizza /burger</code></td><td>Mâncare (+20 / +25 HP), la un punct [ Buy Food ]; locațiile vin din tabelul <code>fastfood</code> (vezi secțiunea Fast-food)</td></tr>
     <tr><td><code>/houseupgrade frigde</code> / <code>/frigde [buy/use]</code></td><td>Frigider casă — vezi secțiunea Case &amp; Business-uri</td></tr>
     <tr><td><code>/joinparty /leaveparty /changemusic /buydrink /buygrill</code></td><td>Sistem de petreceri (VW 501)</td></tr>
     <tr><td><code>/help</code></td><td>Listă generală jucător</td></tr>
