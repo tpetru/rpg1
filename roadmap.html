@@ -97,6 +97,22 @@
 <main>
 
 <div class="feature">
+  <h2>🍕 Categorie Fast-food în /gps</h2>
+  <span class="status status-idea">Idee</span>
+
+  <p><code>/gps</code> ar trebui să aibă o categorie <strong>Fast-food</strong> care listează locațiile direct din
+  tabelul <code>fastfood</code> (la fel cum categoria <strong>Shops</strong> citește din tabelul <code>shops</code>).
+  Fiecare intrare ar seta un checkpoint spre <code>ffLocX/ffLocY/ffLocZ</code>, cu numele (<code>ffName</code>) și
+  tipul (<code>ffType</code>: 🍕 pizza / 🍔 burger) afișate în listă.</p>
+
+  <div class="note">
+    De reutilizat array-urile deja încărcate în memorie (<code>PizzaLocations</code>/<code>BurgerLocations</code> +
+    <code>g_PizzaFFID</code>/<code>g_BurgerFFID</code>), populate de <code>OnFastFoodLoaded</code> — nu e nevoie de un
+    query separat. De adăugat un nou index de categorie în handler-ul <code>DIALOG_GPS_CATEGORY</code>/<code>DIALOG_GPS_LOCATION</code>.
+  </div>
+</div>
+
+<div class="feature">
   <h2>🚐 Restricție /detach lângă casă</h2>
   <span class="status status-idea">Idee</span>
 
@@ -163,7 +179,27 @@
     <li><strong>Baschet</strong> — momentan <code>BBALL_MIN_PLAYERS = 1</code>.</li>
     <li><strong>Război de teritorii (<code>/war</code>)</strong> — <code>WAR_MIN_FACTION_ONLINE = 0</code> (TEMPORAR), de readus la <strong>2</strong> membri online per facțiune.</li>
     <li><strong>Transport droguri (<code>/drugs transport</code>)</strong> — momentan se poate face cu <strong>o singură persoană</strong> în mașină (verificarea de al doilea membru e comentată în cod, ~linia 10208). De readus la <strong>minim 2 membri</strong> în vehicul.</li>
+    <li><strong>Transport droguri — limită orară (<code>/drugs transport</code>)</strong> — restricția de <strong>19:00–23:59</strong> e dezactivată temporar (marcaj <code>[TEMP-DRUGHOUR]</code> în cod). De readus: decomentează verificarea <code>DRUG_TRANSPORT_HOUR_MIN/MAX</code> și șterge liniile <code>[TEMP-DRUGHOUR]</code>.</li>
   </ul>
+</div>
+
+<div class="feature">
+  <h2>🧪 Auto-țintire activată pentru testare (de scos)</h2>
+  <span class="status status-idea">De readus</span>
+
+  <p>Pentru testare cu un singur jucător online, verificările „nu te poți targeta pe tine" au fost
+  <strong>comentate temporar</strong> la 3 comenzi:</p>
+  <ul>
+    <li><code>/call</code> — te poți suna pe tine (<code>You can't call yourself</code>)</li>
+    <li><code>/sms</code> — îți poți da SMS ție (<code>You can't text yourself</code>)</li>
+    <li><code>/arrest</code> — te poți aresta pe tine (<code>You can't arrest yourself</code>)</li>
+  </ul>
+
+  <div class="note">
+    <strong>Revert:</strong> caută în <code>gamemodes/bare.pwn</code> marcajul <code>[TEMP-SELF]</code>
+    (3 apariții) și decomentează la loc verificările <code>if(target == playerid)</code> /
+    <code>if(artarget == playerid)</code>, apoi șterge liniile de comentariu <code>[TEMP-SELF]</code>.
+  </div>
 </div>
 
 </main>

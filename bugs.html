@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NostalgiaRP — Bug Tracker</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1d212c;
+    --border: #2a2f3d;
+    --text: #d8dce5;
+    --muted: #8b93a7;
+    --accent: #5b9dff;
+    --accent-2: #ffcc00;
+    --green: #3ecf8e;
+    --red: #ff5d5d;
+    --orange: #ff9d3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header.hero {
+    padding: 50px 24px 36px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, #2a1620 0%, #0f1115 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero h1 {
+    margin: 0 0 8px; font-size: 2.2rem;
+    background: linear-gradient(90deg, var(--red), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header.hero p { margin: 0; color: var(--muted); }
+
+  .stats {
+    display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 18px; min-width: 90px;
+  }
+  .stat .num { font-size: 1.5rem; font-weight: 700; color: #fff; }
+  .stat .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 30px 24px 100px; }
+
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+  .filter-btn {
+    background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 999px; padding: 6px 16px; font-size: 0.82rem; cursor: pointer;
+    font-family: inherit; transition: all 0.15s;
+  }
+  .filter-btn:hover { color: var(--text); border-color: var(--accent); }
+  .filter-btn.active { background: var(--accent); color: #0f1115; border-color: var(--accent); font-weight: 600; }
+
+  .bug {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--muted);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 16px 0;
+  }
+  .bug.sev-high { border-left-color: var(--red); }
+  .bug.sev-medium { border-left-color: var(--orange); }
+  .bug.sev-low { border-left-color: var(--accent); }
+  .bug.is-fixed { opacity: 0.55; }
+  .bug.is-fixed h2 { text-decoration: line-through; }
+
+  .bug-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .bug h2 { margin: 0; font-size: 1.15rem; color: #fff; flex: 1; min-width: 200px; }
+  .bug-id { font-family: "Cascadia Code", Consolas, monospace; font-size: 0.78rem; color: var(--muted); }
+
+  .tag {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .sev-high .tag-sev { background: rgba(255,93,93,0.15); color: var(--red); }
+  .sev-medium .tag-sev { background: rgba(255,157,60,0.15); color: var(--orange); }
+  .sev-low .tag-sev { background: rgba(91,157,255,0.15); color: var(--accent); }
+
+  .tag-status { background: rgba(255,204,0,0.15); color: var(--accent-2); }
+  .is-fixed .tag-status { background: rgba(62,207,142,0.15); color: var(--green); }
+
+  .bug p.desc { margin: 12px 0 6px; color: var(--text); }
+  .bug .meta { margin: 8px 0 0; font-size: 0.82rem; color: var(--muted); }
+
+  code {
+    background: #11141b;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 0.88em;
+    color: var(--green);
+  }
+
+  .note {
+    border-left: 3px solid var(--accent-2);
+    background: rgba(255,204,0,0.06);
+    padding: 10px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0 4px;
+    font-size: 0.9rem;
+  }
+
+  footer { text-align: center; padding: 30px 20px 50px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>🐛 Bug Tracker</h1>
+  <p>Buguri raportate / de rezolvat pentru NostalgiaRP.</p>
+  <div class="stats">
+    <div class="stat"><div class="num" id="stat-open">0</div><div class="label">Deschise</div></div>
+    <div class="stat"><div class="num" id="stat-fixed">0</div><div class="label">Rezolvate</div></div>
+    <div class="stat"><div class="num" id="stat-total">0</div><div class="label">Total</div></div>
+  </div>
+</header>
+
+<main>
+
+<div class="filters">
+  <button class="filter-btn active" data-filter="all">Toate</button>
+  <button class="filter-btn" data-filter="open">Deschise</button>
+  <button class="filter-btn" data-filter="fixed">Rezolvate</button>
+  <button class="filter-btn" data-filter="high">Prioritate mare</button>
+</div>
+
+<!-- ================= BUG LIST ================= -->
+
+<div class="bug sev-medium" data-status="open" data-sev="medium">
+  <div class="bug-head">
+    <span class="bug-id">#001</span>
+    <h2>Newspaper edit — text tăiat, nu se face wrap pe rândul următor</h2>
+    <span class="tag tag-sev">Medium</span>
+    <span class="tag tag-status">Deschis</span>
+  </div>
+  <p class="desc">La editarea ziarului (<code>newspaper edit</code>), textul nu este împărțit pe rândul următor
+  atunci când depășește lățimea, așa că se afișează doar un număr limitat de caractere — restul textului este tăiat.</p>
+  <div class="note">
+    De implementat un <strong>split / word-wrap</strong> care rupe textul pe rândul următor
+    la depășirea numărului maxim de caractere per linie, în loc să trunchieze.
+  </div>
+  <p class="meta">📅 Raportat: 2026-07-08 · 📍 Sistem: Newspaper</p>
+</div>
+
+<!-- Adaugă buguri noi copiind blocul de mai sus:
+     - clasa .bug: sev-high | sev-medium | sev-low
+     - data-status="open" sau "fixed"  (pt. fixed adaugă și clasa is-fixed)
+     - data-sev="high|medium|low"
+-->
+
+</main>
+
+<footer>
+  NostalgiaRP · Bug Tracker · actualizat manual
+</footer>
+
+<script>
+  var bugs = Array.prototype.slice.call(document.querySelectorAll('.bug'));
+
+  function refreshStats() {
+    var open = 0, fixed = 0;
+    bugs.forEach(function (b) {
+      if (b.getAttribute('data-status') === 'fixed') fixed++; else open++;
+    });
+    document.getElementById('stat-open').textContent = open;
+    document.getElementById('stat-fixed').textContent = fixed;
+    document.getElementById('stat-total').textContent = bugs.length;
+  }
+
+  function applyFilter(f) {
+    bugs.forEach(function (b) {
+      var show =
+        f === 'all' ? true :
+        f === 'open' ? b.getAttribute('data-status') === 'open' :
+        f === 'fixed' ? b.getAttribute('data-status') === 'fixed' :
+        f === 'high' ? b.getAttribute('data-sev') === 'high' : true;
+      b.style.display = show ? '' : 'none';
+    });
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.filter-btn').forEach(function (x) { x.classList.remove('active'); });
+      btn.classList.add('active');
+      applyFilter(btn.getAttribute('data-filter'));
+    });
+  });
+
+  refreshStats();
+</script>
+
+</body>
+</html>
