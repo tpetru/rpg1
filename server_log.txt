@@ -14099,3 +14099,43 @@ v0.3.7-R2, (C)2005-2015 SA-MP Team
 [22:43:52] [connection] incoming connection: 127.0.0.1:49670 id: 0
 [22:43:52] [join] Punctulet has joined the server (0:127.0.0.1)
 [22:44:02] [part] Punctulet has left the server (0:1)
+Console input: gmx
+[22:48:36] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[22:48:36] [DB] Conectat la MySQL cu succes!
+[22:48:36] [Factions] Se incarca factiunile din baza de date...
+[22:48:36] 
+----------------------------------
+[22:48:36]   NostalgiaRP by Nikolas Maduro  
+
+[22:48:36] ----------------------------------
+
+[22:48:36] Number of vehicle models: 0
+[22:48:36] [Factions] 8 factiuni incarcate.
+[22:48:36] [Houses] 30 case incarcate.
+[22:48:36] [Businesses] 22 business-uri incarcate.
+[22:48:36] [Turfs] 8 turf-uri incarcate.
+[22:48:36] [ATMs] 10 ATM-uri incarcate.
+[22:48:36] [Shops] 10 shop-uri incarcate.
+[22:48:36] [FastFood] Incarcate 3 locatii (1 pizza, 2 burger).
+[22:48:36] [Locations] 27 locatii incarcate.
+[22:48:36] [GPS] 12 locatii incarcate.
+[22:48:36] [Basketball] 4 cosuri incarcate.
+[22:48:36] [Basketball] 32 spawn-uri incarcate.
+[22:48:36] [VehiculeFactiuni] 97 vehicule incarcate.
+[22:48:36] [VehiculePersonale] 36 vehicule incarcate.
+[22:48:36] [Rulote] 1 rulote incarcate.
+[22:48:36] [PayDay] Setari: Salar minim $5000 | Impozit 10% | CASS 10% | Dobanda 0.10%
+[22:48:36] [VehiculePersonale] Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Numar inmatriculare $250 | Bicicleta $15 | Examen A $200 | Examen B $300 | Examen C $500 | Examen D $400 | Pizza $50 | Burger $55
+[22:48:36] [Race] Recorduri incarcate (18 randuri).
+[22:48:36] [Farms] 4 fields loaded.
+[22:48:36] [Animals] 2 animale incarcate.
+[23:00:16] [PayDay] Distribuit la 23:00.
+[23:00:16] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[23:00:16] [Animals] 2 animale incarcate.
+[23:20:26] [connection] 127.0.0.1:60692 requests connection cookie.
+[23:20:27] [connection] incoming connection: 127.0.0.1:60692 id: 0
+[23:20:27] [join] Punctulet has joined the server (0:127.0.0.1)
+[00:00:49] [PayDay] Distribuit la 00:00.
+[00:00:49] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[00:00:49] [Animals] 2 animale incarcate.
+[00:01:54] [part] Punctulet has left the server (0:1)

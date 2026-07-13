@@ -158,11 +158,31 @@ enum E_PLAYER_DATA
     pMedkits, pExtinguishers,  // inventar: medical kit-uri / extinctoare cumparate din /shop, neaplicate inca
     pMuteExpire,               // timestamp unix pana cand jucatorul e mutat (0 = nu e mutat)
     pWanted,                   // nivel wanted (0-6), setat de politie; persistat in DB
-    pJailSeconds               // secunde ramase de stat in inchisoare; persistat in DB
+    pJailSeconds,              // secunde ramase de stat in inchisoare; persistat in DB
+    pRobPoints                 // puncte de jaf (0-10); +1 la payday, -10 la /rob; persistat in DB
 }
 new PlayerData[MAX_PLAYERS][E_PLAYER_DATA];
 
 #define MAX_JOBS 10 // numarul maxim de joburi (/getjob 1-10)
+
+// ---- Jaf / Robbery: constante + stare globala (helper-ele sunt langa sectiunea business) ----
+#define ROB_POINTS_MAX   10       // maxim (si necesar) rob points pentru a da /rob
+#define ROB_COST         10       // rob points scazuti la /rob (tuturor din masina)
+#define ROB_RANGE        8.0      // distanta max fata de business pentru a incepe jaful
+#define ROB_PAY_BASE     12000    // castig de baza per om
+#define ROB_PAY_PERCREW  2000     // bonus per participant (nr. oameni din echipa)
+#define ROB_PAY_RAND     5000     // bonus aleatoriu per om (0..4999)
+#define ROB_MAX_CREW     6        // capacitate stocare echipa (o masina are max 4, +margine)
+#define ROB_CP_SIZE      6.0      // dimensiune checkpoint la HQ-urile mafiilor
+#define ROB_HQ_COUNT     2        // cate HQ-uri de mafie trebuie atinse
+
+new bool:g_RobActive[MAX_PLAYERS];       // jucatorul (lider) conduce un jaf in desfasurare
+new g_RobCrew[MAX_PLAYERS][ROB_MAX_CREW];// playerid-urile din masina la momentul /rob
+new g_RobCrewCount[MAX_PLAYERS];
+new g_RobBiz[MAX_PLAYERS];                // index business jefuit (pentru mesaje)
+new g_RobHQ[MAX_PLAYERS][ROB_HQ_COUNT];  // fid-urile celor 2 mafii de vizitat (in ordine)
+new g_RobStage[MAX_PLAYERS];             // la ce HQ e echipa (0 = primul, 1 = al doilea)
+new g_RobLeaderOf[MAX_PLAYERS];          // pentru fiecare jucator: liderul jafului din care face parte (INVALID = niciunul)
 
 // ============================================================
 //  FACTIUNI
@@ -2676,6 +2696,33 @@ public OnPlayerEnterCheckpoint(playerid)
         return 1;
     }
 
+    // Jaf: ajuns la un HQ de mafie (checkpoint). Progreseaza / plateste.
+    {
+        new rl = g_RobLeaderOf[playerid];
+        if(rl != INVALID_PLAYER_ID && rl >= 0 && rl < MAX_PLAYERS && g_RobActive[rl])
+        {
+            new tf = g_RobHQ[rl][g_RobStage[rl]];
+            if(IsPlayerInRangeOfPoint(playerid, ROB_CP_SIZE + 2.0, FactionData[tf][fHQX], FactionData[tf][fHQY], FactionData[tf][fHQZ]))
+            {
+                if(g_RobStage[rl] < ROB_HQ_COUNT - 1)
+                {
+                    g_RobStage[rl]++;
+                    Rob_SetCheckpointForCrew(rl); // urmatorul HQ
+                    new nm2[144];
+                    format(nm2, sizeof(nm2), C_INFO"[Rob] "C_WHITE"Hideout %d/%d reached. Drive to the next mafia hideout!", g_RobStage[rl], ROB_HQ_COUNT);
+                    for(new c = 0; c < g_RobCrewCount[rl]; c++)
+                        if(IsPlayerConnected(g_RobCrew[rl][c]))
+                            SendClientMessage(g_RobCrew[rl][c], COLOR_INFO, nm2);
+                }
+                else
+                {
+                    Rob_Payout(rl); // ultimul HQ -> plata
+                }
+                return 1;
+            }
+        }
+    }
+
     // Farm: livrare recolta ajunsa la shop
     if(g_FarmDelivTruck[playerid] != 0 && GetPlayerVehicleID(playerid) == g_FarmDelivTruck[playerid])
     {
@@ -3288,6 +3335,85 @@ new BusinessData[MAX_BUSINESSES][E_BUSINESS_DATA];
 new g_BusinessPickup[MAX_BUSINESSES];
 new Text3D:g_BusinessLabel[MAX_BUSINESSES];
 new g_BusinessCount = 0;
+
+// ============================================================
+//  JAF / ROBBERY - helpers (starea globala e declarata langa PlayerData)
+// ============================================================
+// Returneaza indexul business-ului cel mai apropiat in raza data, altfel -1
+stock Biz_NearestIndex(playerid, Float:range)
+{
+    new best = -1;
+    new Float:bestDist = range;
+    for(new i = 0; i < g_BusinessCount; i++)
+    {
+        if(!IsPlayerInRangeOfPoint(playerid, range, BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ]))
+            continue;
+        new Float:d = GetPlayerDistanceFromPoint(playerid, BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ]);
+        if(d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
+}
+
+// (Re)seteaza checkpoint-ul la HQ-ul curent pentru toata echipa conectata a unui jaf
+stock Rob_SetCheckpointForCrew(leaderid)
+{
+    new tf = g_RobHQ[leaderid][g_RobStage[leaderid]];
+    for(new c = 0; c < g_RobCrewCount[leaderid]; c++)
+    {
+        new pid = g_RobCrew[leaderid][c];
+        if(!IsPlayerConnected(pid)) continue;
+        SetPlayerCheckpoint(pid, FactionData[tf][fHQX], FactionData[tf][fHQY], FactionData[tf][fHQZ], ROB_CP_SIZE);
+    }
+}
+
+// Curata starea unui jaf (fara plata) - la anulare / deconectare lider
+stock Rob_Cancel(leaderid)
+{
+    for(new c = 0; c < g_RobCrewCount[leaderid]; c++)
+    {
+        new pid = g_RobCrew[leaderid][c];
+        if(IsPlayerConnected(pid))
+        {
+            DisablePlayerCheckpoint(pid);
+            if(g_RobLeaderOf[pid] == leaderid) g_RobLeaderOf[pid] = INVALID_PLAYER_ID;
+        }
+    }
+    g_RobActive[leaderid]    = false;
+    g_RobCrewCount[leaderid] = 0;
+}
+
+// Finalizeaza jaful: plateste doar membrii inca in viata SI conectati (cei ce au murit/plecat sunt scosi din mapare)
+stock Rob_Payout(leaderid)
+{
+    new bidx = g_RobBiz[leaderid];
+    new bizName[32];
+    format(bizName, sizeof(bizName), "%s", BusinessData[bidx][bName]);
+
+    for(new c = 0; c < g_RobCrewCount[leaderid]; c++)
+    {
+        new pid = g_RobCrew[leaderid][c];
+        if(!IsPlayerConnected(pid)) continue; // deconectat -> fara bani
+        DisablePlayerCheckpoint(pid);
+
+        // eligibil doar daca inca e mapat la acest jaf (a murit -> a fost scos) si e logat
+        new bool:eligible = (g_RobLeaderOf[pid] == leaderid && PlayerData[pid][pLogged]);
+        if(g_RobLeaderOf[pid] == leaderid) g_RobLeaderOf[pid] = INVALID_PLAYER_ID;
+        if(!eligible) continue;
+
+        // premiu / om: 12000 + 2000*nr participanti + random(5000)
+        new pay = ROB_PAY_BASE + ROB_PAY_PERCREW * g_RobCrewCount[leaderid] + random(ROB_PAY_RAND);
+        PlayerData[pid][pMoney] += pay;
+        GivePlayerMoney(pid, pay);
+
+        new fm[144];
+        format(fm, sizeof(fm), C_SUCCESS"[Rob] "C_WHITE"Robbery of "C_INFO"%s"C_WHITE" complete! You earned "C_SUCCESS"$%s"C_WHITE".",
+            bizName, MoneyStr(pay));
+        SendClientMessage(pid, COLOR_SUCCESS, fm);
+    }
+
+    g_RobActive[leaderid]    = false;
+    g_RobCrewCount[leaderid] = 0;
+}
 
 stock Businesses_RecreatePickup(idx)
 {
@@ -4738,6 +4864,23 @@ stock bool:Job_PickRandomMafiaHQ(&Float:hx, &Float:hy, &Float:hz)
     if(count == 0) return false;
     new pick = valid[random(count)];
     hx = FactionData[pick][fHQX]; hy = FactionData[pick][fHQY]; hz = FactionData[pick][fHQZ];
+    return true;
+}
+
+// Alege 2 mafii DISTINCTE (factiuni 4-7, cu HQ setat) in f1 si f2. Returneaza false daca sunt < 2.
+stock bool:Rob_PickTwoMafiaHQ(&f1, &f2)
+{
+    new valid[MAFIA_FID_MAX - MAFIA_FID_MIN + 1], count = 0;
+    for(new fid = MAFIA_FID_MIN; fid <= MAFIA_FID_MAX; fid++)
+        if(FactionData[fid][fHQX] != 0.0 || FactionData[fid][fHQY] != 0.0)
+            valid[count++] = fid;
+    if(count < 2) return false;
+
+    new a = random(count);
+    new b = random(count);
+    while(b == a) b = random(count); // asigura al doilea diferit de primul
+    f1 = valid[a];
+    f2 = valid[b];
     return true;
 }
 
@@ -7535,7 +7678,8 @@ stock DB_CreateTables()
         `extinguishers`    INT     DEFAULT 0,\
         `mute_expire`      INT     DEFAULT 0,\
         `wanted_level`     INT     DEFAULT 0,\
-        `jail_seconds`     INT     DEFAULT 0\
+        `jail_seconds`     INT     DEFAULT 0,\
+        `rob_points`       INT     DEFAULT 10\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
     print("[DB] Tabel `players` verificat/creat.");
@@ -8810,6 +8954,7 @@ stock PayDay_Apply()
         PlayerData[i][pMoney] += net;
         PlayerData[i][pBank]  += interest;
         PlayerData[i][pRP]    += 1;
+        if(PlayerData[i][pRobPoints] < ROB_POINTS_MAX) PlayerData[i][pRobPoints]++; // +1 rob point / payday
 
         GivePlayerMoney(i, net);
         GameTextForPlayer(i, "~g~Payday", 3000, 1);
@@ -9254,11 +9399,11 @@ stock Player_Login(playerid, const pass[])
         return;
     }
 
-    new query[650];
+    new query[680];
     mysql_format(g_SQL, query, sizeof(query),
         "SELECT `id`,`password`,`email`,`level`,`money`,`bank`,`rp`,`admin_level`,`faction`,`faction_rank`,`faction_join`,`house`,`business`,`spawn_type`,`key1`,`key2`,`key3`,\
          `driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`airplane_lic_a_exp`,`airplane_lic_h_exp`,`diseased`,`disease_paydays`,\
-         `caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds` \
+         `caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds`,`rob_points` \
          FROM `players` WHERE `id`=%d LIMIT 1",
         PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, query, "OnPlayerLogin", "i", playerid);
@@ -9327,6 +9472,9 @@ public OnPlayerLogin(playerid)
     SetPlayerWantedLevel(playerid, PlayerData[playerid][pWanted]);
     cache_get_value_name_int(0, "jail_seconds",  PlayerData[playerid][pJailSeconds]);
     if(PlayerData[playerid][pJailSeconds] < 0) PlayerData[playerid][pJailSeconds] = 0;
+    cache_get_value_name_int(0, "rob_points",    PlayerData[playerid][pRobPoints]);
+    if(PlayerData[playerid][pRobPoints] < 0) PlayerData[playerid][pRobPoints] = 0;
+    if(PlayerData[playerid][pRobPoints] > ROB_POINTS_MAX) PlayerData[playerid][pRobPoints] = ROB_POINTS_MAX;
 
     PlayerData[playerid][pLogged]  = true;
     PlayerData[playerid][pOnDuty]  = false;
@@ -9592,7 +9740,7 @@ stock FullUpdatePlayer(playerid)
         `key1`=%d, `key2`=%d, `key3`=%d, \
         `driving_lic_a_exp`=%s, `driving_lic_b_exp`=%s, `driving_lic_c_exp`=%s, `driving_lic_d_exp`=%s, \
         `airplane_lic_a_exp`=%s, `airplane_lic_h_exp`=%s, \
-        `phone_model`=%d, `phone_number`=%d, `medkits`=%d, `extinguishers`=%d, `mute_expire`=%d, `wanted_level`=%d, `jail_seconds`=%d \
+        `phone_model`=%d, `phone_number`=%d, `medkits`=%d, `extinguishers`=%d, `mute_expire`=%d, `wanted_level`=%d, `jail_seconds`=%d, `rob_points`=%d \
         WHERE `id`=%d",
         PlayerData[playerid][pPass],
         PlayerData[playerid][pLevel],
@@ -9618,6 +9766,7 @@ stock FullUpdatePlayer(playerid)
         PlayerData[playerid][pMuteExpire],
         PlayerData[playerid][pWanted],
         PlayerData[playerid][pJailSeconds],
+        PlayerData[playerid][pRobPoints],
         PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, query, "", "", 0);
 }
@@ -9812,6 +9961,11 @@ stock UpdatePlayer(playerid, E_PLAYER_DATA:field)
             mysql_format(g_SQL, query, sizeof(query),
                 "UPDATE `players` SET `jail_seconds`=%d WHERE `id`=%d",
                 PlayerData[playerid][pJailSeconds], PlayerData[playerid][pID]);
+
+        case pRobPoints:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `rob_points`=%d WHERE `id`=%d",
+                PlayerData[playerid][pRobPoints], PlayerData[playerid][pID]);
 
         default: return;
     }
@@ -10523,6 +10677,11 @@ public OnPlayerConnect(playerid)
     PlayerData[playerid][pMuteExpire]    = 0;
     PlayerData[playerid][pWanted]        = 0;
     PlayerData[playerid][pJailSeconds]   = 0;
+    PlayerData[playerid][pRobPoints]     = ROB_POINTS_MAX;
+    g_RobActive[playerid]        = false;
+    g_RobCrewCount[playerid]     = 0;
+    g_RobStage[playerid]         = 0;
+    g_RobLeaderOf[playerid]      = INVALID_PLAYER_ID;
     g_HasSavedPos[playerid]      = false;
     g_NewspaperCreated[playerid] = false;
     g_HasNewspaper[playerid]     = false;
@@ -10693,6 +10852,10 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         format(line, sizeof(line), "[Other] Phone: %s | Disease: %s | Wanted: %d | Jail: %s | Muted: %s | Medical kit: %s | Extinguisher: %s",
             phoneInfo, disTxt, PlayerData[playerid][pWanted], jailTxt, muteTxt, mkTxt, exTxt);
+        SendClientMessage(playerid, COLOR_WHITE, line);
+
+        format(line, sizeof(line), "[Crime] Rob points: %d/%d",
+            PlayerData[playerid][pRobPoints], ROB_POINTS_MAX);
         SendClientMessage(playerid, COLOR_WHITE, line);
 
 
@@ -12116,6 +12279,79 @@ public OnPlayerCommandText(playerid, cmdtext[])
         format(smsg, sizeof(smsg), C_SUCCESS"[Farm] "C_WHITE"Started "C_INFO"%s"C_WHITE". Drive the "C_INFO"%s"C_WHITE" for "C_INFO"%d min"C_WHITE" - don't leave it!",
             g_FarmStepName[step], g_FarmStepVehName[step], mins);
         SendClientMessage(playerid, COLOR_SUCCESS, smsg);
+        return 1;
+    }
+
+    // ---- /rob (jaf la un business, cu masina) ----
+    if(strcmp(cmd, "/rob", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(g_RobActive[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You already have a robbery in progress."), 1;
+
+        // trebuie sa fii intr-o masina, ca sofer
+        new vid = GetPlayerVehicleID(playerid);
+        if(vid == 0 || GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You must be the driver of a vehicle to start a robbery."), 1;
+
+        // ai nevoie de 10/10 rob points
+        if(PlayerData[playerid][pRobPoints] < ROB_POINTS_MAX)
+        {
+            new rm[144];
+            format(rm, sizeof(rm), C_ERROR"[Rob] "C_WHITE"You need "C_INFO"%d/%d"C_WHITE" rob points (you have "C_INFO"%d"C_WHITE"). You gain 1 per payday.",
+                ROB_POINTS_MAX, ROB_POINTS_MAX, PlayerData[playerid][pRobPoints]);
+            return SendClientMessage(playerid, COLOR_ERROR, rm), 1;
+        }
+
+        // trebuie sa fii langa un business
+        new bidx = Biz_NearestIndex(playerid, ROB_RANGE);
+        if(bidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"There is no business nearby to rob."), 1;
+
+        // alege 2 HQ-uri de mafie distincte, aleatorii
+        new hq1, hq2;
+        if(!Rob_PickTwoMafiaHQ(hq1, hq2))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Robbery unavailable: there aren't 2 mafia hideouts set up."), 1;
+
+        // capteaza echipa: toti jucatorii logati din aceeasi masina
+        new crewCount = 0;
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+            if(GetPlayerVehicleID(i) != vid) continue;
+            if(crewCount >= ROB_MAX_CREW) break;
+            g_RobCrew[playerid][crewCount++] = i;
+        }
+        g_RobCrewCount[playerid] = crewCount;
+        g_RobBiz[playerid]       = bidx;
+        g_RobHQ[playerid][0]     = hq1;
+        g_RobHQ[playerid][1]     = hq2;
+        g_RobStage[playerid]     = 0;
+        g_RobActive[playerid]    = true;
+
+        // scade 10 rob points tuturor din masina + wanted level (pentru politie) + mapare inversa
+        for(new c = 0; c < crewCount; c++)
+        {
+            new pid = g_RobCrew[playerid][c];
+            g_RobLeaderOf[pid] = playerid;
+
+            PlayerData[pid][pRobPoints] -= ROB_COST;
+            if(PlayerData[pid][pRobPoints] < 0) PlayerData[pid][pRobPoints] = 0;
+            UpdatePlayer(pid, pRobPoints);
+
+            PlayerData[pid][pWanted] = 6;
+            SetPlayerWantedLevel(pid, 6);
+            UpdatePlayer(pid, pWanted);
+
+            new nm[144];
+            format(nm, sizeof(nm), C_ERROR"[Rob] "C_WHITE"Robbery of "C_INFO"%s"C_WHITE" started! Reach the "C_INFO"2 mafia hideouts"C_WHITE" (checkpoints) to get paid.",
+                BusinessData[bidx][bName]);
+            SendClientMessage(pid, COLOR_ERROR, nm);
+        }
+
+        Rob_SetCheckpointForCrew(playerid); // pune primul checkpoint la HQ-ul 1
         return 1;
     }
 
@@ -15112,6 +15348,55 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /aa [text] (anunt al adminilor catre toti) ----
+    if(strcmp(cmd, "/aa", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new atext[128];
+        strmid(atext, cmdtext, idx, strlen(cmdtext), 128);
+        if(!strlen(atext))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/aa [text]"C_WHITE"."), 1;
+
+        new amsg[160];
+        format(amsg, sizeof(amsg), C_WHITE"(( "C_INFO"Admin %s"C_WHITE": %s ))", PlayerData[playerid][pName], atext);
+        SendClientMessageToAll(COLOR_WHITE, amsg);
+        return 1;
+    }
+
+    // ---- /slap [playerid] (teleporteaza jucatorul cu 2 unitati mai sus) ----
+    if(strcmp(cmd, "/slap", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new sp[8];
+        strmid(sp, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(sp))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/slap [playerid]"C_WHITE"."), 1;
+
+        new starget = strval(sp);
+        if(!IsPlayerConnected(starget) || !PlayerData[starget][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        new Float:sx, Float:sy, Float:sz;
+        GetPlayerPos(starget, sx, sy, sz);
+        AC_SetPos(starget, sx, sy, sz + 2.0);
+
+        new adminName[24];
+        GetPlayerName(playerid, adminName, 24);
+
+        new smsg[128];
+        format(smsg, sizeof(smsg), C_SUCCESS"[ADM] Success: "C_WHITE"You slapped "C_INFO"%s"C_WHITE".", PlayerData[starget][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, smsg);
+        format(smsg, sizeof(smsg), C_INFO"Info: "C_WHITE"You were slapped by admin "C_INFO"%s"C_WHITE".", adminName);
+        SendClientMessage(starget, COLOR_INFO, smsg);
+        return 1;
+    }
+
     // ---- /healall ----
     if(strcmp(cmd, "/healall", true) == 0)
     {
@@ -15591,7 +15876,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Player Commands =================");
 
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Account] "C_WHITE" /help /howto (login/register se fac prin dialog la conectare)");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /rentcar /rentbike /curedisease");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /rentcar /rentbike /curedisease /rob");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Houses] "C_WHITE"/buyhouse /sellhouse /houseupgrade /frigde /buyanimal /hstats");
         SendClientMessage(playerid, COLOR_WHITE,
             C_INFO"[Vehicles] "C_WHITE"/vstats /vbuy /vsell /vpark /vsellto /vcolor /vplate /lock /engine");
@@ -15621,7 +15906,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new topic[256];
         topic = strtok(cmdtext, idx);
         if(!strlen(topic))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / games / caravan / licence / farm]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / games / caravan / licence / farm / rob]"C_WHITE"."), 1;
 
         new title[64];
         static body[2548]; // static: buffer mare fara cost pe stiva (/howto e sincron)
@@ -15719,8 +16004,13 @@ public OnPlayerCommandText(playerid, cmdtext[])
             title = "How to: Farming";
             body = "{FFFFFF}Own a field and work the land through a cycle of 5 steps - "C_INFO"one step per real day"C_WHITE".\n\n{FFFF00}Owning a farm:{FFFFFF} stand on a for-sale field (look for the pickup + sign) and use "C_INFO"/buyfarm"C_WHITE". "C_INFO"/sellfarm"C_WHITE" sells it back for 75%. You can own one farm.\n\n{FFFF00}Machines (on your own farm):{FFFFFF}\n- /farm buy [tractor/dozer/combina] - parks a machine at the farm (Tractor $10.000, Dozer $15.000, Combine $20.000)\n- /farm sell - sit in a farm machine to sell that one (75% back)\n\n{FFFF00}Working (one step per day):{FFFFFF} drive the correct machine for the shown time WITHOUT leaving it:\n- /farm plow - Tractor, 1 min\n- /farm level - Dozer, 2 min\n- /farm seed - Tractor, 3 min\n- /farm fertilize - Tractor, 1 min\n- /farm harvest - Combine, 4 min -> paid $15.000, cycle restarts\n\nIf you leave the machine, die or disconnect, the job is cancelled and you lose that day's work (and can't retry until tomorrow).\n\n{FFFF00}Info:{FFFFFF} /farm stats (on a field) and /farmstats (your farm) show the next step, progress and whether you can work today.";
         }
+        else if(!strcmp(topic, "rob", true) || !strcmp(topic, "robbery", true))
+        {
+            title = "How to: Robbery";
+            body = "{FFFFFF}Rob a business with your crew - the more people in the car, the bigger the reward.\n\n{FFFF00}Requirements:{FFFFFF}\n- You need "C_INFO"10/10 rob points"C_WHITE" (shown in /stats). You gain "C_INFO"1 per payday"C_WHITE".\n- You must be the "C_INFO"driver"C_WHITE" of a vehicle, parked next to a business.\n\n{FFFF00}Doing it:{FFFFFF} drive up to a business and use "C_INFO"/rob"C_WHITE".\n- Everyone in the car at that moment becomes the crew and each loses "C_INFO"10 rob points"C_WHITE".\n- The whole crew gets "C_INFO"wanted level 6"C_WHITE" - the police will come!\n- A checkpoint appears at a random "C_INFO"mafia hideout"C_WHITE". Reach it, then a "C_INFO"second"C_WHITE" hideout appears. You must reach "C_INFO"both"C_WHITE".\n\n{FFFF00}Payout:{FFFFFF} after the 2nd hideout every crew member who is "C_INFO"still alive and connected"C_WHITE" earns "C_SUCCESS"$12.000 + $2.000 per crew member + a random bonus up to $5.000"C_WHITE" each. Die or disconnect and you get nothing.";
+        }
         else
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / games / caravan / licence / farm]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / games / caravan / licence / farm / rob]"C_WHITE"."), 1;
 
         ShowPlayerDialog(playerid, DIALOG_HOWTO, DIALOG_STYLE_MSGBOX, title, body, "OK", "");
         return 1;
@@ -15736,7 +16026,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Admin Commands ==========================================");
 
         if(alv >= 1)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /businesslist /showradars /removeradar /fixcar /flipcar /setInterior /setVw /setjob");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /aa /slap /businesslist /showradars /removeradar /fixcar /flipcar /setInterior /setVw /setjob");
         if(alv >= 2)
         {
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoLoc /gotoBiz /gotoHouse /gotoFaction /goto /bizzlist /farmlist /openGolfTournament /startGolf");
@@ -20218,6 +20508,15 @@ public OnPlayerDeath(playerid, killerid, reason)
         SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Hunt] "C_WHITE"You lost your deer when you died.");
     }
     g_HasSniper[playerid] = false;
+
+    // Jaf: daca moare, iese din echipa (nu mai primeste bani); jaful continua pentru ceilalti
+    if(g_RobLeaderOf[playerid] != INVALID_PLAYER_ID)
+    {
+        g_RobLeaderOf[playerid] = INVALID_PLAYER_ID;
+        DisablePlayerCheckpoint(playerid);
+        SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You died during the robbery - you won't get a cut.");
+    }
+
     Farm_Cancel(playerid, false); // moartea anuleaza lucrarea agricola in curs
     Farm_RentCleanup(playerid);
     Farm_DeliverCleanup(playerid);
@@ -20272,6 +20571,13 @@ public OnPlayerUpdate(playerid)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+    // Daca conducea un jaf (lider), anuleaza-l pentru toata echipa
+    if(g_RobActive[playerid])
+        Rob_Cancel(playerid);
+    // Daca era doar membru in echipa altcuiva, scoate-l din mapare (payout-ul il va sari)
+    if(g_RobLeaderOf[playerid] != INVALID_PLAYER_ID)
+        g_RobLeaderOf[playerid] = INVALID_PLAYER_ID;
+
     // Daca era intr-un apel (ring sau activ), inchide-l si anunta interlocutorul
     if(g_PhoneCallPartner[playerid] != INVALID_PLAYER_ID)
     {
