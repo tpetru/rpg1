@@ -97,19 +97,45 @@
 <main>
 
 <div class="feature">
-  <h2>🍕 Categorie Fast-food în /gps</h2>
-  <span class="status status-idea">Idee</span>
+  <h2>🚜 Sistem de Farming (Agricultură)</h2>
+  <span class="status status-done">Implementat ✔</span>
 
-  <p><code>/gps</code> ar trebui să aibă o categorie <strong>Fast-food</strong> care listează locațiile direct din
-  tabelul <code>fastfood</code> (la fel cum categoria <strong>Shops</strong> citește din tabelul <code>shops</code>).
-  Fiecare intrare ar seta un checkpoint spre <code>ffLocX/ffLocY/ffLocZ</code>, cu numele (<code>ffName</code>) și
-  tipul (<code>ffType</code>: 🍕 pizza / 🍔 burger) afișate în listă.</p>
+  <p>Lucrezi terenuri agricole printr-o secvență de <strong>5 etape</strong>, <strong>o etapă pe zi reală</strong>,
+  folosind utilajul corect timp de X minute. Terenurile (<code>MAX_FARMS=20</code>) sunt zone definite prin centru + rază.
+  Terenurile pot fi <strong>deținute</strong> (buy/sell), iar proprietarul își poate cumpăra utilaje pe teren.</p>
 
-  <div class="note">
-    De reutilizat array-urile deja încărcate în memorie (<code>PizzaLocations</code>/<code>BurgerLocations</code> +
-    <code>g_PizzaFFID</code>/<code>g_BurgerFFID</code>), populate de <code>OnFastFoodLoaded</code> — nu e nevoie de un
-    query separat. De adăugat un nou index de categorie în handler-ul <code>DIALOG_GPS_CATEGORY</code>/<code>DIALOG_GPS_LOCATION</code>.
+  <h4>Etape (<code>fmNextStep</code>) &amp; utilaje</h4>
+  <ul>
+    <li><strong>Plow</strong> (arat) — Tractor (531) — <strong>1 min</strong></li>
+    <li><strong>Level</strong> (îndreptat) — Dozer (486) — <strong>2 min</strong></li>
+    <li><strong>Seed</strong> (semănat) — Tractor (531) — <strong>3 min</strong></li>
+    <li><strong>Fertilize</strong> (îngrășământ) — Tractor (531) — <strong>1 min</strong></li>
+    <li><strong>Harvest</strong> (recoltat) — Combină (532) — <strong>4 min</strong></li>
+  </ul>
+  <p>Ciclul se resetează după recoltare; plata unui ciclu complet este <code>FARM_HARVEST_PAY = $15.000</code>.</p>
+
+  <h4>Comandă</h4>
+  <p><code>/farm [status / plow / level / seed / fertilize / harvest / buy / sell]</code></p>
+  <ul>
+    <li><code>/farm status</code> — proprietar/preț, etapa curentă + utilaj + minute, dacă mai poți lucra azi.</li>
+    <li><code>plow/level/seed/fertilize/harvest</code> — pornesc etapa curentă (trebuie să fii pe teren, în utilajul corect).</li>
+    <li><code>/farm buy [tractor/dozer/combina]</code> / <code>/farm sell</code> — doar pe terenul propriu. Prețuri utilaje:
+      Tractor $10.000, Dozer $15.000, Combină $20.000 (suprascrise din <code>payday_setup</code>).</li>
+  </ul>
+
+  <div class="note ok" style="border-left:3px solid var(--green); background:rgba(62,207,142,0.06);">
+    Implementat: enum <code>E_FARM_DATA</code> (<code>FarmData[MAX_FARMS]</code>), o etapă pe zi via
+    <code>fmLastWork</code> (aliniat la zi), utilaje persistente (<code>g_FarmVehId[MAX_FARM_VEHICLES]</code>).
   </div>
+</div>
+
+<div class="feature">
+  <h2>🍕 Categorie Fast-food în /gps</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p><code>/gps</code> are acum categoria <strong>Fast-food</strong> (<code>GPSITEM_FASTFOOD</code>) care listează locațiile
+  pizza (🍕) și burger (🍔) cu checkpoint spre fiecare. Categoriile GPS sunt acum construite dinamic
+  (<code>GPS_MAX_DYNCATS</code>, <code>GPSITEM_*</code>). Adminii au și <code>/fastfoodlist</code> (dialog + teleport).</p>
 </div>
 
 <div class="feature">
@@ -180,6 +206,7 @@
     <li><strong>Război de teritorii (<code>/war</code>)</strong> — <code>WAR_MIN_FACTION_ONLINE = 0</code> (TEMPORAR), de readus la <strong>2</strong> membri online per facțiune.</li>
     <li><strong>Transport droguri (<code>/drugs transport</code>)</strong> — momentan se poate face cu <strong>o singură persoană</strong> în mașină (verificarea de al doilea membru e comentată în cod, ~linia 10208). De readus la <strong>minim 2 membri</strong> în vehicul.</li>
     <li><strong>Transport droguri — limită orară (<code>/drugs transport</code>)</strong> — restricția de <strong>19:00–23:59</strong> e dezactivată temporar (marcaj <code>[TEMP-DRUGHOUR]</code> în cod). De readus: decomentează verificarea <code>DRUG_TRANSPORT_HOUR_MIN/MAX</code> și șterge liniile <code>[TEMP-DRUGHOUR]</code>.</li>
+    <li><strong>Car Transportator — zi/oră (<code>/job</code>, job 4)</strong> — condiția „doar <strong>Vineri/Sâmbătă/Duminică, 16:00–23:00</strong>" (<code>Job_TransportWindowOpen</code>) e dezactivată temporar (marcaj <code>[TEMP-TRANSPORTHOURS]</code> în <code>/job</code>). De readus: decomentează verificarea și șterge liniile <code>[TEMP-TRANSPORTHOURS]</code>.</li>
   </ul>
 </div>
 

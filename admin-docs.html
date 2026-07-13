@@ -94,9 +94,9 @@
   <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
-    <span class="badge">gamemodes/bare.pwn — ~17000 linii</span>
-    <span class="badge">18 tabele MySQL</span>
-    <span class="badge">175+ comenzi</span>
+    <span class="badge">gamemodes/bare.pwn — ~20700 linii</span>
+    <span class="badge">20+ tabele MySQL</span>
+    <span class="badge">190+ comenzi</span>
   </div>
 </header>
 
@@ -121,7 +121,10 @@
   <a href="#drugs">Droguri &amp; Seif</a>
   <a href="#minigames">Mini-jocuri: Golf &amp; Baschet</a>
   <a href="#caravans">Rulote personale &amp; Camping</a>
+  <a href="#farming">Farming (Agricultură)</a>
+  <a href="#reports">Sistem de reporturi</a>
   <a href="#database">Schema bazei de date</a>
+  <a href="#race-events">Race Events (BestLap)</a>
   <a href="#admin-cmds">Comenzi admin</a>
   <a href="#known-issues">Probleme cunoscute</a>
   <h3>Comenzi complete</h3>
@@ -311,8 +314,8 @@ RP    += 1</pre>
   <h2>Sistem joburi</h2>
   <p><code>MAX_JOBS=10</code>. <code>pJob</code> (0 = fără job) persistat în coloana <code>job</code> din <code>players</code>.
   <code>/getjob</code> și <code>/quitjob</code> necesită <code>Job_AtJobCenter(playerid)</code> (pickup + etichetă în interiorul
-  City Hall, interior 3). <code>/jobs</code> listează catalogul (<code>g_JobNames</code>). 6 din 10 sloturi sunt implementate;
-  7-10 răspund „not available yet" în <code>switch</code>-ul din <code>/job</code>.</p>
+  City Hall, interior 3). <code>/jobs</code> listează catalogul (<code>g_JobNames</code>). 7 din 10 sloturi sunt implementate;
+  8-10 răspund „not available yet" în <code>switch</code>-ul din <code>/job</code>.</p>
 
   <table>
     <tr><th>ID</th><th>Job</th><th>Mecanică</th><th>Plată</th><th>Biz cut</th></tr>
@@ -322,7 +325,9 @@ RP    += 1</pre>
     <tr><td>4</td><td>Car Transportator</td><td>2 puncte load → business 8/17/18</td><td><code>1500 + 1*dist2D</code></td><td>—</td></tr>
     <tr><td>5</td><td>Uber</td><td>Serviciu player-to-player cu vehicul personal</td><td><code>/fare</code> per 20s</td><td>—</td></tr>
     <tr><td>6</td><td>Emergency Logistics Driver</td><td>Depou (2 Bobcat + 2 Burrito), 3 puncte de încărcare → livrare la shop</td><td><code>700 + 1*dist2D</code></td><td>—</td></tr>
+    <tr><td>7</td><td>Bus Driver</td><td><code>/bus [1-3]</code>, rute fixe cu checkpoint-uri (autobuz de depou)</td><td>câștig/checkpoint + <code>JOB_BUS_FINISH_BONUS=1000</code> la final + $100/pasager urcat</td><td>—</td></tr>
   </table>
+  <p class="lead" style="font-size:0.85rem">Sloturile 8-10 sunt încă placeholder („not available yet" în <code>switch</code>-ul din <code>/job</code>).</p>
 
   <h3>Comenzi player</h3>
   <table>
@@ -437,6 +442,12 @@ RP    += 1</pre>
     <tr><td><code>/examC</code></td><td>Linerunner (403) + Trailer (450)</td><td>6</td><td>45s</td><td>≥800/1000 ambele</td><td>20 zile (1728000s)</td><td>5 zile (432000s)</td><td>500</td><td>4</td></tr>
     <tr><td><code>/examD</code></td><td>Bus (437)</td><td>9</td><td>45s</td><td>≥800/1000</td><td>16 zile (1382400s)</td><td>3 zile (259200s)</td><td>400</td><td>7</td></tr>
   </table>
+
+  <h3>Examene de zbor — examP (avion) &amp; examH (elicopter)</h3>
+  <p>Două examene noi de zbor, la locațiile din <code>locations_admin</code> (id 5 = <code>examP</code> avion,
+  id 6 = <code>examH</code> elicopter), marcate cu etichete 3D. Preț <code>g_ExamPPrice</code> / <code>g_ExamHPrice</code>
+  = <strong>$1.000</strong> fiecare. <code>MAX_EXAMP_CHECKPOINTS=8</code>, <code>MAX_EXAMH_CHECKPOINTS=4</code>. Vehiculul de
+  examen H este un elicopter (model 469, <code>g_ExamHCar</code>).</p>
   <div class="note">
     Taxa se plătește indiferent de rezultat, fără refund. Rază start = 5m, dimensiune checkpoint = 5m.
     <strong>Nu există un eșec real la finalizare</strong> — chiar și cu HP scăzut la final tot primești permis, doar mai scurt.
@@ -508,22 +519,26 @@ RP    += 1</pre>
 <section id="gps-radar">
   <h2>GPS / Radar / HUD</h2>
 
-  <h3>GPS — tabel locations_gps (separat de locations_admin!)</h3>
+  <h3>GPS — categorii dinamice (refactorizat)</h3>
   <div class="note">
-    <strong>Important</strong>: <code>locations_admin</code> (locID/locName/locX/Y/Z, redenumit din vechiul <code>locations</code>
-    printr-un <code>RENAME TABLE</code> de migrare) e folosit <strong>exclusiv</strong> de <code>/gotoloc</code>
-    (admin lvl 2) — rândurile seed sunt examA/B/C/D, vplate, vitp, hospital.
-    <code>locations_gps</code> (glID/glCategory/glName/glLocX/Y/Z, redenumit din vechiul <code>gps_locations</code>) e
-    folosit <strong>exclusiv</strong> de <code>/gps</code> (player-facing) — rândul seed e categoria 4 "Hospitalization".
-    Nu există nicio suprapunere de cod între cele două.
+    <strong>Refactorizare GPS</strong>: <code>/gps</code> construiește acum lista printr-un sistem de itemi
+    (<code>GPSList_Build</code>, <code>GPSItem</code> cu tipurile <code>GPSITEM_FACTION/BIZ/ATM/JOB/SHOP/FASTFOOD/LOC</code>,
+    <code>MAX_GPS_LISTITEMS=200</code>). Dialogul <code>DIALOG_GPS_CATEGORY</code> arată numărul de locații din fiecare categorie.
   </div>
-  <p><code>/gps</code> fără argument deschide dialog cu <strong>7 categorii</strong>:
-  "DMV Locations\nFactions\nBusiness\nOthers\nShops\nBank / ATM\nJobs". Categoriile Factions, Business, Bank / ATM și Jobs
-  sunt populate dinamic (din facțiunile/business-urile/ATM-urile/joburile existente, prin <code>GPSITEM_*</code>), nu din
-  <code>locations_gps</code>. Potrivirea categoriei text (<code>GPS_CategoryMatches</code>, pentru rândurile din
-  <code>locations_gps</code>) acceptă <strong>ambele formate</strong> din DB: textul ("DMV"/"SHOPS"/..., case-insensitive)
-  SAU numărul 1-based ca string ("1".."7") — populați coloana <code>glCategory</code> cu oricare din cele două.
-  <code>/gps</code> e blocat total în timpul oricărui examen auto activ. Checkpoint size = 5.0.</p>
+  <p><code>/gps</code> deschide un dialog cu <strong>5 categorii fixe</strong> — <em>Factions, Businesses, Banks &amp; ATMs,
+  Shops, FastFoods</em> — construite dinamic din facțiunile / business-urile / ATM-urile / shop-urile / locațiile fast-food
+  existente, plus <strong>categorii dinamice</strong> (index 5+, până la <code>GPS_MAX_DYNCATS=16</code>) enumerate din
+  <code>locations_admin</code>: fiecare rând cu <code>locForGPS=1</code> și <code>locCategory</code> nevidă devine o categorie
+  proprie (<code>GPS_GetDynCategories</code>). Selectarea unei locații setează un checkpoint (size 5.0) și îți afișează
+  distanța în metri.</p>
+  <div class="note">
+    <strong>locations_admin</strong> (locID/locName/locX/Y/Z + <code>interiorID</code>, <code>vwID</code>,
+    <code>locForGPS</code>, <code>locCategory</code>, <code>locDescr</code>) servește dublu: <code>/gotoloc</code> (admin lvl 2)
+    ȘI categoriile dinamice din <code>/gps</code>. Rândurile examA/B/C/D + examP (id 5) / examH (id 6), vplate, vitp, hospital
+    sunt tot aici. Tabelul <code>locations_gps</code> (glID/glCategory/glName/glLocX/Y/Z) încă există și e încărcat în
+    <code>GPSData</code>, dar categoriile dinamice vin acum din <code>locations_admin</code>, nu din el.
+  </div>
+  <p><code>/gps</code> e blocat total în timpul oricărui examen auto activ.</p>
 
   <h3>Map icons</h3>
   <div class="note">
@@ -863,10 +878,44 @@ RP    += 1</pre>
   recreat automat la acea poziție.</p>
 </section>
 
+<section id="farming">
+  <h2>Farming (Agricultură)</h2>
+  <p><code>MAX_FARMS=20</code>. Terenuri (tabel <code>farms</code>) ca zone centru+rază, deținute sau libere. Lucrezi
+  o secvență de <strong>5 etape</strong> (<code>FARM_STEPS</code>), <strong>o etapă pe zi reală</strong>, în utilajul corect.
+  Un ciclu complet plătește <code>FARM_HARVEST_PAY = $15.000</code>.</p>
+  <table>
+    <tr><th>Pas (fmNextStep)</th><th>Acțiune</th><th>Utilaj (model)</th><th>Minute</th></tr>
+    <tr><td>0 · Plow</td><td>arat</td><td>Tractor (531)</td><td>1</td></tr>
+    <tr><td>1 · Level</td><td>îndreptat</td><td>Dozer (486)</td><td>2</td></tr>
+    <tr><td>2 · Seed</td><td>semănat</td><td>Tractor (531)</td><td>3</td></tr>
+    <tr><td>3 · Fertilize</td><td>îngrășământ</td><td>Tractor (531)</td><td>1</td></tr>
+    <tr><td>4 · Harvest</td><td>recoltat</td><td>Combină (532)</td><td>4</td></tr>
+  </table>
+  <p><code>/farm [status/plow/level/seed/fertilize/harvest/buy/sell]</code>. O etapă/zi via <code>fmLastWork</code> (aliniat
+  la zi). Proprietarul cumpără utilaje pe teren cu <code>/farm buy [tractor/dozer/combina]</code> (prețuri
+  $10.000 / $15.000 / $20.000, din <code>payday_setup</code>), stocate în <code>g_FarmVehId[MAX_FARM_VEHICLES=100]</code>.
+  Admin: <code>/fcreate</code>-style prin comenzile de setare (poziție/rază/preț/owner) care fac <code>UPDATE farms</code>.</p>
+</section>
+
+<section id="reports">
+  <h2>Sistem de reporturi (/report)</h2>
+  <p>Reporturi player→admin persistate în tabelul <code>reports</code>. Un jucător poate avea maxim
+  <code>MAX_OPEN_REPORTS_PER_PLAYER=2</code> reporturi deschise (<code>status=0</code>) în același timp.</p>
+  <table>
+    <tr><th>Comandă</th><th>Acces</th><th>Detalii</th></tr>
+    <tr><td><code>/report [text]</code></td><td>oricine logat</td><td>INSERT în <code>reports</code> (status=0). Refuzat dacă are deja 2 reporturi deschise.</td></tr>
+    <tr><td><code>/reports</code></td><td>admin 1+</td><td>Dialog <code>DIALOG_REPORTS_LIST</code> cu reporturile deschise (preview <code>REPORT_PREVIEW_LEN=40</code> caractere, max <code>MAX_REPORT_DIALOG=50</code>); click → view.</td></tr>
+    <tr><td><code>/reportreply [repID] [text]</code></td><td>admin 1+</td><td><code>UPDATE reports SET status=1, adminName, reply</code>. Răspunsul se livrează jucătorului (dacă online, altfel la login via <code>replyDelivered</code>).</td></tr>
+  </table>
+  <pre>reports: repID PK AI, playerName VARCHAR(24), playerDbId INT, repText VARCHAR(160),
+repDate INT (unix), status INT (0=deschis/1=rezolvat), adminName VARCHAR(24),
+reply VARCHAR(160), replyDelivered INT</pre>
+</section>
+
 <section id="database">
-  <h2>Schema bazei de date (19 tabele)</h2>
-  <p class="lead" style="margin-top:-8px">19 tabele create în <code>DB_CreateTables()</code>: players, bans, rulote_personale, factions, payday_setup,
-  houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, shops, fastfood, locations_admin, locations_gps,
+  <h2>Schema bazei de date</h2>
+  <p class="lead" style="margin-top:-8px">21 tabele create în <code>DB_CreateTables()</code>: players, bans, rulote_personale, factions, payday_setup,
+  houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, reports, farms, shops, fastfood, locations_admin, locations_gps,
   basket_hoops, basket_spawns.</p>
   <div class="note"><strong>Refactorizare <code>DB_CreateTables()</code>:</strong> toate coloanele sunt acum direct în <code>CREATE TABLE IF NOT EXISTS</code> — s-au eliminat toate <code>ALTER TABLE ADD COLUMN</code>-urile de migrare și toate <code>INSERT</code>-urile de seed (facțiuni, payday, shops, locations, basket). Apelul funcției din startup e <strong>momentan comentat</strong> (DB-ul e deja configurat); pentru un DB nou, decomentează-l.</div>
   <div class="note"><strong>factions</strong> conține acum 8 rânduri (id 8 = News Reporters, interior 5 / VW 8). Seed-urile fiind eliminate din cod, rândurile trebuie să existe deja în DB.</div>
@@ -978,15 +1027,47 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
 -- la orientarea jucatorului (orientarea e mereu automata, calculata spre cos)</pre>
 </section>
 
+<section id="race-events">
+  <h2>Race Events (BestLap)</h2>
+  <p>Eveniment de curse pornit de admin (nivel <code>2+</code>). Un singur eveniment activ la un moment dat.
+  Cei înscriși aleargă pe același traseu, în același model de vehicul, fiecare în propria lume virtuală
+  (<code>vw = 100 + playerid</code>, interior 0), deci nu se ciocnesc. Câștigă cel cu timpul cel mai mic.</p>
+
+  <h4>Flux</h4>
+  <ol>
+    <li><code>/event race [lap1/lap2/lap3] [vehicle/random]</code> — admin deschide un event (anunț global, înscrieri deschise).</li>
+    <li><code>/event join</code> — jucătorii se înscriu.</li>
+    <li><code>/event start</code> — admin pornește: participanții sunt spawnați la primul CP, freeze 5s cu GameText
+      <code>5..4..3..2..1..GOGOGO!</code>, apoi unfreeze. Cronometrul pornește la GO.</li>
+    <li><code>/event stop</code> — admin oprește forțat (respawn participanți).</li>
+  </ol>
+  <div class="note">
+    La <strong>random</strong> se alege <em>un singur</em> model, comun tuturor. Timpul se măsoară de la GO până la
+    ultimul checkpoint. Primele 3 locuri se anunță pe tot serverul; fiecare participant primește locul propriu
+    (<code>X/Y</code>). Evenimentul se încheie când toți au terminat sau după <code>5 minute</code> (oprire forțată).
+  </div>
+
+  <h4>Vehicule &amp; trasee</h4>
+  <pre>Vehicule: Bullet(541), Infernus(411), Elegy(562), Stratum(560), NRG-500(522), Sabre(475)
+Trasee (checkpoint-uri): Lap1 = 8 CP, Lap2 = 20 CP, Lap3 = 20 CP
+Spawn la CP1 (cu unghiul de start al traseului); finish la ultimul CP.</pre>
+
+  <h4>Recorduri — tabela <code>races</code></h4>
+  <pre>rID INT PK AI, rName VARCHAR(16) (Lap1/Lap2/Lap3), rVehModelID INT,
+rTimeRecord FLOAT DEFAULT 999 (secunde), rPlayerName VARCHAR(24)
+-- 18 randuri (3 lap-uri x 6 vehicule), rTimeRecord=999 la seed
+-- recordul e per (lap + model vehicul); la depasire: anunt global + UPDATE in DB</pre>
+</section>
+
 <section id="admin-cmds">
   <h2>Comenzi admin (complet, după nivel)</h2>
   <table>
     <tr><th>Nivel</th><th>Comenzi</th></tr>
-    <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code></td></tr>
-    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code></td></tr>
+    <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code>, <code>/reports</code> — dialog cu reporturile deschise, <code>/reportreply [repID] [text]</code> — răspunde la un report (vezi secțiunea Reporturi)</td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code>, <code>/event race [lap1/lap2/lap3] [vehicle/random]</code>, <code>/event start</code>, <code>/event stop</code></td></tr>
     <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh [nume sau model id]</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setlic [playerid] [all/A/B/C/D/H/P] [YYYY-MM-DD]</code> (A/B/C/D=auto, P=avion, H=elicopter), <code>/gotoxyz</code>, <code>/forceunlock</code>, <code>/changecar [engine/lights/alarm/doors/hood/boot]</code> — comută o componentă a vehiculului în care ești</td></tr>
     <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie); <code>/adminuninvite [playerid]</code> — scoate un player din facțiune (faction=0, scade fMembers, resetează fLead dacă era lider)</td></tr>
-    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;ffID&gt; &lt;loc|name|type&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger). <code>/vc price</code> necesită nivel 6.</td></tr>
+    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;ffID&gt; &lt;loc|name|type&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger), <code>/fastfoodlist</code> — dialog cu toate locațiile fast-food (click = teleport). <code>/vc price</code> necesită nivel 6.</td></tr>
     <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/fc createveh [faction_id]</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code>, <code>/shopcreate</code>, <code>/shopChangeLoc [id]</code>, <code>/shopDelete [id]</code>, <code>/ffcreate [pizza/burger] [name]</code> — creează o locație fast-food la poziția ta (implicit pizza; max 5 per tip)</td></tr>
   </table>
   <div class="note">
@@ -1061,6 +1142,7 @@ rx/ry/rz FLOAT DEFAULT 0.0, UNIQUE KEY uq_hoop_spawn(hoop_id, spawn_id)
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/joingolf</code> / <code>/leavegolf</code> / <code>/hitball [putere]</code></td><td>Vezi secțiunea Mini-jocuri (Golf)</td></tr>
     <tr><td><code>/joinbasket</code> / <code>/leavebasket</code> / <code>/throwball [putere]</code></td><td>Vezi secțiunea Mini-jocuri (Baschet)</td></tr>
+    <tr><td><code>/event join</code></td><td>Înscriere la un Race Event deschis de admin (vezi secțiunea Race Events)</td></tr>
     <tr><td><code>/attach</code> / <code>/detach</code> / <code>/camp</code></td><td>Vezi secțiunea Rulote personale &amp; Camping</td></tr>
   </table>
 

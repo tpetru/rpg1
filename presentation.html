@@ -144,9 +144,10 @@
     <span class="badge">Economie reală</span>
     <span class="badge">Președinte ales</span>
     <span class="badge">Joburi</span>
+    <span class="badge">Farming 🚜</span>
     <span class="badge">Războaie de teritoriu</span>
     <span class="badge">Droguri &amp; Seif</span>
-    <span class="badge">Permise auto A/B/C/D</span>
+    <span class="badge">Permise auto A/B/C/D + zbor</span>
     <span class="badge">GPS &amp; Radar</span>
     <span class="badge">Turneu de Golf</span>
     <span class="badge">Baschet</span>
@@ -349,9 +350,31 @@
       duci la magazine. Plată de bază bună, plus bonus pe distanța parcursă.</p>
     </div>
     <div class="card">
-      <h4 style="margin-top:0">🆕 Mai multe pe drum</h4>
-      <p>Din cele 10 sloturi de job, 6 sunt deja active. Restul (7-10) urmează să fie deschise treptat.</p>
+      <h4 style="margin-top:0">🚌 Bus Driver</h4>
+      <p>Iei un autobuz de la depou și conduci rute fixe cu <code>/bus [1-3]</code>. Câștigi la fiecare punct de control,
+      un bonus la finalul rutei și încă $100 pentru fiecare pasager care se urcă.</p>
     </div>
+    <div class="card">
+      <h4 style="margin-top:0">🆕 Mai multe pe drum</h4>
+      <p>Din cele 10 sloturi de job, 7 sunt deja active. Restul (8-10) urmează să fie deschise treptat.</p>
+    </div>
+  </div>
+</section>
+
+<section id="farming">
+  <h2>🚜 Farming (Agricultură)</h2>
+  <p class="subtitle">Lucrează pământul, o etapă pe zi, și recoltează la final</p>
+
+  <div class="card">
+    <p>Intri pe un teren agricol și îl lucrezi într-o secvență de <strong>5 etape</strong>, câte
+    <strong>una pe zi reală</strong>, folosind de fiecare dată utilajul corect: <strong>Plow</strong> (arat, tractor) →
+    <strong>Level</strong> (îndreptat, dozer) → <strong>Seed</strong> (semănat, tractor) →
+    <strong>Fertilize</strong> (îngrășământ, tractor) → <strong>Harvest</strong> (recoltat, combină). Când termini ciclul,
+    recolta îți aduce <strong>$15.000</strong>, apoi terenul se resetează.</p>
+    <p><code>/farm status</code> îți arată etapa curentă și dacă mai poți lucra azi;
+    <code>/farm plow/level/seed/fertilize/harvest</code> pornesc etapa. Terenurile pot fi
+    <strong>cumpărate</strong> (<code>/farm buy/sell</code>), iar pe terenul tău îți poți cumpăra propriile utilaje
+    (tractor / dozer / combină).</p>
   </div>
 </section>
 
@@ -493,11 +516,14 @@
     <tr><td><code>/examB</code></td><td>Mașină</td><td>7 puncte de control, cronometrat</td></tr>
     <tr><td><code>/examC</code></td><td>Camion + remorcă</td><td>Atașezi remorca, apoi 6 puncte de control</td></tr>
     <tr><td><code>/examD</code></td><td>Autobuz</td><td>9 puncte de control, cronometrat</td></tr>
+    <tr><td><code>/examP</code></td><td>Avion ✈️</td><td>Examen de zbor — permis de pilot ($1.000)</td></tr>
+    <tr><td><code>/examH</code></td><td>Elicopter 🚁</td><td>Examen de zbor — permis de elicopter ($1.000)</td></tr>
   </table>
 
   <div class="note">
     Fiecare etapă a traseului are un timp limită — dacă întârzii prea mult la un punct de control, pici examenul.
     La final, starea vehiculului contează: termini cu mașina în stare bună și permisul ține mult mai mult timp!
+    Pe lângă cele 4 permise auto, poți da acum și examene de <strong>zbor</strong> (avion / elicopter).
   </div>
 
   <p><code>/licenses</code> îți arată oricând starea celor 4 categorii de permis pe care le deții.</p>
@@ -705,9 +731,10 @@
   <div class="grid-2">
     <div class="card">
       <h4 style="margin-top:0">🧭 Navigație GPS</h4>
-      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele, Magazine, Bancă / ATM, Joburi) — alegi categoria, apoi
-      locația, și primești un punct de control direct pe hartă. Categoriile Facțiuni și Afaceri sunt actualizate
-      automat (orice facțiune cu sediu sau afacere existentă apare acolo), iar fiecare locație din listă îți arată și
+      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele, Magazine, Bancă / ATM, Joburi,
+      Fast-food 🍕🍔) — alegi categoria, apoi locația, și primești un punct de control direct pe hartă. Categoriile
+      Facțiuni, Afaceri, Bancă/ATM, Joburi și Fast-food sunt actualizate automat (orice facțiune cu sediu, afacere, ATM
+      sau locație de mâncare existentă apare acolo), iar fiecare locație din listă îți arată și
       <strong>distanța</strong> până la ea, în metri. <code>/killcp</code> anulează oricând checkpoint-ul activ.</p>
     </div>
     <div class="card">
@@ -793,6 +820,7 @@
     <tr><td><code>/deposit [sumă]</code></td><td>Depui bani în bancă, la un ATM (min $100, max $100.000)</td></tr>
     <tr><td><code>/withdraw [sumă]</code></td><td>Retragi bani din bancă, la un ATM (min $100, max $100.000)</td></tr>
     <tr><td><code>/cspawn</code></td><td>Schimbă punctul de spawn (civil / HQ facțiune / casă proprie)</td></tr>
+    <tr><td><code>/report [text]</code></td><td>Trimite un report către admini (max 2 deschise o dată); primești răspuns în joc</td></tr>
     <tr><td><code>/help</code></td><td>Listă de comenzi pentru jucători</td></tr>
   </table>
 
@@ -847,6 +875,15 @@
     <tr><td><code>/fare [sumă]</code></td><td>Uber: intri în serviciu cu mașina personală (preț per 20s)</td></tr>
     <tr><td><code>/service uber</code></td><td>Ceri o cursă de Uber</td></tr>
     <tr><td><code>/accept uber</code></td><td>Uber: accepți o cerere de cursă</td></tr>
+    <tr><td><code>/bus [1-3]</code></td><td>Bus Driver: pornești o rută fixă cu autobuzul de depou</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚜 Farming</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/farm status</code></td><td>Etapa curentă a terenului pe care ești + dacă mai poți lucra azi</td></tr>
+    <tr><td><code>/farm plow/level/seed/fertilize/harvest</code></td><td>Pornești etapa curentă (în utilajul corect, o etapă/zi)</td></tr>
+    <tr><td><code>/farm buy [tractor/dozer/combina]</code> / <code>/farm sell</code></td><td>Cumperi utilaje / vinzi terenul (doar pe terenul propriu)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">⚔️ Războaie de teritoriu <span style="color:var(--muted); font-size:0.8em">(doar mafii)</span></h3>
@@ -873,6 +910,7 @@
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/buyhouse</code></td><td>Cumpără casa liberă din apropiere</td></tr>
     <tr><td><code>/sellhouse</code></td><td>Vinde-ți casa, la preț integral</td></tr>
+    <tr><td><code>/hstats</code></td><td>Statisticile casei tale (nume, ID, preț, tip)</td></tr>
     <tr><td><code>/buyanimal [număr]</code></td><td>Cumperi un animal pentru curtea casei tale (casă cu curte)</td></tr>
     <tr><td><code>/houseupgrade frigde</code></td><td>Cumperi un frigider pentru casă ($10.000)</td></tr>
     <tr><td><code>/frigde buy [item] [qty]</code></td><td>Umpli frigiderul (lapte/banane/apă/suc/bere), doar 15:00–20:00</td></tr>
