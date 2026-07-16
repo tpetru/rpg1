@@ -122,6 +122,9 @@
   <a href="#minigames">Mini-jocuri: Golf &amp; Baschet</a>
   <a href="#caravans">Rulote personale &amp; Camping</a>
   <a href="#farming">Farming (Agricultură)</a>
+  <a href="#skins">Skinuri &amp; Uniforme</a>
+  <a href="#robbery">Jaf (/rob)</a>
+  <a href="#marketplace">Marketplace (proprietăți)</a>
   <a href="#reports">Sistem de reporturi</a>
   <a href="#database">Schema bazei de date</a>
   <a href="#race-events">Race Events (BestLap)</a>
@@ -145,7 +148,7 @@
   <table>
     <tr><th>ID</th><th>Nume</th><th>Culoare (FactionColors)</th></tr>
     <tr><td>1</td><td>Politia Romana</td><td>0x4488FFFF (albastru)</td></tr>
-    <tr><td>2</td><td>Registrul Auto Roman</td><td>0x003399FF (albastru închis)</td></tr>
+    <tr><td>2</td><td>Registrul Auto Roman</td><td>0x36D1C2FF (turcoaz)</td></tr>
     <tr><td>3</td><td>SMURD</td><td>0xFF5500FF (portocaliu)</td></tr>
     <tr><td>4</td><td>Mafia Europeana</td><td>0x3366CCFF</td></tr>
     <tr><td>5</td><td>Mafia Americana</td><td>0xAA44AAFF</td></tr>
@@ -364,8 +367,10 @@ RP    += 1</pre>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🏢 Business-uri</h4>
-      <p><code>/buybiz</code>: preț exact, fără limită de deținere. <code>/sellbiz</code>: refund <strong>50%</strong> (price/2,
-      împărțire întreagă), banca business-ului e <strong>pierdută</strong> (resetată la 0) la vânzare.</p>
+      <p><code>/buybiz</code>: preț exact, fără limită de deținere — cumpără atât business-uri libere cât și cele puse la
+      vânzare de alt jucător (vezi <a href="#marketplace">Marketplace</a>). <code>/sellbiztostate</code>: refund
+      <strong>60%</strong>, banca business-ului e <strong>pierdută</strong> (resetată la 0) la vânzarea către stat.
+      <code>/sellbusiness [preț]</code> îl listează pentru alți jucători (banca trece la cumpărător).</p>
     </div>
   </div>
 
@@ -419,8 +424,13 @@ RP    += 1</pre>
   </table>
 
   <h3>/vbuy — detalii</h3>
-  <p>Plătește <code>pvPrice</code> integral, pornește motorul (engine=1), setează toate cele 4 documente valabile 7 zile
-  (<code>VEHICLE_DOC_DURATION = 604800</code>). Vezi nota despre business ID 8 mai sus.</p>
+  <p><code>/vbuy</code> are acum <strong>două căi</strong>, în funcție de <code>pvOwnerId</code>:</p>
+  <table>
+    <tr><th>Caz</th><th>Comportament</th></tr>
+    <tr><td><strong>De la server</strong> (<code>pvOwnerId == 0</code>, showroom)</td><td>Plătește <code>pvPrice</code> integral, pornește motorul (engine=1), setează toate cele 4 documente valabile 7 zile (<code>VEHICLE_DOC_DURATION = 604800</code>), setează prima înmatriculare și dă comisionul business-ului din <code>from_biz</code> (vezi nota despre business 8/17/18 mai sus).</td></tr>
+    <tr><td><strong>De la alt jucător</strong> (<code>pvForSale = 1</code>)</td><td>Plătește <code>pvPrice</code>, transferă proprietatea, șterge <code>is_for_sale</code>, pornește motorul. <strong>NU</strong> resetează documentele (mașina e „la mâna a doua") și <strong>NU</strong> dă comision de showroom. Vânzătorul e plătit în bancă prin <code>Prop_SettleSellerVehicle</code>.</td></tr>
+  </table>
+  <div class="note">Nu îți poți cumpăra propriul vehicul: verificarea cere <code>pvOwnerId != pID</code>-ul cumpărătorului.</div>
 
   <h3>/vitp — verificare tehnică (async)</h3>
   <p>La sediul RAR (ITP_LOC: 930.0, 2067.0, 12.5, rază 5m), motor oprit, ITP expirat. Costă <code>g_ITPPrice</code> (750),
@@ -522,15 +532,26 @@ RP    += 1</pre>
   <h3>GPS — categorii dinamice (refactorizat)</h3>
   <div class="note">
     <strong>Refactorizare GPS</strong>: <code>/gps</code> construiește acum lista printr-un sistem de itemi
-    (<code>GPSList_Build</code>, <code>GPSItem</code> cu tipurile <code>GPSITEM_FACTION/BIZ/ATM/JOB/SHOP/FASTFOOD/LOC</code>,
+    (<code>GPSList_Build</code>, <code>GPSItem</code> cu tipurile <code>GPSITEM_FACTION/BIZ/ATM/JOB/SHOP/FASTFOOD/LOC/FARM</code>,
     <code>MAX_GPS_LISTITEMS=200</code>). Dialogul <code>DIALOG_GPS_CATEGORY</code> arată numărul de locații din fiecare categorie.
   </div>
-  <p><code>/gps</code> deschide un dialog cu <strong>5 categorii fixe</strong> — <em>Factions, Businesses, Banks &amp; ATMs,
-  Shops, FastFoods</em> — construite dinamic din facțiunile / business-urile / ATM-urile / shop-urile / locațiile fast-food
-  existente, plus <strong>categorii dinamice</strong> (index 5+, până la <code>GPS_MAX_DYNCATS=16</code>) enumerate din
+  <p><code>/gps</code> deschide un dialog cu <strong>6 categorii fixe</strong> — <em>Factions (0), Businesses (1),
+  Banks &amp; ATMs (2), Shops (3), FastFoods (4), Farms (5)</em> — construite dinamic din datele existente,
+  plus <strong>categorii dinamice</strong> (index <strong>6+</strong>, până la <code>GPS_MAX_DYNCATS=16</code>) enumerate din
   <code>locations_admin</code>: fiecare rând cu <code>locForGPS=1</code> și <code>locCategory</code> nevidă devine o categorie
   proprie (<code>GPS_GetDynCategories</code>). Selectarea unei locații setează un checkpoint (size 5.0) și îți afișează
   distanța în metri.</p>
+
+  <div class="note">
+    <strong>Numele afișate includ id-ul:</strong> <code>&lt;nume&gt; #id</code> la Businesses (<code>bID</code>) și
+    FastFoods (<code>ffID</code>), <code>Shop #id</code>, <code>Farm #id</code>, <code>ATM #id</code>.
+  </div>
+  <div class="note">
+    <strong>Encodarea <code>ref</code> pentru FastFoods</strong> (3 tipuri într-o singură categorie):
+    <code>ref &lt; MAX_FOOD_LOCATIONS</code> = pizza · <code>MAX..2×MAX-1</code> = burger ·
+    <code>&gt;= 2×MAX</code> = Cluckin Bell. Când adaugi categorii fixe, actualizează și handler-ul
+    <code>DIALOG_GPS_CATEGORY</code> (pragul <code>listitem &lt; 6</code> și offset-ul <code>listitem - 6</code>).
+  </div>
   <div class="note">
     <strong>locations_admin</strong> (locID/locName/locX/Y/Z + <code>interiorID</code>, <code>vwID</code>,
     <code>locForGPS</code>, <code>locCategory</code>, <code>locDescr</code>) servește dublu: <code>/gotoloc</code> (admin lvl 2)
@@ -891,10 +912,181 @@ RP    += 1</pre>
     <tr><td>3 · Fertilize</td><td>îngrășământ</td><td>Tractor (531)</td><td>1</td></tr>
     <tr><td>4 · Harvest</td><td>recoltat</td><td>Combină (532)</td><td>4</td></tr>
   </table>
-  <p><code>/farm [status/plow/level/seed/fertilize/harvest/buy/sell]</code>. O etapă/zi via <code>fmLastWork</code> (aliniat
-  la zi). Proprietarul cumpără utilaje pe teren cu <code>/farm buy [tractor/dozer/combina]</code> (prețuri
-  $10.000 / $15.000 / $20.000, din <code>payday_setup</code>), stocate în <code>g_FarmVehId[MAX_FARM_VEHICLES=100]</code>.
-  Admin: <code>/fcreate</code>-style prin comenzile de setare (poziție/rază/preț/owner) care fac <code>UPDATE farms</code>.</p>
+  <p><code>/farm [stats/plow/level/seed/fertilize/harvest/buy/sell/deposit/withdraw/deliver/rent]</code>.
+  O etapă/zi via <code>fmLastWork</code> (aliniat la zi).</p>
+
+  <div class="note">
+    <strong>/farm stats</strong> merge <strong>de oriunde</strong>: dacă ești pe un teren arată terenul respectiv,
+    altfel arată ferma ta (<code>pFarmKey</code> → <code>Farm_IndexByID</code>). Afișează și utilajele deținute.
+    Restul acțiunilor cer să fii pe teren.
+  </div>
+
+  <p><strong>Utilajele NU sunt persistente ca vehicule.</strong> În tabelul <code>farms</code> se stochează doar
+  <em>numărul</em> per tip (<code>tractors</code>, <code>dozers</code>, <code>combines</code>, <code>trucks</code>,
+  <code>trailers</code>); vehiculul se creează temporar la acțiune și se distruge la final / la coborâre
+  (<code>Farm_OwnedCount</code> / <code>Farm_OwnedAdd</code>).</p>
+
+  <p><code>/farm buy|sell [tractor/dozer/combina/truck/trailer]</code> — <strong>tipul e obligatoriu</strong>
+  (<code>Farm_ModelFromType</code> respinge string gol). Banii ies din / intră în <strong>contul fermei</strong>
+  (<code>fmBank</code>), nu din cash. Prețuri: Tractor $10.000, Dozer $15.000, Combină $20.000 (din
+  <code>payday_setup</code>), Truck $12.500, Trailer $10.000. La vânzare se recuperează 75%.</p>
+
+  <p><strong>Proprietate:</strong> <code>fmOwnerId</code> (id-ul din <code>players</code>) e sursa de adevăr —
+  <code>Farm_IsOwner</code> și <code>Farm_SyncPlayerKey</code> compară pe <strong>id</strong>, nu pe nume.
+  <code>fmOwnerName</code> e doar pentru afișare. <code>pFarmKey</code> nu e o coloană în <code>players</code>: se
+  recalculează la login din <code>farms.owner_id</code>.</p>
+
+  <p>Admin: <code>/farmc [loc/range/price/isOwned]</code> (nivel 5), <code>/farmlist</code> (nivel 2, dialog + teleport).</p>
+</section>
+
+<section id="skins">
+  <h2>Skinuri &amp; Uniforme</h2>
+  <p>Skin persistent per jucător: <code>pSkin</code> → coloana <code>players.skin</code> (default
+  <code>SKIN_DEFAULT = 7</code>). Aplicat la fiecare spawn în <code>OnPlayerSpawn</code>.</p>
+
+  <h3>Skinuri deținute (wardrobe)</h3>
+  <p>Tabel nou <code>player_skins(id, player_id, skin_id)</code> cu <code>UNIQUE(player_id, skin_id)</code>.
+  La login se încarcă asincron (<code>OnPlayerSkinsLoaded</code>) într-un <strong>bitset</strong> în memorie:
+  <code>g_SkinOwned[MAX_PLAYERS][SKIN_CELLS=10]</code> (320 biți → skinuri 0-311), cu macro-urile
+  <code>Skin_Owns()</code> / <code>Skin_SetOwn()</code> pentru verificare O(1).</p>
+  <div class="note">
+    La încărcare se garantează că jucătorul <strong>deține skin-ul pe care îl poartă</strong> — dacă lipsea din
+    <code>player_skins</code>, se face <code>INSERT IGNORE</code>. Astfel wardrobe-ul nu e niciodată gol.
+  </div>
+
+  <h3>Magazin de haine</h3>
+  <table>
+    <tr><th>Element</th><th>Valoare</th></tr>
+    <tr><td>Locații</td><td><code>g_ClothStore[][3]</code> — pickup <code>19133</code> + map icon dinamic <code>45</code> (Clothes)</td></tr>
+    <tr><td>Rază</td><td><code>SKIN_STORE_RANGE = 3.0</code> (<code>Skin_AtStore</code>)</td></tr>
+    <tr><td>Preț</td><td><code>SKIN_PRICE = $10.000</code> per outfit</td></tr>
+    <tr><td>Catalog</td><td><code>g_SkinShop[][E_SKINCAT]</code> (~30 skinuri valide, id + nume)</td></tr>
+    <tr><td>Dialoguri</td><td><code>DIALOG_SKINSHOP = 9030</code>, <code>DIALOG_WARDROBE = 9031</code></td></tr>
+  </table>
+  <p><code>/skins</code> — catalog (cumpără + îmbracă). <code>/wardrobe</code> — comută gratis între skinurile deținute
+  (<code>g_WardrobeSkin[][SKIN_MAX_WARDROBE=80]</code> mapează listitem → skin id). Ambele cer să fii la magazin.</p>
+
+  <h3>Uniforme de facțiune (3 pe rank)</h3>
+  <p>Coloane <code>factions.skin1 / skin2 / skin3</code> → <code>fSkin1/2/3</code>. Selecția se face cu
+  <code>Faction_SkinForRank(fid, rank)</code>:</p>
+  <table>
+    <tr><th>Rank</th><th>Skin</th></tr>
+    <tr><td>1 - 2</td><td><code>fSkin1</code></td></tr>
+    <tr><td>3 - 4</td><td><code>fSkin2</code></td></tr>
+    <tr><td>5</td><td><code>fSkin3</code></td></tr>
+  </table>
+  <p>La spawn: dacă <code>pSpawn == 2</code> (spawn de facțiune) și există uniformă pentru rank → o poartă;
+  altfel poartă <code>pSkin</code>. <code>/changeskin</code> comută între uniformă și haine civile, dar
+  <strong>doar în interiorul HQ-ului</strong> (verifică interior + virtual world + rază 40m față de
+  <code>fInteriorX/Y/Z</code>).</p>
+
+  <table>
+    <tr><th>Facțiune</th><th>rank 1/2</th><th>rank 3/4</th><th>rank 5</th></tr>
+    <tr><td>1 · Poliția Română</td><td>266</td><td>281</td><td>265</td></tr>
+    <tr><td>2 · R.A.R.</td><td>268</td><td>304</td><td>302</td></tr>
+    <tr><td>3 · SMURD</td><td>276</td><td>277</td><td>274</td></tr>
+    <tr><td>4 · Mafia Europeană</td><td>114</td><td>115</td><td>116</td></tr>
+    <tr><td>5 · Mafia Americană</td><td>102</td><td>103</td><td>104</td></tr>
+    <tr><td>6 · Mafia Africană</td><td>105</td><td>106</td><td>107</td></tr>
+    <tr><td>7 · Mafia Asiatică</td><td>108</td><td>109</td><td>110</td></tr>
+    <tr><td>8 · News Reporters</td><td>273</td><td>48</td><td>46</td></tr>
+  </table>
+  <div class="note warn">
+    <strong>Skin 273</strong> (facțiunea 8, rank 1/2) este în lista de skinuri <strong>invalide</strong> SA-MP —
+    poate să nu se încarce sau să crape clientul. De înlocuit cu un skin valid.
+  </div>
+  <div class="note">
+    Admin: <code>/setskin [playerid] [skinid]</code> (nivel 1 — setează și dăruiește skin-ul),
+    <code>/setfactionskin [fid] [s1] [s2] [s3]</code> (nivel 5, <code>0</code> = fără uniformă).
+  </div>
+</section>
+
+<section id="robbery">
+  <h2>Jaf (/rob)</h2>
+  <p>Jefuiești un <strong>shop sau fast-food</strong> cu o echipă, apoi <strong>livrezi banii la 2 business-uri
+  aleatorii</strong>. Poliția e alertată.</p>
+
+  <h3>Rob points</h3>
+  <p><code>pRobPoints</code> → coloana <code>players.rob_points</code> (default <code>ROB_POINTS_MAX = 10</code>).
+  <strong>+1 la fiecare payday</strong> (plafonat la 10). Un jaf costă <code>ROB_COST = 10</code> — deci practic
+  un jaf la ~10 payday-uri. Afișat în <code>/stats</code> la linia <code>[Crime]</code>.</p>
+
+  <h3>Flux</h3>
+  <table>
+    <tr><th>Pas</th><th>Detalii</th></tr>
+    <tr><td>1 · Condiții</td><td>Logat, <strong>șofer</strong> (<code>PLAYER_STATE_DRIVER</code>), <code>10/10</code> rob points, lângă un shop/fast-food (<code>Rob_NearTarget</code>, rază <code>ROB_RANGE = 8.0</code>)</td></tr>
+    <tr><td>2 · Echipa</td><td>Toți jucătorii logați din aceeași mașină (<code>ROB_MAX_CREW = 6</code>). Fiecare pierde 10 rob points și primește <strong>wanted 6</strong>. <code>g_RobLeaderOf[]</code> = mapare inversă player → lider.</td></tr>
+    <tr><td>3 · Alertă</td><td>Toți membrii <strong>facțiunii 1</strong> online primesc numele liderului + ținta jefuită</td></tr>
+    <tr><td>4 · Livrare</td><td><code>Rob_PickTwoBusinesses</code> alege 2 business-uri distincte cu locație setată. Checkpoint (<code>ROB_CP_SIZE = 9.0</code>) la primul → la atingere, al doilea.</td></tr>
+    <tr><td>5 · Plată</td><td>La al 2-lea business: <code>Rob_Payout</code>. Wanted scade <strong>6 → 5</strong>.</td></tr>
+  </table>
+
+  <h3>Premiu (per om)</h3>
+  <p><code>ROB_PAY_BASE ($12.000) + ROB_PAY_PERCREW ($2.000) × nr. participanți + random(ROB_PAY_RAND = $5.000)</code>
+  — deci o echipă mai mare înseamnă mai mulți bani <em>pentru fiecare</em>.</p>
+
+  <div class="note warn">
+    <strong>Cine moare sau se deconectează nu primește bani.</strong> La deces (<code>OnPlayerDeath</code>) jucătorul
+    e scos din mapare (<code>g_RobLeaderOf = INVALID</code>) și primește un mesaj; jaful continuă pentru ceilalți.
+    La plată se verifică: încă mapat la acest jaf <strong>și</strong> conectat <strong>și</strong> logat.
+  </div>
+  <div class="note">
+    Dacă <strong>liderul</strong> se deconectează, jaful se anulează pentru toată echipa (<code>Rob_Cancel</code>).
+    Handler-ul de checkpoint e <code>Rob_HandleCheckpoint</code> — funcție separată (forward-declarată) pentru că
+    <code>OnPlayerEnterCheckpoint</code> apare în cod înaintea declarării <code>BusinessData</code>.
+  </div>
+</section>
+
+<section id="marketplace">
+  <h2>Marketplace (proprietăți între jucători)</h2>
+  <p>Casele, business-urile, vehiculele și fermele pot fi puse la vânzare de proprietar și cumpărate de alt jucător,
+  <strong>chiar dacă proprietarul e online</strong>.</p>
+
+  <h3>Model de date</h3>
+  <table>
+    <tr><th>Proprietate</th><th>ownerId</th><th>isForSale</th><th>Preț de listare</th></tr>
+    <tr><td>Casă</td><td><code>houses.owner_id</code> → <code>hOwnerId</code></td><td><code>houses.is_for_sale</code> → <code>hForSale</code></td><td><code>hPrice</code></td></tr>
+    <tr><td>Business</td><td><code>businesses.owner_id</code> → <code>bOwnerId</code></td><td><code>businesses.is_for_sale</code> → <code>bForSale</code></td><td><code>bPrice</code></td></tr>
+    <tr><td>Vehicul</td><td><code>vehicles_personal.owner_id</code> → <code>pvOwnerId</code></td><td><code>vehicles_personal.is_for_sale</code> → <code>pvForSale</code></td><td><code>pvPrice</code></td></tr>
+    <tr><td>Fermă</td><td><code>farms.owner_id</code> → <code>fmOwnerId</code></td><td><code>farms.is_for_sale</code> → <code>fmForSale</code></td><td><code>fmPrice</code></td></tr>
+  </table>
+  <div class="note">
+    Câmpurile de nume au fost redenumite pentru claritate: <code>hOwner→hOwnerName</code>, <code>bOwner→bOwnerName</code>,
+    <code>fmOwner→fmOwnerName</code>. <strong>Toate verificările de proprietate folosesc acum <code>ownerId</code></strong>,
+    nu numele. Vehiculele nu au câmp de nume (doar <code>pvOwnerId</code>).
+  </div>
+
+  <h3>Comenzi</h3>
+  <table>
+    <tr><th>Comandă</th><th>Efect</th></tr>
+    <tr><td><code>/sellhouse [price]</code></td><td>Listează casa la preț (<code>0</code> = anulează listarea)</td></tr>
+    <tr><td><code>/sellbusiness [price]</code></td><td>Listează business-ul (trebuie să fii lângă el)</td></tr>
+    <tr><td><code>/sellveh [price]</code></td><td>Listează vehiculul în care ești</td></tr>
+    <tr><td><code>/sellfarm [price]</code></td><td>Listează ferma deținută</td></tr>
+    <tr><td><code>/buyhouse</code> / <code>/buybiz</code> / <code>/buyfarm</code> / <code>/vbuy</code></td><td>Cumpără — funcționează atât de la server (nedeținut) cât și de la alt jucător (listat)</td></tr>
+    <tr><td><code>/sellhousetostate</code>, <code>/sellfarmtostate</code>, <code>/sellbiztostate</code>, <code>/sellvehtostate</code></td><td>Vânzare instant la stat: <strong>60%</strong> din valoare, în <strong>cash</strong></td></tr>
+  </table>
+  <div class="note warn">
+    Vechile <code>/sellbiz</code> și <code>/vsell</code> au fost <strong>eliminate</strong> — înlocuite de
+    <code>/sellbiztostate</code> / <code>/sellvehtostate</code>.
+  </div>
+
+  <h3>Decontarea vânzătorului</h3>
+  <p><code>Prop_SettleSeller(sellerId, price, col, memField, label)</code> și
+  <code>Prop_SettleSellerVehicle(sellerId, price, vehDbId)</code>:</p>
+  <ul>
+    <li><strong>Banii merg în bancă</strong> (nu în cash), ca să funcționeze și offline.</li>
+    <li>Dacă vânzătorul e <strong>online</strong>: se actualizează memoria (<code>pBank</code>, <code>pHouse</code>/<code>pBusiness</code>/<code>pFarmKey</code> sau slotul de cheie) + DB, și primește un mesaj.</li>
+    <li>Dacă e <strong>offline</strong>: <code>UPDATE players SET bank=bank+X, &lt;col&gt;=0</code> direct în DB.</li>
+    <li>Ferma trece <code>col = ""</code> (nu e coloană în <code>players</code>; <code>pFarmKey</code> se recalculează la login).</li>
+    <li>Vehiculul: slotul de cheie (<code>key1/key2/key3</code>) se eliberează cu <code>IF(keyN=vehid,0,keyN)</code>.</li>
+  </ul>
+  <div class="note">
+    Prețul de listare <strong>suprascrie prețul de bază</strong> al proprietății (nu există coloană separată de
+    <code>sale_price</code>) — efect secundar: taxa de la payday scalează cu el.
+    Contul proprietății (<code>bBank</code> / <code>fmBank</code>) <strong>trece la cumpărător</strong> —
+    vânzătorul ar trebui să retragă înainte de listare.
+  </div>
 </section>
 
 <section id="reports">
@@ -914,9 +1106,9 @@ reply VARCHAR(160), replyDelivered INT</pre>
 
 <section id="database">
   <h2>Schema bazei de date</h2>
-  <p class="lead" style="margin-top:-8px">21 tabele create în <code>DB_CreateTables()</code>: players, bans, rulote_personale, factions, payday_setup,
+  <p class="lead" style="margin-top:-8px">22 tabele create în <code>DB_CreateTables()</code>: players, bans, rulote_personale, factions, payday_setup,
   houses, animals, businesses, vehicles_faction, vehicles_personal, president_votes, turfs, atms, reports, farms, shops, fastfood, locations_admin, locations_gps,
-  basket_hoops, basket_spawns.</p>
+  basket_hoops, basket_spawns, <strong>player_skins</strong>.</p>
   <div class="note"><strong>Refactorizare <code>DB_CreateTables()</code>:</strong> toate coloanele sunt acum direct în <code>CREATE TABLE IF NOT EXISTS</code> — s-au eliminat toate <code>ALTER TABLE ADD COLUMN</code>-urile de migrare și toate <code>INSERT</code>-urile de seed (facțiuni, payday, shops, locations, basket). Apelul funcției din startup e <strong>momentan comentat</strong> (DB-ul e deja configurat); pentru un DB nou, decomentează-l.</div>
   <div class="note"><strong>factions</strong> conține acum 8 rânduri (id 8 = News Reporters, interior 5 / VW 8). Seed-urile fiind eliminate din cod, rândurile trebuie să existe deja în DB.</div>
 
@@ -924,16 +1116,26 @@ reply VARCHAR(160), replyDelivered INT</pre>
   <pre>id (PK AI), username VARCHAR(24) UNIQUE, password VARCHAR(64), email VARCHAR(64) DEFAULT '',
 level INT DEFAULT 1, money INT DEFAULT 0, bank INT DEFAULT 0, rp INT DEFAULT 0,
 admin_level INT DEFAULT 0, faction INT DEFAULT 0, faction_rank INT DEFAULT 1,
-faction_join DATE DEFAULT NULL, house INT DEFAULT 999, business INT DEFAULT 999,
+faction_join DATE DEFAULT NULL, house INT DEFAULT 0, business INT DEFAULT 0,
 spawn_type INT DEFAULT 1, key1/key2/key3 INT DEFAULT 0,
-driving_lic_a/b/c/d_exp DATE DEFAULT NULL,
+driving_lic_a/b/c/d_exp DATE DEFAULT NULL, airplane_lic_a/h_exp DATE DEFAULT NULL,
 diseased TINYINT DEFAULT 0, disease_paydays INT DEFAULT 0,
 caravan_key INT DEFAULT 0, job INT DEFAULT 0,
 is_president TINYINT DEFAULT 0, voted TINYINT DEFAULT 0, was_president TINYINT DEFAULT 0,
-phone_model INT DEFAULT -1, phone_number INT DEFAULT 0
--- ultimele coloane (is_president/voted/was_president/job/phone_*) adaugate si prin ALTER TABLE ... ADD COLUMN
--- de migrare, pentru DB-uri existente
+phone_model INT DEFAULT -1, phone_number INT DEFAULT 0,
+medkits INT DEFAULT 0, extinguishers INT DEFAULT 0, mute_expire INT DEFAULT 0,
+wanted_level INT DEFAULT 0, jail_seconds INT DEFAULT 0,
+rob_points INT DEFAULT 10, skin INT DEFAULT 7
+-- house/business: 0 = niciuna (standardizat; anterior 999)
+-- rob_points: 0-10, +1 la fiecare payday, -10 la /rob (vezi sectiunea Jaf)
+-- skin: skin-ul purtat (0-311), default 7 (vezi sectiunea Skinuri)
 -- phone_model: index marca (0-4), -1 = fara telefon; phone_number: 7 cifre, 0 = fara SIM (vezi sectiunea Telefonie)</pre>
+
+  <h4>player_skins <span style="color:var(--muted); font-weight:400; font-size:0.8em">(skinurile deținute — wardrobe)</span></h4>
+  <pre>id INT PK AI, player_id INT NOT NULL, skin_id INT NOT NULL,
+UNIQUE KEY uniq_player_skin (player_id, skin_id)
+-- incarcat la login intr-un bitset in memorie (g_SkinOwned); UNIQUE previne dublurile
+-- la login se garanteaza ca jucatorul detine skin-ul purtat (INSERT IGNORE daca lipsea)</pre>
 
   <h4>president_votes <span style="color:var(--muted); font-weight:400; font-size:0.8em">(golită Duminică 06:00)</span></h4>
   <pre>vID INT PK AI, vVotant VARCHAR(24) DEFAULT '', vVotantId INT DEFAULT 0,
@@ -945,9 +1147,11 @@ vVotatPe VARCHAR(24) DEFAULT '', vVotatPeId INT DEFAULT 0
 bank BIGINT DEFAULT 0, pickup_id INT DEFAULT -1, mapicon_id INT DEFAULT -1,
 hq_x/hq_y/hq_z FLOAT DEFAULT 0.0,
 interior_x/interior_y/interior_z FLOAT DEFAULT 0.0, interior INT DEFAULT 0, vw INT DEFAULT 0,
-seif_herbs INT DEFAULT 0, seif_drugs INT DEFAULT 0
--- interior_*/interior/vw + seif_herbs/seif_drugs adaugate si prin ALTER TABLE de migrare
--- seif_herbs/seif_drugs = stocul de droguri al mafiei (vezi sectiunea Droguri &amp; Seif)</pre>
+seif_herbs INT DEFAULT 0, seif_drugs INT DEFAULT 0,
+skin1 INT DEFAULT 0, skin2 INT DEFAULT 0, skin3 INT DEFAULT 0
+-- seif_herbs/seif_drugs = stocul de droguri al mafiei (vezi sectiunea Droguri &amp; Seif)
+-- skin1/skin2/skin3 = uniformele pe rank: 1-2 / 3-4 / 5 (0 = fara). Vezi sectiunea Skinuri.
+-- IMPORTANT: SELECT-ul din Factions_Load trebuie sa includa skin1/skin2/skin3, altfel raman 0 in memorie</pre>
 
   <h4>payday_setup</h4>
   <pre>id INT PK DEFAULT 1, min_salary INT DEFAULT 5000, tax INT DEFAULT 10, cass INT DEFAULT 10,
@@ -955,16 +1159,23 @@ bank_interest FLOAT DEFAULT 0.25, insurance_price INT DEFAULT 500, medkit_price 
 extinguisher_price INT DEFAULT 500, itp_price INT DEFAULT 750, plate_price INT DEFAULT 250,
 rent_bike_price INT DEFAULT 15,
 exam_a/b/c/d_price INT DEFAULT 200/300/500/400,
-pizza_price INT DEFAULT 50, burger_price INT DEFAULT 55</pre>
+exam_p_price INT DEFAULT 1000, exam_h_price INT DEFAULT 1000,
+pizza_price INT DEFAULT 50, burger_price INT DEFAULT 55, meal_price INT DEFAULT 60,
+farm_tractor_price INT DEFAULT 10000, farm_dozer_price INT DEFAULT 15000,
+farm_combine_price INT DEFAULT 20000
+-- meal_price = Cluckin Bell (/meal); exam_p/h = examene avion/elicopter</pre>
 
   <h4>houses</h4>
   <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Casa', owner VARCHAR(24) DEFAULT '', owner_id INT DEFAULT 0,
-owned TINYINT DEFAULT 0, price INT DEFAULT 50000, loc_x/y/z FLOAT DEFAULT 0.0,
+owned TINYINT DEFAULT 0, is_for_sale TINYINT DEFAULT 0, price INT DEFAULT 50000, loc_x/y/z FLOAT DEFAULT 0.0,
 type INT DEFAULT 1, max_pets INT DEFAULT 0, pets INT DEFAULT 0,
 has_fridge INT DEFAULT 0,
-fridge_milk/fridge_banana/fridge_water/fridge_juice/fridge_beer INT DEFAULT 0
+fridge_milk/fridge_banana/fridge_water/fridge_juice/fridge_beer INT DEFAULT 0,
+bank INT DEFAULT 0
 -- type: 1=casa, 2=apartament, 3=other; max_pets &gt; 0 = casa cu curte (permite /buyanimal)
--- has_fridge + fridge_* = sistemul de frigider (vezi sectiunea Case &amp; Business-uri)</pre>
+-- has_fridge + fridge_* = sistemul de frigider (vezi sectiunea Case &amp; Business-uri)
+-- owner = doar afisare (hOwnerName); owner_id e sursa de adevar la verificari
+-- is_for_sale = pusa la vanzare de proprietar (vezi sectiunea Marketplace); bank = contul casei</pre>
 
   <h4>animals</h4>
   <pre>aID INT PK AI, aType INT DEFAULT 0, aPlayerID INT DEFAULT 0, aHouseID INT DEFAULT 0,
@@ -973,7 +1184,10 @@ aName VARCHAR(32) NOT NULL DEFAULT 'Animal'
 
   <h4>businesses</h4>
   <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Business', owned TINYINT DEFAULT 0, owner VARCHAR(24) DEFAULT '',
-owner_id INT DEFAULT 0, price INT DEFAULT 50000, bank INT DEFAULT 0, loc_x/y/z FLOAT DEFAULT 0.0</pre>
+owner_id INT DEFAULT 0, is_for_sale TINYINT DEFAULT 0, price INT DEFAULT 50000, bank INT DEFAULT 0,
+loc_x/y/z FLOAT DEFAULT 0.0
+-- owner = doar afisare (bOwnerName); owner_id e sursa de adevar la verificari
+-- is_for_sale = pus la vanzare de proprietar (vezi sectiunea Marketplace)</pre>
 
   <h4>vehicles_faction</h4>
   <pre>id INT PK AI, faction_id INT NOT NULL, model_id INT NOT NULL, loc_x/y/z FLOAT DEFAULT 0.0,
@@ -983,7 +1197,11 @@ rotation FLOAT DEFAULT 0.0, color1/color2 INT DEFAULT 1</pre>
   <pre>id INT PK AI, owner_id INT DEFAULT 0, model_id INT NOT NULL, color1/color2 INT DEFAULT 1,
 plate VARCHAR(16) UNIQUE DEFAULT NULL, price INT DEFAULT 0, loc_x/y/z FLOAT DEFAULT 0.0,
 rotation FLOAT DEFAULT 0.0, insurance_exp/medkit_exp/extinguisher_exp/itp_exp DATE DEFAULT NULL,
-locked TINYINT DEFAULT 0</pre>
+locked TINYINT DEFAULT 0, first_registration DATE DEFAULT NULL, from_biz INT DEFAULT 0,
+fuel FLOAT DEFAULT 100.0, is_confiscated TINYINT DEFAULT 0, is_for_sale TINYINT DEFAULT 0
+-- owner_id: 0 = liber (showroom). Nu exista camp de nume pentru proprietar.
+-- is_confiscated = tractat de R.A.R. (motorul nu porneste pana la /redeemcar)
+-- is_for_sale = pus la vanzare de proprietar; alt player il cumpara cu /vbuy (vezi Marketplace)</pre>
 
   <h4>turfs</h4>
   <pre>id INT PK AI, faction_id INT DEFAULT 0, name VARCHAR(32) NOT NULL DEFAULT '',
@@ -999,9 +1217,30 @@ atmBankOwner INT DEFAULT 0
   <h4>fastfood</h4>
   <pre>ffID INT PK AI, ffName VARCHAR(32) NOT NULL DEFAULT '', ffType INT DEFAULT 1,
 ffLocX/ffLocY/ffLocZ FLOAT DEFAULT 0.0
--- ffType: 1 = pizza, 2 = burger. Locatiile /pizza si /burger se incarca de aici la pornire
--- (FastFood_Load -> OnFastFoodLoaded), max MAX_FOOD_LOCATIONS (5) per tip.
--- Administrat live cu /ffcreate (lvl 6) si /ffc &lt;ffID&gt; loc|name|type (lvl 5).</pre>
+-- ffType: 1 = pizza (/pizza), 2 = burger (/burger), 3 = Cluckin Bell (/meal)
+-- Locatiile se incarca de aici la pornire (FastFood_Load -> OnFastFoodLoaded),
+-- max MAX_FOOD_LOCATIONS (20) per tip.
+-- Administrat live cu /ffcreate [1|2|3] [name] (lvl 6) si /ffc loc|name|type &lt;ffID&gt; (lvl 5).</pre>
+
+  <div class="note">
+    <strong>Cluckin Bell (tip 3):</strong> <code>MEAL_HEAL_AMOUNT = 22 hp</code>, preț din
+    <code>payday_setup.meal_price</code>, venitul merge la business-ul <code>MEAL_BIZ_ID = 14</code>.
+    Spre deosebire de pizza/burger (care folosesc <code>SetPlayerMapIcon</code> pe sloturi fixe 90-99, deja
+    epuizate), Cluckin folosește <strong>map icon dinamic</strong> (streamer, icon 14) — nelimitat.
+  </div>
+
+  <h4>farms</h4>
+  <pre>id INT PK AI, x/y/z FLOAT DEFAULT 0.0, range FLOAT DEFAULT 0.0,
+tractors/combines/dozers/trucks/trailers INT DEFAULT 0,
+nextStep VARCHAR(16) NOT NULL DEFAULT 'Plow', lastWorkingDate DATE DEFAULT NULL,
+isPlowed/isLeveled/isSeeded/isFertilized/isReadyToHarvest TINYINT(1) DEFAULT 0,
+owner VARCHAR(24) NOT NULL DEFAULT '', owner_id INT DEFAULT 0,
+isOwned TINYINT(1) DEFAULT 0, is_for_sale TINYINT(1) DEFAULT 0,
+price INT DEFAULT 100000, farmBank INT DEFAULT 0, farmRecolta INT DEFAULT 0
+-- terenul e o zona centru (x,y,z) + range
+-- tractors/dozers/... = NUMARUL de utilaje detinute (nu vehicule persistente)
+-- owner = doar afisare (fmOwnerName); owner_id e sursa de adevar (Farm_IsOwner / Farm_SyncPlayerKey)
+-- farmBank = contul fermei (utilajele se cumpara de aici); farmRecolta = recolta nevanduta (/farm deliver)</pre>
 
   <h4>locations_admin <span style="color:var(--muted); font-weight:400; font-size:0.8em">(redenumit din locations)</span></h4>
   <pre>locID INT PK AI, locName VARCHAR(32) NOT NULL DEFAULT '', locX/Y/Z FLOAT DEFAULT 0.0,
@@ -1063,12 +1302,12 @@ rTimeRecord FLOAT DEFAULT 999 (secunde), rPlayerName VARCHAR(24)
   <h2>Comenzi admin (complet, după nivel)</h2>
   <table>
     <tr><th>Nivel</th><th>Comenzi</th></tr>
-    <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code>, <code>/reports</code> — dialog cu reporturile deschise, <code>/reportreply [repID] [text]</code> — răspunde la un report (vezi secțiunea Reporturi)</td></tr>
-    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code>, <code>/event race [lap1/lap2/lap3] [vehicle/random]</code>, <code>/event start</code>, <code>/event stop</code></td></tr>
+    <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/aa [text]</code> — anunț global al adminilor (<code>(( Admin &lt;nume&gt;: text ))</code>), <code>/slap [playerid]</code> — ridică jucătorul la <code>z + 2.0</code>, <code>/setskin [playerid] [skinid]</code> — setează skin-ul (0-311) și îl și dăruiește jucătorului, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code>, <code>/reports</code> — dialog cu reporturile deschise, <code>/reportreply [repID] [text]</code> — răspunde la un report (vezi secțiunea Reporturi)</td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/farmlist</code> — dialog cu toate fermele (click = teleport), <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code>, <code>/event race [lap1/lap2/lap3] [vehicle/random]</code>, <code>/event start</code>, <code>/event stop</code></td></tr>
     <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh [nume sau model id]</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setlic [playerid] [all/A/B/C/D/H/P] [YYYY-MM-DD]</code> (A/B/C/D=auto, P=avion, H=elicopter), <code>/gotoxyz</code>, <code>/forceunlock</code>, <code>/changecar [engine/lights/alarm/doors/hood/boot]</code> — comută o componentă a vehiculului în care ești</td></tr>
     <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie); <code>/adminuninvite [playerid]</code> — scoate un player din facțiune (faction=0, scade fMembers, resetează fLead dacă era lider)</td></tr>
-    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;ffID&gt; &lt;loc|name|type&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger), <code>/fastfoodlist</code> — dialog cu toate locațiile fast-food (click = teleport). <code>/vc price</code> necesită nivel 6.</td></tr>
-    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/fc createveh [faction_id]</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code>, <code>/shopcreate</code>, <code>/shopChangeLoc [id]</code>, <code>/shopDelete [id]</code>, <code>/ffcreate [pizza/burger] [name]</code> — creează o locație fast-food la poziția ta (implicit pizza; max 5 per tip)</td></tr>
+    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;loc|name|type&gt; &lt;ffID&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger/cluckin), <code>/fastfoodlist</code> — dialog cu toate locațiile fast-food (click = teleport), <code>/farmc [loc/range/price/isOwned]</code> — configurează ferme, <code>/setfactionskin [fid] [skin r1/2] [skin r3/4] [skin r5]</code> — uniformele facțiunii (0 = fără). <code>/vc price</code> necesită nivel 6.</td></tr>
+    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/fc createveh [faction_id]</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code>, <code>/shopcreate</code>, <code>/shopChangeLoc [id]</code>, <code>/shopDelete [id]</code>, <code>/ffcreate [1=pizza / 2=burger / 3=cluckin] [name]</code> — creează o locație fast-food la poziția ta. <strong>Tipul e obligatoriu</strong> (nu mai există default); max <code>MAX_FOOD_LOCATIONS = 20</code> per tip</td></tr>
   </table>
   <div class="note">
     <code>/showradars</code> și <code>/removeradar</code> nu cer un nivel fix de admin — sunt accesibile fie cu admin lvl 1+,

@@ -171,6 +171,8 @@
   <a href="#exams">Permise auto</a>
   <a href="#health">Sănătate</a>
   <a href="#food">Mâncare</a>
+  <a href="#skins">Haine &amp; Skinuri</a>
+  <a href="#robbery">Jafuri</a>
   <a href="#golf">Turneu Golf</a>
   <a href="#basketball">Baschet</a>
   <a href="#caravans">Rulote</a>
@@ -212,7 +214,7 @@
   <p class="subtitle">Alege-ți tabăra — ordine publică sau viață de cartier</p>
 
   <div class="faction-row"><span class="dot" style="background:#4488ff"></span><strong>Politia Romana</strong><span style="color:var(--muted); margin-left:auto">Menține ordinea, oprește șoferii periculoși</span></div>
-  <div class="faction-row"><span class="dot" style="background:#003399"></span><strong>Registrul Auto Roman (RAR)</strong><span style="color:var(--muted); margin-left:auto">Inspecții tehnice, plăcuțe, amenzi auto</span></div>
+  <div class="faction-row"><span class="dot" style="background:#36d1c2"></span><strong>Registrul Auto Roman (RAR)</strong><span style="color:var(--muted); margin-left:auto">Inspecții tehnice, plăcuțe, amenzi auto</span></div>
   <div class="faction-row"><span class="dot" style="background:#ff5500"></span><strong>SMURD</strong><span style="color:var(--muted); margin-left:auto">Salvează vieți, vindecă răniții și bolnavii</span></div>
   <div class="faction-row"><span class="dot" style="background:#3366cc"></span><strong>Mafia Europeana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
   <div class="faction-row"><span class="dot" style="background:#aa44aa"></span><strong>Mafia Americana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
@@ -371,10 +373,13 @@
     <strong>Level</strong> (îndreptat, dozer) → <strong>Seed</strong> (semănat, tractor) →
     <strong>Fertilize</strong> (îngrășământ, tractor) → <strong>Harvest</strong> (recoltat, combină). Când termini ciclul,
     recolta îți aduce <strong>$15.000</strong>, apoi terenul se resetează.</p>
-    <p><code>/farm status</code> îți arată etapa curentă și dacă mai poți lucra azi;
-    <code>/farm plow/level/seed/fertilize/harvest</code> pornesc etapa. Terenurile pot fi
-    <strong>cumpărate</strong> (<code>/farm buy/sell</code>), iar pe terenul tău îți poți cumpăra propriile utilaje
-    (tractor / dozer / combină).</p>
+    <p><code>/farm stats</code> îți arată etapa curentă, dacă mai poți lucra azi și utilajele deținute — merge
+    <strong>de oriunde</strong> (pe teren arată terenul respectiv, altfel ferma ta).
+    <code>/farm plow/level/seed/fertilize/harvest</code> pornesc etapa.</p>
+    <p>Cumperi un teren cu <code>/buyfarm</code>. Pe terenul tău îți cumperi utilaje cu
+    <code>/farm buy [tractor/dozer/combina/truck/trailer]</code> — banii ies din <strong>contul fermei</strong>
+    (<code>/farm deposit</code> / <code>/farm withdraw</code>), nu din cash. Recolta o vinzi cu
+    <code>/farm deliver</code>.</p>
   </div>
 </section>
 
@@ -437,8 +442,8 @@
   <div class="grid-2">
     <div class="card">
       <h4 style="margin-top:0">🏠 Case</h4>
-      <p><code>/buyhouse</code> lângă o casă liberă o cumperi pe loc. Poți deține o singură casă, dar o poți revinde oricând
-      cu <code>/sellhouse</code> la prețul integral.</p>
+      <p><code>/buyhouse</code> lângă o casă de vânzare o cumperi pe loc — fie e liberă (de la stat), fie e pusă la vânzare
+      de alt jucător. Poți deține o singură casă. <code>/findhouse [id]</code> îți pune un checkpoint pe hartă spre orice casă.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🐾 Animale la casă</h4>
@@ -459,6 +464,30 @@
       bancă (<code>/bbank</code>, <code>/bwithdraw</code>), alimentată automat de serviciile orașului (școli de șoferi,
       închirieri, etc.) care funcționează prin ea.</p>
     </div>
+  </div>
+
+  <h3>🏷️ Vinde-ți proprietatea altor jucători</h3>
+  <p>Casele, afacerile, vehiculele și fermele pot fi <strong>puse la vânzare</strong> la prețul tău. Alt jucător
+  o cumpără cu comanda normală de cumpărare, iar <strong>banii îți intră în bancă</strong> — chiar dacă ești offline
+  în acel moment.</p>
+  <table>
+    <tr><th>Ce vinzi</th><th>Pui la vânzare</th><th>Cumpărătorul folosește</th></tr>
+    <tr><td>Casă</td><td><code>/sellhouse [preț]</code></td><td><code>/buyhouse</code></td></tr>
+    <tr><td>Afacere</td><td><code>/sellbusiness [preț]</code></td><td><code>/buybiz</code></td></tr>
+    <tr><td>Vehicul</td><td><code>/sellveh [preț]</code></td><td><code>/vbuy</code></td></tr>
+    <tr><td>Fermă</td><td><code>/sellfarm [preț]</code></td><td><code>/buyfarm</code></td></tr>
+  </table>
+  <p>Folosește <strong>prețul 0</strong> ca să anulezi listarea. Cât timp e listată, proprietatea o folosești în
+  continuare normal — până o cumpără cineva.</p>
+
+  <div class="note">
+    <strong>Nu vrei să aștepți un cumpărător?</strong> Poți vinde instant <strong>la stat</strong>, pe
+    <strong>60%</strong> din valoare, direct în cash: <code>/sellhousetostate</code>, <code>/sellbiztostate</code>,
+    <code>/sellvehtostate</code>, <code>/sellfarmtostate</code>.
+  </div>
+  <div class="note warn">
+    Contul afacerii / fermei <strong>trece la noul proprietar</strong> odată cu ea — retrage banii
+    (<code>/bwithdraw</code>, <code>/farm withdraw</code>) <strong>înainte</strong> să o vinzi.
   </div>
 </section>
 
@@ -562,19 +591,92 @@
   <div class="grid-2">
     <div class="card">
       <h4 style="margin-top:0">🍕 Pizza</h4>
-      <p><code>/pizza</code>, lângă un punct <strong>[ Buy Food ]</strong> de tip pizza — îți reface <strong>20 HP</strong>
+      <p><code>/pizza</code>, lângă o locație de tip pizza — îți reface <strong>20 HP</strong>
       contra unei sume mici. Plafonat la 100 HP.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🍔 Burger</h4>
-      <p><code>/burger</code>, lângă un punct <strong>[ Buy Food ]</strong> de tip burger — îți reface <strong>25 HP</strong>,
+      <p><code>/burger</code>, lângă o locație de tip burger — îți reface <strong>25 HP</strong>,
       la un preț puțin mai mare decât pizza. Plafonat la 100 HP.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍗 Cluckin Bell</h4>
+      <p><code>/meal</code>, lângă o locație Cluckin Bell — îți reface <strong>22 HP</strong>.
+      Plafonat la 100 HP.</p>
     </div>
   </div>
 
   <div class="note">
-    Ambele comenzi funcționează <strong>doar</strong> dacă ești aproape de locația corectă — punctele de mâncare sunt
-    marcate pe hartă cu propriile lor iconițe, vizibile tot timpul.
+    Toate cele trei comenzi funcționează <strong>doar</strong> dacă ești aproape de locația corectă — punctele de mâncare
+    sunt marcate pe hartă cu propriile lor iconițe, vizibile tot timpul. Eticheta de deasupra fiecărei locații îți arată
+    numele, prețul și cât HP îți reface.
+  </div>
+</section>
+
+<section id="skins">
+  <h2>👕 Haine &amp; Skinuri</h2>
+  <p class="subtitle">Cumpără-ți garderoba și schimbă-ți look-ul oricând</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🛍️ Magazinul de haine</h4>
+      <p>Caută iconița de <strong>haine</strong> pe hartă. Acolo poți folosi:</p>
+      <ul>
+        <li><code>/skins</code> — catalogul de outfituri. Un outfit costă <strong>$10.000</strong>, iar când îl cumperi îl și îmbraci.</li>
+        <li><code>/wardrobe</code> — garderoba ta: comuți <strong>gratis</strong> între outfiturile pe care le deții deja.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">♾️ Sunt ale tale pe veci</h4>
+      <p>Outfiturile cumpărate <strong>rămân ale tale permanent</strong>. Poți schimba între ele oricând, gratuit, la orice
+      magazin de haine. Skin-ul tău se păstrează și după deconectare.</p>
+    </div>
+  </div>
+
+  <h3>🪪 Uniforma de facțiune</h3>
+  <p>Dacă ești într-o facțiune, ai o <strong>uniformă în funcție de rangul tău</strong>:</p>
+  <table>
+    <tr><th>Rang</th><th>Uniformă</th></tr>
+    <tr><td>1 - 2</td><td>Uniforma de bază</td></tr>
+    <tr><td>3 - 4</td><td>Uniforma intermediară</td></tr>
+    <tr><td>5</td><td>Uniforma de lider</td></tr>
+  </table>
+  <p>Când te spawnezi <strong>pe tură</strong> (spawn de facțiune) porți automat uniforma potrivită rangului tău.
+  Când te spawnezi ca civil, porți outfitul tău personal.</p>
+
+  <div class="note">
+    În <strong>interiorul HQ-ului facțiunii</strong> poți folosi <code>/changeskin</code> ca să comuți între uniformă și
+    hainele civile.
+  </div>
+</section>
+
+<section id="robbery">
+  <h2>💰 Jafuri</h2>
+  <p class="subtitle">Sparge un magazin cu echipa ta — dar scapă de poliție înainte să livrezi banii</p>
+
+  <div class="note warn">
+    Ai nevoie de <strong>10/10 rob points</strong> ca să dai un jaf. Primești <strong>+1 rob point la fiecare payday</strong>
+    (maxim 10), iar un jaf te costă <strong>toate cele 10</strong>. Îți vezi punctele în <code>/stats</code>, la linia <strong>[Crime]</strong>.
+  </div>
+
+  <h3>Cum se face</h3>
+  <ol>
+    <li>Adună-ți echipa <strong>într-o mașină</strong> — tu trebuie să fii <strong>șoferul</strong>.</li>
+    <li>Oprește lângă un <strong>shop</strong> sau un <strong>fast-food</strong> și dă <code>/rob</code>.</li>
+    <li>Toți cei din mașină în acel moment devin echipa: fiecare pierde 10 rob points și primește <strong>wanted 6</strong>.</li>
+    <li><strong>Poliția e anunțată imediat</strong> — primesc numele tău și magazinul jefuit.</li>
+    <li>Îți apare un checkpoint la un <strong>business aleatoriu</strong>. Ajungi acolo → apare al <strong>doilea</strong>.
+      Trebuie să ajungi la <strong>amândouă</strong> ca să livrezi banii.</li>
+  </ol>
+
+  <h3>Câștigul</h3>
+  <p>După al doilea business, fiecare membru primește:</p>
+  <p style="text-align:center"><code>$12.000 + $2.000 × (numărul de participanți) + bonus aleatoriu până la $5.000</code></p>
+  <p>Cu cât sunteți mai mulți în mașină, cu atât câștigă <strong>fiecare</strong> mai mult. După livrare, wanted-ul scade de la 6 la <strong>5</strong>.</p>
+
+  <div class="note warn">
+    <strong>Dacă mori sau te deconectezi, nu primești nimic.</strong> Jaful continuă pentru restul echipei, dar tu ieși din
+    împărțeală. Doar cei rămași <strong>în viață și conectați</strong> la momentul livrării sunt plătiți.
   </div>
 </section>
 
@@ -731,10 +833,11 @@
   <div class="grid-2">
     <div class="card">
       <h4 style="margin-top:0">🧭 Navigație GPS</h4>
-      <p><code>/gps</code> îți deschide o listă de categorii (DMV, Facțiuni, Afaceri, Altele, Magazine, Bancă / ATM, Joburi,
-      Fast-food 🍕🍔) — alegi categoria, apoi locația, și primești un punct de control direct pe hartă. Categoriile
-      Facțiuni, Afaceri, Bancă/ATM, Joburi și Fast-food sunt actualizate automat (orice facțiune cu sediu, afacere, ATM
-      sau locație de mâncare existentă apare acolo), iar fiecare locație din listă îți arată și
+      <p><code>/gps</code> îți deschide o listă de categorii (Facțiuni, Afaceri, Bancă / ATM, Magazine,
+      Fast-food 🍕🍔🍗, <strong>Ferme</strong>, plus categorii precum DMV / Joburi / Altele) — alegi categoria, apoi
+      locația, și primești un punct de control direct pe hartă. Categoriile sunt actualizate automat (orice facțiune cu
+      sediu, afacere, ATM, magazin, locație de mâncare sau fermă existentă apare acolo). Fiecare intrare îți arată
+      <strong>numele și id-ul</strong> (ex. <code>Pizza Stack #5</code>, <code>Farm #2</code>) și
       <strong>distanța</strong> până la ea, în metri. <code>/killcp</code> anulează oricând checkpoint-ul activ.</p>
     </div>
     <div class="card">
@@ -881,9 +984,15 @@
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚜 Farming</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
-    <tr><td><code>/farm status</code></td><td>Etapa curentă a terenului pe care ești + dacă mai poți lucra azi</td></tr>
+    <tr><td><code>/farm stats</code></td><td>Etapa curentă, dacă mai poți lucra azi și utilajele deținute (merge de oriunde)</td></tr>
     <tr><td><code>/farm plow/level/seed/fertilize/harvest</code></td><td>Pornești etapa curentă (în utilajul corect, o etapă/zi)</td></tr>
-    <tr><td><code>/farm buy [tractor/dozer/combina]</code> / <code>/farm sell</code></td><td>Cumperi utilaje / vinzi terenul (doar pe terenul propriu)</td></tr>
+    <tr><td><code>/farm buy|sell [tractor/dozer/combina/truck/trailer]</code></td><td>Cumperi / vinzi utilaje din contul fermei (doar pe terenul propriu)</td></tr>
+    <tr><td><code>/farm deposit|withdraw [sumă]</code></td><td>Contul fermei</td></tr>
+    <tr><td><code>/farm deliver</code></td><td>Vinzi recolta strânsă</td></tr>
+    <tr><td><code>/farm rent [utilaj]</code></td><td>Închiriezi un utilaj (25% din preț)</td></tr>
+    <tr><td><code>/farmstats</code></td><td>Informații despre ferma deținută</td></tr>
+    <tr><td><code>/buyfarm</code></td><td>Cumperi terenul pe care stai (de la stat sau de la alt jucător)</td></tr>
+    <tr><td><code>/sellfarm [preț]</code> / <code>/sellfarmtostate</code></td><td>Pui ferma la vânzare / o vinzi la stat (60%)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">⚔️ Războaie de teritoriu <span style="color:var(--muted); font-size:0.8em">(doar mafii)</span></h3>
@@ -908,15 +1017,18 @@
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🏠 Case &amp; Afaceri</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
-    <tr><td><code>/buyhouse</code></td><td>Cumpără casa liberă din apropiere</td></tr>
-    <tr><td><code>/sellhouse</code></td><td>Vinde-ți casa, la preț integral</td></tr>
+    <tr><td><code>/buyhouse</code></td><td>Cumpără casa de vânzare din apropiere (de la stat sau de la alt jucător)</td></tr>
+    <tr><td><code>/sellhouse [preț]</code></td><td>Pune casa la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/sellhousetostate</code></td><td>Vinde casa la stat, instant, 60% din valoare</td></tr>
+    <tr><td><code>/findhouse [id]</code></td><td>Pune un checkpoint pe hartă spre casa cu id-ul dat</td></tr>
     <tr><td><code>/hstats</code></td><td>Statisticile casei tale (nume, ID, preț, tip)</td></tr>
     <tr><td><code>/buyanimal [număr]</code></td><td>Cumperi un animal pentru curtea casei tale (casă cu curte)</td></tr>
     <tr><td><code>/houseupgrade frigde</code></td><td>Cumperi un frigider pentru casă ($10.000)</td></tr>
     <tr><td><code>/frigde buy [item] [qty]</code></td><td>Umpli frigiderul (lapte/banane/apă/suc/bere), doar 15:00–20:00</td></tr>
     <tr><td><code>/frigde use [item]</code></td><td>Consumi 1 bucată → +HP</td></tr>
-    <tr><td><code>/buybiz</code></td><td>Cumpără afacerea liberă din apropiere</td></tr>
-    <tr><td><code>/sellbiz</code></td><td>Vinde o afacere deținută, la 50% din preț</td></tr>
+    <tr><td><code>/buybiz</code></td><td>Cumpără afacerea de vânzare din apropiere (de la stat sau de la alt jucător)</td></tr>
+    <tr><td><code>/sellbusiness [preț]</code></td><td>Pune afacerea la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/sellbiztostate</code></td><td>Vinde afacerea la stat, instant, 60% din valoare</td></tr>
     <tr><td><code>/bbank</code></td><td>Sold bancă afacere, lângă ea</td></tr>
     <tr><td><code>/bwithdraw [sumă]</code></td><td>Retrage bani din banca afacerii tale</td></tr>
   </table>
@@ -924,8 +1036,9 @@
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚗 Vehicule personale</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
-    <tr><td><code>/vbuy</code></td><td>Cumpără vehiculul în care te afli</td></tr>
-    <tr><td><code>/vsell</code></td><td>Vinde-ți vehiculul, la 50% din preț</td></tr>
+    <tr><td><code>/vbuy</code></td><td>Cumpără vehiculul în care te afli (de la showroom sau de la alt jucător)</td></tr>
+    <tr><td><code>/sellveh [preț]</code></td><td>Pune vehiculul la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/sellvehtostate</code></td><td>Vinde vehiculul la stat, instant, 60% din valoare</td></tr>
     <tr><td><code>/vsellto [playerid]</code></td><td>Transferă gratuit proprietatea unui jucător apropiat</td></tr>
     <tr><td><code>/vcolor [1/2] [colorID]</code></td><td>Schimbă culoarea 1 sau 2</td></tr>
     <tr><td><code>/vplate [text]</code></td><td>Plăcuță personalizată (max 10 caractere), la sediul RAR</td></tr>
@@ -974,8 +1087,24 @@
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🍔 Mâncare</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
-    <tr><td><code>/pizza</code></td><td>Cumpără o pizza la un punct [ Buy Food ] (+20 HP)</td></tr>
-    <tr><td><code>/burger</code></td><td>Cumpără un burger la un punct [ Buy Food ] (+25 HP)</td></tr>
+    <tr><td><code>/pizza</code></td><td>Cumpără o pizza la o locație de tip pizza (+20 HP)</td></tr>
+    <tr><td><code>/burger</code></td><td>Cumpără un burger la o locație de tip burger (+25 HP)</td></tr>
+    <tr><td><code>/meal</code></td><td>Cumpără un meniu la o locație Cluckin Bell (+22 HP)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">👕 Haine &amp; Skinuri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/skins</code></td><td>Catalogul de outfituri, la magazinul de haine ($10.000/outfit)</td></tr>
+    <tr><td><code>/wardrobe</code></td><td>Garderoba ta — comuți gratis între outfiturile deținute</td></tr>
+    <tr><td><code>/changeskin</code></td><td>În HQ-ul facțiunii: comută între uniformă și haine civile</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">💰 Jafuri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/rob</code></td><td>Jefuiești un shop/fast-food (șofer, 10/10 rob points), apoi livrezi la 2 business-uri</td></tr>
+    <tr><td><code>/stats</code></td><td>Îți arată rob points-urile la linia [Crime]</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">⛳ Turneu de Golf</h3>

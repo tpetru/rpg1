@@ -9055,3 +9055,148 @@
 [21:53:28] [WARNING] mysql_connect: no password specified
 [22:43:33] [WARNING] mysql_connect: no password specified
 [22:48:36] [WARNING] mysql_connect: no password specified
+[08:58:16] [WARNING] mysql_connect: no password specified
+[11:02:14] [WARNING] mysql_connect: no password specified
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:02:14] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [WARNING] mysql_connect: no password specified
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[11:14:04] [ERROR] cache_get_value_name_int: field 'skin' not found
+[12:40:10] [WARNING] mysql_connect: no password specified
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[12:40:10] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [WARNING] mysql_connect: no password specified
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:43:15] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [WARNING] mysql_connect: no password specified
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin1' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin2' not found
+[13:44:52] [ERROR] cache_get_value_name_int: field 'skin3' not found
+[14:15:43] [WARNING] mysql_connect: no password specified
+[14:23:52] [WARNING] mysql_connect: no password specified
+[14:27:37] [WARNING] mysql_connect: no password specified
+[16:14:19] [WARNING] mysql_connect: no password specified
+[17:13:20] [WARNING] mysql_connect: no password specified
+[17:20:33] [WARNING] mysql_connect: no password specified
+[17:46:45] [WARNING] mysql_connect: no password specified
+[19:07:06] [WARNING] mysql_connect: no password specified
+[11:32:24] [WARNING] mysql_connect: no password specified
+[11:32:26] [ERROR] error #2013 while executing query "UPDATE `factions` f SET f.`members` = (SELECT COUNT(*) FROM `players` p WHERE p.`faction` = f.`id`)": Lost connection to MySQL server during query
+[11:39:42] [WARNING] mysql_connect: no password specified
+[11:43:10] [WARNING] mysql_connect: no password specified
+[12:50:42] [WARNING] mysql_connect: no password specified
+[14:28:54] [WARNING] mysql_connect: no password specified
+[15:04:59] [WARNING] mysql_connect: no password specified
+[16:40:00] [WARNING] mysql_connect: no password specified
+[16:50:54] [WARNING] mysql_connect: no password specified
+[16:57:10] [WARNING] mysql_connect: no password specified
+[17:24:42] [WARNING] mysql_connect: no password specified
+[17:43:24] [WARNING] mysql_connect: no password specified
+[17:53:38] [WARNING] mysql_connect: no password specified
+[18:21:30] [WARNING] mysql_connect: no password specified
+[19:00:39] [WARNING] mysql_connect: no password specified
+[19:10:30] [WARNING] mysql_connect: no password specified
+[19:16:33] [WARNING] mysql_connect: no password specified
+[19:21:55] [WARNING] mysql_connect: no password specified
+[19:42:30] [WARNING] mysql_connect: no password specified
+[19:44:25] [WARNING] mysql_connect: no password specified
+[19:50:53] [WARNING] mysql_connect: no password specified
+[19:53:05] [WARNING] mysql_connect: no password specified
+[20:39:02] [WARNING] mysql_connect: no password specified
+[21:14:10] [WARNING] mysql_connect: no password specified
+[01:12:50] [WARNING] mysql_connect: no password specified
+[08:39:19] [WARNING] mysql_connect: no password specified
+[09:09:59] [WARNING] mysql_connect: no password specified
+[09:15:02] [WARNING] mysql_connect: no password specified
+[09:16:52] [WARNING] mysql_connect: no password specified
+[10:15:32] [WARNING] mysql_connect: no password specified
+[11:30:48] [WARNING] mysql_connect: no password specified
+[11:30:50] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:30:52] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:30:54] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:30:56] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:31:19] [WARNING] mysql_connect: no password specified
+[11:31:21] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:31:23] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:31:25] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:31:27] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:32:11] [WARNING] mysql_connect: no password specified
+[11:38:56] [WARNING] mysql_connect: no password specified
+[11:54:44] [WARNING] mysql_connect: no password specified

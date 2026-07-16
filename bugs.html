@@ -154,6 +154,120 @@
   <p class="meta">📅 Raportat: 2026-07-08 · 📍 Sistem: Newspaper</p>
 </div>
 
+<div class="bug sev-high is-fixed" data-status="fixed" data-sev="high">
+  <div class="bug-head">
+    <span class="bug-id">#002</span>
+    <h2>Toate comenzile se comportau ca /stats</h2>
+    <span class="tag tag-sev">High</span>
+    <span class="tag tag-status">Rezolvat</span>
+  </div>
+  <p class="desc">Orice comandă tastată producea output-ul comenzii <code>/stats</code>. Cauza: numele comenzii fusese
+  șters accidental din guard, rămânând <code>if(strcmp(cmd, "", true) == 0)</code>. <code>strcmp</code> din plugin-ul de
+  string returnează <strong>0 (match) la comparația cu string gol</strong>, deci blocul prindea <em>orice</em> comandă —
+  și fiind aproape de începutul dispecerului, deturna tot lanțul.</p>
+  <div class="note">
+    <strong>Fix:</strong> restaurat <code>if(strcmp(cmd, "/stats", true) == 0)</code>.
+    Aceeași cauză a produs și bug-ul <code>/farm buy</code> fără argument (cumpăra tractor implicit, pentru că
+    <code>strcmp("", "tractor")</code> dădea match) — rezolvat cu un guard <code>if(!strlen(type)) return -1;</code>
+    în <code>Farm_ModelFromType</code>.
+  </div>
+  <p class="meta">📅 Rezolvat: 2026-07-14 · 📍 Sistem: OnPlayerCommandText</p>
+</div>
+
+<div class="bug sev-high is-fixed" data-status="fixed" data-sev="high">
+  <div class="bug-head">
+    <span class="bug-id">#003</span>
+    <h2>Stack overflow — utilizare stack peste limita alocată</h2>
+    <span class="tag tag-sev">High</span>
+    <span class="tag tag-status">Rezolvat</span>
+  </div>
+  <p class="desc">Gamemode-ul nu avea <code>#pragma dynamic</code>, deci stack/heap-ul era la default
+  <strong>4096 celule</strong>, în timp ce utilizarea maximă estimată era <strong>4627 celule</strong> — depășire
+  garantată, cu coliziune stack/heap și corupere de memorie la runtime.</p>
+  <div class="note">
+    <strong>Fix:</strong> adăugat <code>#pragma dynamic 32768</code>. Verificat în header-ul <code>.amx</code>:
+    stack/heap = 32768 celule. De reverificat dacă gamemode-ul mai crește semnificativ.
+  </div>
+  <p class="meta">📅 Rezolvat: 2026-07-14 · 📍 Sistem: Compilare / runtime</p>
+</div>
+
+<div class="bug sev-medium is-fixed" data-status="fixed" data-sev="medium">
+  <div class="bug-head">
+    <span class="bug-id">#004</span>
+    <h2>/changeskin — „nu e setat skin pentru rangul tău", deși erau setate în DB</h2>
+    <span class="tag tag-sev">Medium</span>
+    <span class="tag tag-status">Rezolvat</span>
+  </div>
+  <p class="desc">Uniformele de facțiune erau corect în DB (<code>factions.skin1/skin2/skin3</code>), dar
+  <code>Faction_SkinForRank</code> returna mereu 0. Cauza: <code>SELECT</code>-ul din <code>Factions_Load</code> lista
+  coloanele explicit și <strong>omitea skin1/skin2/skin3</strong>, deci <code>cache_get_value_name_int</code> nu găsea
+  nimic și valorile rămâneau 0 în memorie.</p>
+  <div class="note">
+    <strong>Fix:</strong> adăugate <code>skin1</code>, <code>skin2</code>, <code>skin3</code> în SELECT.
+    <strong>Lecție:</strong> când adaugi o coloană nouă la un tabel, verifică și query-ul de load — dacă listează
+    coloanele explicit, trebuie actualizat.
+  </div>
+  <p class="meta">📅 Rezolvat: 2026-07-14 · 📍 Sistem: Skinuri / Facțiuni</p>
+</div>
+
+<div class="bug sev-low is-fixed" data-status="fixed" data-sev="low">
+  <div class="bug-head">
+    <span class="bug-id">#005</span>
+    <h2>/event race random — numele mașinii nu corespundea</h2>
+    <span class="tag tag-sev">Low</span>
+    <span class="tag tag-status">Rezolvat</span>
+  </div>
+  <p class="desc">La <code>/event race ... random</code>, jucătorii erau spawnați într-un <strong>Sultan</strong>, dar
+  chat-ul anunța <strong>Stratum</strong>. Cauza: în <code>g_RaceVehModels</code>, modelul <strong>560</strong> era
+  etichetat „Stratum" — dar 560 e Sultan, Stratum e <strong>561</strong>.</p>
+  <div class="note"><strong>Fix:</strong> <code>g_RaceVehModels[3]</code>: 560 → 561.</div>
+  <p class="meta">📅 Rezolvat: 2026-07-14 · 📍 Sistem: Race Events</p>
+</div>
+
+<div class="bug sev-low is-fixed" data-status="fixed" data-sev="low">
+  <div class="bug-head">
+    <span class="bug-id">#006</span>
+    <h2>3DText-ul de la /vplate nu apărea</h2>
+    <span class="tag tag-sev">Low</span>
+    <span class="tag tag-status">Rezolvat</span>
+  </div>
+  <p class="desc">Eticheta 3D de la punctul <code>/vplate</code> era creată cu <strong>draw distance 3.0</strong>, în timp
+  ce toate celelalte etichete de comandă (ITP, examene) au 30.0 — deci era vizibilă doar de la 3 metri.</p>
+  <div class="note"><strong>Fix:</strong> draw distance 3.0 → 30.0.</div>
+  <p class="meta">📅 Rezolvat: 2026-07-14 · 📍 Sistem: RAR / Vehicule</p>
+</div>
+
+<div class="bug sev-medium" data-status="open" data-sev="medium">
+  <div class="bug-head">
+    <span class="bug-id">#007</span>
+    <h2>Skin 273 (News Reporters, rank 1/2) este invalid</h2>
+    <span class="tag tag-sev">Medium</span>
+    <span class="tag tag-status">Deschis</span>
+  </div>
+  <p class="desc">Uniforma de rank 1/2 a facțiunii 8 (News Reporters) e setată pe skin-ul <strong>273</strong>, care se află
+  în lista de skinuri <strong>invalide</strong> SA-MP (3, 4, 5, 6, 8, 9, 42, 65, 74, 86, 119, 149, 208, <strong>273</strong>, 289).
+  Poate să nu se încarce sau să crape clientul.</p>
+  <div class="note">De înlocuit cu un skin valid: <code>/setfactionskin 8 [skin_nou] 48 46</code>.</div>
+  <p class="meta">📅 Raportat: 2026-07-14 · 📍 Sistem: Skinuri / Facțiuni</p>
+</div>
+
+<div class="bug sev-low" data-status="open" data-sev="low">
+  <div class="bug-head">
+    <span class="bug-id">#008</span>
+    <h2>Map icon slots pizza/burger se pot suprapune</h2>
+    <span class="tag tag-sev">Low</span>
+    <span class="tag tag-status">Deschis</span>
+  </div>
+  <p class="desc"><code>PIZZA_ICON_SLOT_BASE = 90</code> și <code>BURGER_ICON_SLOT_BASE = 95</code> au fost alese când
+  <code>MAX_FOOD_LOCATIONS</code> era <strong>5</strong>. Acum e <strong>20</strong>, deci pizza ar folosi sloturile 90-109
+  și burger 95-114 — se suprapun, iar <code>SetPlayerMapIcon</code> acceptă doar sloturile 0-99.</p>
+  <div class="note">
+    Nu se manifestă cât timp sunt puține locații per tip (≤5). Fix corect: migrarea pizza/burger la
+    <strong>map icon-uri dinamice</strong> (streamer), cum s-a făcut deja la Cluckin Bell (<code>g_MealIcon</code>).
+  </div>
+  <p class="meta">📅 Raportat: 2026-07-14 · 📍 Sistem: Fast-food / Map icons</p>
+</div>
+
 <!-- Adaugă buguri noi copiind blocul de mai sus:
      - clasa .bug: sev-high | sev-medium | sev-low
      - data-status="open" sau "fixed"  (pt. fixed adaugă și clasa is-fixed)

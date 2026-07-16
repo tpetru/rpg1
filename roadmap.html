@@ -97,6 +97,33 @@
 <main>
 
 <div class="feature">
+  <h2>💵 De decis: rutarea veniturilor pentru /meal și GasCan</h2>
+  <span class="status status-idea">De decis</span>
+
+  <p>Fiecare sursă de venit din joc este rutată către banca unui business (vezi tabelul
+  „Rutarea veniturilor pe ID de business" din documentația tehnică). Două surse noi au rămas
+  <strong>nedecise</strong>:</p>
+
+  <ul>
+    <li><strong><code>/meal</code> (Cluckin Bell)</strong> — momentan e rutat provizoriu către
+      <code>MEAL_BIZ_ID = 14</code>, ales prin analogie cu pizza (biz 12) și burger (biz 13).
+      <strong>De confirmat</strong> dacă business-ul 14 e într-adevăr cel corect.</li>
+    <li><strong><code>/shop</code> → GasCan</strong> — <strong>nu e rutat deloc</strong> momentan; banii
+      dispar din economie. De comparat cu celelalte item-uri din shop: Medical Kit → biz <strong>9</strong>,
+      Extinctor → biz <strong>10</strong>.</li>
+    <li><strong><code>/fillgascan</code></strong> (umplerea canistrei la benzinărie, $100) — la fel,
+      nerutat. De decis dacă merge la un business de tip benzinărie.</li>
+  </ul>
+
+  <div class="note">
+    Referințe în cod: <code>MEAL_BIZ_ID</code> (definit lângă celelalte <code>*_BIZ_ID</code>),
+    handler-ul <code>DIALOG_SHOP</code> case 2 (GasCan) și comanda <code>/fillgascan</code>.
+    Pattern-ul de rutare e identic peste tot: <code>Businesses_FindByID(id)</code> →
+    <code>bBank += pret</code> → <code>UPDATE businesses SET bank=...</code>.
+  </div>
+</div>
+
+<div class="feature">
   <h2>🚜 Sistem de Farming (Agricultură)</h2>
   <span class="status status-done">Implementat ✔</span>
 
@@ -115,17 +142,24 @@
   <p>Ciclul se resetează după recoltare; plata unui ciclu complet este <code>FARM_HARVEST_PAY = $15.000</code>.</p>
 
   <h4>Comandă</h4>
-  <p><code>/farm [status / plow / level / seed / fertilize / harvest / buy / sell]</code></p>
+  <p><code>/farm [stats / plow / level / seed / fertilize / harvest / buy / sell / deposit / withdraw / deliver / rent]</code></p>
   <ul>
-    <li><code>/farm status</code> — proprietar/preț, etapa curentă + utilaj + minute, dacă mai poți lucra azi.</li>
+    <li><code>/farm stats</code> — proprietar/preț, etapa curentă + utilaj + minute, dacă mai poți lucra azi, și utilajele deținute.
+      Merge <strong>de oriunde</strong>: pe teren arată terenul respectiv, altfel arată ferma ta (<code>pFarmKey</code>).</li>
     <li><code>plow/level/seed/fertilize/harvest</code> — pornesc etapa curentă (trebuie să fii pe teren, în utilajul corect).</li>
-    <li><code>/farm buy [tractor/dozer/combina]</code> / <code>/farm sell</code> — doar pe terenul propriu. Prețuri utilaje:
-      Tractor $10.000, Dozer $15.000, Combină $20.000 (suprascrise din <code>payday_setup</code>).</li>
+    <li><code>/farm buy [tractor/dozer/combina/truck/trailer]</code> / <code>/farm sell [tip]</code> — doar pe terenul propriu,
+      banii din/în <strong>contul fermei</strong> (<code>fmBank</code>). Tipul e <strong>obligatoriu</strong>.
+      Prețuri: Tractor $10.000, Dozer $15.000, Combină $20.000, Truck $12.500, Trailer $10.000.</li>
+    <li><code>/farm deposit/withdraw</code> — contul fermei. <code>/farm deliver</code> — vinzi recolta (<code>fmRecolta</code>).
+      <code>/farm rent [utilaj]</code> — 25% din preț.</li>
+    <li><code>/farmstats</code> — informații despre ferma deținută. <code>/buyfarm</code> / <code>/sellfarm [price]</code> / <code>/sellfarmtostate</code>.</li>
   </ul>
 
   <div class="note ok" style="border-left:3px solid var(--green); background:rgba(62,207,142,0.06);">
     Implementat: enum <code>E_FARM_DATA</code> (<code>FarmData[MAX_FARMS]</code>), o etapă pe zi via
-    <code>fmLastWork</code> (aliniat la zi), utilaje persistente (<code>g_FarmVehId[MAX_FARM_VEHICLES]</code>).
+    <code>fmLastWork</code> (aliniat la zi). Utilajele <strong>nu sunt persistente</strong>: se stochează doar
+    <em>numărul</em> per tip în tabelul <code>farms</code> (<code>tractors/dozers/combines/trucks/trailers</code>),
+    iar vehiculul se creează temporar la acțiune și se distruge la final/coborâre.
   </div>
 </div>
 
@@ -134,8 +168,86 @@
   <span class="status status-done">Implementat ✔</span>
 
   <p><code>/gps</code> are acum categoria <strong>Fast-food</strong> (<code>GPSITEM_FASTFOOD</code>) care listează locațiile
-  pizza (🍕) și burger (🍔) cu checkpoint spre fiecare. Categoriile GPS sunt acum construite dinamic
+  pizza (🍕), burger (🍔) și <strong>Cluckin Bell</strong> (🍗) cu checkpoint spre fiecare. Categoriile GPS sunt acum construite dinamic
   (<code>GPS_MAX_DYNCATS</code>, <code>GPSITEM_*</code>). Adminii au și <code>/fastfoodlist</code> (dialog + teleport).</p>
+
+  <p>Categorii fixe: <code>0=Factions, 1=Businesses, 2=Banks&amp;ATMs, 3=Shops, 4=FastFoods, 5=Farms</code>; dinamicele
+  (din <code>locations_admin</code>) încep de la <strong>6</strong>. Numele afișate includ acum id-ul:
+  <code>&lt;nume&gt; #id</code> la business/fastfood, <code>Shop #id</code>, <code>Farm #id</code>.</p>
+</div>
+
+<div class="feature">
+  <h2>👕 Sistem de skinuri (wardrobe + uniforme)</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Skin persistent per jucător (<code>pSkin</code> → coloana <code>players.skin</code>, default 7), aplicat la spawn.
+  Skinurile deținute se rețin în tabelul nou <code>player_skins(player_id, skin_id)</code> și se încarcă la login
+  într-un <strong>bitset</strong> în memorie (<code>g_SkinOwned</code>, verificare O(1)).</p>
+
+  <ul>
+    <li><code>/skins</code> — magazin de haine (dialog catalog, ~30 outfituri, <code>SKIN_PRICE = $10.000</code>). Cumpărarea îl și îmbracă.</li>
+    <li><code>/wardrobe</code> — comuți gratis între skinurile deținute.</li>
+    <li>Ambele necesită să fii la un <strong>magazin de haine</strong> (<code>g_ClothStore</code>, pickup + map icon 45).</li>
+    <li><code>/changeskin</code> — în interiorul HQ-ului facțiunii, comută între uniformă și haine civile.</li>
+    <li>Admin: <code>/setskin [playerid] [skinid]</code> (nivel 1), <code>/setfactionskin [fid] [s1] [s2] [s3]</code> (nivel 5).</li>
+  </ul>
+
+  <h4>Uniforme de facțiune (3 pe rank)</h4>
+  <p>Fiecare facțiune are 3 skinuri (<code>factions.skin1/skin2/skin3</code> → <code>fSkin1/2/3</code>):
+  <strong>rank 1-2</strong> → skin1, <strong>rank 3-4</strong> → skin2, <strong>rank 5</strong> → skin3
+  (<code>Faction_SkinForRank</code>). La spawn pe tură (<code>pSpawn == 2</code>) porți uniforma pentru rank; în civil porți skin-ul propriu.</p>
+</div>
+
+<div class="feature">
+  <h2>💰 Sistem de jaf (/rob)</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Jefuiești un <strong>shop sau fast-food</strong> cu o echipă, apoi <strong>livrezi banii la 2 business-uri aleatorii</strong>.</p>
+
+  <ul>
+    <li><strong>Condiții:</strong> <code>10/10 rob points</code> (<code>pRobPoints</code> → <code>players.rob_points</code>,
+      <strong>+1 la fiecare payday</strong>, max 10), să fii <strong>șofer</strong>, lângă un shop/fast-food.</li>
+    <li><strong>Echipa</strong> = toți jucătorii din mașină la momentul <code>/rob</code>; fiecare pierde <strong>10 rob points</strong>
+      și primește <strong>wanted 6</strong>.</li>
+    <li><strong>Poliția (facțiunea 1)</strong> primește un anunț cu numele liderului și ținta jefuită.</li>
+    <li><strong>Livrare:</strong> checkpoint la un business random (<code>ROB_CP_SIZE = 9.0</code>), apoi al doilea. La al 2-lea → plată.</li>
+    <li><strong>Premiu / om:</strong> <code>$12.000 + $2.000 × nr. participanți + random($5.000)</code>. După livrare, wanted scade la <strong>5</strong>.</li>
+    <li><strong>Cine moare sau se deconectează nu primește bani</strong> (e scos din mapare la deces).</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>🏷️ Marketplace — proprietăți de vânzare între jucători</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Casele, business-urile, vehiculele și fermele au acum <code>isForSale</code> + <code>ownerId</code>.
+  Verificările de proprietate se bazează pe <strong>ownerId</strong>, nu pe nume
+  (câmpuri redenumite: <code>hOwner→hOwnerName</code>, <code>bOwner→bOwnerName</code>, <code>fmOwner→fmOwnerName</code>).</p>
+
+  <ul>
+    <li><strong>Listare la preț:</strong> <code>/sellhouse [price]</code>, <code>/sellbusiness [price]</code>,
+      <code>/sellveh [price]</code>, <code>/sellfarm [price]</code> (preț <code>0</code> = anulează listarea).</li>
+    <li><strong>Cumpărare:</strong> prin comenzile existente <code>/buyhouse</code>, <code>/buybiz</code>,
+      <code>/buyfarm</code>, <code>/vbuy</code> — funcționează și dacă proprietarul e online.</li>
+    <li><strong>Banii vânzătorului</strong> merg în <strong>bancă</strong> — funcționează și dacă e offline
+      (<code>Prop_SettleSeller</code> / <code>Prop_SettleSellerVehicle</code>: actualizează memoria dacă e online, altfel direct în DB).</li>
+    <li><strong>Vânzare la stat (60%):</strong> <code>/sellhousetostate</code>, <code>/sellfarmtostate</code>,
+      <code>/sellbiztostate</code>, <code>/sellvehtostate</code>. (Vechile <code>/sellbiz</code> și <code>/vsell</code> au fost eliminate.)</li>
+    <li>Etichetele 3D și listele arată <strong>FOR SALE</strong> / <code>(For Sale)</code>.</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>🍗 Cluckin Bell (fast-food tip 3)</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Tip nou de fast-food (<code>ffType = 3</code>) cu comanda <code>/meal</code>
+  (<code>MEAL_HEAL_AMOUNT = 22 hp</code>, preț din <code>payday_setup.meal_price</code>, venit către business-ul
+  <code>MEAL_BIZ_ID = 14</code>). Map icon 14 (Cluckin' Bell), creat prin <strong>map icon dinamic</strong>
+  (streamer) pentru că sloturile per-player 90-99 sunt epuizate de pizza/burger.</p>
+
+  <p><code>/ffcreate [1=pizza / 2=burger / 3=cluckin] [name]</code> — tipul e acum <strong>obligatoriu</strong> (fără default).
+  <code>MAX_FOOD_LOCATIONS = 20</code> per tip.</p>
 </div>
 
 <div class="feature">
