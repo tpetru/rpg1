@@ -151,6 +151,8 @@
     <span class="badge">GPS &amp; Radar</span>
     <span class="badge">Turneu de Golf</span>
     <span class="badge">Baschet</span>
+    <span class="badge">Curse, CS &amp; Hunt The Mayor</span>
+    <span class="badge">Contrabandă pe mare</span>
     <span class="badge">Rulote &amp; Camping</span>
     <span class="badge">Petreceri</span>
     <span class="badge">Telefonie</span>
@@ -175,6 +177,7 @@
   <a href="#robbery">Jafuri</a>
   <a href="#golf">Turneu Golf</a>
   <a href="#basketball">Baschet</a>
+  <a href="#events">Evenimente</a>
   <a href="#caravans">Rulote</a>
   <a href="#camping">Camping</a>
   <a href="#party">Petreceri</a>
@@ -433,6 +436,13 @@
       <p>Cât timp facțiunea ta e într-un război, scoți droguri din seif cu <code>/drugs get</code> și le folosești pe
       teritoriul în conflict cu <code>/drugs use</code> pentru un plus rapid de viață (+30 HP).</p>
     </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚤 Contrabandă pe mare (/smuggle)</h4>
+      <p>Cu o barcă a facțiunii, mergi la punctul de încărcare (freeze 10s - Poliția e anunțată, toți primiți wanted 6),
+      apoi la 2 puncte de colectare alese random (freeze 5s fiecare). În final, treci în <strong>Sultanul facțiunii</strong>
+      (șofer sau pasager) și livrezi marfa la un hotel random: wanted-ul scade la 5, seiful primește $25.000 + 500g iarbă,
+      iar fiecare membru al echipajului încasează $2.000-3.000. O singură cursă reușită pe zi per facțiune.</p>
+    </div>
   </div>
 </section>
 
@@ -443,51 +453,96 @@
     <div class="card">
       <h4 style="margin-top:0">🏠 Case</h4>
       <p><code>/buyhouse</code> lângă o casă de vânzare o cumperi pe loc — fie e liberă (de la stat), fie e pusă la vânzare
-      de alt jucător. Poți deține o singură casă. <code>/findhouse [id]</code> îți pune un checkpoint pe hartă spre orice casă.</p>
+      de alt jucător. Poți deține o singură casă. <code>/findhouse [id]</code> îți pune un checkpoint pe hartă spre orice casă.
+      Dacă are interior, apasă <strong>ENTER</strong> la pickup ca să intri/ieși.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🐾 Animale la casă</h4>
-      <p>Dacă deții o casă cu curte, îți poți cumpăra animale pentru ea cu <code>/buyanimal [număr]</code> — alegi dintr-o
-      listă (broască, vacă, căprioară). Animalul cumpărat apare și stă în <strong>curtea casei tale</strong>, dându-i
-      viață locului. Folosește <code>/buyanimal</code> fără număr ca să vezi lista disponibilă.</p>
+      <p>Dacă deții o casă cu curte, îți poți cumpăra animale pentru ea cu <code>/house upgrade animal [nume]</code> —
+      alegi dintre Turtle, Cow, Deer. Eligibilitatea depinde de tipul casei: <strong>Turtle</strong> și <strong>Deer</strong>
+      doar la <strong>Villa</strong>, <strong>Cow</strong> doar la <strong>Countryside House</strong>. Animalul cumpărat
+      apare și stă în <strong>curtea casei tale</strong>. O <strong>Vacă</strong> îți dă, la fiecare PayDay cât ești
+      online, 50% șansă la 2-5L de lapte direct în frigider. La casele de tip <strong>City House</strong> sau
+      <strong>Countryside House</strong> poți planta și un copac cu <code>/house upgrade tree</code>
+      (vezi <code>/tree plant/collect/status</code>).</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🧊 Frigider</h4>
-      <p>Cumpără-ți un frigider pentru casă cu <code>/houseupgrade frigde</code> ($10.000, unul singur per casă). Îl umpli cu
-      <strong>lapte, banane, apă, suc și bere</strong> prin <code>/frigde buy [item] [cantitate]</code> (doar între orele
-      <strong>15:00 și 20:00</strong>), iar când ți-e foame consumi câte unul cu <code>/frigde use [item]</code> ca să-ți
-      recuperezi viața. <code>/frigde</code> îți arată ce ai în frigider.</p>
+      <p>Cumpără-ți un frigider pentru casă cu <code>/house upgrade frigde</code> ($10.000, unul singur per casă, se strică
+      după <strong>32 de zile</strong>). Îl umpli prin <code>/frigde buy [item] [cantitate]</code>, doar între orele
+      <strong>15:00 și 20:00</strong>, iar când ți-e foame consumi câte unul cu <code>/frigde use [item]</code> ca să-ți
+      recuperezi viața. <code>/frigde</code> (fără parametri) îți arată stocul curent.</p>
+      <table style="margin-top:10px">
+        <tr><th>Produs</th><th>Capacitate</th><th>Preț/unitate</th><th>Viață</th></tr>
+        <tr><td>Lapte</td><td>20 L</td><td>$100</td><td>+20</td></tr>
+        <tr><td>Banane</td><td>30 buc</td><td>$50</td><td>+10</td></tr>
+        <tr><td>Apă</td><td>25 L</td><td>$150</td><td>+25</td></tr>
+        <tr><td>Suc</td><td>20 L</td><td>$200</td><td>+15</td></tr>
+        <tr><td>Bere</td><td>50 L</td><td>$250</td><td>+10</td></tr>
+      </table>
+      <p style="margin:8px 0 0; color:var(--red)">Un frigider stricat își pierde tot conținutul și devine inutilizabil
+      până e înlocuit (aceeași comandă <code>/house upgrade frigde</code>).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔧 Probleme de apartament</h4>
+      <p>La fiecare PayDay, la ora <strong>22:00</strong>, un apartament deținut ales random primește o problemă
+      (vecin te-a inundat / canalizare infundată / circuit ars). Cât timp e activă, <strong>nu te mai poți spawna
+      la el</strong> — ești anunțat la fiecare respawn. Se rezolvă doar de un jucător cu jobul <strong>Electrician</strong>,
+      cu <code>/fixapartament</code> ($3.000 din banca apartamentului).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚰 SGR (sticle goale returnabile)</h4>
+      <p>Consumul de apă/suc/bere din frigider lasă în urmă <strong>ambalaje goale</strong> (max 100; ești avertizat la
+      80, blocat la 100 — trebuie golite înainte să mai poți bea). Le duci la reciclat cu o dubă SGR (plăcuțe
+      <strong>SGR1-SGR5</strong>):</p>
+      <ul style="margin:8px 0 0; padding-left:20px">
+        <li><code>/sgrload</code> — la propria casă, în duba SGR, încarci ambalajele acumulate</li>
+        <li><code>/sgrunload</code> — la punctul de descărcare SGR de pe hartă; banca casei primește <strong>$50 per ambalaj</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🗑️ Gunoi (trash)</h4>
+      <p>Consumul de lapte/banane lasă în urmă <strong>gunoi</strong> (aceleași reguli: max 100, avertizare la 80,
+      blocaj la 100). Îl ridici cu o mașină de gunoi:</p>
+      <ul style="margin:8px 0 0; padding-left:20px">
+        <li><code>/trashload</code> — la propria casă, în mașina de gunoi, încarci deșeurile acumulate</li>
+        <li><code>/trashunload</code> — la punctul de descărcare a gunoiului; banca casei primește <strong>$30 per gunoi</strong></li>
+      </ul>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🏢 Afaceri</h4>
       <p><code>/buybiz</code> îți cumpără o afacere lângă tine — poți deține mai multe simultan. Fiecare afacere are propria
-      bancă (<code>/bbank</code>, <code>/bwithdraw</code>), alimentată automat de serviciile orașului (școli de șoferi,
-      închirieri, etc.) care funcționează prin ea.</p>
+      bancă (<code>/bbank</code>, <code>/biz withdraw [sumă]</code>), alimentată automat de serviciile orașului (școli de
+      șoferi, închirieri, etc.) care funcționează prin ea.</p>
+      <p style="margin:8px 0 0"><strong>ANAF:</strong> la fiecare PayDay, la ora <strong>12:00</strong>, o afacere random
+      este blocată de ANAF — cât e blocată, <strong>niciun venit</strong> nu mai intră în ea. Deblochezi cu un vehicul
+      <strong>model 428</strong>, la afacerea ta: <code>/biz getdocs</code>, apoi mergi la checkpoint-ul de la ANAF și dai
+      <code>/biz givedocs</code>. La următorul PayDay, afacerea se deblochează.</p>
     </div>
   </div>
 
   <h3>🏷️ Vinde-ți proprietatea altor jucători</h3>
   <p>Casele, afacerile, vehiculele și fermele pot fi <strong>puse la vânzare</strong> la prețul tău. Alt jucător
   o cumpără cu comanda normală de cumpărare, iar <strong>banii îți intră în bancă</strong> — chiar dacă ești offline
-  în acel moment.</p>
+  în acel moment. Poți vinde și direct unui jucător anume, cu o ofertă pe care acesta o confirmă.</p>
   <table>
-    <tr><th>Ce vinzi</th><th>Pui la vânzare</th><th>Cumpărătorul folosește</th></tr>
-    <tr><td>Casă</td><td><code>/sellhouse [preț]</code></td><td><code>/buyhouse</code></td></tr>
-    <tr><td>Afacere</td><td><code>/sellbusiness [preț]</code></td><td><code>/buybiz</code></td></tr>
-    <tr><td>Vehicul</td><td><code>/sellveh [preț]</code></td><td><code>/vbuy</code></td></tr>
-    <tr><td>Fermă</td><td><code>/sellfarm [preț]</code></td><td><code>/buyfarm</code></td></tr>
+    <tr><th>Ce vinzi</th><th>Pui la vânzare (public)</th><th>Ofertă directă</th><th>Cumpărătorul folosește</th></tr>
+    <tr><td>Casă</td><td><code>/house sell [preț]</code></td><td><code>/house sellto [playerid] [preț]</code> → <code>/accept house [sellerid]</code></td><td><code>/buyhouse</code></td></tr>
+    <tr><td>Afacere</td><td><code>/biz sell [preț]</code></td><td><code>/biz sellto [playerid] [preț]</code> → <code>/accept biz [sellerid]</code></td><td><code>/buybiz</code></td></tr>
+    <tr><td>Vehicul</td><td><code>/sellveh [preț]</code></td><td>—</td><td><code>/vbuy</code></td></tr>
+    <tr><td>Fermă</td><td><code>/sellfarm [preț]</code></td><td>—</td><td><code>/buyfarm</code></td></tr>
   </table>
   <p>Folosește <strong>prețul 0</strong> ca să anulezi listarea. Cât timp e listată, proprietatea o folosești în
   continuare normal — până o cumpără cineva.</p>
 
   <div class="note">
     <strong>Nu vrei să aștepți un cumpărător?</strong> Poți vinde instant <strong>la stat</strong>, pe
-    <strong>60%</strong> din valoare, direct în cash: <code>/sellhousetostate</code>, <code>/sellbiztostate</code>,
+    <strong>60%</strong> din valoare, direct în cash: <code>/house selltostate</code>, <code>/biz selltostate</code>,
     <code>/sellvehtostate</code>, <code>/sellfarmtostate</code>.
   </div>
   <div class="note warn">
     Contul afacerii / fermei <strong>trece la noul proprietar</strong> odată cu ea — retrage banii
-    (<code>/bwithdraw</code>, <code>/farm withdraw</code>) <strong>înainte</strong> să o vinzi.
+    (<code>/biz withdraw</code>, <code>/farm withdraw</code>) <strong>înainte</strong> să o vinzi.
   </div>
 </section>
 
@@ -744,6 +799,54 @@
     Fiecare coș se joacă o singură dată per rundă — fără încercări multiple. La final, scorurile tuturor jucătorilor
     care au terminat toate cele 8 coșuri sunt comparate și e anunțat câștigătorul (cel cu cele mai multe GOAL-uri),
     sau, dacă scorurile sunt egale, se anunță explicit o egalitate.
+  </div>
+</section>
+
+<section id="events">
+  <h2>🎮 Evenimente organizate de admini</h2>
+  <p class="subtitle">Curse, lupte în echipă și vânătoare — pornite de administrație, spre deosebire de Golf/Baschet pe care le pornești chiar tu</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🏁 Curse (BestLap)</h4>
+      <p>Un admin deschide o cursă pe un traseu (<strong>Lap1</strong> = 8 checkpoint-uri, <strong>Lap2/Lap3</strong> = 20
+      fiecare), cu o mașină fixă sau <em>random</em> — la random, toți primesc <strong>același</strong> model, ales o
+      singură dată. Vehiculele posibile: Bullet, Infernus, Elegy, Stratum, NRG-500, Sabre.</p>
+      <p>Te înscrii cu <code>/event join</code> cât înscrierile sunt deschise. La start, toți sunt teleportați la linia
+      de start și urmează un countdown de 5 secunde (<em>5..4..3..2..1..GO!</em>) — cronometrul pornește exact la GO,
+      nu la teleportare. Alergi checkpoint cu checkpoint până la ultimul.</p>
+      <p style="margin:0">Evenimentul se termină când toți au terminat sau după <strong>5 minute</strong> (oprire
+      forțată de admin). Primele 3 locuri sunt anunțate pe tot serverul, iar fiecare participant își vede locul propriu.
+      Dacă bați cel mai bun timp cunoscut pentru <strong>acel traseu + acel model de mașină</strong>, stabilești un
+      <strong>RECORD</strong> nou, anunțat pe server.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔫 Counter Strike</h4>
+      <p><strong>5 vs 5</strong>, cu bombă, mai multe meciuri pot rula simultan (fiecare cu propriul ID). Înscrierile se
+      închid automat la <strong>10 jucători</strong> sau când adminul pornește manual — echipele se formează
+      <strong>alternativ</strong> pe măsură ce te înscrii: T, CT, T, CT...</p>
+      <p>Meciul ține <strong>10 runde</strong>; cine câștigă mai multe ia meciul (5-5 = egalitate). După runda 5,
+      echipele <strong>schimbă taberele</strong>. În fiecare rundă primești armă (<strong>AK-47</strong> pentru T,
+      <strong>M4</strong> pentru CT), un Desert Eagle și armură completă; dacă mori, urmărești restul rundei ca
+      spectator la echipa ta.</p>
+      <p style="margin:0"><strong>T</strong> câștigă plantând bomba la un site (<code>/plant</code>, freeze 3s) și
+      lăsând-o să explodeze, sau eliminând tot CT. <strong>CT</strong> câștigă eliminând tot T (doar dacă bomba nu e
+      plantată) sau dezamorsând-o (<code>/defuse</code>, freeze 3s). După plantare, chiar dacă tot T moare, CT
+      <strong>trebuie</strong> să dezamorseze — nu mai câștigă automat.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏛️ Hunt The Mayor</h4>
+      <p>Un admin deschide înscrierile (<code>/event htm join</code>), apoi alege random un jucător care devine
+      <strong>"Primarul"</strong>. Restul devin vânători. Primarul apare la una din <strong>5 locații secrete</strong>
+      predefinite, cu <strong>100 HP + 100 armură</strong> și un <strong>MP5</strong>; vânătorii apar toți împreună
+      în altă parte, cu <strong>50 HP</strong> și <strong>M4</strong> fiecare.</p>
+      <p>Aveți la dispoziție <strong>15 minute</strong>. Recompensele:</p>
+      <ul style="margin:8px 0 0; padding-left:20px">
+        <li>Orice lovitură reușită pe Primar (o singură dată per vânător) → <strong>$5.000</strong></li>
+        <li>Kill-ul propriu-zis pe Primar → încă <strong>$10.000</strong>, pe lângă premiul de lovitură</li>
+        <li>Dacă Primarul supraviețuiește toate cele 15 minute → el câștigă <strong>$15.000</strong></li>
+      </ul>
+    </div>
   </div>
 </section>
 
@@ -1012,25 +1115,42 @@
     <tr><td><code>/drugs craft</code></td><td>Transformi iarba în droguri la mașina de craft (rang 3-5)</td></tr>
     <tr><td><code>/drugs get</code></td><td>Scoți droguri din seif (rang oricare, doar în timpul unui război)</td></tr>
     <tr><td><code>/drugs use</code></td><td>Folosești droguri pe teritoriul unui război activ (+30 HP)</td></tr>
+    <tr><td><code>/smuggle</code></td><td>Pornești o cursă de contrabandă cu barca facțiunii (o cursă reușită/zi per facțiune)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🎮 Evenimente</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/event join</code></td><td>Te înscrii la o cursă (Race Event) deschisă de admin</td></tr>
+    <tr><td><code>/event cs join [nr]</code></td><td>Te înscrii la un meci Counter Strike deschis</td></tr>
+    <tr><td><code>/plant</code> / <code>/defuse</code></td><td>Counter Strike: plantezi / dezamorsezi bomba (freeze 3s)</td></tr>
+    <tr><td><code>/event htm join</code></td><td>Te înscrii la Hunt The Mayor</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🏠 Case &amp; Afaceri</h3>
   <table>
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/buyhouse</code></td><td>Cumpără casa de vânzare din apropiere (de la stat sau de la alt jucător)</td></tr>
-    <tr><td><code>/sellhouse [preț]</code></td><td>Pune casa la vânzare pentru alți jucători (0 = anulează)</td></tr>
-    <tr><td><code>/sellhousetostate</code></td><td>Vinde casa la stat, instant, 60% din valoare</td></tr>
+    <tr><td><code>/house sell [preț]</code></td><td>Pune casa la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/house sellto [playerid] [preț]</code></td><td>Ofertă directă de vânzare; cumpărătorul confirmă cu <code>/accept house [sellerid]</code></td></tr>
+    <tr><td><code>/house selltostate</code></td><td>Vinde casa la stat, instant, 60% din valoare</td></tr>
     <tr><td><code>/findhouse [id]</code></td><td>Pune un checkpoint pe hartă spre casa cu id-ul dat</td></tr>
     <tr><td><code>/hstats</code></td><td>Statisticile casei tale (nume, ID, preț, tip)</td></tr>
-    <tr><td><code>/buyanimal [număr]</code></td><td>Cumperi un animal pentru curtea casei tale (casă cu curte)</td></tr>
-    <tr><td><code>/houseupgrade frigde</code></td><td>Cumperi un frigider pentru casă ($10.000)</td></tr>
+    <tr><td><code>/house upgrade animal [nume]</code></td><td>Cumperi un animal (Turtle/Deer — Villa; Cow — Countryside) pentru curtea casei tale</td></tr>
+    <tr><td><code>/house upgrade tree</code></td><td>Plantezi un copac (doar City House / Countryside House)</td></tr>
+    <tr><td><code>/house upgrade frigde</code></td><td>Cumperi un frigider pentru casă ($10.000)</td></tr>
     <tr><td><code>/frigde buy [item] [qty]</code></td><td>Umpli frigiderul (lapte/banane/apă/suc/bere), doar 15:00–20:00</td></tr>
     <tr><td><code>/frigde use [item]</code></td><td>Consumi 1 bucată → +HP</td></tr>
+    <tr><td><code>/sgrload</code> / <code>/sgrunload</code></td><td>Duci ambalajele goale la reciclat cu duba SGR (max 100); descărcarea dă $50/ambalaj în banca casei</td></tr>
+    <tr><td><code>/trashload</code> / <code>/trashunload</code></td><td>Ridici gunoiul acumulat cu mașina de gunoi (max 100); descărcarea dă $30/gunoi în banca casei</td></tr>
+    <tr><td><code>/fixapartament</code></td><td>Electrician: rezolvă o problemă activă de apartament ($3.000 din banca apartamentului)</td></tr>
     <tr><td><code>/buybiz</code></td><td>Cumpără afacerea de vânzare din apropiere (de la stat sau de la alt jucător)</td></tr>
-    <tr><td><code>/sellbusiness [preț]</code></td><td>Pune afacerea la vânzare pentru alți jucători (0 = anulează)</td></tr>
-    <tr><td><code>/sellbiztostate</code></td><td>Vinde afacerea la stat, instant, 60% din valoare</td></tr>
+    <tr><td><code>/biz sell [preț]</code></td><td>Pune afacerea la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/biz sellto [playerid] [preț]</code></td><td>Ofertă directă de vânzare; cumpărătorul confirmă cu <code>/accept biz [sellerid]</code></td></tr>
+    <tr><td><code>/biz selltostate</code></td><td>Vinde afacerea la stat, instant, 60% din valoare</td></tr>
     <tr><td><code>/bbank</code></td><td>Sold bancă afacere, lângă ea</td></tr>
-    <tr><td><code>/bwithdraw [sumă]</code></td><td>Retrage bani din banca afacerii tale</td></tr>
+    <tr><td><code>/biz withdraw [sumă]</code></td><td>Retrage bani din banca afacerii tale</td></tr>
+    <tr><td><code>/biz getdocs</code> / <code>/biz givedocs</code></td><td>Deblochezi afacerea dacă a fost blocată de ANAF (necesită vehicul model 428)</td></tr>
   </table>
 
   <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚗 Vehicule personale</h3>

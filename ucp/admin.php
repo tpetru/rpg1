@@ -9,25 +9,24 @@ $myLevel = ucp_current_admin_level();
 // Tine sincronizat manual cu blocul "---- /ahelp ----" daca se adauga/schimba comenzi acolo.
 $ADMIN_COMMANDS = [
     1 => [
-        'General' => ['/ahelp', '/respawn', '/aheal', '/businesslist', '/showradars', '/removeradar'],
+        'General' => ['/ahelp', '/respawn', '/aheal', '/aa', '/slap', '/setskin', '/businesslist', '/showradars', '/removeradar', '/fixcar', '/flipcar', '/setInterior', '/setVw', '/setjob', '/settired', '/setsick'],
     ],
     2 => [
-        'General' => ['/createFire', '/healall', '/gotoLoc', '/gotoBiz', '/gotoHouse', '/gotoFaction', '/goto', '/openGolfTournament', '/startGolf'],
+        'General' => ['/createFire', '/healall', '/gotoLoc', '/gotoBiz', '/gotoHouse', '/gotoFaction', '/goto', '/bizzlist', '/farmlist', '/openGolfTournament', '/startGolf'],
+        'Events'  => ['/cscreate', '/csdelete', '/cslist', '/event cs open|start|stop', '/event htm open|start|stop', '/event race', '/event start', '/event stop'],
+        'Vehicles'=> ['/getcar', '/gotocar', '/saveloc', '/gotosave', '/giveweapon'],
     ],
     3 => [
-        'General'     => ['/veh', '/rac', '/createDisease'],
-        'DrivingLic'  => ['/setDrivingLicAexp', '/setDrivingLicBexp', '/setDrivingLicCexp', '/setDrivingLicDexp'],
+        'General' => ['/setlic', '/veh', '/rac', '/createDisease', '/forceunlock', '/gotoxyz', '/changecar'],
+    ],
+    4 => [
+        'General' => ['/forcewar', '/adminuninvite'],
     ],
     5 => [
-        'General'   => ['/payday'],
-        'PVehicles' => ['/vchangeINSURANCEexp', '/vchangeMEDKITexp', '/vchangeEXTINCTORexp', '/vchangeITPexp'],
+        'General' => ['/vc', '/bc', '/hc', '/fc', '/farmc', '/setfactionskin', '/payday', '/jetpack', '/removejetpack'],
     ],
     6 => [
-        'Factions'  => ['/changeFactionHQ', '/changeFactionhqIcon', '/changeFactionPickup', '/changeFactionLead', '/createFactionVeh', '/removeFactionLead'],
-        'Houses'    => ['/createHouse', '/changeHousePrice', '/changeHouseOwner'],
-        'PVehicles' => ['/vCreate', '/vSetPrice'],
-        'Caravans'  => ['/createCaravan'],
-        'Business'  => ['/createBiz', '/changeBizName', '/changeBizPrice', '/changeBizLoc'],
+        'Create' => ['/hcreate', '/htlcreate', '/htlc', '/bcreate', '/vcreate', '/setbballspawn', '/createCaravan', '/createatm', '/deleteatm', '/moveatm'],
     ],
 ];
 ?>

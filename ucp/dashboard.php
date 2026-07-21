@@ -41,10 +41,8 @@ $serverStats['houses']    = (int)$mysqli->query("SELECT COUNT(*) c FROM `houses`
 $serverStats['businesses']= (int)$mysqli->query("SELECT COUNT(*) c FROM `businesses` WHERE `owned` = 1")->fetch_assoc()['c'];
 $serverStats['vehicles']  = (int)$mysqli->query("SELECT COUNT(*) c FROM `vehicles_personal` WHERE `owner_id` != 0")->fetch_assoc()['c'];
 
-// Skin-ul jucatorului: gamemode-ul are momentan o singura clasa inregistrata (model 7, AddPlayerClass in bare.pwn),
-// deci toti playerii au acelasi skin - nu exista inca o coloana `skin` per player in DB.
-// Daca se adauga selectie de skin in gamemode, adauga o coloana `players`.`skin` si inlocuieste valoarea de mai jos.
-$skinId = 7;
+// Skin-ul jucatorului este acum persistat per player in coloana `players`.`skin` (implementat: /skins, /wardrobe).
+$skinId = (int)$player['skin'];
 ?>
 <!DOCTYPE html>
 <html lang="ro">
@@ -115,8 +113,8 @@ $skinId = 7;
       </div>
       <div>
         <h2 style="margin-bottom:4px">🧍 Skin-ul tău</h2>
-        <p style="color:var(--muted); margin:0">Model #<?= (int)$skinId ?>. Toți jucătorii folosesc același skin momentan
-        (serverul nu are încă selecție de skin per jucător).</p>
+        <p style="color:var(--muted); margin:0">Model #<?= (int)$skinId ?>. Schimbă-l în joc cu <code>/skins</code>
+        (cumperi outfituri noi) sau <code>/wardrobe</code> (comuți gratis între cele deținute).</p>
       </div>
     </div>
 

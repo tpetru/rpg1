@@ -97,6 +97,50 @@
 <main>
 
 <div class="feature">
+  <h2>🚤 Reproiectare Contrabandă pe mare (/smuggle)</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Refăcut complet dintr-un sistem cu 2 etape (încărcare → descărcare) într-unul cu <strong>4 etape</strong>: încărcare
+  (punct fix) → 2 colectări (alese random din 6 puncte) → livrare (hotel random, cu Sultanul facțiunii). Vezi secțiunea
+  „Contrabandă pe mare" din documentația tehnică pentru detalii complete.</p>
+  <ul>
+    <li>Freeze <strong>10s</strong> la încărcare (nou), <strong>5s</strong> la fiecare colectare.</li>
+    <li>Wanted 6 la echipaj + anunț Poliție/Presă la încărcare; wanted redus la 5 la livrare.</li>
+    <li>Cooldown transformat din 10 minute (memorie) în <strong>o cursă reușită pe zi calendaristică, per facțiune</strong>,
+      persistat în DB (<code>factions.smuggle_cooldown_day</code>) — supraviețuiește unui restart de server.</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>🔫 Evenimente noi: Counter Strike &amp; Hunt The Mayor</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p><strong>Counter Strike</strong> (<code>/event cs</code>) — 5v5 cu bombă, mai multe meciuri simultane, locații
+  configurabile din joc (<code>/cscreate</code>/<code>/csdelete</code>/<code>/cslist</code>). 10 runde, schimb de tabere
+  la runda 5, plantare/dezamorsare cu freeze 3s.</p>
+  <p><strong>Hunt The Mayor</strong> (<code>/event htm</code>) — un jucător random devine "Primarul" (MP5, 100 HP+armură),
+  restul îl vânează (M4, 50 HP). 15 minute, recompense pentru lovitură reușită ($5.000), kill ($10.000 în plus) și
+  supraviețuire a Primarului ($15.000). A necesitat un callback nou, <code>OnPlayerTakeDamage</code>.</p>
+</div>
+
+<div class="feature">
+  <h2>🏠 Fix interior case + /hc interior</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Reparat: interiorul nu se seta la intrarea în casă (tasta ENTER) și nici la respawn (<code>pSpawn==3</code>).
+  Adăugată comanda admin <code>/hc interior [hID] [newInterior]</code> (interior ales din <code>gtaIntID</code>), plus
+  toggle automat interior↔exterior cu ENTER, care setează și <code>vw = hID</code> / <code>vw = 0</code>.</p>
+</div>
+
+<div class="feature">
+  <h2>🐄 Vacă → lapte la PayDay</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Dacă ai o Vacă la casă și ești online, ai <strong>50% șansă</strong> la fiecare PayDay să primești
+  <strong>2-5L de lapte</strong>, adăugate direct în frigiderul casei (necesită frigider funcțional, cu loc liber).</p>
+</div>
+
+<div class="feature">
   <h2>💵 De decis: rutarea veniturilor pentru /meal și GasCan</h2>
   <span class="status status-idea">De decis</span>
 
@@ -225,15 +269,80 @@
   (câmpuri redenumite: <code>hOwner→hOwnerName</code>, <code>bOwner→bOwnerName</code>, <code>fmOwner→fmOwnerName</code>).</p>
 
   <ul>
-    <li><strong>Listare la preț:</strong> <code>/sellhouse [price]</code>, <code>/sellbusiness [price]</code>,
+    <li><strong>Listare la preț:</strong> <code>/house sell [price]</code>, <code>/biz sell [price]</code>,
       <code>/sellveh [price]</code>, <code>/sellfarm [price]</code> (preț <code>0</code> = anulează listarea).</li>
+    <li><strong>Ofertă directă:</strong> <code>/house sellto [playerid] [price]</code>, <code>/biz sellto [playerid] [price]</code> —
+      cumpărătorul confirmă cu <code>/accept house [sellerid]</code> / <code>/accept biz [sellerid]</code>, trebuie să aibă banii cash.</li>
     <li><strong>Cumpărare:</strong> prin comenzile existente <code>/buyhouse</code>, <code>/buybiz</code>,
       <code>/buyfarm</code>, <code>/vbuy</code> — funcționează și dacă proprietarul e online.</li>
     <li><strong>Banii vânzătorului</strong> merg în <strong>bancă</strong> — funcționează și dacă e offline
       (<code>Prop_SettleSeller</code> / <code>Prop_SettleSellerVehicle</code>: actualizează memoria dacă e online, altfel direct în DB).</li>
-    <li><strong>Vânzare la stat (60%):</strong> <code>/sellhousetostate</code>, <code>/sellfarmtostate</code>,
-      <code>/sellbiztostate</code>, <code>/sellvehtostate</code>. (Vechile <code>/sellbiz</code> și <code>/vsell</code> au fost eliminate.)</li>
+    <li><strong>Vânzare la stat (60%):</strong> <code>/house selltostate</code>, <code>/sellfarmtostate</code>,
+      <code>/biz selltostate</code>, <code>/sellvehtostate</code>. (Vechile <code>/sellhouse</code>, <code>/sellhousetostate</code>,
+      <code>/sellbusiness</code>, <code>/sellbiztostate</code>, <code>/sellbiz</code> și <code>/vsell</code> au fost eliminate/redenumite.)</li>
     <li>Etichetele 3D și listele arată <strong>FOR SALE</strong> / <code>(For Sale)</code>.</li>
+    <li><strong>Owner „none":</strong> <code>/hc [id] owner none</code>, <code>/bc [id] ownerid none</code>,
+      <code>/farmc [id] ownerid none</code>, <code>/vc ownerid none</code> resetează proprietatea la nedeținută, la vânzare standard.</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>🧾 ANAF — blocaj de business</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>La fiecare PayDay, la ora <strong>12:00</strong>, este ales random un business care e blocat de ANAF
+  (<code>bANAF=1</code>) — cât timp e blocat, niciun venit nu mai intră în el. Proprietarul e anunțat la fiecare respawn.</p>
+  <ul>
+    <li><strong>Deblocare:</strong> cu un vehicul <strong>model 428</strong>, la biz, <code>/biz getdocs</code> →
+      checkpoint la locația ANAF (<code>locID 33</code>) → <code>/biz givedocs</code>. La următorul PayDay, <code>bANAF</code> revine la 0.</li>
+    <li><strong>Admin:</strong> <code>/bc [bizid] anaf [0-1]</code> setează manual starea.</li>
+    <li><strong>Alte comenzi noi de business:</strong> <code>/biz withdraw [sumă]</code> (fostă <code>/bwithdraw</code>).</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>🔧 Probleme de apartament (hIssue) &amp; Electrician</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>La fiecare PayDay, la ora <strong>22:00</strong>, un apartament (<code>hType==3</code>) deținut, ales random dintre
+  cele fără o problemă activă, primește una din 3 probleme: vecin inundat / canalizare infundată / circuit ars
+  (<code>hIssue = 1-3</code>). Cât timp <code>hIssue != 0</code>, proprietarul <strong>nu se mai poate spawna la
+  apartament</strong> — spawn-ul cade pe civil — și e anunțat la fiecare respawn.</p>
+  <ul>
+    <li><strong>Rezolvare:</strong> <code>/fixapartament</code>, necesită jobul <strong>Electrician</strong>
+      (<code>JOB_ELECTRICIAN</code>), taxă <strong>$3.000</strong> scoasă din banca apartamentului.</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>🛠️ Restructurare comenzi admin — id-first</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p><code>/hc</code>, <code>/bc</code>, <code>/farmc</code>, <code>/fc</code> iau acum ID-ul entității ca prim
+  argument, apoi subcomanda (înlocuiesc vechile <code>/hChangeloc</code>, <code>/hChangeprice</code>,
+  <code>/hChangeowner</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>,
+  <code>/changefactionhq</code> și restul familiei <code>/changefaction*</code>).</p>
+  <ul>
+    <li><code>/hc [houseid] [loc/interior/price/owner/forsale/bank/type/name]</code></li>
+    <li><code>/bc [bizid] [name/price/loc/anaf/forsale/ownerid/bank]</code></li>
+    <li><code>/farmc [farmid] [loc/range/price/name/isOwned/ownerid/forsale/bank]</code></li>
+    <li><code>/fc [factionid] [hq/interiorloc/interior/vw/hqicon/pickup/lead/vehloc/createveh/removelead]</code></li>
+    <li><code>/vc</code> rămâne per-vehicul (nu ia ID) — noi subcomenzi <code>forsale</code>/<code>ownerid</code>.</li>
+    <li><code>/hupgrade [houseid] [animal [nume]/tree]</code> (nivel 5) — acordă gratuit un upgrade de casă.</li>
+    <li><code>/houselist</code> (nivel 2+) — dialog cu toate casele (ID/Nume/Tip/Proprietar), la fel ca <code>/bizzlist</code>.</li>
+  </ul>
+</div>
+
+<div class="feature">
+  <h2>🐢 Eligibilitate animale/copac pe tip de casă</h2>
+  <span class="status status-done">Implementat ✔</span>
+
+  <p>Catalog de animale: <strong>Turtle</strong> (redenumit din "Frog"), <strong>Cow</strong>, <strong>Deer</strong>.
+  Cumpărare via <code>/house upgrade animal [nume]</code>.</p>
+  <ul>
+    <li>Turtle / Deer — doar la <strong>Villa</strong> (hType 1).</li>
+    <li>Cow — doar la <strong>Countryside House</strong> (hType 4).</li>
+    <li>Copac (<code>/house upgrade tree</code>) — doar la <strong>City House</strong> (2) sau <strong>Countryside House</strong> (4).</li>
   </ul>
 </div>
 

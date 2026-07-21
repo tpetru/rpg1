@@ -9200,3 +9200,74 @@
 [11:32:11] [WARNING] mysql_connect: no password specified
 [11:38:56] [WARNING] mysql_connect: no password specified
 [11:54:44] [WARNING] mysql_connect: no password specified
+[08:49:14] [WARNING] mysql_connect: no password specified
+[08:49:14] [WARNING] mysql_connect: no password specified
+[11:38:59] [WARNING] mysql_connect: no password specified
+[11:39:03] [WARNING] mysql_connect: no password specified
+[11:40:43] [WARNING] mysql_connect: no password specified
+[11:48:26] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `loc_x`=784.3262, `loc_y`=-1331.9740, `loc_z`=13.2733, `rotation`=90.3681 WHERE `id`=1": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:28] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `fuel`=97.96 WHERE `id`=1": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:30] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=19 WHERE `id`=1": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:32] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=2": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:34] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=4": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:36] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=19 WHERE `id`=5": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:38] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=6": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:40] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=7": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:42] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=16 WHERE `id`=8": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:44] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=17 WHERE `id`=9": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:46] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=10": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:48] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=11": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:50] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=19 WHERE `id`=12": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:52] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=18 WHERE `id`=13": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:54] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=14": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:56] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=17 WHERE `id`=15": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:48:58] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=18 WHERE `id`=16": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:00] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=17": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:02] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=18": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:05] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=22 WHERE `id`=19": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:07] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=20": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:09] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=21": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:11] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=24 WHERE `id`=22": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:13] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=21 WHERE `id`=23": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:15] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=24": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:17] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=22 WHERE `id`=25": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:19] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=21 WHERE `id`=26": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:21] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=21 WHERE `id`=27": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:23] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=17 WHERE `id`=28": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:25] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=21 WHERE `id`=29": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:27] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=19 WHERE `id`=30": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:29] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=31": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:31] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=24 WHERE `id`=32": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:33] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=18 WHERE `id`=33": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:35] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=20 WHERE `id`=34": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:37] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=21 WHERE `id`=35": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:39] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=23 WHERE `id`=36": Can't connect to MySQL server on '127.0.0.1' (10061)
+[11:49:41] [ERROR] error #2002 while executing query "UPDATE `vehicles_personal` SET `dirty`=22 WHERE `id`=37": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:00:18] [ERROR] error #2002 while executing query "SELECT `aID`,`aType`,`aPlayerID`,`aHouseID`,`aName` FROM `animals` ORDER BY `aID` ASC": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:00:20] [ERROR] error #2002 while executing query "UPDATE `houses` SET `has_fridge`=1, `fridge_milk`=6, `fridge_banana`=0, `fridge_water`=0, `fridge_juice`=0, `fridge_beer`=0, `fridge_expire`=0 WHERE `id`=1": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:00:22] [ERROR] error #2002 while executing query "UPDATE `players` SET `password`='112', `level`=2, `money`=1523447, `bank`=26531140, `rp`=7, `admin_level`=6, `faction`=8, `faction_rank`=5, `faction_join`=NULL, `house`=1, `hotel`=0, `business`=0, `spawn_type`=2, `key1`=1, `key2`=2, `key3`=0, `driving_lic_a_exp`='2030-12-31', `driving_lic_b_exp`='2030-12-31', `driving_lic_c_exp`='2030-12-31', `driving_lic_d_exp`='2030-12-31', `airplane_lic_a_exp`='2030-12-31', `airplane_lic_h_exp`='2030-12-31', `phone_model`=3, `phone_number`=79640, `medkits`=0, `extinguishers`=0, `mute_expire`=0, `wanted_level`=6, `jail_seconds`=0, `rob_points`=10, `skin`=302, `gas_can`=-1, `watch_model`=3, `phone_expire`=0, `watch_expire`=1786207242, `tired`=100 WHERE `id`=1": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:00:24] [ERROR] error #2002 while executing query "UPDATE `factions` SET `bank`=23600 WHERE `id`=4": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:00:26] [ERROR] error #2002 while executing query "UPDATE `factions` SET `bank`=23300 WHERE `id`=5": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:00:28] [ERROR] error #2002 while executing query "UPDATE `factions` SET `bank`=23600 WHERE `id`=6": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:00:30] [ERROR] error #2002 while executing query "UPDATE `factions` SET `bank`=25700 WHERE `id`=7": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:13:13] [ERROR] error #2002 while executing query "UPDATE `players` SET `wanted_level`=6 WHERE `id`=1": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:13:35] [ERROR] error #2002 while executing query "UPDATE `factions` SET `hq_x`=733.6188, `hq_y`=-1350.3066, `hq_z`=13.5000 WHERE `id`=8": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:08] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=0.00 WHERE `id`=98": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:27] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=86": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:29] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=87": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:31] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=88": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:33] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=89": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:35] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=90": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:37] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=91": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:39] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=92": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:41] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=93": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:14:43] [ERROR] error #2002 while executing query "UPDATE `vehicles_faction` SET `fuel`=100.00 WHERE `id`=98": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:21:16] [ERROR] error #2002 while executing query "INSERT INTO `vehicles_faction` (`faction_id`,`model_id`,`loc_x`,`loc_y`,`loc_z`,`rotation`,`color1`,`color2`) VALUES (4,595,2637.7065,-2481.5251,-0.0169,176.5170,-1,-1)": Can't connect to MySQL server on '127.0.0.1' (10061)
+[12:21:27] [ERROR] error #2002 while executing query "INSERT INTO `vehicles_faction` (`faction_id`,`model_id`,`loc_x`,`loc_y`,`loc_z`,`rotation`,`color1`,`color2`) VALUES (4,595,2637.6213,-2481.7764,0.0218,174.7922,-1,-1)": Can't connect to MySQL server on '127.0.0.1' (10061)
+[14:39:42] [WARNING] mysql_connect: no password specified
+[15:25:34] [WARNING] mysql_connect: no password specified
+[15:37:36] [WARNING] mysql_connect: no password specified
+[16:08:25] [WARNING] mysql_connect: no password specified
+[16:28:28] [WARNING] mysql_connect: no password specified
+[11:20:04] [WARNING] mysql_connect: no password specified
+[11:53:33] [WARNING] mysql_connect: no password specified

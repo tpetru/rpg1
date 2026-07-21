@@ -94,7 +94,7 @@
   <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
-    <span class="badge">gamemodes/bare.pwn — ~20700 linii</span>
+    <span class="badge">gamemodes/bare.pwn — ~27750 linii</span>
     <span class="badge">20+ tabele MySQL</span>
     <span class="badge">190+ comenzi</span>
   </div>
@@ -119,7 +119,8 @@
   <a href="#police-rar-cmds">RAR / Poliție / SMURD</a>
   <a href="#turfs">Turfs &amp; Războaie</a>
   <a href="#drugs">Droguri &amp; Seif</a>
-  <a href="#minigames">Mini-jocuri: Golf &amp; Baschet</a>
+  <a href="#smuggle">Contrabandă pe mare (/smuggle)</a>
+  <a href="#minigames">Mini-jocuri &amp; Evenimente</a>
   <a href="#caravans">Rulote personale &amp; Camping</a>
   <a href="#farming">Farming (Agricultură)</a>
   <a href="#skins">Skinuri &amp; Uniforme</a>
@@ -353,9 +354,23 @@ RP    += 1</pre>
   <div class="grid-2">
     <div class="card">
       <h4 style="margin-top:0">🏠 Case</h4>
-      <p><code>/buyhouse</code>: preț exact listat, fără formulă. <code>/sellhouse</code>: refund <strong>100%</strong>.
-      Un jucător poate deține o singură casă (<code>pHouse==999</code> = fără casă).</p>
-      <p><strong>Frigider</strong> (<code>/houseupgrade frigde</code>, $10.000, o casă = un frigider). Coloane DB pe <code>houses</code>: <code>has_fridge</code>, <code>fridge_milk/banana/water/juice/beer</code>. Comenzi la casa proprie (rază 20m): <code>/frigde buy [item] [qty]</code> (doar 15:00–20:00), <code>/frigde use [item]</code>, <code>/frigde</code> (status).</p>
+      <p><code>/buyhouse</code>: preț exact listat, fără formulă. Comenzile de vânzare sunt acum grupate sub
+      <code>/house</code>: <code>/house sell [preț]</code> (listează pentru oricine, <code>0</code>=anulează),
+      <code>/house sellto [playerid] [preț]</code> (ofertă directă, cumpărătorul confirmă cu <code>/accept house [sellerid]</code>),
+      <code>/house selltostate</code> (refund <strong>100%</strong>). Un jucător poate deține o singură casă (<code>pHouse==999</code> = fără casă).</p>
+      <p><strong>Interior (dacă e configurat):</strong> câmpuri noi <code>hIntLocX/Y/Z</code>. Tasta <strong>ENTER</strong> la
+      pickup comută interior↔exterior (<code>Houses_InteriorToggle</code>, oglindă la <code>Factions_InteriorToggle</code>);
+      distanța de afișare a etichetei 3D (exterior + interior) a fost redusă de la <code>20.0</code> la <code>15.0</code>;
+      setează și <code>vw = hID</code> la intrare, <code>vw = 0</code> la ieșire. Atât spawn-ul la casă (<code>pSpawn==3</code>) cât și respawn-ul folosesc acum
+      corect coordonatele de interior când sunt setate (fix de bug — anterior interiorul nu se aplica la intrare/respawn).</p>
+      <p><strong>Admin — <code>/hc [houseid] [comandă]</code></strong> (nivel 5, ID-ul casei primul argument, apoi
+      subcomanda): <code>loc</code> (mută la poziția curentă), <code>interior [newInterior]</code> (din <code>gtaIntID</code>),
+      <code>price [preț]</code>, <code>owner [playerid|none]</code> (<code>none</code> = resetează la nedeținută, la
+      vânzare standard), <code>forsale [preț]</code> (<code>0</code>=anulează), <code>bank [valoare]</code>,
+      <code>type [1-4]</code>, <code>name [nume nou]</code>. <code>/houselist</code> (nivel 2+) afișează toate
+      casele într-un dialog (ID/Nume/Tip/Proprietar, click=teleport), la fel ca <code>/bizzlist</code>.
+      <code>/hupgrade [houseid] [animal [nume]/tree]</code> (nivel 5) acordă gratuit copac/animal oricărei case, fără taxă.</p>
+      <p><strong>Frigider</strong> (<code>/house upgrade frigde</code>, $10.000, o casă = un frigider). Coloane DB pe <code>houses</code>: <code>has_fridge</code>, <code>fridge_milk/banana/water/juice/beer</code>. Comenzi la casa proprie (rază 20m): <code>/frigde buy [item] [qty]</code> (doar 15:00–20:00), <code>/frigde use [item]</code>, <code>/frigde</code> (status).</p>
       <table>
         <tr><th>Item</th><th>Max</th><th>Preț/unit</th><th>+HP</th></tr>
         <tr><td>Milk / lapte</td><td>20 L</td><td>100</td><td>+20</td></tr>
@@ -364,13 +379,39 @@ RP    += 1</pre>
         <tr><td>Juice / suc</td><td>20 L</td><td>200</td><td>+15</td></tr>
         <tr><td>Beer / bere</td><td>50 L</td><td>250</td><td>+10</td></tr>
       </table>
+      <p><strong>Copac (<code>/house upgrade tree</code> sau <code>/tree plant</code>/<code>/tree collect</code>/<code>/tree status</code>):</strong>
+      permis doar la <code>hType</code> = City House (2) sau Countryside (4).</p>
+      <p><strong>Animale (<code>/house upgrade animal [nume]</code>):</strong> catalog Turtle/Cow/Deer, eligibilitate pe
+      tip de casă — <strong>Cow</strong> doar la Countryside (4), <strong>Turtle</strong> și <strong>Deer</strong> doar la
+      Villa (1). La fiecare PayDay, dacă proprietarul e online și deține o Vacă (<code>ANIMAL_COW_MODEL=19833</code>) la
+      casă, are <code>ANIMAL_COW_MILK_CHANCE_PCT=50%</code> șansă să primească <code>random(ANIMAL_COW_MILK_MIN..MAX)</code>
+      = 2-5L lapte direct în frigiderul casei (<code>House_HasCow</code>, necesită frigider funcțional cu loc liber,
+      plafonat la <code>g_FridgeMax[0]</code>). Adminul poate acorda gratuit ambele upgrade-uri cu
+      <code>/hupgrade [houseid] [animal [nume]/tree]</code> (nivel 5).</p>
+      <p><strong>Probleme de apartament (<code>hIssue</code>):</strong> la fiecare PayDay, la ora <code>22:00</code>,
+      un apartament (<code>hType==3</code>) deținut, ales random dintre cele fără o problemă activă, primește una
+      din 3 probleme: <code>1</code>=vecin inundat, <code>2</code>=canalizare infundată, <code>3</code>=circuit electric
+      ars. Cât timp <code>hIssue != 0</code>, proprietarul <strong>nu se mai poate spawna la apartament</strong> —
+      spawn-ul cade pe civil — și e anunțat la fiecare respawn ce problemă are. Un jucător cu jobul
+      <strong>Electrician</strong> (<code>JOB_ELECTRICIAN</code>) rezolvă cu <code>/fixapartament</code> (rază proprie,
+      taxă <strong>$3.000</strong> scoasă din banca apartamentului, plătită electricianului); <code>hIssue</code> revine
+      la 0 și proprietarul se poate spawna din nou acolo.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🏢 Business-uri</h4>
       <p><code>/buybiz</code>: preț exact, fără limită de deținere — cumpără atât business-uri libere cât și cele puse la
-      vânzare de alt jucător (vezi <a href="#marketplace">Marketplace</a>). <code>/sellbiztostate</code>: refund
-      <strong>60%</strong>, banca business-ului e <strong>pierdută</strong> (resetată la 0) la vânzarea către stat.
-      <code>/sellbusiness [preț]</code> îl listează pentru alți jucători (banca trece la cumpărător).</p>
+      vânzare de alt jucător (vezi <a href="#marketplace">Marketplace</a>). Comenzile sunt grupate sub <code>/biz</code>:
+      <code>/biz sell [preț]</code> (listează pentru oricine), <code>/biz sellto [playerid] [preț]</code> (ofertă
+      directă, cumpărătorul confirmă cu <code>/accept biz [sellerid]</code>), <code>/biz selltostate</code> (refund
+      <strong>60%</strong>, banca business-ului e <strong>pierdută</strong>, resetată la 0), <code>/biz withdraw [sumă]</code>
+      (retrage cash din banca business-ului).</p>
+      <p><strong>ANAF (<code>bANAF</code>):</strong> la fiecare PayDay, la ora <code>12:00</code>, este ales random un
+      business care e blocat de ANAF (<code>bANAF=1</code>) — cât timp e blocat, <strong>niciun venit nu mai intră</strong>
+      în acel business (verificat central în <code>Job_AddBizIncome</code> + manual la restul punctelor de creditare).
+      Proprietarul e anunțat la fiecare respawn. Pentru deblocare: cu un vehicul <strong>model 428</strong>, la biz, dă
+      <code>/biz getdocs</code> → apare un checkpoint la locația ANAF (<code>locID 33</code>) → acolo dă
+      <code>/biz givedocs</code>; la următorul PayDay, <code>bANAF</code> revine la 0 și veniturile reîncep.
+      Admin: <code>/bc [bizid] anaf [0-1]</code> setează manual starea.</p>
     </div>
   </div>
 
@@ -441,6 +482,13 @@ RP    += 1</pre>
   <h3>/vplate — verificare async de unicitate</h3>
   <p>Max 10 caractere, la PLATE_LOC (930.0, 2074.0, 12.5, rază 5m), motor oprit. Verificarea de unicitate e async
   (<code>OnVehiclePlateChecked</code>) — banii sunt scăzuți și creditați RAR-ului <strong>în callback</strong>, nu în corpul comenzii.</p>
+
+  <div class="note ok">
+    <strong>Fix — /vpark rotația greșită.</strong> <code>GetVehicleZAngle</code> e un nativ SA-MP cunoscut ca imprecis pentru
+    orice vehicul care nu e perfect drept (practic mereu, din cauza suspensiei). <code>/vpark</code>, <code>/vc loc</code> și
+    captura inițială din <code>/vbuy</code> foloseau acest nativ — înlocuit cu <code>GetVehicleRotation</code> (funcția proprie
+    din secțiunea Rulote, bazată pe <code>GetVehicleRotationQuat</code>), folosind componenta <code>rz</code> ca yaw real.
+  </div>
 </section>
 
 <section id="exams">
@@ -759,8 +807,55 @@ RP    += 1</pre>
   </table>
 </section>
 
+<section id="smuggle">
+  <h2>🚤 Contrabandă pe mare (/smuggle, exclusiv mafii)</h2>
+  <p>Reproiectat complet: <strong>4 etape</strong> — încărcare (punct fix) → 2 colectări (alese random dintr-un pool de 6) →
+  livrare (hotel random, cu Sultanul facțiunii). Un singur lider (șoferul bărcii) declanșează avansarea pentru tot echipajul,
+  la fel ca la <code>/rob</code>. Doar mafiile (<code>MAFIA_FID_MIN..MAFIA_FID_MAX</code> = 4-7) pot rula.</p>
+
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>MAX_SMUGGLE_BOATS</td><td>5 (barcile desemnate, <code>g_SmuggleBoatId[]</code> — coordonatele lor sunt încă placeholder, de completat de admin)</td></tr>
+    <tr><td>MAX_SMUGGLE_COLLECT_PTS</td><td>6 (se aleg 2 distincte random la fiecare cursă)</td></tr>
+    <tr><td>SMUGGLE_LOAD_FREEZE_SEC</td><td>10 (freeze la punctul de încărcare)</td></tr>
+    <tr><td>SMUGGLE_COLLECT_FREEZE_SEC</td><td>5 (freeze la fiecare punct de colectare)</td></tr>
+    <tr><td>SMUGGLE_DELIVER_VEHICLE</td><td>560 (Sultan — trebuie deținut de facțiune, <code>g_VehicleFactionOwner</code>; nu contează dacă ești șofer sau pasager)</td></tr>
+    <tr><td>SMUGGLE_MAX_CREW</td><td>6</td></tr>
+    <tr><td>SMUGGLE_FACTION_CASH / _WEED</td><td>$25.000 + 500g iarbă în seiful mafiei, la livrare</td></tr>
+    <tr><td>SMUGGLE_CREW_PAY_BASE / _RAND</td><td>$2.000 + random($0-1000) per membru viu/conectat</td></tr>
+    <tr><td>SMUGGLE_COP_BOUNTY</td><td>$5.000 în banca Poliției per contrabandist prins</td></tr>
+  </table>
+
+  <h3>Flux complet</h3>
+  <ol>
+    <li><code>/smuggle</code> — trebuie să fii șoferul unei bărci desemnate, să existe cel puțin un hotel configurat pe server, și
+    facțiunea să nu fi avut deja o cursă reușită <strong>în ziua curentă</strong> (vezi cooldown mai jos). Capturează echipajul
+    (toți logații din barcă la momentul comenzii, max 6).</li>
+    <li><strong>Etapa LOAD</strong> — checkpoint fix (<code>g_SmuggleLoadPoint</code>). La sosire: freeze <code>10s</code> pentru
+    șofer, apoi (<code>Smuggle_StageFinish</code>): Poliția + Presa sunt anunțate, tot echipajul primește <strong>wanted 6</strong>,
+    se aleg random 2 din cele 6 puncte de colectare (<code>Smuggle_PickCollectPoints</code>).</li>
+    <li><strong>Etapele COLLECT1 / COLLECT2</strong> — checkpoint la fiecare punct ales; freeze <code>5s</code> la fiecare, tot cu
+    barca. După COLLECT2, se alege un hotel random din <code>HotelData</code> (dacă niciunul nu e configurat, cursa se anulează).</li>
+    <li><strong>Etapa DELIVER</strong> — checkpoint la hotel; trebuie ajuns cu <strong>Sultanul facțiunii</strong> (model 560,
+    <code>g_VehicleFactionOwner == pFaction</code>), șofer sau pasager, fără freeze suplimentar. La sosire: <code>Smuggle_Payout</code>
+    plătește seiful + echipajul, reduce wanted-ul la <strong>5</strong>, și setează cooldown-ul facțiunii.</li>
+  </ol>
+
+  <h3>Cooldown — o cursă reușită pe zi, persistat în DB</h3>
+  <p>Câmp nou <code>factions.smuggle_cooldown_day</code> (→ <code>FactionData[fid][fSmuggleCooldownDay]</code>), stochează
+  <code>gettime() / 86400</code> (indexul zilei) la ultima livrare reușită. <code>/smuggle</code> refuză o nouă cursă dacă
+  indexul curent al zilei e egal cu cel salvat — deci <strong>o cursă reușită per facțiune per zi calendaristică</strong>,
+  supraviețuiește unui restart de server (spre deosebire de vechiul cooldown de 10 minute, ținut doar în memorie).</p>
+
+  <div class="note">
+    Punctele de încărcare/colectare sunt <strong>hardcodate</strong> în <code>g_SmuggleLoadPoint</code> /
+    <code>g_SmuggleCollectPoint</code> (nu mai există un array configurabil din joc ca înainte). Doar coordonatele bărcilor
+    (<code>g_SmuggleBoatId</code>) rămân placeholder, de completat ulterior de admin.
+  </div>
+</section>
+
 <section id="minigames">
-  <h2>Mini-jocuri: Golf &amp; Baschet</h2>
+  <h2>Mini-jocuri &amp; Evenimente: Golf, Baschet, Counter Strike, Hunt The Mayor</h2>
 
   <h3>⛳ Golf — turneu eliminatoriu pe runde</h3>
   <p>Turneu pornit de admin (<code>GOLF_ADMIN_LEVEL=2</code>): <code>/opengolftournament</code> deschide înscrierile
@@ -863,6 +958,38 @@ RP    += 1</pre>
     coordonatele coșului respectiv. <code>/gotoxyz [x] [y] [z]</code> (admin lvl 3+) ajută la testarea/verificarea
     pozițiilor exacte — teleportează direct la coordonate brute, fără să fie nevoie de o locație predefinită.
   </div>
+
+  <h3>🔫 Counter Strike (event, admin lvl 2+)</h3>
+  <p>5v5 team deathmatch cu bombă, mai multe meciuri simultane posibile. Locațiile de meci vin din tabela nouă
+  <code>cs_locations</code> (creată/editată din joc: <code>/cscreate [csType] [name]</code>, <code>/csdelete [csID]</code>,
+  <code>/cslist</code>).</p>
+  <table>
+    <tr><th>Constantă</th><th>Valoare</th></tr>
+    <tr><td>CS_BOMB_SECONDS</td><td>timpul până explodează bomba plantată</td></tr>
+    <tr><td>Rounds</td><td>10 runde; 5-5 = egalitate; după runda 5, echipele <strong>schimbă taberele</strong></td></tr>
+    <tr><td>Sign-up cap</td><td>închise automat la <strong>10 jucători</strong> (sau manual de admin), echipe alocate alternativ T/CT/T/CT...</td></tr>
+  </table>
+  <p><code>/event cs open|start|stop [nr]</code> (admin), <code>/event cs join [nr]</code> (jucător). T câștigă plantând bomba
+  (<code>/plant</code>, freeze 3s la un site) și lăsând-o să explodeze, sau eliminând tot CT. CT câștigă eliminând tot T
+  (doar dacă bomba nu e plantată) sau dezamorsând-o (<code>/defuse</code>, freeze 3s). Fiecare rundă: AK-47 (T) / M4 (CT),
+  Desert Eagle, armură completă; moartea = spectator până la runda următoare.</p>
+
+  <h3>🏛️ Hunt The Mayor (event, admin lvl 2+)</h3>
+  <p>Un jucător random devine "Primarul"; restul îl vânează. <code>/event htm open|start|stop</code> (admin),
+  <code>/event htm join</code> (jucător). Durată: <strong>15 minute</strong>. A necesitat un callback nou,
+  <code>OnPlayerTakeDamage</code>, ca să detecteze cine a lovit Primarul (pentru premiul de "lovitură reușită").</p>
+  <table>
+    <tr><th>Rol</th><th>Spawn</th><th>Recompensă</th></tr>
+    <tr><td>Primar</td><td>locație secretă random (dintre cele 5 predefinite), 100 HP + 100 armură, MP5, vehicul model 461</td></tr>
+    <tr><td>Vânători</td><td>toți la același punct, 50 HP, M4, vehicul model 522 (spawn random ±5m X/Y, ±2m Z)</td></tr>
+  </table>
+  <ul>
+    <li>Orice lovitură reușită pe Primar (o singură dată per vânător) → <strong>$5.000</strong></li>
+    <li>Kill-ul propriu-zis → +<strong>$10.000</strong> suplimentar</li>
+    <li>Primarul supraviețuiește cele 15 min → <strong>$15.000</strong></li>
+  </ul>
+  <div class="note">A treia locație de <code>/vwash</code> (1017.7543, -917.8074, 41.7341) coincide cu unul din punctele de
+  spawn ale Primarului (sp2) — reparație rapidă înainte de a reintra în vânătoare.</div>
 </section>
 
 <section id="caravans">
@@ -876,7 +1003,8 @@ RP    += 1</pre>
   semn inversat pe <code>ry</code> — testate empiric, vezi comentariile din cod). Poziția și rotația sunt persistate în
   DB (<code>rulote_personale</code>) ca să reapară parcată identic la următoarea logare. Mașina e respawnată la
   aceeași poziție X/Y, cu Z+5. Atât <code>/detach</code> cât și <code>/camp</code> (mai jos) refuză comanda dacă
-  mașina nu e (aproape) dreaptă — <code>rx</code>/<code>ry</code> trebuie să cadă în 5° de un multiplu de 90°.</p>
+  mașina nu e (aproape) dreaptă — <code>rx</code>/<code>ry</code> trebuie să cadă în 5° de un multiplu de 90°.
+  Rulota parcată primește <code>CARAVAN_PARK_OFFSET_Z = -0.7</code> pe coordonata Z (anterior -0.5).</p>
   <p><code>/createcaravan [playerid] [tip 1-3]</code> (admin lvl 6) — singura cale de a atribui o rulotă unui jucător;
   nu există încă o comandă de cumpărare.</p>
 
@@ -1059,16 +1187,18 @@ RP    += 1</pre>
   <h3>Comenzi</h3>
   <table>
     <tr><th>Comandă</th><th>Efect</th></tr>
-    <tr><td><code>/sellhouse [price]</code></td><td>Listează casa la preț (<code>0</code> = anulează listarea)</td></tr>
-    <tr><td><code>/sellbusiness [price]</code></td><td>Listează business-ul (trebuie să fii lângă el)</td></tr>
+    <tr><td><code>/house sell [price]</code></td><td>Listează casa la preț (<code>0</code> = anulează listarea)</td></tr>
+    <tr><td><code>/biz sell [price]</code></td><td>Listează business-ul (trebuie să fii lângă el)</td></tr>
     <tr><td><code>/sellveh [price]</code></td><td>Listează vehiculul în care ești</td></tr>
     <tr><td><code>/sellfarm [price]</code></td><td>Listează ferma deținută</td></tr>
+    <tr><td><code>/house sellto [playerid] [price]</code> / <code>/biz sellto [playerid] [price]</code></td><td>Ofertă directă către un jucător; acesta confirmă cu <code>/accept house [sellerid]</code> / <code>/accept biz [sellerid]</code>, trebuie să aibă banii cash</td></tr>
     <tr><td><code>/buyhouse</code> / <code>/buybiz</code> / <code>/buyfarm</code> / <code>/vbuy</code></td><td>Cumpără — funcționează atât de la server (nedeținut) cât și de la alt jucător (listat)</td></tr>
-    <tr><td><code>/sellhousetostate</code>, <code>/sellfarmtostate</code>, <code>/sellbiztostate</code>, <code>/sellvehtostate</code></td><td>Vânzare instant la stat: <strong>60%</strong> din valoare, în <strong>cash</strong></td></tr>
+    <tr><td><code>/house selltostate</code>, <code>/sellfarmtostate</code>, <code>/biz selltostate</code>, <code>/sellvehtostate</code></td><td>Vânzare instant la stat: <strong>60%</strong> din valoare, în <strong>cash</strong></td></tr>
   </table>
   <div class="note warn">
-    Vechile <code>/sellbiz</code> și <code>/vsell</code> au fost <strong>eliminate</strong> — înlocuite de
-    <code>/sellbiztostate</code> / <code>/sellvehtostate</code>.
+    Vechile <code>/sellhouse</code>, <code>/sellhousetostate</code>, <code>/sellbusiness</code>, <code>/sellbiztostate</code>,
+    <code>/sellbiz</code>, <code>/vsell</code> au fost <strong>eliminate</strong> — înlocuite de comenzile grupate
+    <code>/house sell/sellto/selltostate</code> și <code>/biz sell/sellto/selltostate/withdraw/getdocs/givedocs</code>.
   </div>
 
   <h3>Decontarea vânzătorului</h3>
@@ -1171,23 +1301,28 @@ owned TINYINT DEFAULT 0, is_for_sale TINYINT DEFAULT 0, price INT DEFAULT 50000,
 type INT DEFAULT 1, max_pets INT DEFAULT 0, pets INT DEFAULT 0,
 has_fridge INT DEFAULT 0,
 fridge_milk/fridge_banana/fridge_water/fridge_juice/fridge_beer INT DEFAULT 0,
-bank INT DEFAULT 0
--- type: 1=casa, 2=apartament, 3=other; max_pets &gt; 0 = casa cu curte (permite /buyanimal)
+bank INT DEFAULT 0, issue INT DEFAULT 0
+-- type: 1=Villa, 2=City House, 3=Apartment, 4=Countryside House
+-- max_pets &gt; 0 = casa cu curte (permite /house upgrade animal); tree permis doar la type 2 sau 4
 -- has_fridge + fridge_* = sistemul de frigider (vezi sectiunea Case &amp; Business-uri)
 -- owner = doar afisare (hOwnerName); owner_id e sursa de adevar la verificari
--- is_for_sale = pusa la vanzare de proprietar (vezi sectiunea Marketplace); bank = contul casei</pre>
+-- is_for_sale = pusa la vanzare de proprietar (vezi sectiunea Marketplace); bank = contul casei
+-- issue = problema activa de apartament (0=nicio problema, 1-3; doar type==3), vezi sectiunea Case &amp; Business-uri</pre>
 
   <h4>animals</h4>
   <pre>aID INT PK AI, aType INT DEFAULT 0, aPlayerID INT DEFAULT 0, aHouseID INT DEFAULT 0,
 aName VARCHAR(32) NOT NULL DEFAULT 'Animal'
--- MAX_ANIMALS=200, ANIMAL_PRICE=5000; un animal cumparat cu /buyanimal sta in curtea casei (aHouseID)</pre>
+-- MAX_ANIMALS=200, ANIMAL_PRICE=5000; un animal cumparat cu /house upgrade animal [nume] sta in curtea casei (aHouseID)
+-- catalog: Turtle (model 1609) si Deer -&gt; doar hType Villa (1); Cow (ANIMAL_COW_MODEL) -&gt; doar hType Countryside (4)</pre>
 
   <h4>businesses</h4>
   <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Business', owned TINYINT DEFAULT 0, owner VARCHAR(24) DEFAULT '',
 owner_id INT DEFAULT 0, is_for_sale TINYINT DEFAULT 0, price INT DEFAULT 50000, bank INT DEFAULT 0,
-loc_x/y/z FLOAT DEFAULT 0.0
+loc_x/y/z FLOAT DEFAULT 0.0, anaf INT DEFAULT 0, anaf_docs_sent INT DEFAULT 0
 -- owner = doar afisare (bOwnerName); owner_id e sursa de adevar la verificari
--- is_for_sale = pus la vanzare de proprietar (vezi sectiunea Marketplace)</pre>
+-- is_for_sale = pus la vanzare de proprietar (vezi sectiunea Marketplace)
+-- anaf = blocaj ANAF activ (1=blocat, niciun venit nu intra); anaf_docs_sent = documente predate, se deblocheaza la urmatorul PayDay
+-- vezi sectiunea Case &amp; Business-uri pentru fluxul complet (/biz getdocs / givedocs, /bc [id] anaf)</pre>
 
   <h4>vehicles_faction</h4>
   <pre>id INT PK AI, faction_id INT NOT NULL, model_id INT NOT NULL, loc_x/y/z FLOAT DEFAULT 0.0,
@@ -1303,20 +1438,34 @@ rTimeRecord FLOAT DEFAULT 999 (secunde), rPlayerName VARCHAR(24)
   <table>
     <tr><th>Nivel</th><th>Comenzi</th></tr>
     <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/aa [text]</code> — anunț global al adminilor (<code>(( Admin &lt;nume&gt;: text ))</code>), <code>/slap [playerid]</code> — ridică jucătorul la <code>z + 2.0</code>, <code>/setskin [playerid] [skinid]</code> — setează skin-ul (0-311) și îl și dăruiește jucătorului, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code>, <code>/reports</code> — dialog cu reporturile deschise, <code>/reportreply [repID] [text]</code> — răspunde la un report (vezi secțiunea Reporturi)</td></tr>
-    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/farmlist</code> — dialog cu toate fermele (click = teleport), <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code>, <code>/event race [lap1/lap2/lap3] [vehicle/random]</code>, <code>/event start</code>, <code>/event stop</code></td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/farmlist</code> — dialog cu toate fermele (click = teleport), <code>/houselist</code> — dialog cu toate casele (ID/Nume/Tip/Proprietar, click = teleport), <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code>, <code>/giveweapon [playerid] [weapon] [ammo]</code>, <code>/cscreate [csType] [name]</code>, <code>/csdelete [csID]</code>, <code>/cslist</code>, <code>/event cs open|start [nr]|stop [nr]</code>, <code>/event htm open|start|stop</code>, <code>/event race [lap1/lap2/lap3] [vehicle/random]</code>, <code>/event start</code>, <code>/event stop</code></td></tr>
     <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh [nume sau model id]</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setlic [playerid] [all/A/B/C/D/H/P] [YYYY-MM-DD]</code> (A/B/C/D=auto, P=avion, H=elicopter), <code>/gotoxyz</code>, <code>/forceunlock</code>, <code>/changecar [engine/lights/alarm/doors/hood/boot]</code> — comută o componentă a vehiculului în care ești</td></tr>
     <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie); <code>/adminuninvite [playerid]</code> — scoate un player din facțiune (faction=0, scade fMembers, resetează fLead dacă era lider)</td></tr>
-    <tr><td><span class="pill pill-lvl">5</span></td><td><code>/vc [loc/insurance/medkit/extinctor/itp]</code> (pe vehiculul personal în care ești; <code>/vc loc</code> = setează locația de spawn la poziția curentă), <code>/vchangeinsuranceexp</code>, <code>/vchangemedkitexp</code>, <code>/vchangeextinctorexp</code>, <code>/vchangeitpexp</code>, <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;loc|name|type&gt; &lt;ffID&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger/cluckin), <code>/fastfoodlist</code> — dialog cu toate locațiile fast-food (click = teleport), <code>/farmc [loc/range/price/isOwned]</code> — configurează ferme, <code>/setfactionskin [fid] [skin r1/2] [skin r3/4] [skin r5]</code> — uniformele facțiunii (0 = fără). <code>/vc price</code> necesită nivel 6.</td></tr>
-    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/hChangeloc</code>, <code>/hChangeprice</code>, <code>/hChangeowner</code>, <code>/fc createveh [faction_id]</code>, <code>/createbiz</code>, <code>/bChangename</code>, <code>/bChangeprice</code>, <code>/bChangeloc</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/changefactionhq</code>, <code>/changefactionhqicon</code>, <code>/changefactionpickup</code>, <code>/changefactionInteriorLoc</code>, <code>/changefactioninterior</code>, <code>/changefactionvw</code>, <code>/changefactionlead</code>, <code>/removefactionlead</code>, <code>/createcaravan</code>, <code>/setbballspawn</code>, <code>/shopcreate</code>, <code>/shopChangeLoc [id]</code>, <code>/shopDelete [id]</code>, <code>/ffcreate [1=pizza / 2=burger / 3=cluckin] [name]</code> — creează o locație fast-food la poziția ta. <strong>Tipul e obligatoriu</strong> (nu mai există default); max <code>MAX_FOOD_LOCATIONS = 20</code> per tip</td></tr>
+    <tr><td><span class="pill pill-lvl">5</span></td><td>
+      <strong>Comenzi id-first</strong> (ID-ul entității primul argument, apoi subcomanda):<br>
+      <code>/hc [houseid] [loc/interior/price/owner/forsale/bank/type/name]</code><br>
+      <code>/bc [bizid] [name/price/loc/anaf/forsale/ownerid/bank]</code><br>
+      <code>/farmc [farmid] [loc/range/price/name/isOwned/ownerid/forsale/bank]</code><br>
+      <code>/fc [factionid] [hq/interiorloc/interior/vw/hqicon/pickup/lead/vehloc/createveh/removelead]</code><br>
+      <code>/vc [loc/price/insurance/medkit/extinctor/itp/forsale/ownerid]</code> (pe vehiculul personal în care ești, nu ia ID; <code>/vc price</code> necesită nivel 6)<br>
+      <code>/hupgrade [houseid] [animal [nume]/tree]</code> — acordă gratuit un upgrade de casă (fără taxă)<br>
+      Sentinela <code>none</code> (în loc de un <code>playerid</code>) la <code>owner</code>/<code>ownerid</code> resetează proprietatea la nedeținută/vânzare standard.<br>
+      <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;loc|name|type&gt; &lt;ffID&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger/cluckin), <code>/fastfoodlist</code> — dialog cu toate locațiile fast-food (click = teleport), <code>/setfactionskin [fid] [skin r1/2] [skin r3/4] [skin r5]</code> — uniformele facțiunii (0 = fără)
+    </td></tr>
+    <tr><td><span class="pill pill-lvl">6</span></td><td><code>/createhouse</code>, <code>/createbiz</code>, <code>/vcreate</code>, <code>/vchangeprice</code>, <code>/createatm</code>, <code>/moveatm</code>, <code>/deleteatm</code>, <code>/createcaravan</code>, <code>/setbballspawn</code>, <code>/shopcreate</code>, <code>/shopChangeLoc [id]</code>, <code>/shopDelete [id]</code>, <code>/ffcreate [1=pizza / 2=burger / 3=cluckin] [name]</code> — creează o locație fast-food la poziția ta. <strong>Tipul e obligatoriu</strong> (nu mai există default); max <code>MAX_FOOD_LOCATIONS = 20</code> per tip</td></tr>
   </table>
   <div class="note">
     <code>/showradars</code> și <code>/removeradar</code> nu cer un nivel fix de admin — sunt accesibile fie cu admin lvl 1+,
     fie membrilor Poliției cu rang 4+ (<code>pAdminLevel &gt;= 1 || isPoliceRank4</code>).
   </div>
   <div class="note">
-    <strong>/changefactionlead</strong> forțează acum necondiționat <code>pSpawn=2</code> (HQ Spawn) pentru noul lider,
+    <strong>/fc [factionid] lead [playerid]</strong> forțează acum necondiționat <code>pSpawn=2</code> (HQ Spawn) pentru noul lider,
     recalculează coordonatele de spawn pe HQ-ul noii facțiuni (<code>Player_RecalcSpawn</code>) și îl respawnează pe loc
     (<code>SpawnPlayer</code>) — indiferent ce avea setat anterior ca tip de spawn.
+  </div>
+  <div class="note">
+    <strong>Limita de vehicule de facțiune</strong> (<code>MAX_VFACTION_VEHICLES</code>) a fost mărită de la 100 la
+    <strong>200</strong>, pentru a permite crearea a până la 200 de vehicule de facțiune (<code>/fc [factionid] createveh</code>).
   </div>
 </section>
 
@@ -1395,8 +1544,16 @@ rTimeRecord FLOAT DEFAULT 999 (secunde), rPlayerName VARCHAR(24)
     <tr><td><code>/jobs /getjob /quitjob /job /stopwork /fare /service /accept uber</code></td><td>Vezi secțiunea Sistem joburi</td></tr>
     <tr><td><code>/equip /war /warscore /warsurrender</code></td><td>Vezi secțiunea Turfs &amp; Războaie</td></tr>
     <tr><td><code>/seif /drugs [transport/craft/get/use]</code></td><td>Vezi secțiunea Droguri &amp; Seif (doar mafii)</td></tr>
+    <tr><td><code>/smuggle</code></td><td>Vezi secțiunea Contrabandă pe mare (doar mafii)</td></tr>
+    <tr><td><code>/event cs join / /plant / /defuse</code></td><td>Counter Strike — vezi secțiunea Mini-jocuri &amp; Evenimente</td></tr>
+    <tr><td><code>/event htm join</code></td><td>Hunt The Mayor — vezi secțiunea Mini-jocuri &amp; Evenimente</td></tr>
+    <tr><td><code>/watch</code></td><td>Ceas — HP, oboseală, boală; oboseala crește <code>+2/min</code>. Difuzează un mesaj celor din jur, ca la <code>/time</code></td></tr>
     <tr><td><code>/pizza /burger</code></td><td>Mâncare (+20 / +25 HP), la un punct [ Buy Food ]; locațiile vin din tabelul <code>fastfood</code> (vezi secțiunea Fast-food)</td></tr>
-    <tr><td><code>/houseupgrade frigde</code> / <code>/frigde [buy/use]</code></td><td>Frigider casă — vezi secțiunea Case &amp; Business-uri</td></tr>
+    <tr><td><code>/house upgrade frigde</code> / <code>/frigde [buy/use]</code></td><td>Frigider casă — vezi secțiunea Case &amp; Business-uri</td></tr>
+    <tr><td><code>/house upgrade tree</code> / <code>/tree [plant/collect/status]</code></td><td>Copac — City House sau Countryside, vezi secțiunea Case &amp; Business-uri</td></tr>
+    <tr><td><code>/house upgrade animal [nume]</code></td><td>Turtle/Deer (Villa) / Cow (Countryside) — vezi secțiunea Case &amp; Business-uri</td></tr>
+    <tr><td><code>/fixapartament</code></td><td>Electrician: repară o problemă activă de apartament (<code>$3.000</code> din banca apartamentului) — vezi secțiunea Case &amp; Business-uri</td></tr>
+    <tr><td><code>/biz getdocs</code> / <code>/biz givedocs</code></td><td>Deblocare ANAF business — vezi secțiunea Case &amp; Business-uri</td></tr>
     <tr><td><code>/joinparty /leaveparty /changemusic /buydrink /buygrill</code></td><td>Sistem de petreceri (VW 501)</td></tr>
     <tr><td><code>/help</code></td><td>Listă generală jucător</td></tr>
   </table>
