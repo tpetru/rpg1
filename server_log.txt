@@ -18143,3 +18143,833 @@ v0.3.7-R2, (C)2005-2015 SA-MP Team
 [13:00:46] [PayDay] Distribuit la 13:00.
 [13:00:46] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
 [13:00:46] [Load] Animale: 2
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[11:11:13] filterscripts = ""  (string)
+[11:11:13] 
+[11:11:13] Server Plugins
+[11:11:13] --------------
+[11:11:13]  Loading plugin: mysql
+[11:11:13]  >> plugin.mysql: R41-4 successfully loaded.
+[11:11:13]   Loaded.
+[11:11:13]  Loading plugin: streamer
+[11:11:13] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[11:11:13]   Loaded.
+[11:11:13]  Loaded 2 plugins.
+
+[11:11:13] 
+[11:11:13] Filterscripts
+[11:11:13] ---------------
+[11:11:13]   Loaded 0 filterscripts.
+
+[11:11:13] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:11:13]  
+[11:11:13] ==================================================
+[11:11:13]   N-RP  |  incarcare date din baza de date
+[11:11:13] ==================================================
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[11:11:48] filterscripts = ""  (string)
+[11:11:48] 
+[11:11:48] Server Plugins
+[11:11:48] --------------
+[11:11:48]  Loading plugin: mysql
+[11:11:48]  >> plugin.mysql: R41-4 successfully loaded.
+[11:11:48]   Loaded.
+[11:11:48]  Loading plugin: streamer
+[11:11:48] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[11:11:48]   Loaded.
+[11:11:48]  Loaded 2 plugins.
+
+[11:11:48] 
+[11:11:48] Filterscripts
+[11:11:48] ---------------
+[11:11:48]   Loaded 0 filterscripts.
+
+[11:11:48] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:11:48]  
+[11:11:48] ==================================================
+[11:11:48]   N-RP  |  incarcare date din baza de date
+[11:11:48] ==================================================
+[11:11:48] [DB] Conectat la MySQL cu succes!
+[11:11:48] 
+----------------------------------
+[11:11:48]   NostalgiaRP by Nikolas Maduro  
+
+[11:11:48] ----------------------------------
+
+[11:11:48] Number of vehicle models: 0
+[11:11:48] [Load] Factiuni: 8
+[11:11:49] [Load] Interioare GTA: 138
+[11:11:49] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:11:49] [Load] Animale: 2
+[11:11:49] [Load] Copaci: 1
+[11:11:49] [Load] Business-uri: 22
+[11:11:49] [Load] Turf-uri: 8
+[11:11:49] [Load] ATM-uri: 10
+[11:11:49] [Load] Shop-uri: 10
+[11:11:49] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:11:49] [Load] Locatii: 31
+[11:11:49] [Load] GPS: 12
+[11:11:49] [Load] Cosuri baschet: 4
+[11:11:49] [Load] Spawn-uri baschet: 32
+[11:11:49] [Load] Vehicule factiune: 102
+[11:11:49] [Load] Vehicule personale: 36
+[11:11:49] [Load] Rulote: 1
+[11:11:49] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:11:49] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:11:49] [Load] Recorduri curse: 18
+[11:11:49] [Load] Ferme: 4
+[11:11:49] ==================================================
+[11:11:49]   N-RP  |  gamemode incarcat cu succes.
+[11:11:49] ==================================================
+[11:11:49]  
+[11:12:08] [connection] 127.0.0.1:63393 requests connection cookie.
+[11:12:09] [connection] incoming connection: 127.0.0.1:63393 id: 0
+[11:12:09] [join] Punctulet has joined the server (0:127.0.0.1)
+[11:12:30] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[11:13:20] filterscripts = ""  (string)
+[11:13:20] 
+[11:13:20] Server Plugins
+[11:13:20] --------------
+[11:13:20]  Loading plugin: mysql
+[11:13:20]  >> plugin.mysql: R41-4 successfully loaded.
+[11:13:20]   Loaded.
+[11:13:20]  Loading plugin: streamer
+[11:13:20] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[11:13:20]   Loaded.
+[11:13:20]  Loaded 2 plugins.
+
+[11:13:20] 
+[11:13:20] Filterscripts
+[11:13:20] ---------------
+[11:13:20]   Loaded 0 filterscripts.
+
+[11:13:20] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:13:20]  
+[11:13:20] ==================================================
+[11:13:20]   N-RP  |  incarcare date din baza de date
+[11:13:20] ==================================================
+[11:13:20] [DB] Conectat la MySQL cu succes!
+[11:13:20] 
+----------------------------------
+[11:13:20]   NostalgiaRP by Nikolas Maduro  
+
+[11:13:20] ----------------------------------
+
+[11:13:20] Number of vehicle models: 0
+[11:13:20] [Load] Factiuni: 8
+[11:13:20] [Load] Interioare GTA: 138
+[11:13:20] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:13:20] [Load] Animale: 2
+[11:13:20] [Load] Copaci: 1
+[11:13:20] [Load] Business-uri: 22
+[11:13:20] [Load] Turf-uri: 8
+[11:13:20] [Load] ATM-uri: 10
+[11:13:20] [Load] Shop-uri: 10
+[11:13:20] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:13:20] [Load] Locatii: 31
+[11:13:20] [Load] GPS: 12
+[11:13:20] [Load] Cosuri baschet: 4
+[11:13:20] [Load] Spawn-uri baschet: 32
+[11:13:20] [Load] Vehicule factiune: 102
+[11:13:20] [Load] Vehicule personale: 36
+[11:13:20] [Load] Rulote: 1
+[11:13:20] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:13:20] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:13:20] [Load] Recorduri curse: 18
+[11:13:20] [Load] Ferme: 4
+[11:13:20] ==================================================
+[11:13:20]   N-RP  |  gamemode incarcat cu succes.
+[11:13:20] ==================================================
+[11:13:20]  
+[11:13:37] [connection] 127.0.0.1:62395 requests connection cookie.
+[11:13:38] [connection] incoming connection: 127.0.0.1:62395 id: 0
+[11:13:38] [join] Punctulet has joined the server (0:127.0.0.1)
+[11:13:49] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[11:15:30] filterscripts = ""  (string)
+[11:15:30] 
+[11:15:30] Server Plugins
+[11:15:30] --------------
+[11:15:30]  Loading plugin: mysql
+[11:15:30]  >> plugin.mysql: R41-4 successfully loaded.
+[11:15:30]   Loaded.
+[11:15:30]  Loading plugin: streamer
+[11:15:30] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[11:15:30]   Loaded.
+[11:15:30]  Loaded 2 plugins.
+
+[11:15:30] 
+[11:15:30] Filterscripts
+[11:15:30] ---------------
+[11:15:30]   Loaded 0 filterscripts.
+
+[11:15:30] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:15:30]  
+[11:15:30] ==================================================
+[11:15:30]   N-RP  |  incarcare date din baza de date
+[11:15:30] ==================================================
+[11:15:30] [DB] Conectat la MySQL cu succes!
+[11:15:30] 
+----------------------------------
+[11:15:30]   NostalgiaRP by Nikolas Maduro  
+
+[11:15:30] ----------------------------------
+
+[11:15:30] Number of vehicle models: 0
+[11:15:30] [Load] Factiuni: 8
+[11:15:30] [Load] Case: 42
+[11:15:30] [Load] Hoteluri: 10
+[11:15:30] [Load] Interioare GTA: 138
+[11:15:30] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:15:30] [Load] Animale: 2
+[11:15:30] [Load] Copaci: 1
+[11:15:30] [Load] Business-uri: 22
+[11:15:30] [Load] Turf-uri: 8
+[11:15:30] [Load] ATM-uri: 10
+[11:15:30] [Load] Shop-uri: 10
+[11:15:30] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:15:30] [Load] Locatii: 31
+[11:15:30] [Load] GPS: 12
+[11:15:30] [Load] Cosuri baschet: 4
+[11:15:30] [Load] Spawn-uri baschet: 32
+[11:15:30] [Load] Vehicule factiune: 102
+[11:15:30] [Load] Vehicule personale: 36
+[11:15:30] [Load] Rulote: 1
+[11:15:30] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:15:30] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:15:30] [Load] Recorduri curse: 18
+[11:15:30] [Load] Ferme: 4
+[11:15:30] ==================================================
+[11:15:30]   N-RP  |  gamemode incarcat cu succes.
+[11:15:30] ==================================================
+[11:15:30]  
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[11:16:31] filterscripts = ""  (string)
+[11:16:31] 
+[11:16:31] Server Plugins
+[11:16:31] --------------
+[11:16:31]  Loading plugin: mysql
+[11:16:31]  >> plugin.mysql: R41-4 successfully loaded.
+[11:16:31]   Loaded.
+[11:16:31]  Loading plugin: streamer
+[11:16:31] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[11:16:31]   Loaded.
+[11:16:31]  Loaded 2 plugins.
+
+[11:16:31] 
+[11:16:31] Filterscripts
+[11:16:31] ---------------
+[11:16:31]   Loaded 0 filterscripts.
+
+[11:16:31] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:16:31]  
+[11:16:31] ==================================================
+[11:16:31]   N-RP  |  incarcare date din baza de date
+[11:16:31] ==================================================
+[11:16:31] [DB] Conectat la MySQL cu succes!
+[11:16:31] 
+----------------------------------
+[11:16:31]   NostalgiaRP by Nikolas Maduro  
+
+[11:16:31] ----------------------------------
+
+[11:16:31] Number of vehicle models: 0
+[11:16:31] [Load] Factiuni: 8
+[11:16:31] [Load] Case: 42
+[11:16:31] [Load] Hoteluri: 10
+[11:16:31] [Load] Interioare GTA: 138
+[11:16:31] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:16:31] [Load] Animale: 2
+[11:16:31] [Load] Copaci: 1
+[11:16:31] [Load] Business-uri: 22
+[11:16:31] [Load] Turf-uri: 8
+[11:16:31] [Load] ATM-uri: 10
+[11:16:31] [Load] Shop-uri: 10
+[11:16:31] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:16:31] [Load] Locatii: 31
+[11:16:31] [Load] GPS: 12
+[11:16:31] [Load] Cosuri baschet: 4
+[11:16:31] [Load] Spawn-uri baschet: 32
+[11:16:31] [Load] Vehicule factiune: 102
+[11:16:31] [Load] Vehicule personale: 36
+[11:16:31] [Load] Rulote: 1
+[11:16:31] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:16:31] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:16:31] [Load] Recorduri curse: 18
+[11:16:31] [Load] Ferme: 4
+[11:16:31] ==================================================
+[11:16:31]   N-RP  |  gamemode incarcat cu succes.
+[11:16:31] ==================================================
+[11:16:31]  
+[11:16:58] [connection] 127.0.0.1:65514 requests connection cookie.
+[11:16:59] [connection] incoming connection: 127.0.0.1:65514 id: 0
+[11:16:59] [join] Punctulet has joined the server (0:127.0.0.1)
+Console input: gmx
+[11:20:28] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:20:28]  
+[11:20:28] ==================================================
+[11:20:28]   N-RP  |  incarcare date din baza de date
+[11:20:28] ==================================================
+[11:20:28] [DB] Conectat la MySQL cu succes!
+[11:20:28] 
+----------------------------------
+[11:20:28]   NostalgiaRP by Nikolas Maduro  
+
+[11:20:28] ----------------------------------
+
+[11:20:28] Number of vehicle models: 0
+[11:20:28] [Load] Factiuni: 8
+[11:20:28] [Load] Case: 42
+[11:20:28] [Load] Hoteluri: 10
+[11:20:28] [Load] Interioare GTA: 138
+[11:20:28] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:20:28] [Load] Animale: 2
+[11:20:28] [Load] Copaci: 1
+[11:20:28] [Load] Business-uri: 22
+[11:20:28] [Load] Turf-uri: 8
+[11:20:28] [Load] ATM-uri: 10
+[11:20:28] [Load] Shop-uri: 10
+[11:20:28] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:20:28] [Load] Locatii: 31
+[11:20:28] [Load] GPS: 12
+[11:20:28] [Load] Cosuri baschet: 4
+[11:20:28] [Load] Spawn-uri baschet: 32
+[11:20:28] [Load] Vehicule factiune: 102
+[11:20:28] [Load] Vehicule personale: 36
+[11:20:28] [Load] Rulote: 1
+[11:20:28] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:20:28] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:20:28] [Load] Recorduri curse: 18
+[11:20:28] [Load] Ferme: 4
+[11:20:28] ==================================================
+[11:20:28]   N-RP  |  gamemode incarcat cu succes.
+[11:20:28] ==================================================
+[11:20:28]  
+[11:21:18] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:21:18] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:21:19] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:21:19] [Keys] Punctulet (id 0): newkeys=16 oldkeys=8
+[11:21:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:21:25] [Keys] Punctulet (id 0): newkeys=512 oldkeys=0
+[11:21:25] [Keys] Punctulet (id 0): newkeys=0 oldkeys=512
+[11:21:41] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:21:43] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+Console input: gmx
+[11:23:10] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:23:10]  
+[11:23:10] ==================================================
+[11:23:10]   N-RP  |  incarcare date din baza de date
+[11:23:10] ==================================================
+[11:23:10] [DB] Conectat la MySQL cu succes!
+[11:23:10] 
+----------------------------------
+[11:23:10]   NostalgiaRP by Nikolas Maduro  
+
+[11:23:10] ----------------------------------
+
+[11:23:10] Number of vehicle models: 0
+[11:23:10] [Load] Factiuni: 8
+[11:23:10] [Load] Case: 42
+[11:23:10] [Load] Hoteluri: 10
+[11:23:10] [Load] Interioare GTA: 138
+[11:23:10] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:23:10] [Load] Animale: 2
+[11:23:10] [Load] Copaci: 1
+[11:23:10] [Load] Business-uri: 22
+[11:23:10] [Load] Turf-uri: 8
+[11:23:10] [Load] ATM-uri: 10
+[11:23:10] [Load] Shop-uri: 10
+[11:23:10] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:23:10] [Load] Locatii: 31
+[11:23:10] [Load] GPS: 12
+[11:23:10] [Load] Cosuri baschet: 4
+[11:23:10] [Load] Spawn-uri baschet: 32
+[11:23:10] [Load] Vehicule factiune: 102
+[11:23:10] [Load] Vehicule personale: 36
+[11:23:10] [Load] Rulote: 1
+[11:23:10] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:23:10] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:23:10] [Load] Recorduri curse: 18
+[11:23:10] [Load] Ferme: 4
+[11:23:10] ==================================================
+[11:23:10]   N-RP  |  gamemode incarcat cu succes.
+[11:23:10] ==================================================
+[11:23:10]  
+[11:23:17] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:23:17] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:23:19] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:23:19] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:23:28] [Keys] Punctulet (id 0): newkeys=128 oldkeys=0
+[11:23:28] [Keys] Punctulet (id 0): newkeys=0 oldkeys=128
+[11:23:29] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:23:29] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:23:29] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:30] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:31] [Keys] Punctulet (id 0): newkeys=32 oldkeys=0
+[11:23:31] [Keys] Punctulet (id 0): newkeys=0 oldkeys=32
+[11:23:31] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:32] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:32] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:32] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:32] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:33] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:33] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:33] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:33] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:33] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:34] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:34] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:34] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:34] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:23:37] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:23:38] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:24:16] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:17] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:17] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:17] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:17] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:17] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:18] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:18] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:18] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:19] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:19] [Keys] Punctulet (id 0): newkeys=132 oldkeys=0
+[11:24:19] [Keys] Punctulet (id 0): newkeys=0 oldkeys=132
+[11:24:19] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:19] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:20] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:20] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:20] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:20] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:20] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:34] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:35] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:24:35] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:24:35] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+Console input: gmx
+[11:29:06] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:29:06]  
+[11:29:06] ==================================================
+[11:29:06]   N-RP  |  incarcare date din baza de date
+[11:29:06] ==================================================
+[11:29:06] [DB] Conectat la MySQL cu succes!
+[11:29:06] 
+----------------------------------
+[11:29:06]   NostalgiaRP by Nikolas Maduro  
+
+[11:29:06] ----------------------------------
+
+[11:29:06] Number of vehicle models: 0
+[11:29:06] [Load] Factiuni: 8
+[11:29:06] [Load] Case: 42
+[11:29:06] [Load] Hoteluri: 10
+[11:29:06] [Load] Interioare GTA: 138
+[11:29:06] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:29:06] [Load] Animale: 2
+[11:29:06] [Load] Copaci: 1
+[11:29:06] [Load] Business-uri: 22
+[11:29:06] [Load] Turf-uri: 8
+[11:29:06] [Load] ATM-uri: 10
+[11:29:06] [Load] Shop-uri: 10
+[11:29:06] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:29:06] [Load] Locatii: 31
+[11:29:06] [Load] GPS: 12
+[11:29:06] [Load] Cosuri baschet: 4
+[11:29:06] [Load] Spawn-uri baschet: 32
+[11:29:06] [Load] Vehicule factiune: 102
+[11:29:06] [Load] Vehicule personale: 36
+[11:29:06] [Load] Rulote: 1
+[11:29:06] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:29:06] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:29:06] [Load] Recorduri curse: 18
+[11:29:06] [Load] Ferme: 4
+[11:29:06] ==================================================
+[11:29:06]   N-RP  |  gamemode incarcat cu succes.
+[11:29:06] ==================================================
+[11:29:06]  
+[11:29:10] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:29:10] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:29:11] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:29:12] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:29:16] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:29:17] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:29:17] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:29:18] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:29:19] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:29:19] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:29:20] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:29:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:29:21] [Keys] Punctulet (id 0): newkeys=4 oldkeys=0
+[11:29:21] [Keys] Punctulet (id 0): newkeys=0 oldkeys=4
+[11:29:23] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:29:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:29:23] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:29:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:29:23] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:29:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:29:23] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:29:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:29:23] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:29:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:29:36] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:29:36] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:29:37] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:29:37] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:29:38] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:29:38] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:29:40] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:29:40] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:29:41] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:29:41] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:29:50] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:29:50] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:30:39] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:30:39] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:30:40] [Keys] Punctulet (id 0): newkeys=132 oldkeys=0
+[11:30:40] [Keys] Punctulet (id 0): newkeys=0 oldkeys=132
+Console input: gmx
+[11:35:49] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:35:49]  
+[11:35:49] ==================================================
+[11:35:49]   N-RP  |  incarcare date din baza de date
+[11:35:49] ==================================================
+[11:35:49] [DB] Conectat la MySQL cu succes!
+[11:35:49] 
+----------------------------------
+[11:35:49]   NostalgiaRP by Nikolas Maduro  
+
+[11:35:49] ----------------------------------
+
+[11:35:49] Number of vehicle models: 0
+[11:35:49] [Load] Factiuni: 8
+[11:35:49] [Load] Case: 42
+[11:35:49] [Load] Hoteluri: 10
+[11:35:49] [Load] Interioare GTA: 138
+[11:35:49] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:35:49] [Load] Animale: 2
+[11:35:49] [Load] Copaci: 1
+[11:35:49] [Load] Business-uri: 22
+[11:35:49] [Load] Turf-uri: 8
+[11:35:49] [Load] ATM-uri: 10
+[11:35:49] [Load] Shop-uri: 10
+[11:35:49] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:35:49] [Load] Locatii: 31
+[11:35:49] [Load] GPS: 12
+[11:35:49] [Load] Cosuri baschet: 4
+[11:35:49] [Load] Spawn-uri baschet: 32
+[11:35:49] [Load] Vehicule factiune: 102
+[11:35:49] [Load] Vehicule personale: 36
+[11:35:49] [Load] Rulote: 1
+[11:35:49] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:35:49] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:35:49] [Load] Recorduri curse: 18
+[11:35:49] [Load] Ferme: 4
+[11:35:49] ==================================================
+[11:35:49]   N-RP  |  gamemode incarcat cu succes.
+[11:35:49] ==================================================
+[11:35:49]  
+[11:36:07] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:36:07] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:36:09] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:36:10] [Keys] Punctulet (id 0): newkeys=16 oldkeys=8
+[11:36:10] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:36:25] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:36:25] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:36:25] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:36:25] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:36:44] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:36:44] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:36:45] [Keys] Punctulet (id 0): newkeys=2048 oldkeys=0
+[11:36:45] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2048
+[11:36:45] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:46] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:46] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:46] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:46] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:36:47] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:36:47] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:47] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:48] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:36:50] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:36:51] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:51] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:51] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:51] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:51] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:52] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:52] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:52] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:52] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:52] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:52] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:52] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:53] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:53] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:36:53] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:36:53] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:37:04] [Keys] Punctulet (id 0): newkeys=132 oldkeys=0
+[11:37:04] [Keys] Punctulet (id 0): newkeys=0 oldkeys=132
+[11:37:04] [Keys] Punctulet (id 0): newkeys=132 oldkeys=0
+[11:37:04] [Keys] Punctulet (id 0): newkeys=0 oldkeys=132
+[11:37:05] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:37:05] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:37:06] [Keys] Punctulet (id 0): newkeys=128 oldkeys=0
+[11:37:06] [Keys] Punctulet (id 0): newkeys=0 oldkeys=128
+[11:37:09] [Keys] Punctulet (id 0): newkeys=4 oldkeys=0
+[11:37:09] [Keys] Punctulet (id 0): newkeys=0 oldkeys=4
+[11:37:10] [Keys] Punctulet (id 0): newkeys=4 oldkeys=0
+[11:37:10] [Keys] Punctulet (id 0): newkeys=0 oldkeys=4
+[11:37:10] [Keys] Punctulet (id 0): newkeys=262144 oldkeys=0
+[11:37:10] [Keys] Punctulet (id 0): newkeys=0 oldkeys=262144
+[11:37:11] [Keys] Punctulet (id 0): newkeys=4 oldkeys=0
+[11:37:11] [Keys] Punctulet (id 0): newkeys=0 oldkeys=4
+[11:37:14] [Keys] Punctulet (id 0): newkeys=4 oldkeys=0
+[11:37:14] [Keys] Punctulet (id 0): newkeys=0 oldkeys=4
+[11:37:15] [Keys] Punctulet (id 0): newkeys=4 oldkeys=0
+[11:37:15] [Keys] Punctulet (id 0): newkeys=0 oldkeys=4
+[11:37:15] [Keys] Punctulet (id 0): newkeys=4 oldkeys=0
+[11:37:16] [Keys] Punctulet (id 0): newkeys=0 oldkeys=4
+[11:37:16] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:37:17] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:37:17] [Keys] Punctulet (id 0): newkeys=2 oldkeys=0
+[11:37:18] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2
+[11:37:19] [Keys] Punctulet (id 0): newkeys=262144 oldkeys=0
+[11:37:19] [Keys] Punctulet (id 0): newkeys=0 oldkeys=262144
+[11:37:20] [Keys] Punctulet (id 0): newkeys=2 oldkeys=0
+[11:37:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2
+[11:37:20] [Keys] Punctulet (id 0): newkeys=131072 oldkeys=0
+[11:37:20] [Keys] Punctulet (id 0): newkeys=0 oldkeys=131072
+[11:37:20] [Keys] Punctulet (id 0): newkeys=64 oldkeys=0
+[11:37:22] [Keys] Punctulet (id 0): newkeys=0 oldkeys=64
+[11:37:22] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:37:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:37:23] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:37:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:37:26] [Keys] Punctulet (id 0): newkeys=2 oldkeys=0
+[11:37:27] [Keys] Punctulet (id 0): newkeys=0 oldkeys=2
+Console input: gmx
+[11:41:20] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[11:41:20]  
+[11:41:20] ==================================================
+[11:41:20]   N-RP  |  incarcare date din baza de date
+[11:41:20] ==================================================
+[11:41:20] [DB] Conectat la MySQL cu succes!
+[11:41:20] 
+----------------------------------
+[11:41:20]   NostalgiaRP by Nikolas Maduro  
+
+[11:41:20] ----------------------------------
+
+[11:41:20] Number of vehicle models: 0
+[11:41:20] [Load] Factiuni: 8
+[11:41:20] [Load] Case: 42
+[11:41:20] [Load] Hoteluri: 10
+[11:41:20] [Load] Interioare GTA: 138
+[11:41:20] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[11:41:20] [Load] Animale: 2
+[11:41:20] [Load] Copaci: 1
+[11:41:20] [Load] Business-uri: 22
+[11:41:20] [Load] Turf-uri: 8
+[11:41:20] [Load] ATM-uri: 10
+[11:41:20] [Load] Shop-uri: 10
+[11:41:20] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[11:41:20] [Load] Locatii: 31
+[11:41:20] [Load] GPS: 12
+[11:41:20] [Load] Cosuri baschet: 4
+[11:41:20] [Load] Spawn-uri baschet: 32
+[11:41:20] [Load] Vehicule factiune: 102
+[11:41:20] [Load] Vehicule personale: 36
+[11:41:20] [Load] Rulote: 1
+[11:41:20] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[11:41:20] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[11:41:20] [Load] Recorduri curse: 18
+[11:41:20] [Load] Ferme: 4
+[11:41:20] ==================================================
+[11:41:20]   N-RP  |  gamemode incarcat cu succes.
+[11:41:20] ==================================================
+[11:41:20]  
+[11:47:51] [Keys] Punctulet (id 0): newkeys=16 oldkeys=0
+[11:47:51] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:47:53] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:47:53] [Keys] Punctulet (id 0): newkeys=24 oldkeys=8
+[11:47:54] [Keys] Punctulet (id 0): newkeys=16 oldkeys=24
+[11:47:54] [Keys] Punctulet (id 0): newkeys=0 oldkeys=16
+[11:47:59] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:00] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:48:00] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:00] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:48:01] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:01] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:48:01] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:01] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:48:01] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:02] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:48:02] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:02] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:48:02] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:48:03] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:48:04] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:04] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:48:04] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:48:04] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:49:19] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:49:21] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:49:22] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:49:22] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:49:22] [Keys] Punctulet (id 0): newkeys=1 oldkeys=0
+[11:49:23] [Keys] Punctulet (id 0): newkeys=0 oldkeys=1
+[11:49:23] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:49:30] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:49:31] [Keys] Punctulet (id 0): newkeys=32 oldkeys=0
+[11:49:31] [Keys] Punctulet (id 0): newkeys=0 oldkeys=32
+[11:49:32] [Keys] Punctulet (id 0): newkeys=8 oldkeys=0
+[11:49:40] [Keys] Punctulet (id 0): newkeys=0 oldkeys=8
+[11:52:06] [part] Punctulet has left the server (0:0)
+[12:00:18] [PayDay] Distribuit la 12:00.
+[12:00:18] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[12:00:18] [Load] Animale: 2
+[13:00:23] [PayDay] Distribuit la 13:00.
+[13:00:23] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[13:00:23] [Load] Animale: 2
+[14:00:24] [PayDay] Distribuit la 14:00.
+[14:00:24] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[14:00:24] [Load] Animale: 2
+[15:00:29] [PayDay] Distribuit la 15:00.
+[15:00:29] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[15:00:29] [Load] Animale: 2
+[16:00:41] [PayDay] Distribuit la 16:00.
+[16:00:41] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[16:00:41] [Load] Animale: 2
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[16:16:44] filterscripts = ""  (string)
+[16:16:44] 
+[16:16:44] Server Plugins
+[16:16:44] --------------
+[16:16:44]  Loading plugin: mysql
+[16:16:44]  >> plugin.mysql: R41-4 successfully loaded.
+[16:16:44]   Loaded.
+[16:16:44]  Loading plugin: streamer
+[16:16:44] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:16:44]   Loaded.
+[16:16:44]  Loaded 2 plugins.
+
+[16:16:44] 
+[16:16:44] Filterscripts
+[16:16:44] ---------------
+[16:16:44]   Loaded 0 filterscripts.
+
+[16:16:45] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[16:16:45]  
+[16:16:45] ==================================================
+[16:16:45]   N-RP  |  incarcare date din baza de date
+[16:16:45] ==================================================
+[16:16:45] [DB] Conectat la MySQL cu succes!
+[16:16:45] 
+----------------------------------
+[16:16:45]   NostalgiaRP by Nikolas Maduro  
+
+[16:16:45] ----------------------------------
+
+[16:16:45] Number of vehicle models: 0
+[16:16:45] [Load] Factiuni: 8
+[16:16:45] [Load] Case: 42
+[16:16:45] [Load] Hoteluri: 10
+[16:16:45] [Load] Interioare GTA: 138
+[16:16:45] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:16:45] [Load] Animale: 2
+[16:16:45] [Load] Copaci: 1
+[16:16:45] [Load] Business-uri: 22
+[16:16:45] [Load] Turf-uri: 8
+[16:16:45] [Load] ATM-uri: 10
+[16:16:45] [Load] Shop-uri: 10
+[16:16:45] [Load] Fast-food: 5 (1 pizza, 2 burger, 2 cluckin)
+[16:16:45] [Load] Locatii: 39
+[16:16:45] [Load] GPS: 12
+[16:16:45] [Load] Cosuri baschet: 4
+[16:16:45] [Load] Spawn-uri baschet: 32
+[16:16:45] [Load] Vehicule factiune: 102
+[16:16:45] [Load] Vehicule personale: 36
+[16:16:45] [Load] Rulote: 1
+[16:16:45] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:16:45] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60
+[16:16:45] [Load] Recorduri curse: 18
+[16:16:45] [Load] Ferme: 4
+[16:16:45] ==================================================
+[16:16:45]   N-RP  |  gamemode incarcat cu succes.
+[16:16:45] ==================================================
+[16:16:45]  
+[17:00:47] [PayDay] Distribuit la 17:00.
+[17:00:47] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[17:00:47] [Load] Animale: 2

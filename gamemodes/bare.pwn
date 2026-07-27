@@ -2467,6 +2467,18 @@ public OnPlayerWeaponShot(playerid, weaponid, hittype, hitid, Float:fX, Float:fY
 #define FARM_TRUCK_PRICE     12500
 #define FARM_TRAILER_PRICE   10000
 
+// Uzura utilajelor: numarul de utilizari dupa care un utilaj individual se defecteaza (uses >= max)
+#define FARM_TRACTOR_MAX_USES  16
+#define FARM_DOZER_MAX_USES    6
+#define FARM_COMBINE_MAX_USES  11
+#define FARM_TRUCK_MAX_USES    12
+#define FARM_TRAILER_MAX_USES  15
+#define MAX_FARM_EQUIPMENT     500
+
+// La vanzare: refund-ul (%) variaza liniar intre 20% (0 utilizari ramase, aproape stricat) si 60% (utilizari ramase = maxim, nefolosit)
+#define FARM_SELL_REFUND_MIN_PCT  20
+#define FARM_SELL_REFUND_MAX_PCT  60
+
 new const g_FarmStepName[FARM_STEPS][12]    = { "Plow", "Level", "Seed", "Fertilize", "Harvest" };
 new const g_FarmStepAction[FARM_STEPS][12]  = { "plow", "level", "seed", "fertilize", "harvest" };
 new const g_FarmStepVeh[FARM_STEPS]         = { FARM_TRACTOR, FARM_DOZER, FARM_TRACTOR, FARM_TRACTOR, FARM_COMBINE };
@@ -2486,6 +2498,12 @@ enum E_FARM_DATA
 }
 new FarmData[MAX_FARMS][E_FARM_DATA];
 new g_FarmCount = 0;
+
+// Utilaje individuale (fiecare unitate are propria uzura, spre deosebire de coloanele tractors/combines/... din `farms`,
+// care raman doar un total sincronizat pentru afisare rapida / UCP)
+enum E_FARM_EQUIP { feID, feFarmId, feModel, feUses }
+new FarmEquipData[MAX_FARM_EQUIPMENT][E_FARM_EQUIP];
+new g_FarmEquipCount = 0;
 
 // stare de lucru per player
 new g_FarmWorking[MAX_PLAYERS];   // farm index+1 (0 = nu lucreaza)
@@ -2528,23 +2546,118 @@ stock Farm_PlayerIn(playerid)
             return i;
     return -1;
 }
-// Numarul de utilaje de un model detinute de ferma (din coloanele farms)
+// Numarul maxim de utilizari al unui utilaj (dupa care se defecteaza) dupa model
+stock Farm_MaxUses(model)
+{
+    if(model == FARM_TRACTOR) return FARM_TRACTOR_MAX_USES;
+    if(model == FARM_DOZER)   return FARM_DOZER_MAX_USES;
+    if(model == FARM_COMBINE) return FARM_COMBINE_MAX_USES;
+    if(model == FARM_TRUCK)   return FARM_TRUCK_MAX_USES;
+    if(model == FARM_TRAILER) return FARM_TRAILER_MAX_USES;
+    return 1;
+}
+// Numarul total de utilaje de un model detinute de ferma (inclusiv cele stricate)
 stock Farm_OwnedCount(fidx, model)
 {
-    if(model == FARM_TRACTOR) return FarmData[fidx][fmTractors];
-    if(model == FARM_COMBINE) return FarmData[fidx][fmCombines];
-    if(model == FARM_DOZER)   return FarmData[fidx][fmDozers];
-    if(model == FARM_TRUCK)   return FarmData[fidx][fmTrucks];
-    if(model == FARM_TRAILER) return FarmData[fidx][fmTrailers];
-    return 0;
+    new count = 0;
+    for(new i = 0; i < g_FarmEquipCount; i++)
+        if(FarmEquipData[i][feFarmId] == FarmData[fidx][fmID] && FarmEquipData[i][feModel] == model)
+            count++;
+    return count;
 }
-stock Farm_OwnedAdd(fidx, model, delta)
+// Numarul de utilaje de un model INCA FUNCTIONALE (uses < max) - singurele folosibile la munca/livrare
+stock Farm_UsableCount(fidx, model)
 {
-    if(model == FARM_TRACTOR)      { FarmData[fidx][fmTractors] += delta; if(FarmData[fidx][fmTractors] < 0) FarmData[fidx][fmTractors] = 0; }
-    else if(model == FARM_COMBINE) { FarmData[fidx][fmCombines] += delta; if(FarmData[fidx][fmCombines] < 0) FarmData[fidx][fmCombines] = 0; }
-    else if(model == FARM_DOZER)   { FarmData[fidx][fmDozers]   += delta; if(FarmData[fidx][fmDozers]   < 0) FarmData[fidx][fmDozers]   = 0; }
-    else if(model == FARM_TRUCK)   { FarmData[fidx][fmTrucks]   += delta; if(FarmData[fidx][fmTrucks]   < 0) FarmData[fidx][fmTrucks]   = 0; }
-    else if(model == FARM_TRAILER) { FarmData[fidx][fmTrailers] += delta; if(FarmData[fidx][fmTrailers] < 0) FarmData[fidx][fmTrailers] = 0; }
+    new count = 0;
+    new maxu = Farm_MaxUses(model);
+    for(new i = 0; i < g_FarmEquipCount; i++)
+        if(FarmEquipData[i][feFarmId] == FarmData[fidx][fmID] && FarmEquipData[i][feModel] == model && FarmEquipData[i][feUses] < maxu)
+            count++;
+    return count;
+}
+// Rescrie coloanele tractors/combines/dozers/trucks/trailers din `farms` (folosite doar pentru afisare rapida / UCP)
+stock Farm_SyncCounts(fidx)
+{
+    FarmData[fidx][fmTractors] = Farm_OwnedCount(fidx, FARM_TRACTOR);
+    FarmData[fidx][fmCombines] = Farm_OwnedCount(fidx, FARM_COMBINE);
+    FarmData[fidx][fmDozers]   = Farm_OwnedCount(fidx, FARM_DOZER);
+    FarmData[fidx][fmTrucks]   = Farm_OwnedCount(fidx, FARM_TRUCK);
+    FarmData[fidx][fmTrailers] = Farm_OwnedCount(fidx, FARM_TRAILER);
+}
+// Cumpara un utilaj nou (0 utilizari) pentru ferma
+stock Farm_AddEquipment(fidx, model)
+{
+    if(g_FarmEquipCount >= MAX_FARM_EQUIPMENT) return;
+    new idx = g_FarmEquipCount;
+    FarmEquipData[idx][feFarmId] = FarmData[fidx][fmID];
+    FarmEquipData[idx][feModel]  = model;
+    FarmEquipData[idx][feUses]   = 0;
+
+    new q[128];
+    mysql_format(g_SQL, q, sizeof(q), "INSERT INTO `farm_equipment` (`farm_id`,`model`,`uses`) VALUES (%d,%d,0)",
+        FarmData[fidx][fmID], model);
+    mysql_tquery(g_SQL, q, "OnFarmEquipmentInserted", "i", idx);
+
+    g_FarmEquipCount++;
+    Farm_SyncCounts(fidx);
+}
+forward OnFarmEquipmentInserted(idx);
+public OnFarmEquipmentInserted(idx)
+{
+    if(idx >= 0 && idx < g_FarmEquipCount)
+        FarmEquipData[idx][feID] = cache_insert_id();
+    return 1;
+}
+// Gaseste indexul celui mai uzat utilaj functional-sau-nu de un model (uses maxim) - cel vandut implicit cu /farm sell
+stock Farm_FindMostWornEquipment(fidx, model)
+{
+    new best = -1;
+    for(new i = 0; i < g_FarmEquipCount; i++)
+    {
+        if(FarmEquipData[i][feFarmId] != FarmData[fidx][fmID] || FarmEquipData[i][feModel] != model) continue;
+        if(best == -1 || FarmEquipData[i][feUses] > FarmEquipData[best][feUses]) best = i;
+    }
+    return best;
+}
+// Sterge un utilaj (index in FarmEquipData) - folosit la /farm sell
+stock Farm_RemoveEquipment(idx)
+{
+    new q[64];
+    mysql_format(g_SQL, q, sizeof(q), "DELETE FROM `farm_equipment` WHERE `id`=%d", FarmEquipData[idx][feID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+
+    for(new i = idx; i < g_FarmEquipCount - 1; i++)
+        FarmEquipData[i] = FarmEquipData[i + 1];
+    g_FarmEquipCount--;
+}
+// Refund-ul (%) la vanzare, in functie de utilizarile ramase ale utilajului vandut (0 ramase -> 20%, maxim ramase -> 60%)
+stock Farm_SellRefundPct(model, uses)
+{
+    new maxu = Farm_MaxUses(model);
+    new remaining = maxu - uses;
+    if(remaining < 0) remaining = 0;
+    return FARM_SELL_REFUND_MIN_PCT + (FARM_SELL_REFUND_MAX_PCT - FARM_SELL_REFUND_MIN_PCT) * remaining / maxu;
+}
+// Consuma o utilizare pe cel mai putin uzat utilaj functional al fermei de acest model (distribuie uzura egal in flota)
+// Returneaza true daca utilajul folosit tocmai s-a stricat (uses a ajuns la maxim)
+stock bool:Farm_ConsumeUse(fidx, model)
+{
+    new best = -1;
+    new maxu = Farm_MaxUses(model);
+    for(new i = 0; i < g_FarmEquipCount; i++)
+    {
+        if(FarmEquipData[i][feFarmId] != FarmData[fidx][fmID] || FarmEquipData[i][feModel] != model) continue;
+        if(FarmEquipData[i][feUses] >= maxu) continue; // deja stricat
+        if(best == -1 || FarmEquipData[i][feUses] < FarmEquipData[best][feUses]) best = i;
+    }
+    if(best == -1) return false;
+
+    FarmEquipData[best][feUses]++;
+    new q[96];
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `farm_equipment` SET `uses`=%d WHERE `id`=%d", FarmEquipData[best][feUses], FarmEquipData[best][feID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+
+    return FarmEquipData[best][feUses] >= maxu;
 }
 stock Farm_Save(fidx)
 {
@@ -2646,7 +2759,62 @@ public OnFarmsLoaded()
     }
     printf("[Load] Ferme: %d", g_FarmCount);
 
-    // Farms este ultimul load din OnGameModeInit -> aici toate datele sunt incarcate
+    FarmEquipment_Load(); // ultimul load: incarca utilajele individuale, apoi afiseaza footer-ul "gamemode incarcat"
+    return 1;
+}
+
+stock FarmEquipment_Load()
+{
+    mysql_tquery(g_SQL, "SELECT * FROM `farm_equipment` ORDER BY `id` ASC", "OnFarmEquipmentLoaded");
+}
+forward OnFarmEquipmentLoaded();
+public OnFarmEquipmentLoaded()
+{
+    new rows = cache_num_rows();
+    g_FarmEquipCount = 0;
+    for(new i = 0; i < rows && g_FarmEquipCount < MAX_FARM_EQUIPMENT; i++)
+    {
+        new idx = g_FarmEquipCount;
+        cache_get_value_name_int(i, "id",      FarmEquipData[idx][feID]);
+        cache_get_value_name_int(i, "farm_id", FarmEquipData[idx][feFarmId]);
+        cache_get_value_name_int(i, "model",   FarmEquipData[idx][feModel]);
+        cache_get_value_name_int(i, "uses",    FarmEquipData[idx][feUses]);
+        g_FarmEquipCount++;
+    }
+    printf("[Load] Utilaje ferma: %d", g_FarmEquipCount);
+
+    // Migrare unica: instalari vechi au utilaje doar ca totaluri in `farms` (tractors/combines/...)
+    // fara randuri in `farm_equipment`. Daca tabela e goala dar exista utilaje detinute, le cream acum (0 utilizari).
+    if(g_FarmEquipCount == 0)
+    {
+        new migrated = 0;
+        for(new f = 0; f < g_FarmCount; f++)
+        {
+            new legacy[5];
+            legacy[0] = FarmData[f][fmTractors]; legacy[1] = FarmData[f][fmCombines]; legacy[2] = FarmData[f][fmDozers];
+            legacy[3] = FarmData[f][fmTrucks];   legacy[4] = FarmData[f][fmTrailers];
+            new legacyModel[5] = { FARM_TRACTOR, FARM_COMBINE, FARM_DOZER, FARM_TRUCK, FARM_TRAILER };
+            for(new m = 0; m < 5; m++)
+            {
+                for(new n = 0; n < legacy[m] && g_FarmEquipCount < MAX_FARM_EQUIPMENT; n++)
+                {
+                    new idx = g_FarmEquipCount;
+                    FarmEquipData[idx][feFarmId] = FarmData[f][fmID];
+                    FarmEquipData[idx][feModel]  = legacyModel[m];
+                    FarmEquipData[idx][feUses]   = 0;
+                    new q[128];
+                    mysql_format(g_SQL, q, sizeof(q), "INSERT INTO `farm_equipment` (`farm_id`,`model`,`uses`) VALUES (%d,%d,0)",
+                        FarmData[f][fmID], legacyModel[m]);
+                    mysql_tquery(g_SQL, q, "OnFarmEquipmentInserted", "i", idx);
+                    g_FarmEquipCount++;
+                    migrated++;
+                }
+            }
+        }
+        if(migrated > 0) printf("[Load] Utilaje ferma: migrate %d randuri din coloanele vechi `farms`", migrated);
+    }
+
+    // Farms/FarmEquipment sunt ultimele load-uri din OnGameModeInit -> aici toate datele sunt incarcate
     print("==================================================");
     print("  N-RP  |  gamemode incarcat cu succes.");
     print("==================================================");
@@ -2678,7 +2846,7 @@ public Farm_Complete(playerid)
         case 4: FarmData[fidx][fmReady] = 1;
     }
 
-    new msg[160];
+    new msg[192];
     if(step == 4)
     {
         // recolta -> aduna in stocul fermei (se vinde cu /farm deliver)
@@ -2696,6 +2864,19 @@ public Farm_Complete(playerid)
         format(msg, sizeof(msg), C_SUCCESS"[Farm] "C_WHITE"'%s' done! Next step: "C_INFO"%s"C_WHITE" (come back tomorrow).", g_FarmStepName[step], g_FarmStepName[step + 1]);
     }
     Farm_Save(fidx);
+
+    // daca s-a folosit un utilaj al fermei (nu unul inchiriat/personal), consuma o utilizare din el
+    if(g_FarmWorkSpawned[playerid])
+    {
+        new stepModel = g_FarmStepVeh[step];
+        if(Farm_ConsumeUse(fidx, stepModel))
+        {
+            new vtnb[12]; Farm_VehTypeName(stepModel, vtnb);
+            new brk[64];
+            format(brk, sizeof(brk), " A %s just broke down after %d uses!", vtnb, Farm_MaxUses(stepModel));
+            strcat(msg, brk);
+        }
+    }
     SendClientMessage(playerid, COLOR_SUCCESS, msg);
 
     // curata utilajul (clear g_FarmWorking inainte de eject, ca sa nu se declanseze cancel)
@@ -3339,8 +3520,12 @@ public OnPlayerEnterCheckpoint(playerid)
         FarmData[fdx][fmRecolta] = 0;
         Farm_Save(fdx);
         Farm_DeliverCleanup(playerid);
-        new dm[144];
+
+        // livrarea foloseste intotdeauna truck+trailer proprii ale fermei -> consuma o utilizare din fiecare
+        new dm[200];
         format(dm, sizeof(dm), C_SUCCESS"[Farm] "C_WHITE"Harvest delivered! "C_SUCCESS"+$%s"C_WHITE" to the farm bank (now "C_INFO"$%s"C_WHITE").", MoneyStr(pay), MoneyStr(FarmData[fdx][fmBank]));
+        if(Farm_ConsumeUse(fdx, FARM_TRUCK))   strcat(dm, " The truck just broke down!");
+        if(Farm_ConsumeUse(fdx, FARM_TRAILER)) strcat(dm, " The trailer just broke down!");
         SendClientMessage(playerid, COLOR_SUCCESS, dm);
         return 1;
     }
@@ -4699,9 +4884,10 @@ stock Businesses_SetPlayerIcons(playerid)
 {
     for(new i = 0; i < g_BusinessCount; i++)
     {
-        SetPlayerMapIcon(playerid, BUSINESS_ICON_SLOT_BASE + i,
-            BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ],
-            56, 0, MAPICON_GLOBAL);
+        // scos temporar (map icons de business dezactivate)
+        //SetPlayerMapIcon(playerid, BUSINESS_ICON_SLOT_BASE + i,
+        //    BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ],
+        //    56, 0, MAPICON_GLOBAL);
     }
 }
 
@@ -5424,12 +5610,13 @@ stock Shop_SetPlayerIcons(playerid)
 {
     for(new i = 0; i < MAX_SHOPS; i++)
     {
-        if(i < g_ShopCount)
-            SetPlayerMapIcon(playerid, SHOP_ICON_SLOT_BASE + i,
-                ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ],
-                SHOP_MAPICON_ID, 0, MAPICON_GLOBAL);
-        else
-            RemovePlayerMapIcon(playerid, SHOP_ICON_SLOT_BASE + i);
+        // scos temporar (map icons de shop dezactivate)
+        //if(i < g_ShopCount)
+        //    SetPlayerMapIcon(playerid, SHOP_ICON_SLOT_BASE + i,
+        //        ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ],
+        //        SHOP_MAPICON_ID, 0, MAPICON_GLOBAL);
+        //else
+        //    RemovePlayerMapIcon(playerid, SHOP_ICON_SLOT_BASE + i);
     }
 }
 
@@ -5560,10 +5747,11 @@ stock Pizza_SetPlayerIcons(playerid)
 {
     for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
     {
-        if(PizzaLocations[i][0] == 0.0 && PizzaLocations[i][1] == 0.0) { RemovePlayerMapIcon(playerid, PIZZA_ICON_SLOT_BASE + i); continue; }
-        SetPlayerMapIcon(playerid, PIZZA_ICON_SLOT_BASE + i,
-            PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2],
-            PIZZA_MAPICON_ID, 0, MAPICON_GLOBAL);
+        // scos temporar (map icons de pizza dezactivate)
+        //if(PizzaLocations[i][0] == 0.0 && PizzaLocations[i][1] == 0.0) { RemovePlayerMapIcon(playerid, PIZZA_ICON_SLOT_BASE + i); continue; }
+        //SetPlayerMapIcon(playerid, PIZZA_ICON_SLOT_BASE + i,
+        //    PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2],
+        //    PIZZA_MAPICON_ID, 0, MAPICON_GLOBAL);
     }
 }
 
@@ -5593,10 +5781,11 @@ stock Burger_SetPlayerIcons(playerid)
 {
     for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
     {
-        if(BurgerLocations[i][0] == 0.0 && BurgerLocations[i][1] == 0.0) { RemovePlayerMapIcon(playerid, BURGER_ICON_SLOT_BASE + i); continue; }
-        SetPlayerMapIcon(playerid, BURGER_ICON_SLOT_BASE + i,
-            BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2],
-            BURGER_MAPICON_ID, 0, MAPICON_GLOBAL);
+        // scos temporar (map icons de burger dezactivate)
+        //if(BurgerLocations[i][0] == 0.0 && BurgerLocations[i][1] == 0.0) { RemovePlayerMapIcon(playerid, BURGER_ICON_SLOT_BASE + i); continue; }
+        //SetPlayerMapIcon(playerid, BURGER_ICON_SLOT_BASE + i,
+        //    BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2],
+        //    BURGER_MAPICON_ID, 0, MAPICON_GLOBAL);
     }
 }
 
@@ -5631,7 +5820,8 @@ stock Meal_CreateWorld()
 
         g_MealPickup[i] = CreatePickup(MEAL_PICKUP_MODEL, 1, MealLocations[i][0], MealLocations[i][1], MealLocations[i][2], -1);
         g_MealLabel[i]  = Create3DTextLabel(label, COLOR_WHITE, MealLocations[i][0], MealLocations[i][1], MealLocations[i][2] - 0.5, 25.0, 0, 0);
-        g_MealIcon[i]   = CreateDynamicMapIcon(MealLocations[i][0], MealLocations[i][1], MealLocations[i][2], MEAL_MAPICON_ID, 0, -1, -1, -1, 30000.0, MAPICON_GLOBAL);
+        // scos temporar (map icon de cluckin bell dezactivat)
+        //g_MealIcon[i]   = CreateDynamicMapIcon(MealLocations[i][0], MealLocations[i][1], MealLocations[i][2], MEAL_MAPICON_ID, 0, -1, -1, -1, 30000.0, MAPICON_GLOBAL);
     }
 }
 
@@ -10538,6 +10728,15 @@ stock DB_CreateTables()
         `farmBank`         INT DEFAULT 0,\
         `farmRecolta`      INT DEFAULT 0,\
         `name`             VARCHAR(32) NOT NULL DEFAULT 'Farm'\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `farm_equipment` (\
+        `id`      INT AUTO_INCREMENT PRIMARY KEY,\
+        `farm_id` INT NOT NULL,\
+        `model`   INT NOT NULL,\
+        `uses`    INT DEFAULT 0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
@@ -15804,6 +16003,16 @@ public OnPlayerCommandText(playerid, cmdtext[])
             format(sline, sizeof(sline), C_WHITE"Vehicles: "C_INFO"%d"C_WHITE" Tractor, "C_INFO"%d"C_WHITE" Dozer, "C_INFO"%d"C_WHITE" Combine, "C_INFO"%d"C_WHITE" Truck, "C_INFO"%d"C_WHITE" Trailer.",
                 Farm_OwnedCount(sfidx, FARM_TRACTOR), Farm_OwnedCount(sfidx, FARM_DOZER), Farm_OwnedCount(sfidx, FARM_COMBINE), Farm_OwnedCount(sfidx, FARM_TRUCK), Farm_OwnedCount(sfidx, FARM_TRAILER));
             SendClientMessage(playerid, COLOR_WHITE, sline);
+            new sBroken = (Farm_OwnedCount(sfidx, FARM_TRACTOR) - Farm_UsableCount(sfidx, FARM_TRACTOR))
+                        + (Farm_OwnedCount(sfidx, FARM_DOZER)   - Farm_UsableCount(sfidx, FARM_DOZER))
+                        + (Farm_OwnedCount(sfidx, FARM_COMBINE) - Farm_UsableCount(sfidx, FARM_COMBINE))
+                        + (Farm_OwnedCount(sfidx, FARM_TRUCK)   - Farm_UsableCount(sfidx, FARM_TRUCK))
+                        + (Farm_OwnedCount(sfidx, FARM_TRAILER) - Farm_UsableCount(sfidx, FARM_TRAILER));
+            if(sBroken > 0)
+            {
+                format(sline, sizeof(sline), C_ERROR"Broken down: "C_INFO"%d"C_WHITE" (sell with "C_INFO"/farm sell"C_WHITE" or they stay unusable)", sBroken);
+                SendClientMessage(playerid, COLOR_WHITE, sline);
+            }
             return 1;
         }
 
@@ -15840,7 +16049,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             }
 
             FarmData[fidx][fmBank] -= price; // banii se iau din contul fermei
-            Farm_OwnedAdd(fidx, model, 1); // creste numarul de utilaje detinute
+            Farm_AddEquipment(fidx, model); // utilaj nou, 0 utilizari
             Farm_Save(fidx);
 
             new bm[144];
@@ -15871,13 +16080,20 @@ public OnPlayerCommandText(playerid, cmdtext[])
                 return SendClientMessage(playerid, COLOR_ERROR, em), 1;
             }
 
-            new refund = Farm_VehPrice(model) * 75 / 100;
-            FarmData[fidx][fmBank] += refund; // 75% inapoi in contul fermei
-            Farm_OwnedAdd(fidx, model, -1);
+            // vinde intotdeauna cea mai uzata unitate detinuta (refund 20%-60% in functie de utilizarile ramase)
+            new sellIdx = Farm_FindMostWornEquipment(fidx, model);
+            new sellUses = FarmEquipData[sellIdx][feUses];
+            new sellMaxUses = Farm_MaxUses(model);
+            new refundPct = Farm_SellRefundPct(model, sellUses);
+            new refund = Farm_VehPrice(model) * refundPct / 100;
+            FarmData[fidx][fmBank] += refund; // refund-ul intra in contul fermei
+            Farm_RemoveEquipment(sellIdx);
+            Farm_SyncCounts(fidx);
             Farm_Save(fidx);
 
-            new sm2[144];
-            format(sm2, sizeof(sm2), C_SUCCESS"[Farm] "C_WHITE"Sold a %s for "C_INFO"$%s"C_WHITE" (75%%) into the farm bank (now "C_INFO"$%s"C_WHITE").", vtn, MoneyStr(refund), MoneyStr(FarmData[fidx][fmBank]));
+            new sm2[160];
+            format(sm2, sizeof(sm2), C_SUCCESS"[Farm] "C_WHITE"Sold a %s (used "C_INFO"%d/%d"C_WHITE") for "C_INFO"$%s"C_WHITE" (%d%%) into the farm bank (now "C_INFO"$%s"C_WHITE").",
+                vtn, sellUses, sellMaxUses, MoneyStr(refund), refundPct, MoneyStr(FarmData[fidx][fmBank]));
             SendClientMessage(playerid, COLOR_SUCCESS, sm2);
             return 1;
         }
@@ -15940,7 +16156,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             if(g_FarmDelivTruck[playerid] != 0)
                 return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Farm] "C_WHITE"You are already on a delivery."), 1;
 
-            if(Farm_OwnedCount(fidx, FARM_TRUCK) >= 1 && Farm_OwnedCount(fidx, FARM_TRAILER) >= 1)
+            if(Farm_UsableCount(fidx, FARM_TRUCK) >= 1 && Farm_UsableCount(fidx, FARM_TRAILER) >= 1)
             {
                 // gaseste cel mai apropiat shop
                 new Float:px, Float:py, Float:pz, Float:pa;
@@ -16043,9 +16259,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
         {
             veh = curVeh; // esti deja in utilajul potrivit (ex. rentat)
         }
-        else if(Farm_OwnedCount(fidx, stepModel) >= 1)
+        else if(Farm_UsableCount(fidx, stepModel) >= 1)
         {
-            // spawneaza temporar un utilaj detinut de ferma (se distruge la final/coborare)
+            // spawneaza temporar un utilaj detinut de ferma, inca functional (se distruge la final/coborare)
             new Float:wx, Float:wy, Float:wz, Float:wa;
             GetPlayerPos(playerid, wx, wy, wz);
             GetPlayerFacingAngle(playerid, wa);
@@ -16419,6 +16635,30 @@ public OnPlayerCommandText(playerid, cmdtext[])
     }
 
     // ---- /changecar [engine/lights/alarm/doors/hood/boot] (comuta o componenta a vehiculului curent) ----
+    // ---- /setworldtime [0-23] (admin 3+: seteaza ora din lumea jocului pentru toti, util ca sa testezi faruri noaptea) ----
+    if(strcmp(cmd, "/setworldtime", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 3)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 3."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new wtStr[4];
+        strmid(wtStr, cmdtext, idx, strlen(cmdtext), 4);
+        if(!strlen(wtStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/setworldtime [0-23]"C_WHITE" (e.g. "C_INFO"0"C_WHITE" or "C_INFO"22"C_WHITE" for night)."), 1;
+
+        new wtHour = strval(wtStr);
+        if(wtHour < 0 || wtHour > 23)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Use an hour between 0 and 23."), 1;
+
+        SetWorldTime(wtHour);
+
+        new wtmsg[96];
+        format(wtmsg, sizeof(wtmsg), C_SUCCESS"[ADM] Success: "C_WHITE"World time set to "C_INFO"%d:00"C_WHITE".", wtHour);
+        SendClientMessage(playerid, COLOR_SUCCESS, wtmsg);
+        return 1;
+    }
+
     if(strcmp(cmd, "/changecar", true) == 0)
     {
         if(PlayerData[playerid][pAdminLevel] < 3)
@@ -20608,7 +20848,7 @@ You can also press the horn key for lights, and the analog up/down keys for hood
 - "C_INFO"/fill"C_WHITE" - empty a FULL gas can into the vehicle you're in - use it when you run dry far from a station\n\n\
 {FFFF00}Documents & items (all at R.A.R.):{E3E3E3}\n\
 - "C_INFO"/vinsurance"C_WHITE" - insurance, "C_INFO"$500"C_WHITE", valid "C_INFO"5 days"C_WHITE"\n\
-- "C_INFO"/vitp"C_WHITE" - ITP inspection, "C_INFO"$750"C_WHITE", valid "C_INFO"15 days"C_WHITE" (engine off, hood open, lights on)\n\
+- "C_INFO"/vitp"C_WHITE" - ITP inspection, "C_INFO"$750"C_WHITE", valid "C_INFO"15 days"C_WHITE" (engine off, hood open, boot closed, lights on)\n\
 - "C_INFO"/vplate"C_WHITE" - number plate, "C_INFO"$250"C_WHITE", no expiry\n\
 - "C_INFO"/v install medicalkit"C_WHITE" - fit a medical kit bought at /shop ("C_INFO"$500"C_WHITE"), valid "C_INFO"7 days"C_WHITE"\n\
 - "C_INFO"/v install extinctor"C_WHITE" - fit an extinguisher bought at /shop ("C_INFO"$500"C_WHITE"), valid "C_INFO"10 days"C_WHITE"\n\
@@ -20663,10 +20903,7 @@ is cleared at the "C_INFO"next payday"C_WHITE"";
 - "C_INFO"/house sell [price]"C_WHITE" - list for sale (money to your bank when sold); "C_INFO"/house sell 0"C_WHITE" cancels\n\
 - "C_INFO"/house sellto [playerid] [amount]"C_WHITE" - offer it directly to a player (cash, via /accept house)\n\
 - "C_INFO"/house selltostate"C_WHITE" - sell to the state for "C_INFO"60%"C_WHITE"\n\n\
-{FFFF00}Renting (no ownership needed):{E3E3E3}\n\
-- "C_INFO"/renthouse"C_WHITE" / "C_INFO"/rentappartment"C_WHITE" - rent a nearby house/apartment an admin marked rentable\n\
-Blocked if you own a house or already rent something. Rent is taken from you every PayDay, into the property's bank.\n\
-- "C_INFO"/endrent"C_WHITE" - give up your current rent (house, apartment or hotel)\n\n\
+{FFFF00}Renting:{E3E3E3} "C_INFO"/renthouse"C_WHITE"/"C_INFO"/rentappartment"C_WHITE" - rent a nearby rentable one (blocked if you own/rent already). "C_INFO"/endrent"C_WHITE" to give it up.\n\n\
 {FFFF00}Info:{E3E3E3}\n\
 - "C_INFO"/hstats"C_WHITE" - name, ID, price, type, fridge contents + break dates\n\
 - "C_INFO"/myhouse"C_WHITE" / "C_INFO"/findhouse [id]"C_WHITE" - checkpoint to your house / any house\n\
@@ -20677,23 +20914,18 @@ If the house has an interior, press "C_INFO"ENTER"C_WHITE" at the pickup to go i
 - "C_INFO"bed"C_WHITE" - "C_INFO"$7.500"C_WHITE", breaks after "C_INFO"29 days"C_WHITE"\n\
 - "C_INFO"tree"C_WHITE" - "C_INFO"$20.000"C_WHITE" (city or countryside house), unlocks "C_INFO"/tree plant"C_WHITE"\n\
 - "C_INFO"animal [name]"C_WHITE" - "C_INFO"$5.000"C_WHITE": Turtle/Deer (Villa only), Cow (countryside only)\n\
-Same command REPLACES a broken fridge/bed. 1%% goes to Home Furnitures.\n\n\
+Same command replaces a broken fridge/bed (1%% to Home Furnitures).\n\n\
 {FFFF00}Fridge - "C_INFO"/frigde"C_WHITE":{E3E3E3}\n\
 - "C_INFO"/frigde"C_WHITE" - view contents\n\
 - "C_INFO"/frigde buy [item] [qty]"C_WHITE" - stock milk/banana/water/juice/beer, only "C_INFO"15:00-20:00"C_WHITE"\n\
 - "C_INFO"/frigde use [item]"C_WHITE" - eat/drink one for HP\n\
 Price/max/HP: Milk $100/20L/+20, Banana $50/30/+10, Water $150/25L/+25, Juice $200/20L/+15, Beer $250/50L/+10.\n\
 {FF6347}A broken fridge loses everything inside and is unusable until replaced.{E3E3E3}\n\n\
-{FFFF00}Tree - "C_INFO"/tree [plant/collect]"C_WHITE":{E3E3E3} "C_INFO"/house upgrade tree"C_WHITE" ($20.000, city or countryside) unlocks it; "C_INFO"/tree plant"C_WHITE" needs a Shovel (5s). Grows +1/payday (max 30): 12-20 = 8-11 bananas, 21-29 = 1-3, 30 = 0 + resets.\n\n\
-{FFFF00}SGR (bottles) - "C_INFO"/sgrload"C_WHITE" & "C_INFO"/sgrunload"C_WHITE":{E3E3E3} drinking water/juice/beer leaves a container (max "C_INFO"100"C_WHITE"; warned at 80, blocked at 100).\n\
-- "C_INFO"/sgrload"C_WHITE" - at your house, driving an SGR van (plates SGR1-5)\n\
-- "C_INFO"/sgrunload"C_WHITE" - at the SGR Unload point; house bank gets "C_INFO"$50 each"C_WHITE"\n\n\
-{FFFF00}Trash - "C_INFO"/trashload"C_WHITE" & "C_INFO"/trashunload"C_WHITE":{E3E3E3} eating milk/banana leaves trash (max 100, same rules).\n\
-- "C_INFO"/trashload"C_WHITE" - at your house, driving a garbage truck\n\
-- "C_INFO"/trashunload"C_WHITE" - at the Trash Unload point; house bank gets "C_INFO"$30 each"C_WHITE"\n\n\
-{FFFF00}Tiredness & "C_INFO"/sleep"C_WHITE":{E3E3E3} +2/min (check "C_INFO"/watch"C_WHITE"); at 80+ you lose an extra -2 HP/min. Reset it:\n\
-- Home: install a bed, then "C_INFO"/sleep"C_WHITE" free - 30s, tiredness to 0 (broken bed blocks it)\n\
-- Any hotel: "C_INFO"/sleep"C_WHITE" for "C_INFO"$150"C_WHITE" - 45s, tiredness to 10 (see /howto hotel)\n\n\
+{FFFF00}Tree - "C_INFO"/tree [plant/collect]"C_WHITE":{E3E3E3} unlocked by "C_INFO"/house upgrade tree"C_WHITE" (city/countryside); "C_INFO"/tree plant"C_WHITE" needs a Shovel (5s). Grows +1/payday (max 30): 12-20=8-11 bananas, 21-29=1-3, 30=0+resets.\n\n\
+{FFFF00}SGR/Trash:{E3E3E3} fridge drinks leave SGR bottles, fridge food leaves trash (max 100 each, warned at 80).\n\
+- "C_INFO"/sgrload"C_WHITE"/"C_INFO"/trashload"C_WHITE" - at your house, in an SGR van/garbage truck\n\
+- "C_INFO"/sgrunload"C_WHITE"/"C_INFO"/trashunload"C_WHITE" - at the unload point; house bank gets "C_INFO"$50"C_WHITE"/"C_INFO"$30"C_WHITE" each\n\n\
+{FFFF00}Tiredness & "C_INFO"/sleep"C_WHITE":{E3E3E3} +2/min; 80+ costs extra HP. Home bed: free, 30s, to 0. Any hotel: "C_INFO"$150"C_WHITE", 45s, to 10 (see /howto hotel).\n\n\
 {FFFF00}Cow:{E3E3E3} gives a 50%% chance/payday (while online) of 2-5L milk straight into your fridge.\n\n\
 {FFFF00}Repairs:{E3E3E3} an Electrician can fix your fridge/bed in the last 5 days before they break, paid from the house bank ("C_INFO"$2.000"C_WHITE"/"C_INFO"$1.000"C_WHITE"), adding 15 days.";
         }
@@ -27095,6 +27327,9 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(itpLights != 1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must turn on the headlights first."), 1;
 
+        if(itpBoot != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must close the boot (trunk) first."), 1;
+
         if(VehicleDoc_IsValid(PVehicleData[pvidx][pvITPExp]))
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The ITP is still valid."), 1;
 
@@ -28494,6 +28729,18 @@ public OnPlayerDisconnect(playerid, reason)
 
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 {
+    // Capota pe 2048 (KEY_ANALOG_UP), portbagajul pe 4096 (KEY_ANALOG_DOWN) - doar soferul
+    if((newkeys & 2048) && !(oldkeys & 2048))
+    {
+        if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
+            Vehicle_ToggleBonnet(playerid);
+    }
+    if((newkeys & 4096) && !(oldkeys & 4096))
+    {
+        if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
+            Vehicle_ToggleBoot(playerid);
+    }
+
     if((newkeys & KEY_SUBMISSION) && !(oldkeys & KEY_SUBMISSION))
     {
         if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
@@ -28532,25 +28779,11 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             Houses_InteriorToggle(playerid);
     }
 
-    // Faruri: leagat de controlul KEY_ACTION. SA-MP nu poate citi NUMPAD 0 (VK 96) direct,
-    // dar jucatorul poate seta NUMPAD 0 pe controlul corespunzator din setarile GTA SA ca sa-l foloseasca.
-    if((newkeys & KEY_ACTION) && !(oldkeys & KEY_ACTION))
+    // Faruri: newkeys exact 1 sau 132
+    if(newkeys == 1 || newkeys == 132)
     {
         if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
             Vehicle_ToggleLights(playerid);
-    }
-
-    // Capota pe KEY_ANALOG_UP, portbagajul pe KEY_ANALOG_DOWN (doar soferul)
-    if((newkeys & KEY_ANALOG_UP) && !(oldkeys & KEY_ANALOG_UP))
-    {
-        if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
-            Vehicle_ToggleBonnet(playerid);
-    }
-
-    if((newkeys & KEY_ANALOG_DOWN) && !(oldkeys & KEY_ANALOG_DOWN))
-    {
-        if(PlayerData[playerid][pLogged] && GetPlayerVehicleID(playerid) != 0 && GetPlayerVehicleSeat(playerid) == 0)
-            Vehicle_ToggleBoot(playerid);
     }
 
     if((newkeys & KEY_FIRE) && !(oldkeys & KEY_FIRE))

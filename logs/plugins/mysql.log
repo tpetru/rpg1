@@ -9271,3 +9271,21 @@
 [16:28:28] [WARNING] mysql_connect: no password specified
 [11:20:04] [WARNING] mysql_connect: no password specified
 [11:53:33] [WARNING] mysql_connect: no password specified
+[11:11:13] [WARNING] mysql_connect: no password specified
+[11:11:15] [ERROR] CConnection::CConnection - establishing connection to MySQL database failed: #2002 'Can't connect to MySQL server on '127.0.0.1' (10061)'
+[11:11:48] [WARNING] mysql_connect: no password specified
+[11:11:48] [ERROR] error #1054 while executing query "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`default_price`,`type`,`max_pets`,`pets`,`loc_x`,`loc_y`,`loc_z`,`interior`,`int_x`,`int_y`,`int_z`,`has_fridge`,`fridge_milk`,`fridge_banana`,`fridge_water`,`fridge_juice`,`fridge_beer`,`fridge_expire`,`has_bed`,`bed_expire`,`bank`,`sgr`,`trash`,`tree_id`,`issue`,`is_rentable`,`rent_price`,`renter_id` FROM `houses` ORDER BY `id` ASC": Unknown column 'is_rentable' in 'field list'
+[11:11:48] [ERROR] error #1054 while executing query "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`loc_x`,`loc_y`,`loc_z`,`bank`,`is_rentable`,`rent_price`,`renter_id` FROM `hotels` ORDER BY `id` ASC": Unknown column 'is_rentable' in 'field list'
+[11:12:18] [ERROR] error #1054 while executing query "SELECT `id`,`password`,`email`,`level`,`money`,`bank`,`rp`,`admin_level`,`faction`,`faction_rank`,`faction_join`,`house`,`hotel`,`business`,`rent_house`,`rent_hotel`,`spawn_type`,`key1`,`key2`,`key3`,`driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`airplane_lic_a_exp`,`airplane_lic_h_exp`,`diseased`,`disease_paydays`,`caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds`,`rob_points`,`skin`,`gas_can`,`watch_model`,`phone_expire`,`watch_expire`,`tired` FROM `players` WHERE `id`=1 LIMIT 1": Unknown column 'rent_house' in 'field list'
+[11:13:20] [WARNING] mysql_connect: no password specified
+[11:13:20] [ERROR] error #1054 while executing query "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`default_price`,`type`,`max_pets`,`pets`,`loc_x`,`loc_y`,`loc_z`,`interior`,`int_x`,`int_y`,`int_z`,`has_fridge`,`fridge_milk`,`fridge_banana`,`fridge_water`,`fridge_juice`,`fridge_beer`,`fridge_expire`,`has_bed`,`bed_expire`,`bank`,`sgr`,`trash`,`tree_id`,`issue`,`is_rentable`,`rent_price`,`renter_id` FROM `houses` ORDER BY `id` ASC": Unknown column 'is_rentable' in 'field list'
+[11:13:20] [ERROR] error #1054 while executing query "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`loc_x`,`loc_y`,`loc_z`,`bank`,`is_rentable`,`rent_price`,`renter_id` FROM `hotels` ORDER BY `id` ASC": Unknown column 'is_rentable' in 'field list'
+[11:13:43] [ERROR] error #1054 while executing query "SELECT `id`,`password`,`email`,`level`,`money`,`bank`,`rp`,`admin_level`,`faction`,`faction_rank`,`faction_join`,`house`,`hotel`,`business`,`rent_house`,`rent_hotel`,`spawn_type`,`key1`,`key2`,`key3`,`driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`airplane_lic_a_exp`,`airplane_lic_h_exp`,`diseased`,`disease_paydays`,`caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds`,`rob_points`,`skin`,`gas_can`,`watch_model`,`phone_expire`,`watch_expire`,`tired` FROM `players` WHERE `id`=1 LIMIT 1": Unknown column 'rent_house' in 'field list'
+[11:15:30] [WARNING] mysql_connect: no password specified
+[11:16:31] [WARNING] mysql_connect: no password specified
+[11:20:28] [WARNING] mysql_connect: no password specified
+[11:23:10] [WARNING] mysql_connect: no password specified
+[11:29:06] [WARNING] mysql_connect: no password specified
+[11:35:49] [WARNING] mysql_connect: no password specified
+[11:41:20] [WARNING] mysql_connect: no password specified
+[16:16:45] [WARNING] mysql_connect: no password specified
