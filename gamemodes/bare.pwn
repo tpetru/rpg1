@@ -77,6 +77,8 @@ forward OnATMsLoaded();
 forward OnATMCreated(playerid, idx);
 forward OnShopsLoaded();
 forward OnShopCreated(playerid, idx);
+forward OnClothStoresLoaded();
+forward OnClothStoreCreated(playerid, idx);
 forward OnFastFoodLoaded();
 forward DrugTransport_Loaded(playerid);
 forward DrugTransport_Unloaded(playerid);
@@ -133,6 +135,7 @@ new g_ExamHPrice       = 1000;  // examen elicopter (Airplane H)
 new g_PizzaPrice       = 50;
 new g_BurgerPrice      = 55;
 new g_MealPrice        = 60;  // Cluckin Bell (/meal)
+new g_DesertPrice      = 30;  // Desert - donut (/desert)
 
 // ============================================================
 //  PRESEDINTE (alegeri saptamanale prin vot)
@@ -504,12 +507,112 @@ stock Skins_CreateStores()
     }
 }
 
-// True daca jucatorul e langa un magazin de haine
+// Magazine de haine create in-game de admini (persistente in DB, fara mapicon)
+#define MAX_CLOTHSTORES        30
+
+enum E_CLOTHSTORE_DATA
+{
+    clstID,
+    Float:clstX, Float:clstY, Float:clstZ,
+    clstName[32],
+    clstIntID, clstVwID,
+    Float:clstIntX, Float:clstIntY, Float:clstIntZ
+}
+new ClothStoreData[MAX_CLOTHSTORES][E_CLOTHSTORE_DATA];
+new g_ClothStoreDynPickup[MAX_CLOTHSTORES];
+new Text3D:g_ClothStoreDynLabel[MAX_CLOTHSTORES];
+new STREAMER_TAG_3D_TEXT_LABEL:g_ClothStoreIntLabel[MAX_CLOTHSTORES];
+new g_ClothStoreDynCount = 0;
+
+// True daca magazinul are interior configurat (clsInteriorId sau coordonate setate)
+stock bool:ClothStore_HasInterior(idx)
+{
+    return bool:(ClothStoreData[idx][clstIntID] != 0 || ClothStoreData[idx][clstIntX] != 0.0 || ClothStoreData[idx][clstIntY] != 0.0);
+}
+
+// Creeaza (sau recreeaza) pickup-ul + eticheta 3D pentru un magazin de haine dinamic (fara mapicon)
+stock ClothStore_Create(idx)
+{
+    if(g_ClothStoreDynPickup[idx] != -1) { DestroyPickup(g_ClothStoreDynPickup[idx]); g_ClothStoreDynPickup[idx] = -1; }
+    g_ClothStoreDynPickup[idx] = CreatePickup(19606, 1, ClothStoreData[idx][clstX], ClothStoreData[idx][clstY], ClothStoreData[idx][clstZ], -1); // 19606 = enter/exit clothing shop
+
+    if(g_ClothStoreDynLabel[idx] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(g_ClothStoreDynLabel[idx]);
+        g_ClothStoreDynLabel[idx] = Text3D:INVALID_3DTEXT_ID;
+    }
+    new label[96];
+    if(strlen(ClothStoreData[idx][clstName]))
+        format(label, sizeof(label), "[ %s ]\n[ Use /buyskin ]%s",
+            ClothStoreData[idx][clstName], ClothStore_HasInterior(idx) ? ("\n[ Press ENTER to enter ]") : (""));
+    else
+        format(label, sizeof(label), "[ Clothing Store #%d ]\n[ Use /buyskin ]%s",
+            ClothStoreData[idx][clstID], ClothStore_HasInterior(idx) ? ("\n[ Press ENTER to enter ]") : (""));
+    g_ClothStoreDynLabel[idx] = Create3DTextLabel(label, COLOR_WHITE,
+        ClothStoreData[idx][clstX], ClothStoreData[idx][clstY], ClothStoreData[idx][clstZ] - 0.5, 20.0, 0, 0);
+
+    if(IsValidDynamic3DTextLabel(g_ClothStoreIntLabel[idx]))
+        DestroyDynamic3DTextLabel(g_ClothStoreIntLabel[idx]);
+
+    if(ClothStore_HasInterior(idx))
+        g_ClothStoreIntLabel[idx] = CreateDynamic3DTextLabel(C_WHITE"[ Press ENTER to exit ]", COLOR_WHITE,
+            ClothStoreData[idx][clstIntX], ClothStoreData[idx][clstIntY], ClothStoreData[idx][clstIntZ] - 0.5, 15.0,
+            INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,
+            ClothStoreData[idx][clstVwID], ClothStoreData[idx][clstIntID]);
+}
+
+// Returneaza indexul (in ClothStoreData) al magazinului cu clstID dat, sau -1
+stock ClothStore_FindByID(id)
+{
+    for(new i = 0; i < g_ClothStoreDynCount; i++)
+        if(ClothStoreData[i][clstID] == id) return i;
+    return -1;
+}
+
+// True daca jucatorul e langa un magazin de haine (static sau creat in-game)
 stock bool:Skin_AtStore(playerid)
 {
     for(new i = 0; i < sizeof(g_ClothStore); i++)
         if(IsPlayerInRangeOfPoint(playerid, SKIN_STORE_RANGE, g_ClothStore[i][0], g_ClothStore[i][1], g_ClothStore[i][2]))
             return true;
+    for(new i = 0; i < g_ClothStoreDynCount; i++)
+        if(IsPlayerInRangeOfPoint(playerid, SKIN_STORE_RANGE, ClothStoreData[i][clstX], ClothStoreData[i][clstY], ClothStoreData[i][clstZ]))
+            return true;
+    return false;
+}
+
+// Intrare/iesire in interiorul unui magazin de haine (apasand KEY_SECONDARY_ATTACK/ENTER langa el). vw = clsVwId (implicit propriul ID al magazinului).
+stock bool:ClothStore_InteriorToggle(playerid)
+{
+    if(GetPlayerVirtualWorld(playerid) == 0)
+    {
+        for(new i = 0; i < g_ClothStoreDynCount; i++)
+        {
+            if(!ClothStore_HasInterior(i)) continue;
+            if(!IsPlayerInRangeOfPoint(playerid, SKIN_STORE_RANGE, ClothStoreData[i][clstX], ClothStoreData[i][clstY], ClothStoreData[i][clstZ])) continue;
+
+            // Interior/VW INAINTE de pozitie: altfel clientul poate randa noua pozitie cu texturile
+            // interiorului vechi pentru o clipa (peretii/podeaua apar gri, desi coliziunea e ok).
+            AC_SetInterior(playerid, ClothStoreData[i][clstIntID]);
+            AC_SetVW(playerid, ClothStoreData[i][clstVwID]);
+            AC_SetPos(playerid, ClothStoreData[i][clstIntX], ClothStoreData[i][clstIntY], ClothStoreData[i][clstIntZ]);
+            return true;
+        }
+        return false;
+    }
+
+    for(new i = 0; i < g_ClothStoreDynCount; i++)
+    {
+        if(!ClothStore_HasInterior(i)) continue;
+        if(ClothStoreData[i][clstVwID] != GetPlayerVirtualWorld(playerid)) continue;
+        if(GetPlayerInterior(playerid) != ClothStoreData[i][clstIntID]) continue;
+        if(!IsPlayerInRangeOfPoint(playerid, SKIN_STORE_RANGE, ClothStoreData[i][clstIntX], ClothStoreData[i][clstIntY], ClothStoreData[i][clstIntZ])) continue;
+
+        AC_SetInterior(playerid, 0);
+        AC_SetVW(playerid, 0);
+        AC_SetPos(playerid, ClothStoreData[i][clstX], ClothStoreData[i][clstY], ClothStoreData[i][clstZ]);
+        return true;
+    }
     return false;
 }
 
@@ -2494,6 +2597,7 @@ enum E_FARM_DATA
     fmLastWork,   // unix (aliniat la zi) sau 0 = niciodata
     fmPlowed, fmLeveled, fmSeeded, fmFertilized, fmReady,
     fmOwnerName[24], fmOwnerId, fmOwned, fmForSale, fmPrice,
+    fmDefaultPrice, // pretul initial, folosit DOAR pentru calculul taxei de la PayDay (nu pentru buy/sell, acolo se foloseste fmPrice)
     fmBank, fmRecolta
 }
 new FarmData[MAX_FARMS][E_FARM_DATA];
@@ -2745,6 +2849,7 @@ public OnFarmsLoaded()
         cache_get_value_name_int(i, "isOwned", FarmData[idx][fmOwned]);
         cache_get_value_name_int(i, "is_for_sale", FarmData[idx][fmForSale]);
         cache_get_value_name_int(i, "price",   FarmData[idx][fmPrice]);
+        cache_get_value_name_int(i, "default_price", FarmData[idx][fmDefaultPrice]);
         cache_get_value_name_int(i, "farmBank",    FarmData[idx][fmBank]);
         cache_get_value_name_int(i, "farmRecolta", FarmData[idx][fmRecolta]);
         cache_get_value_name_int(i, "tractors", FarmData[idx][fmTractors]);
@@ -3244,6 +3349,7 @@ new g_GPSDynCat[MAX_PLAYERS][32];           // pentru categoriile dinamice: nume
 #define GPSITEM_FARM     8
 #define GPSITEM_HOUSE    9
 #define GPSITEM_HOTEL    10
+#define GPSITEM_CLOTHSTORE 11
 new g_GPSItemType[MAX_PLAYERS][MAX_GPS_LISTITEMS];
 new g_GPSItemRef[MAX_PLAYERS][MAX_GPS_LISTITEMS];
 new Float:g_GPSItemDist[MAX_PLAYERS][MAX_GPS_LISTITEMS];
@@ -3846,13 +3952,6 @@ stock Cityhall_Toggle(playerid)
 // Seteaza map icon-urile factiunilor (MAPICON_GLOBAL) pentru un player
 stock Factions_SetPlayerIcons(playerid)
 {
-    for(new i = 1; i <= MAX_FACTIONS; i++)
-    {
-        if(FactionData[i][fMapIconID] == -1) continue;
-        if(FactionData[i][fHQX] == 0.0 && FactionData[i][fHQY] == 0.0) continue;
-        SetPlayerMapIcon(playerid, i, FactionData[i][fHQX], FactionData[i][fHQY], FactionData[i][fHQZ],
-            FactionData[i][fMapIconID], FactionColors[i], MAPICON_GLOBAL);
-    }
     SetPlayerMapIcon(playerid, 0, 846.4172, -2059.0867, 12.8672, 35, 0, MAPICON_GLOBAL); // SPAWN POINT
 }
 
@@ -4181,6 +4280,7 @@ stock GTAInteriors_FindByID(id)
 #define RENT_FIND_RANGE    5.0   // raza pentru /renthouse, /rentappartment, /renthotel
 #define HOUSE_RENT_BONUS   50    // $ suplimentari, la fiecare PayDay, in banca oricarei case inchiriate (pe langa chiria platita de chirias)
 #define HOTEL_RENT_BONUS   100   // $ suplimentari, la fiecare PayDay, in banca oricarui hotel inchiriat (pe langa chiria platita de chirias)
+#define HOTEL_DEFAULT_CAPACITY 5 // nr. implicit de chiriasi simultani, la un hotel nou creat
 
 enum E_HOTEL_DATA
 {
@@ -4189,7 +4289,8 @@ enum E_HOTEL_DATA
     htlBank,
     htlIsRentable, // 1 = poate fi inchiriat cu /renthotel (setat de admin cu /htlc rentable)
     htlRentPrice, // chiria luata de la chirias la fiecare PayDay (vezi /htlc rentprice)
-    htlRenterId // pID-ul chiriasului curent (0 = nimeni nu inchiriaza hotelul asta)
+    htlCapacity, // nr. maxim de chiriasi simultani (vezi /htlc capacity), default HOTEL_DEFAULT_CAPACITY
+    htlRenterCount // nr. curent de chiriasi (recalculat din `players`.`rent_hotel` la pornirea serverului)
 }
 new HotelData[MAX_HOTELS][E_HOTEL_DATA];
 new g_HotelPickup[MAX_HOTELS];
@@ -4203,7 +4304,7 @@ stock Hotels_RecreatePickup(idx)
         DestroyPickup(g_HotelPickup[idx]);
         g_HotelPickup[idx] = -1;
     }
-    g_HotelPickup[idx] = CreatePickup(HotelData[idx][htlOwned] ? 1272 : 1273, 1,
+    g_HotelPickup[idx] = CreatePickup(HotelData[idx][htlOwned] ? 1923 : 19524, 1,
         HotelData[idx][htlLocX], HotelData[idx][htlLocY], HotelData[idx][htlLocZ], -1);
 
     if(g_HotelLabel[idx] != Text3D:INVALID_3DTEXT_ID)
@@ -4315,7 +4416,7 @@ new const g_AnimalCatalog[][E_ANIMAL_CATALOG] = {
 
 enum E_ANIMAL_DATA
 {
-    aID, aType, aPlayerID, aHouseID, aName[32]
+    aID, aType, aPlayerID, aHouseID, aName[32], aDefaultName[32]
 }
 new AnimalData[MAX_ANIMALS][E_ANIMAL_DATA];
 new STREAMER_TAG_OBJECT:g_AnimalObject[MAX_ANIMALS];
@@ -4393,6 +4494,14 @@ stock Animals_DestroyAll()
         g_AnimalObject[i] = STREAMER_TAG_OBJECT:INVALID_STREAMER_ID;
     }
     g_AnimalCount = 0;
+}
+
+// Cauta indexul (in AnimalData) al unui animal dupa aID, sau -1
+stock Animals_FindByID(id)
+{
+    for(new i = 0; i < g_AnimalCount; i++)
+        if(AnimalData[i][aID] == id) return i;
+    return -1;
 }
 
 // ============================================================
@@ -4639,7 +4748,6 @@ stock ATM_FindByID(id)
 // ============================================================
 #define MAX_BUSINESSES          50
 #define BUSINESS_RANGE          5.0
-#define BUSINESS_ICON_SLOT_BASE 10 // SetPlayerMapIcon iconid e limitat la 0-99; sloturile 1-7 sunt factiunile, 10-59 business-urile, 60-69 incendiile
 
 enum E_BUSINESS_DATA
 {
@@ -4879,25 +4987,6 @@ stock Businesses_RecreatePickup(idx)
         BusinessData[idx][bLocX], BusinessData[idx][bLocY], BusinessData[idx][bLocZ]-0.5, 20.0, 0, 0);
 }
 
-// Seteaza map icon-urile business-urilor (36 = detinut, 52 = de vanzare) pentru un player
-stock Businesses_SetPlayerIcons(playerid)
-{
-    for(new i = 0; i < g_BusinessCount; i++)
-    {
-        // scos temporar (map icons de business dezactivate)
-        //SetPlayerMapIcon(playerid, BUSINESS_ICON_SLOT_BASE + i,
-        //    BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ],
-        //    56, 0, MAPICON_GLOBAL);
-    }
-}
-
-// Actualizeaza icon-urile de business pentru toti playerii logati
-stock Businesses_UpdatePlayersIcons()
-{
-    for(new i = 0; i < MAX_PLAYERS; i++)
-        if(IsPlayerConnected(i) && PlayerData[i][pLogged])
-            Businesses_SetPlayerIcons(i);
-}
 
 // Returneaza indexul (in BusinessData) al business-ului cu bID == bid, sau -1
 stock Businesses_FindByID(bid)
@@ -5566,8 +5655,6 @@ stock bool:Player_NearHospital(playerid)
 #define DISEASE_FREEZE_TIME  10000 // 10 secunde, in ms
 
 #define MAX_SHOPS             20
-#define SHOP_ICON_SLOT_BASE   70 // sloturile 70-89 (0=spawn, 1-8=factiuni, 9=baschet, 10-59=business, 60-69=incendii, 90-94=pizza, 95-99=burger)
-#define SHOP_MAPICON_ID       17
 #define SHOP_PICKUP_MODEL     954
 #define SHOP_RANGE            10.0
 
@@ -5605,28 +5692,6 @@ stock Shop_FindByID(id)
     return -1;
 }
 
-// Seteaza map icon-urile shop-urilor pentru un player (si curata sloturile shop-urilor sterse)
-stock Shop_SetPlayerIcons(playerid)
-{
-    for(new i = 0; i < MAX_SHOPS; i++)
-    {
-        // scos temporar (map icons de shop dezactivate)
-        //if(i < g_ShopCount)
-        //    SetPlayerMapIcon(playerid, SHOP_ICON_SLOT_BASE + i,
-        //        ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ],
-        //        SHOP_MAPICON_ID, 0, MAPICON_GLOBAL);
-        //else
-        //    RemovePlayerMapIcon(playerid, SHOP_ICON_SLOT_BASE + i);
-    }
-}
-
-// Reimprospateaza icoanele de shop pentru toti playerii conectati (dupa create/move/delete)
-stock Shop_RefreshAllIcons()
-{
-    for(new i = 0; i < MAX_PLAYERS; i++)
-        if(IsPlayerConnected(i) && PlayerData[i][pLogged])
-            Shop_SetPlayerIcons(i);
-}
 
 // Verifica daca playerid e in raza unuia dintre shop-uri
 stock bool:Shop_PlayerInRange(playerid)
@@ -5638,7 +5703,7 @@ stock bool:Shop_PlayerInRange(playerid)
 }
 
 // ============================================================
-//  MANCARE (/pizza, /burger)
+//  MANCARE (/pizza, /burger, /meal, /desert)
 // ============================================================
 #define MAX_FOOD_LOCATIONS   20
 #define FOOD_RANGE            10.0
@@ -5660,23 +5725,32 @@ stock bool:Shop_PlayerInRange(playerid)
 #define MEAL_MAPICON_ID       14      // Cluckin' Bell
 #define MEAL_PICKUP_MODEL     1582    // marker vizibil (ajusteaza daca vrei alt obiect)
 
-// Locatiile de /pizza, /burger si /meal se incarca din tabelul `fastfood` (ffType 1=pizza, 2=burger, 3=cluckin/meal).
+#define DESERT_HEAL_AMOUNT    15.0
+#define DESERT_BIZ_ID         12 // acelasi business ca /pizza
+#define DESERT_PICKUP_MODEL   1582    // marker vizibil (acelasi obiect generic ca /meal)
+
+// Locatiile de /pizza, /burger, /meal si /desert se incarca din tabelul `fastfood` (ffType 1=pizza, 2=burger, 3=cluckin/meal, 4=desert).
 new Float:PizzaLocations[MAX_FOOD_LOCATIONS][3];
 new Float:BurgerLocations[MAX_FOOD_LOCATIONS][3];
 new Float:MealLocations[MAX_FOOD_LOCATIONS][3];
+new Float:DesertLocations[MAX_FOOD_LOCATIONS][3];
 new g_PizzaName[MAX_FOOD_LOCATIONS][32];   // ffName pt afisare in GPS
 new g_BurgerName[MAX_FOOD_LOCATIONS][32];
 new g_MealName[MAX_FOOD_LOCATIONS][32];
+new g_DesertName[MAX_FOOD_LOCATIONS][32];
 // ffID-ul din DB pentru fiecare slot (0 = slot gol) + handle-uri pickup/eticheta pt recreere curata
 new g_PizzaFFID[MAX_FOOD_LOCATIONS];
 new g_BurgerFFID[MAX_FOOD_LOCATIONS];
 new g_MealFFID[MAX_FOOD_LOCATIONS];
+new g_DesertFFID[MAX_FOOD_LOCATIONS];
 new g_PizzaPickup[MAX_FOOD_LOCATIONS];
 new g_BurgerPickup[MAX_FOOD_LOCATIONS];
 new g_MealPickup[MAX_FOOD_LOCATIONS];
+new g_DesertPickup[MAX_FOOD_LOCATIONS];
 new Text3D:g_PizzaLabel[MAX_FOOD_LOCATIONS];
 new Text3D:g_BurgerLabel[MAX_FOOD_LOCATIONS];
 new Text3D:g_MealLabel[MAX_FOOD_LOCATIONS];
+new Text3D:g_DesertLabel[MAX_FOOD_LOCATIONS];
 new g_MealIcon[MAX_FOOD_LOCATIONS];        // map icon dinamic (streamer, global) - evita epuizarea sloturilor 90-99
 new bool:g_FastFoodInit = false;
 
@@ -5689,9 +5763,11 @@ stock FastFood_InitHandles()
         g_PizzaPickup[i]  = -1;
         g_BurgerPickup[i] = -1;
         g_MealPickup[i]   = -1;
+        g_DesertPickup[i] = -1;
         g_PizzaLabel[i]   = Text3D:INVALID_3DTEXT_ID;
         g_BurgerLabel[i]  = Text3D:INVALID_3DTEXT_ID;
         g_MealLabel[i]    = Text3D:INVALID_3DTEXT_ID;
+        g_DesertLabel[i]  = Text3D:INVALID_3DTEXT_ID;
         g_MealIcon[i]     = 0; // 0 = niciun icon dinamic
     }
     g_FastFoodInit = true;
@@ -5825,7 +5901,40 @@ stock Meal_CreateWorld()
     }
 }
 
-// Incarca locatiile de /pizza si /burger din tabelul `fastfood` (ffType 1=pizza, 2=burger)
+// Verifica daca playerid e in raza uneia dintre locatiile de /desert
+stock bool:Desert_PlayerInRange(playerid)
+{
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        if(DesertLocations[i][0] == 0.0 && DesertLocations[i][1] == 0.0) continue;
+        if(IsPlayerInRangeOfPoint(playerid, FOOD_RANGE, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2]))
+            return true;
+    }
+    return false;
+}
+
+// Recreeaza pickup-urile si etichetele 3D pentru locatiile de /desert (idempotent: distruge intai handle-urile vechi)
+stock Desert_CreateWorld()
+{
+    FastFood_InitHandles();
+
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        if(g_DesertPickup[i] != -1) { DestroyPickup(g_DesertPickup[i]); g_DesertPickup[i] = -1; }
+        if(g_DesertLabel[i] != Text3D:INVALID_3DTEXT_ID) { Delete3DTextLabel(g_DesertLabel[i]); g_DesertLabel[i] = Text3D:INVALID_3DTEXT_ID; }
+
+        if(DesertLocations[i][0] == 0.0 && DesertLocations[i][1] == 0.0) continue;
+
+        new label[128];
+        format(label, sizeof(label), "[ %s %d ]\n[ Type /desert ]\n[ Price: %s$ ]\n[ Heal: +%d ]",
+            g_DesertName[i], g_DesertFFID[i], MoneyStr(g_DesertPrice), floatround(DESERT_HEAL_AMOUNT));
+
+        g_DesertPickup[i] = CreatePickup(DESERT_PICKUP_MODEL, 1, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2], -1);
+        g_DesertLabel[i]  = Create3DTextLabel(label, COLOR_WHITE, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2] - 0.5, 25.0, 0, 0);
+    }
+}
+
+// Incarca locatiile de /pizza, /burger, /meal si /desert din tabelul `fastfood`
 stock FastFood_Load()
 {
     FastFood_InitHandles();
@@ -5840,11 +5949,12 @@ public OnFastFoodLoaded()
         PizzaLocations[i][0] = 0.0;  PizzaLocations[i][1] = 0.0;  PizzaLocations[i][2] = 0.0;
         BurgerLocations[i][0] = 0.0; BurgerLocations[i][1] = 0.0; BurgerLocations[i][2] = 0.0;
         MealLocations[i][0] = 0.0;   MealLocations[i][1] = 0.0;   MealLocations[i][2] = 0.0;
-        g_PizzaFFID[i] = 0; g_BurgerFFID[i] = 0; g_MealFFID[i] = 0;
-        g_PizzaName[i][0] = EOS; g_BurgerName[i][0] = EOS; g_MealName[i][0] = EOS;
+        DesertLocations[i][0] = 0.0; DesertLocations[i][1] = 0.0; DesertLocations[i][2] = 0.0;
+        g_PizzaFFID[i] = 0; g_BurgerFFID[i] = 0; g_MealFFID[i] = 0; g_DesertFFID[i] = 0;
+        g_PizzaName[i][0] = EOS; g_BurgerName[i][0] = EOS; g_MealName[i][0] = EOS; g_DesertName[i][0] = EOS;
     }
 
-    new rows = cache_num_rows(), pc = 0, bc = 0, mc = 0;
+    new rows = cache_num_rows(), pc = 0, bc = 0, mc = 0, dc = 0;
     for(new i = 0; i < rows; i++)
     {
         new ffid, type, ffname[32];
@@ -5864,6 +5974,10 @@ public OnFastFoodLoaded()
         {
             if(mc < MAX_FOOD_LOCATIONS) { MealLocations[mc][0] = x; MealLocations[mc][1] = y; MealLocations[mc][2] = z; g_MealFFID[mc] = ffid; format(g_MealName[mc], 32, "%s", ffname); mc++; }
         }
+        else if(type == 4)
+        {
+            if(dc < MAX_FOOD_LOCATIONS) { DesertLocations[dc][0] = x; DesertLocations[dc][1] = y; DesertLocations[dc][2] = z; g_DesertFFID[dc] = ffid; format(g_DesertName[dc], 32, "%s", ffname); dc++; }
+        }
         else
         {
             if(pc < MAX_FOOD_LOCATIONS) { PizzaLocations[pc][0] = x; PizzaLocations[pc][1] = y; PizzaLocations[pc][2] = z; g_PizzaFFID[pc] = ffid; format(g_PizzaName[pc], 32, "%s", ffname); pc++; }
@@ -5874,16 +5988,17 @@ public OnFastFoodLoaded()
     Pizza_CreateWorld();
     Burger_CreateWorld();
     Meal_CreateWorld();
+    Desert_CreateWorld();
 
-    // reaplica map icon-urile pentru jucatorii deja conectati (relevant la /ffcreate, /ffc); meal foloseste icon-uri globale
+    // reaplica map icon-urile pentru jucatorii deja conectati (relevant la /ffcreate, /ffc); meal si desert nu folosesc map icons
     for(new i = 0; i < MAX_PLAYERS; i++)
         if(IsPlayerConnected(i) && PlayerData[i][pLogged]) { Pizza_SetPlayerIcons(i); Burger_SetPlayerIcons(i); }
 
-    printf("[Load] Fast-food: %d (%d pizza, %d burger, %d cluckin)", rows, pc, bc, mc);
+    printf("[Load] Fast-food: %d (%d pizza, %d burger, %d cluckin, %d desert)", rows, pc, bc, mc, dc);
     return 1;
 }
 
-// Returneaza tipul (1=pizza, 2=burger, 3=cluckin) al unui ffID incarcat, sau 0 daca nu exista
+// Returneaza tipul (1=pizza, 2=burger, 3=cluckin, 4=desert) al unui ffID incarcat, sau 0 daca nu exista
 stock FastFood_FindType(ffid)
 {
     if(ffid <= 0) return 0;
@@ -5892,11 +6007,12 @@ stock FastFood_FindType(ffid)
         if(g_PizzaFFID[i]  == ffid) return 1;
         if(g_BurgerFFID[i] == ffid) return 2;
         if(g_MealFFID[i]   == ffid) return 3;
+        if(g_DesertFFID[i] == ffid) return 4;
     }
     return 0;
 }
 
-// Numara cate locatii incarcate are un tip (1=pizza, 2=burger, 3=cluckin)
+// Numara cate locatii incarcate are un tip (1=pizza, 2=burger, 3=cluckin, 4=desert)
 stock FastFood_CountType(type)
 {
     new n = 0;
@@ -5904,20 +6020,22 @@ stock FastFood_CountType(type)
     {
         if(type == 2)      { if(BurgerLocations[i][0] != 0.0 || BurgerLocations[i][1] != 0.0) n++; }
         else if(type == 3) { if(MealLocations[i][0]   != 0.0 || MealLocations[i][1]   != 0.0) n++; }
+        else if(type == 4) { if(DesertLocations[i][0] != 0.0 || DesertLocations[i][1] != 0.0) n++; }
         else               { if(PizzaLocations[i][0]  != 0.0 || PizzaLocations[i][1]  != 0.0) n++; }
     }
     return n;
 }
 
-// Scrie numele tipului ("pizza"/"burger"/"cluckin") in dest (evita ternarul cu literale de lungimi diferite)
+// Scrie numele tipului ("pizza"/"burger"/"cluckin"/"desert") in dest (evita ternarul cu literale de lungimi diferite)
 stock FastFood_TypeName(type, dest[], destSize = sizeof(dest))
 {
     if(type == 2)      format(dest, destSize, "burger");
     else if(type == 3) format(dest, destSize, "cluckin");
+    else if(type == 4) format(dest, destSize, "desert");
     else               format(dest, destSize, "pizza");
 }
 
-// A n-a locatie fast-food (0-based): intai pizza, apoi burger, apoi cluckin. Returneaza 1 daca exista, 0 altfel.
+// A n-a locatie fast-food (0-based): intai pizza, apoi burger, apoi cluckin, apoi desert. Returneaza 1 daca exista, 0 altfel.
 stock FastFood_GetNth(n, &ffid, &ffType, &Float:fx, &Float:fy, &Float:fz, ffname[], ffnamelen)
 {
     new count = 0;
@@ -5937,6 +6055,12 @@ stock FastFood_GetNth(n, &ffid, &ffType, &Float:fx, &Float:fy, &Float:fz, ffname
     {
         if(MealLocations[i][0] == 0.0 && MealLocations[i][1] == 0.0) continue;
         if(count == n) { ffid = g_MealFFID[i]; ffType = 3; fx = MealLocations[i][0]; fy = MealLocations[i][1]; fz = MealLocations[i][2]; format(ffname, ffnamelen, "%s", g_MealName[i]); return 1; }
+        count++;
+    }
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        if(DesertLocations[i][0] == 0.0 && DesertLocations[i][1] == 0.0) continue;
+        if(count == n) { ffid = g_DesertFFID[i]; ffType = 4; fx = DesertLocations[i][0]; fy = DesertLocations[i][1]; fz = DesertLocations[i][2]; format(ffname, ffnamelen, "%s", g_DesertName[i]); return 1; }
         count++;
     }
     return 0;
@@ -6438,6 +6562,12 @@ stock bool:Rob_NearTarget(playerid, name[], namelen)
             format(name, namelen, "%s", g_MealName[i]);
             return true;
         }
+        if((DesertLocations[i][0] != 0.0 || DesertLocations[i][1] != 0.0) &&
+           IsPlayerInRangeOfPoint(playerid, ROB_RANGE, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2]))
+        {
+            format(name, namelen, "%s", g_DesertName[i]);
+            return true;
+        }
     }
     return false;
 }
@@ -6531,10 +6661,10 @@ stock Float:Job_Dist2D(Float:x1, Float:y1, Float:x2, Float:y2)
     return floatsqroot((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
-// Alege o locatie valida de restaurant (pizza sau burger), sarind peste sloturile goale {0,0,0}
+// Alege o locatie valida de restaurant (pizza, burger, meal sau desert), sarind peste sloturile goale {0,0,0}
 stock Job_PickRandomFood(&Float:fx, &Float:fy, &Float:fz)
 {
-    new Float:list[MAX_FOOD_LOCATIONS * 2][3], count = 0;
+    new Float:list[MAX_FOOD_LOCATIONS * 4][3], count = 0;
     for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
     {
         if(PizzaLocations[i][0] == 0.0 && PizzaLocations[i][1] == 0.0) continue;
@@ -6545,6 +6675,18 @@ stock Job_PickRandomFood(&Float:fx, &Float:fy, &Float:fz)
     {
         if(BurgerLocations[i][0] == 0.0 && BurgerLocations[i][1] == 0.0) continue;
         list[count][0] = BurgerLocations[i][0]; list[count][1] = BurgerLocations[i][1]; list[count][2] = BurgerLocations[i][2];
+        count++;
+    }
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        if(MealLocations[i][0] == 0.0 && MealLocations[i][1] == 0.0) continue;
+        list[count][0] = MealLocations[i][0]; list[count][1] = MealLocations[i][1]; list[count][2] = MealLocations[i][2];
+        count++;
+    }
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        if(DesertLocations[i][0] == 0.0 && DesertLocations[i][1] == 0.0) continue;
+        list[count][0] = DesertLocations[i][0]; list[count][1] = DesertLocations[i][1]; list[count][2] = DesertLocations[i][2];
         count++;
     }
     if(count == 0) { fx = 0.0; fy = 0.0; fz = 0.0; return; }
@@ -8566,7 +8708,8 @@ enum E_CARAVAN_DATA
     Float:rParkLocX, Float:rParkLocY, Float:rParkLocZ,
     Float:rCampLocX, Float:rCampLocY, Float:rCampLocZ,
     Float:rParkRX, Float:rParkRY, Float:rParkRZ,
-    Float:rCampRX, Float:rCampRY, Float:rCampRZ
+    Float:rCampRX, Float:rCampRY, Float:rCampRZ,
+    Float:rSize, rWeight, rName[16]
 }
 new CaravanData[MAX_PERSONAL_CARAVANS][E_CARAVAN_DATA];
 new g_CaravanCount = 0;
@@ -8580,6 +8723,14 @@ stock Caravan_GetModel(type)
     if(type == 2) return CARAVAN_MODEL_2;
     if(type == 3) return CARAVAN_MODEL_3;
     return CARAVAN_MODEL_1;
+}
+
+// Specificatiile (marime/greutate/nume) unei rulote dupa tip - vezi rSize/rWeight/rName din `rulote_personale`
+stock Caravan_GetSpecs(type, &Float:size, &weight, name[], namelen = 16)
+{
+    if(type == 2)      { size = 7.43;  weight = 1100; format(name, namelen, "Medium"); }
+    else if(type == 3) { size = 12.29; weight = 1800; format(name, namelen, "Large"); }
+    else               { size = 6.49;  weight = 900;  format(name, namelen, "Small"); }
 }
 
 // Intoarce rotatia COMPLETA (rx/ry/rz, in grade) a unui vehicul, inclusiv panta/inclinarea, nu doar directia.
@@ -8627,7 +8778,8 @@ stock Caravans_Load()
     mysql_tquery(g_SQL,
         "SELECT `rID`,`rOwned`,`rOwner`,`rType`,`rPrice`,`rCamping`,`rCampingStartDate`,\
          `rParkLocX`,`rParkLocY`,`rParkLocZ`,`rCampLocX`,`rCampLocY`,`rCampLocZ`,\
-         `parkRX`,`parkRY`,`parkRZ`,`campRX`,`campRY`,`campRZ` \
+         `parkRX`,`parkRY`,`parkRZ`,`campRX`,`campRY`,`campRZ`,\
+         `rSize`,`rWeight`,`rName` \
          FROM `rulote_personale` ORDER BY `rID` ASC",
         "OnCaravansLoaded");
 }
@@ -8665,6 +8817,10 @@ public OnCaravansLoaded()
         cache_get_value_name_float(i, "campRX", CaravanData[idx][rCampRX]);
         cache_get_value_name_float(i, "campRY", CaravanData[idx][rCampRY]);
         cache_get_value_name_float(i, "campRZ", CaravanData[idx][rCampRZ]);
+
+        cache_get_value_name_float(i, "rSize",   CaravanData[idx][rSize]);
+        cache_get_value_name_int  (i, "rWeight", CaravanData[idx][rWeight]);
+        cache_get_value_name      (i, "rName",   CaravanData[idx][rName], 16);
 
         g_CaravanCount++;
     }
@@ -10343,6 +10499,7 @@ stock DB_Init()
 {
     new MySQLOpt:opt = mysql_init_options();
     mysql_set_option(opt, AUTO_RECONNECT, true);
+    mysql_set_option(opt, POOL_SIZE, 1); // 1 thread = query-urile ruleaza strict in ordinea trimisa (evita race intre CREATE TABLE si SELECT-urile de load care ruleaza imediat dupa)
     g_SQL = mysql_connect(MYSQL_HOST, MYSQL_USER, MYSQL_PASS, MYSQL_DB, opt);
 
     if(g_SQL == MYSQL_INVALID_HANDLE || mysql_errno(g_SQL) != 0)
@@ -10445,7 +10602,10 @@ stock DB_CreateTables()
         `parkRZ`            FLOAT   DEFAULT 0.0,\
         `campRX`            FLOAT   DEFAULT 0.0,\
         `campRY`            FLOAT   DEFAULT 0.0,\
-        `campRZ`            FLOAT   DEFAULT 0.0\
+        `campRZ`            FLOAT   DEFAULT 0.0,\
+        `rSize`             FLOAT   DEFAULT 6.49,\
+        `rWeight`           INT     DEFAULT 900,\
+        `rName`             VARCHAR(16) NOT NULL DEFAULT 'Small'\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
     print("[DB] Tabel `rulote_personale` verificat/creat.");
@@ -10508,6 +10668,7 @@ stock DB_CreateTables()
         `pizza_price`       INT   DEFAULT 50,\
         `burger_price`      INT   DEFAULT 55,\
         `meal_price`        INT   DEFAULT 60,\
+        `desert_price`      INT   DEFAULT 30,\
         `farm_tractor_price` INT  DEFAULT 10000,\
         `farm_dozer_price`  INT   DEFAULT 15000,\
         `farm_combine_price` INT  DEFAULT 20000\
@@ -10569,9 +10730,11 @@ stock DB_CreateTables()
         `bank`        INT DEFAULT 0,\
         `is_rentable` TINYINT DEFAULT 0,\
         `rent_price`  INT DEFAULT 0,\
-        `renter_id`   INT DEFAULT 0\
+        `renter_id`   INT DEFAULT 0,\
+        `capacity`    INT DEFAULT 5\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `hotels` ADD COLUMN IF NOT EXISTS `capacity` INT DEFAULT 5", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `cs_locations` (\
@@ -10598,11 +10761,12 @@ stock DB_CreateTables()
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `animals` (\
-        `aID`       INT AUTO_INCREMENT PRIMARY KEY,\
-        `aType`     INT DEFAULT 0,\
-        `aPlayerID` INT DEFAULT 0,\
-        `aHouseID`  INT DEFAULT 0,\
-        `aName`     VARCHAR(32) NOT NULL DEFAULT 'Animal'\
+        `aID`          INT AUTO_INCREMENT PRIMARY KEY,\
+        `aType`        INT DEFAULT 0,\
+        `aPlayerID`    INT DEFAULT 0,\
+        `aHouseID`     INT DEFAULT 0,\
+        `aName`        VARCHAR(32) NOT NULL DEFAULT 'Animal',\
+        `aDefaultName` VARCHAR(32) NOT NULL DEFAULT 'Animal'\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
@@ -10730,6 +10894,7 @@ stock DB_CreateTables()
         `name`             VARCHAR(32) NOT NULL DEFAULT 'Farm'\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `farms` ADD COLUMN IF NOT EXISTS `default_price` INT DEFAULT 100000", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `farm_equipment` (\
@@ -10789,6 +10954,21 @@ stock DB_CreateTables()
         `shopLocZ` FLOAT DEFAULT 0.0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `clothstores` (\
+        `csID`   INT AUTO_INCREMENT PRIMARY KEY,\
+        `csLocX` FLOAT DEFAULT 0.0,\
+        `csLocY` FLOAT DEFAULT 0.0,\
+        `csLocZ` FLOAT DEFAULT 0.0\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsName` VARCHAR(32) NOT NULL DEFAULT ''", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsInteriorId` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsVwId` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsInteriorX` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsInteriorY` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsInteriorZ` FLOAT DEFAULT 0.0", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `fastfood` (\
@@ -11044,7 +11224,7 @@ public OnGTAInteriorsLoaded()
 stock Hotels_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`loc_x`,`loc_y`,`loc_z`,`bank`,`is_rentable`,`rent_price`,`renter_id` FROM `hotels` ORDER BY `id` ASC",
+        "SELECT `id`,`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`loc_x`,`loc_y`,`loc_z`,`bank`,`is_rentable`,`rent_price`,`capacity` FROM `hotels` ORDER BY `id` ASC",
         "OnHotelsLoaded");
 }
 
@@ -11068,12 +11248,32 @@ public OnHotelsLoaded()
         cache_get_value_name_int  (i, "bank",         HotelData[idx][htlBank]);
         cache_get_value_name_int  (i, "is_rentable",  HotelData[idx][htlIsRentable]);
         cache_get_value_name_int  (i, "rent_price",   HotelData[idx][htlRentPrice]);
-        cache_get_value_name_int  (i, "renter_id",    HotelData[idx][htlRenterId]);
+        cache_get_value_name_int  (i, "capacity",     HotelData[idx][htlCapacity]);
+        if(HotelData[idx][htlCapacity] <= 0) HotelData[idx][htlCapacity] = HOTEL_DEFAULT_CAPACITY;
+        HotelData[idx][htlRenterCount] = 0;
         g_HotelPickup[idx] = -1;
         Hotels_RecreatePickup(idx);
         g_HotelCount++;
     }
     printf("[Load] Hoteluri: %d", g_HotelCount);
+
+    // Recalculeaza ocuparea curenta din `players`.`rent_hotel` (chiria e persistenta, nu doar cat timp e chiriasul online)
+    mysql_tquery(g_SQL, "SELECT `rent_hotel`, COUNT(*) AS `cnt` FROM `players` WHERE `rent_hotel` != 0 GROUP BY `rent_hotel`", "OnHotelRenterCountsLoaded");
+    return 1;
+}
+
+public OnHotelRenterCountsLoaded()
+{
+    new rows = cache_num_rows();
+    for(new i = 0; i < rows; i++)
+    {
+        new hid, cnt;
+        cache_get_value_name_int(i, "rent_hotel", hid);
+        cache_get_value_name_int(i, "cnt",         cnt);
+
+        new htlidx = Hotels_FindByID(hid);
+        if(htlidx != -1) HotelData[htlidx][htlRenterCount] = cnt;
+    }
     return 1;
 }
 
@@ -11083,7 +11283,7 @@ public OnHotelsLoaded()
 stock Animals_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `aID`,`aType`,`aPlayerID`,`aHouseID`,`aName` FROM `animals` ORDER BY `aID` ASC",
+        "SELECT `aID`,`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName` FROM `animals` ORDER BY `aID` ASC",
         "OnAnimalsLoaded");
 }
 
@@ -11100,6 +11300,7 @@ public OnAnimalsLoaded()
         cache_get_value_name_int(i, "aPlayerID", AnimalData[idx][aPlayerID]);
         cache_get_value_name_int(i, "aHouseID",  AnimalData[idx][aHouseID]);
         cache_get_value_name    (i, "aName",     AnimalData[idx][aName], 32);
+        cache_get_value_name    (i, "aDefaultName", AnimalData[idx][aDefaultName], 32);
         g_AnimalObject[idx] = STREAMER_TAG_OBJECT:INVALID_STREAMER_ID;
         Animals_Spawn(idx);
         g_AnimalCount++;
@@ -11210,10 +11411,60 @@ public OnShopCreated(playerid, idx)
     if(!IsPlayerConnected(playerid)) return 0;
     ShopData[idx][shopID] = cache_insert_id();
     Shop_Create(idx);
-    Shop_RefreshAllIcons();
 
     new m[96];
     format(m, sizeof(m), C_SUCCESS"[ADM] Success: "C_WHITE"Shop "C_INFO"#%d"C_WHITE" created.", ShopData[idx][shopID]);
+    SendClientMessage(playerid, COLOR_SUCCESS, m);
+    return 1;
+}
+
+stock ClothStores_Load()
+{
+    mysql_tquery(g_SQL,
+        "SELECT `csID`,`csLocX`,`csLocY`,`csLocZ`,`clsName`,`clsInteriorId`,`clsVwId`,`clsInteriorX`,`clsInteriorY`,`clsInteriorZ` FROM `clothstores` ORDER BY `csID` ASC",
+        "OnClothStoresLoaded");
+}
+
+public OnClothStoresLoaded()
+{
+    new rows = cache_num_rows();
+    g_ClothStoreDynCount = 0;
+    for(new i = 0; i < rows && g_ClothStoreDynCount < MAX_CLOTHSTORES; i++)
+    {
+        new idx = g_ClothStoreDynCount;
+        cache_get_value_name_int  (i, "csID",          ClothStoreData[idx][clstID]);
+        cache_get_value_name_float(i, "csLocX",        ClothStoreData[idx][clstX]);
+        cache_get_value_name_float(i, "csLocY",        ClothStoreData[idx][clstY]);
+        cache_get_value_name_float(i, "csLocZ",        ClothStoreData[idx][clstZ]);
+        cache_get_value_name      (i, "clsName",       ClothStoreData[idx][clstName], 32);
+        cache_get_value_name_int  (i, "clsInteriorId", ClothStoreData[idx][clstIntID]);
+        cache_get_value_name_int  (i, "clsVwId",       ClothStoreData[idx][clstVwID]);
+        cache_get_value_name_float(i, "clsInteriorX",  ClothStoreData[idx][clstIntX]);
+        cache_get_value_name_float(i, "clsInteriorY",  ClothStoreData[idx][clstIntY]);
+        cache_get_value_name_float(i, "clsInteriorZ",  ClothStoreData[idx][clstIntZ]);
+        g_ClothStoreDynPickup[idx]  = -1;
+        g_ClothStoreDynLabel[idx]   = Text3D:INVALID_3DTEXT_ID;
+        ClothStore_Create(idx);
+        g_ClothStoreDynCount++;
+    }
+    printf("[Load] Magazine de haine (create in-game): %d", g_ClothStoreDynCount);
+    return 1;
+}
+
+public OnClothStoreCreated(playerid, idx)
+{
+    ClothStoreData[idx][clstID]   = cache_insert_id();
+    ClothStoreData[idx][clstVwID] = ClothStoreData[idx][clstID]; // implicit: vw = propriul ID al magazinului
+    ClothStore_Create(idx);
+
+    new q[96];
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `clothstores` SET `clsVwId`=%d WHERE `csID`=%d",
+        ClothStoreData[idx][clstVwID], ClothStoreData[idx][clstID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+
+    if(!IsPlayerConnected(playerid)) return 0;
+    new m[96];
+    format(m, sizeof(m), C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" created.", ClothStoreData[idx][clstID]);
     SendClientMessage(playerid, COLOR_SUCCESS, m);
     return 1;
 }
@@ -11279,7 +11530,6 @@ public OnBusinessesLoaded()
         g_BusinessCount++;
     }
     printf("[Load] Business-uri: %d", g_BusinessCount);
-    Businesses_UpdatePlayersIcons();
     return 1;
 }
 
@@ -11604,7 +11854,6 @@ public OnBusinessCreated(playerid, idx)
     if(!IsPlayerConnected(playerid)) return 0;
     BusinessData[idx][bID] = cache_insert_id();
     Businesses_RecreatePickup(idx);
-    Businesses_UpdatePlayersIcons();
     new msg[128];
     format(msg, sizeof(msg), C_SUCCESS"Success: "C_WHITE"Business created (ID: "C_INFO"%d"C_WHITE", Price: "C_INFO"$%s"C_WHITE").",
         BusinessData[idx][bID], MoneyStr(BusinessData[idx][bPrice]));
@@ -11828,7 +12077,7 @@ public OnVehicleITPCheck(playerid, pvidx, vehid)
 stock PayDay_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `min_salary`,`tax`,`cass`,`bank_interest`,`insurance_price`,`medkit_price`,`extinguisher_price`,`gascan_price`,`itp_price`,`plate_price`,`rent_bike_price`,`exam_a_price`,`exam_b_price`,`exam_c_price`,`exam_d_price`,`exam_p_price`,`exam_h_price`,`pizza_price`,`burger_price`,`meal_price`,`farm_tractor_price`,`farm_dozer_price`,`farm_combine_price` \
+        "SELECT `min_salary`,`tax`,`cass`,`bank_interest`,`insurance_price`,`medkit_price`,`extinguisher_price`,`gascan_price`,`itp_price`,`plate_price`,`rent_bike_price`,`exam_a_price`,`exam_b_price`,`exam_c_price`,`exam_d_price`,`exam_p_price`,`exam_h_price`,`pizza_price`,`burger_price`,`meal_price`,`desert_price`,`farm_tractor_price`,`farm_dozer_price`,`farm_combine_price` \
          FROM `payday_setup` WHERE `id`=1 LIMIT 1",
         "OnPayDayLoaded");
 }
@@ -11857,14 +12106,15 @@ public OnPayDayLoaded()
         cache_get_value_name_int  (0, "pizza_price",        g_PizzaPrice);
         cache_get_value_name_int  (0, "burger_price",       g_BurgerPrice);
         cache_get_value_name_int  (0, "meal_price",         g_MealPrice);
+        cache_get_value_name_int  (0, "desert_price",       g_DesertPrice);
         cache_get_value_name_int  (0, "farm_tractor_price", g_FarmTractorPrice);
         cache_get_value_name_int  (0, "farm_dozer_price",   g_FarmDozerPrice);
         cache_get_value_name_int  (0, "farm_combine_price", g_FarmCombinePrice);
     }
     printf("[Setari] PayDay: Salar minim $%d | Impozit %d%% | CASS %d%% | Dobanda %.2f%%",
         g_PDMinSalary, g_PDTax, g_PDCASS, g_PDInterest);
-    printf("[Setari] Preturi: Asigurare $%d | Kit medical $%d | Extinctor $%d | ITP $%d | Nr. inmatriculare $%d | Bicicleta $%d | Examene A/B/C/D/P/H $%d/$%d/$%d/$%d/$%d/$%d | Pizza $%d | Burger $%d | Cluckin $%d",
-        g_InsurancePrice, g_MedkitPrice, g_ExtinguisherPrice, g_ITPPrice, g_PlatePrice, g_RentBikePrice, g_ExamAPrice, g_ExamBPrice, g_ExamCPrice, g_ExamDPrice, g_ExamPPrice, g_ExamHPrice, g_PizzaPrice, g_BurgerPrice, g_MealPrice);
+    printf("[Setari] Preturi: Asigurare $%d | Kit medical $%d | Extinctor $%d | ITP $%d | Nr. inmatriculare $%d | Bicicleta $%d | Examene A/B/C/D/P/H $%d/$%d/$%d/$%d/$%d/$%d | Pizza $%d | Burger $%d | Cluckin $%d | Desert $%d",
+        g_InsurancePrice, g_MedkitPrice, g_ExtinguisherPrice, g_ITPPrice, g_PlatePrice, g_RentBikePrice, g_ExamAPrice, g_ExamBPrice, g_ExamCPrice, g_ExamDPrice, g_ExamPPrice, g_ExamHPrice, g_PizzaPrice, g_BurgerPrice, g_MealPrice, g_DesertPrice);
     return 1;
 }
 
@@ -11956,10 +12206,23 @@ stock PayDay_Apply()
             if(BusinessData[b][bOwnerId] == PlayerData[i][pID])
                 bizTaxF += BusinessData[b][bDefaultPrice] * 0.00025; // 250$ la 1.000.000 din pretul initial (bDefaultPrice), nu din bPrice curent
 
+        new Float:farmTaxF = 0.0;
+        for(new f = 0; f < g_FarmCount; f++)
+            if(FarmData[f][fmOwnerId] == PlayerData[i][pID])
+            {
+                farmTaxF += FarmData[f][fmDefaultPrice] * 0.00035; // 350$ la 1.000.000 din pretul initial (fmDefaultPrice), nu din fmPrice curent
+                farmTaxF += FarmData[f][fmTractors] * 90.0   // taxa utilaje: 90$/tractor
+                          + FarmData[f][fmDozers]   * 100.0  // 100$/buldozer
+                          + FarmData[f][fmCombines] * 125.0  // 125$/combina
+                          + FarmData[f][fmTrucks]   * 50.0   // 50$/camion
+                          + FarmData[f][fmTrailers] * 20.0;  // 20$/remorca
+            }
+
         new carTax   = floatround(carTaxF);
         new houseTax = floatround(houseTaxF);
         new bizTax   = floatround(bizTaxF);
-        new propTax  = carTax + houseTax + bizTax;
+        new farmTax  = floatround(farmTaxF);
+        new propTax  = carTax + houseTax + bizTax + farmTax;
 
         new net      = salary - tax - cass - propTax;
 
@@ -11989,6 +12252,12 @@ stock PayDay_Apply()
             MoneyStr(carTax), MoneyStr(houseTax), MoneyStr(bizTax));
         SendClientMessage(i, COLOR_WHITE, msg);
 
+        if(farmTax > 0)
+        {
+            format(msg, sizeof(msg), C_ERROR"Outcome: "C_WHITE"Farm tax: "C_ERROR"$%s", MoneyStr(farmTax));
+            SendClientMessage(i, COLOR_WHITE, msg);
+        }
+
         if(total >= 0)
             format(msg, sizeof(msg), C_INFO"Total: "C_SUCCESS"+$%s", MoneyStr(total));
         else
@@ -12007,6 +12276,37 @@ stock PayDay_Apply()
             else
             {
                 UpdatePlayer(i, pDiseasePaydays);
+            }
+        }
+
+        // Chirie hotel: chiriasul plateste direct in banca hotelului (fiecare hotel poate avea mai multi chiriasi simultan, cf. htlCapacity)
+        if(PlayerData[i][pRentHotel] != 0)
+        {
+            new rentHtlIdx = Hotels_FindByID(PlayerData[i][pRentHotel]);
+            if(rentHtlIdx != -1 && HotelData[rentHtlIdx][htlRentPrice] > 0)
+            {
+                new rentHtlAmt = HotelData[rentHtlIdx][htlRentPrice];
+                if(PlayerData[i][pMoney] >= rentHtlAmt)
+                {
+                    PlayerData[i][pMoney] -= rentHtlAmt;
+                    GivePlayerMoney(i, -rentHtlAmt);
+                }
+                else
+                {
+                    PlayerData[i][pBank] -= rentHtlAmt;
+                }
+                UpdatePlayer(i, pMoney);
+                UpdatePlayer(i, pBank);
+                HotelData[rentHtlIdx][htlBank] += rentHtlAmt;
+
+                new renthtlmsg[144];
+                format(renthtlmsg, sizeof(renthtlmsg), C_ERROR"Outcome: "C_WHITE"Rent paid: "C_ERROR"-$%s"C_WHITE" (hotel "C_INFO"%s"C_WHITE")",
+                    MoneyStr(rentHtlAmt), HotelData[rentHtlIdx][htlName]);
+                SendClientMessage(i, COLOR_WHITE, renthtlmsg);
+
+                new rhtbq[128];
+                mysql_format(g_SQL, rhtbq, sizeof(rhtbq), "UPDATE `hotels` SET `bank`=%d WHERE `id`=%d", HotelData[rentHtlIdx][htlBank], HotelData[rentHtlIdx][htlID]);
+                mysql_tquery(g_SQL, rhtbq, "", "", 0);
             }
         }
 
@@ -12071,33 +12371,10 @@ stock PayDay_Apply()
         mysql_tquery(g_SQL, rhbq, "", "", 0);
     }
 
-    // Chirii: fiecare hotel inchiriat ia chiria de la chirias (daca e online) + un bonus fix, in banca hotelului
+    // Bonus fix in banca fiecarui hotel inchiriat (chiria per-chirias e platita mai sus, in bucla de playeri)
     for(new ht = 0; ht < g_HotelCount; ht++)
     {
-        if(HotelData[ht][htlRenterId] == 0) continue;
-
-        new rentHtlTenant = Houses_FindPlayerByPID(HotelData[ht][htlRenterId]);
-        if(rentHtlTenant != INVALID_PLAYER_ID && HotelData[ht][htlRentPrice] > 0)
-        {
-            new rentHtlAmt = HotelData[ht][htlRentPrice];
-            if(PlayerData[rentHtlTenant][pMoney] >= rentHtlAmt)
-            {
-                PlayerData[rentHtlTenant][pMoney] -= rentHtlAmt;
-                GivePlayerMoney(rentHtlTenant, -rentHtlAmt);
-            }
-            else
-            {
-                PlayerData[rentHtlTenant][pBank] -= rentHtlAmt;
-            }
-            UpdatePlayer(rentHtlTenant, pMoney);
-            UpdatePlayer(rentHtlTenant, pBank);
-            HotelData[ht][htlBank] += rentHtlAmt;
-
-            new renthtlmsg[144];
-            format(renthtlmsg, sizeof(renthtlmsg), C_ERROR"Outcome: "C_WHITE"Rent paid: "C_ERROR"-$%s"C_WHITE" (hotel "C_INFO"%s"C_WHITE")",
-                MoneyStr(rentHtlAmt), HotelData[ht][htlName]);
-            SendClientMessage(rentHtlTenant, COLOR_WHITE, renthtlmsg);
-        }
+        if(HotelData[ht][htlRenterCount] == 0) continue;
 
         HotelData[ht][htlBank] += HOTEL_RENT_BONUS;
         new rhtbq[128];
@@ -12508,8 +12785,6 @@ public OnPlayerRegister(playerid)
     SetPlayerMapIcon(playerid, 0, 846.4172, -2059.0867, 12.8672, 35, 0, MAPICON_GLOBAL);
     SetPlayerColor(playerid, FactionColors[FACTION_NONE]);
     Factions_SetPlayerIcons(playerid);
-    Businesses_SetPlayerIcons(playerid);
-    Shop_SetPlayerIcons(playerid);
     Pizza_SetPlayerIcons(playerid);
     Burger_SetPlayerIcons(playerid);
     BBall_SetPlayerIcon(playerid);
@@ -12642,8 +12917,6 @@ public OnPlayerLogin(playerid)
     AC_SetVW(playerid, 0);
     SetPlayerColor(playerid, FactionColors[PlayerData[playerid][pFaction]]);
     Factions_SetPlayerIcons(playerid);
-    Businesses_SetPlayerIcons(playerid);
-    Shop_SetPlayerIcons(playerid);
     Pizza_SetPlayerIcons(playerid);
     Burger_SetPlayerIcons(playerid);
     BBall_SetPlayerIcon(playerid);
@@ -13916,6 +14189,7 @@ public OnGameModeInit()
     Turfs_Load();
     ATMs_Load();
     Shops_Load();
+    ClothStores_Load(); // magazine de haine create in-game de admini (DB)
     FastFood_Load();  // locatiile /pizza /burger din DB (dupa DB_Init, altfel g_SQL nu e gata)
     Locations_Load();
     GPS_Load();
@@ -14206,6 +14480,276 @@ stock Prop_SettleSellerVehicle(sellerId, price, vehDbId)
         "UPDATE `players` SET `bank`=`bank`+%d, `key1`=IF(`key1`=%d,0,`key1`), `key2`=IF(`key2`=%d,0,`key2`), `key3`=IF(`key3`=%d,0,`key3`) WHERE `id`=%d",
         price, vehDbId, vehDbId, vehDbId, sellerId);
     mysql_tquery(g_SQL, q, "", "", 0);
+}
+
+// ============================================================
+//  LICITATII (auction system): /licitatie (admin), /bid (playeri)
+//  Un singur admin poate scoate la licitatie o casa/business/ferma/hotel; jucatorii liciteaza cu /bid.
+//  Banii se scad din BANCA la fiecare /bid (escrow) si se ramburseaza automat daca cineva liciteaza mai mult.
+//  Proprietarul curent (daca exista) e evacuat DOAR daca licitatia se incheie cu un castigator (fara despagubire).
+// ============================================================
+#define AUCTION_NONE      0
+#define AUCTION_HOUSE     1
+#define AUCTION_BUSINESS  2
+#define AUCTION_FARM      3
+#define AUCTION_HOTEL     4
+#define AUCTION_BID_SECONDS 90
+
+new bool:g_AuctionActive = false;
+new g_AuctionType = AUCTION_NONE;
+new g_AuctionEntityID = 0;          // hID / bID / fmID / htlID
+new g_AuctionStartPrice = 0;
+new g_AuctionCurrentBid = 0;
+new g_AuctionBidderPID = 0;         // pID persistent al ofertantului curent (0 = niciun ofertant inca)
+new g_AuctionBidderName[24];
+new g_AuctionPropName[32];
+new g_AuctionSecondsLeft = 0;
+new g_AuctionTimer = -1;
+
+stock Auction_TypeName(type, dest[], destSize = sizeof(dest))
+{
+    if(type == AUCTION_HOUSE)         format(dest, destSize, "house");
+    else if(type == AUCTION_BUSINESS) format(dest, destSize, "business");
+    else if(type == AUCTION_FARM)     format(dest, destSize, "farm");
+    else if(type == AUCTION_HOTEL)    format(dest, destSize, "hotel");
+    else                              format(dest, destSize, "property");
+}
+
+// Trimite un mesaj tuturor playerilor logati
+stock Auction_Announce(const msg[])
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged])
+            SendClientMessage(i, COLOR_INFO, msg);
+}
+
+// Ramburseaza in banca un ofertant depasit - functioneaza si daca s-a deconectat intre timp
+stock Auction_RefundBidder(pid, amount)
+{
+    if(pid <= 0 || amount <= 0) return;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+        if(PlayerData[i][pID] != pid) continue;
+
+        PlayerData[i][pBank] += amount;
+        UpdatePlayer(i, pBank);
+
+        new nm[144];
+        format(nm, sizeof(nm), C_INFO"[Auction] "C_WHITE"You were outbid - "C_INFO"$%s"C_WHITE" was refunded to your bank.", MoneyStr(amount));
+        SendClientMessage(i, COLOR_INFO, nm);
+        return;
+    }
+    // ofertant offline
+    new q[128];
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `players` SET `bank`=`bank`+%d WHERE `id`=%d", amount, pid);
+    mysql_tquery(g_SQL, q, "", "", 0);
+}
+
+// Anunta statusul curent al licitatiei (folosit la marcajele de 60/30/5 secunde ramase)
+stock Auction_AnnounceStatus(secondsLeft)
+{
+    new msg[220];
+    if(g_AuctionBidderPID == 0)
+    {
+        format(msg, sizeof(msg), C_INFO"[Auction] "C_WHITE"%d seconds left for "C_INFO"'%s'"C_WHITE"! No bids yet (starting price "C_INFO"$%s"C_WHITE"). Use "C_INFO"/bid [amount]"C_WHITE".",
+            secondsLeft, g_AuctionPropName, MoneyStr(g_AuctionStartPrice));
+    }
+    else
+    {
+        format(msg, sizeof(msg), C_INFO"[Auction] "C_WHITE"%d seconds left! "C_INFO"%s"C_WHITE" will win "C_INFO"'%s'"C_WHITE" for "C_INFO"$%s"C_WHITE"!",
+            secondsLeft, g_AuctionBidderName, g_AuctionPropName, MoneyStr(g_AuctionCurrentBid));
+    }
+    Auction_Announce(msg);
+}
+
+stock Auction_Reset()
+{
+    g_AuctionActive       = false;
+    g_AuctionType         = AUCTION_NONE;
+    g_AuctionEntityID     = 0;
+    g_AuctionStartPrice   = 0;
+    g_AuctionCurrentBid   = 0;
+    g_AuctionBidderPID    = 0;
+    g_AuctionBidderName[0]= EOS;
+    g_AuctionPropName[0]  = EOS;
+    g_AuctionSecondsLeft  = 0;
+}
+
+// Incheie licitatia: atribuie proprietatea castigatorului (evacuand proprietarul curent, fara despagubire) sau anunta ca nu a fost nimeni.
+stock Auction_Finish()
+{
+    if(g_AuctionTimer != -1) { KillTimer(g_AuctionTimer); g_AuctionTimer = -1; }
+
+    if(g_AuctionBidderPID == 0)
+    {
+        new nmsg[160];
+        format(nmsg, sizeof(nmsg), C_ERROR"[Auction] "C_WHITE"The auction for "C_INFO"'%s'"C_WHITE" ended with no bids. It remains unassigned.", g_AuctionPropName);
+        Auction_Announce(nmsg);
+        Auction_Reset();
+        return;
+    }
+
+    new winnerOnline = -1;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pID] == g_AuctionBidderPID) { winnerOnline = i; break; }
+
+    switch(g_AuctionType)
+    {
+        case AUCTION_HOUSE:
+        {
+            new hidx = Houses_FindByID(g_AuctionEntityID);
+            if(hidx != -1)
+            {
+                if(HouseData[hidx][hOwned] && HouseData[hidx][hOwnerId] != g_AuctionBidderPID)
+                    Auction_EvictOwner(HouseData[hidx][hOwnerId], pHouse, "house");
+
+                HouseData[hidx][hOwned]   = 1;
+                HouseData[hidx][hForSale] = 0;
+                HouseData[hidx][hOwnerId] = g_AuctionBidderPID;
+                format(HouseData[hidx][hOwnerName], 24, "%s", g_AuctionBidderName);
+                Houses_RecreatePickup(hidx);
+
+                new q[256];
+                mysql_format(g_SQL, q, sizeof(q), "UPDATE `houses` SET `owner`='%e', `owner_id`=%d, `owned`=1, `is_for_sale`=0 WHERE `id`=%d",
+                    HouseData[hidx][hOwnerName], HouseData[hidx][hOwnerId], HouseData[hidx][hID]);
+                mysql_tquery(g_SQL, q, "", "", 0);
+
+                if(winnerOnline != -1) { PlayerData[winnerOnline][pHouse] = HouseData[hidx][hID]; UpdatePlayer(winnerOnline, pHouse); }
+                else
+                {
+                    new q2[96];
+                    mysql_format(g_SQL, q2, sizeof(q2), "UPDATE `players` SET `house`=%d WHERE `id`=%d", HouseData[hidx][hID], g_AuctionBidderPID);
+                    mysql_tquery(g_SQL, q2, "", "", 0);
+                }
+            }
+        }
+        case AUCTION_BUSINESS:
+        {
+            new bidx = Businesses_FindByID(g_AuctionEntityID);
+            if(bidx != -1)
+            {
+                if(BusinessData[bidx][bOwned] && BusinessData[bidx][bOwnerId] != g_AuctionBidderPID)
+                    Auction_EvictOwner(BusinessData[bidx][bOwnerId], pBusiness, "business");
+
+                BusinessData[bidx][bOwned]   = 1;
+                BusinessData[bidx][bForSale] = 0;
+                BusinessData[bidx][bOwnerId] = g_AuctionBidderPID;
+                format(BusinessData[bidx][bOwnerName], 24, "%s", g_AuctionBidderName);
+                Businesses_RecreatePickup(bidx);
+
+                new q[256];
+                mysql_format(g_SQL, q, sizeof(q), "UPDATE `businesses` SET `owner`='%e', `owner_id`=%d, `owned`=1, `is_for_sale`=0 WHERE `id`=%d",
+                    BusinessData[bidx][bOwnerName], BusinessData[bidx][bOwnerId], BusinessData[bidx][bID]);
+                mysql_tquery(g_SQL, q, "", "", 0);
+
+                if(winnerOnline != -1) { PlayerData[winnerOnline][pBusiness] = BusinessData[bidx][bID]; UpdatePlayer(winnerOnline, pBusiness); }
+                else
+                {
+                    new q2[96];
+                    mysql_format(g_SQL, q2, sizeof(q2), "UPDATE `players` SET `business`=%d WHERE `id`=%d", BusinessData[bidx][bID], g_AuctionBidderPID);
+                    mysql_tquery(g_SQL, q2, "", "", 0);
+                }
+            }
+        }
+        case AUCTION_FARM:
+        {
+            new fidx = Farm_IndexByID(g_AuctionEntityID);
+            if(fidx != -1)
+            {
+                if(FarmData[fidx][fmOwned] && FarmData[fidx][fmOwnerId] != g_AuctionBidderPID)
+                    Auction_EvictOwner(FarmData[fidx][fmOwnerId], pFarmKey, ""); // ferma nu e coloana in `players`
+
+                FarmData[fidx][fmOwned]   = 1;
+                FarmData[fidx][fmForSale] = 0;
+                FarmData[fidx][fmOwnerId] = g_AuctionBidderPID;
+                format(FarmData[fidx][fmOwnerName], 24, "%s", g_AuctionBidderName);
+                Farm_RecreatePickup(fidx);
+
+                new q[256];
+                mysql_format(g_SQL, q, sizeof(q), "UPDATE `farms` SET `owner`='%e', `owner_id`=%d, `isOwned`=1, `is_for_sale`=0 WHERE `id`=%d",
+                    FarmData[fidx][fmOwnerName], FarmData[fidx][fmOwnerId], FarmData[fidx][fmID]);
+                mysql_tquery(g_SQL, q, "", "", 0);
+
+                // pFarmKey nu e coloana in `players` - se deriva la login din farms.owner_id (Farm_SyncPlayerKey)
+                if(winnerOnline != -1) PlayerData[winnerOnline][pFarmKey] = FarmData[fidx][fmID];
+            }
+        }
+        case AUCTION_HOTEL:
+        {
+            new htlidx = Hotels_FindByID(g_AuctionEntityID);
+            if(htlidx != -1)
+            {
+                if(HotelData[htlidx][htlOwned] && HotelData[htlidx][htlOwnerId] != g_AuctionBidderPID)
+                    Auction_EvictOwner(HotelData[htlidx][htlOwnerId], pHotel, "hotel");
+
+                HotelData[htlidx][htlOwned]   = 1;
+                HotelData[htlidx][htlForSale] = 0;
+                HotelData[htlidx][htlOwnerId] = g_AuctionBidderPID;
+                format(HotelData[htlidx][htlOwnerName], 24, "%s", g_AuctionBidderName);
+                Hotels_RecreatePickup(htlidx);
+
+                new q[256];
+                mysql_format(g_SQL, q, sizeof(q), "UPDATE `hotels` SET `owner`='%e', `owner_id`=%d, `owned`=1, `is_for_sale`=0 WHERE `id`=%d",
+                    HotelData[htlidx][htlOwnerName], HotelData[htlidx][htlOwnerId], HotelData[htlidx][htlID]);
+                mysql_tquery(g_SQL, q, "", "", 0);
+
+                if(winnerOnline != -1) { PlayerData[winnerOnline][pHotel] = HotelData[htlidx][htlID]; UpdatePlayer(winnerOnline, pHotel); }
+                else
+                {
+                    new q2[96];
+                    mysql_format(g_SQL, q2, sizeof(q2), "UPDATE `players` SET `hotel`=%d WHERE `id`=%d", HotelData[htlidx][htlID], g_AuctionBidderPID);
+                    mysql_tquery(g_SQL, q2, "", "", 0);
+                }
+            }
+        }
+    }
+
+    new wmsg[200];
+    format(wmsg, sizeof(wmsg), C_SUCCESS"[Auction] "C_WHITE"Auction ended! "C_INFO"%s"C_WHITE" won "C_INFO"'%s'"C_WHITE" for "C_INFO"$%s"C_WHITE"!",
+        g_AuctionBidderName, g_AuctionPropName, MoneyStr(g_AuctionCurrentBid));
+    Auction_Announce(wmsg);
+
+    Auction_Reset();
+}
+
+// Evacueaza proprietarul curent (fara despagubire) inainte de a atribui proprietatea castigatorului licitatiei.
+// memField/col: campul din PlayerData si coloana din `players` (col gol = fara coloana, ex. ferma).
+stock Auction_EvictOwner(evictedPID, E_PLAYER_DATA:memField, const col[])
+{
+    if(evictedPID <= 0) return;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+        if(PlayerData[i][pID] != evictedPID) continue;
+
+        PlayerData[i][memField] = 0;
+        if(strlen(col)) UpdatePlayer(i, memField);
+        SendClientMessage(i, COLOR_ERROR, C_ERROR"[Auction] "C_WHITE"Your property was reclaimed by an admin for an auction (no compensation).");
+        return;
+    }
+    if(strlen(col))
+    {
+        new q[96];
+        mysql_format(g_SQL, q, sizeof(q), "UPDATE `players` SET `%s`=0 WHERE `id`=%d", col, evictedPID);
+        mysql_tquery(g_SQL, q, "", "", 0);
+    }
+}
+
+forward Auction_Tick();
+public Auction_Tick()
+{
+    if(!g_AuctionActive) { g_AuctionTimer = -1; return 1; }
+
+    g_AuctionSecondsLeft--;
+
+    if(g_AuctionSecondsLeft == 60 || g_AuctionSecondsLeft == 30 || g_AuctionSecondsLeft == 5)
+        Auction_AnnounceStatus(g_AuctionSecondsLeft);
+
+    if(g_AuctionSecondsLeft <= 0)
+        Auction_Finish();
+
+    return 1;
 }
 
 public OnPlayerCommandText(playerid, cmdtext[])
@@ -17907,7 +18451,6 @@ public OnPlayerCommandText(playerid, cmdtext[])
             UpdatePlayer(playerid, pBusiness);
 
             Businesses_RecreatePickup(bzbidx);
-            Businesses_UpdatePlayersIcons();
 
             new bzq[256];
             mysql_format(g_SQL, bzq, sizeof(bzq),
@@ -20552,7 +21095,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Player Commands =================");
 
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Account] "C_WHITE" /help /howto /buylevel");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /rentcar /rentbike /curedisease /rob /skins /wardrobe /changeskin");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /rentcar /rentbike /curedisease /rob /buyskin /wardrobe /changeskin");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Casino] "C_WHITE"/leavecasino /slots /roulette /dice");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Houses] "C_WHITE"/buyhouse /house /frigde /tree /sleep /hstats /findhouse /myhouse");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Hotels] "C_WHITE"/buyhotel /sellhotel /sellhotelstate /sleep /htlstats /findhotel /myhotel /mybank hotel");
@@ -20578,8 +21121,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
-    // ---- /skins (magazin de haine: cumpara skinuri) ----
-    if(strcmp(cmd, "/skins", true) == 0)
+    // ---- /buyskin (magazin de haine: cumpara skinuri) ----
+    if(strcmp(cmd, "/buyskin", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
@@ -20636,7 +21179,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         }
         g_WardrobeCount[playerid] = cnt;
         if(cnt == 0)
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"You don't own any outfits yet. Buy some with "C_INFO"/skins"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"You don't own any outfits yet. Buy some with "C_INFO"/buyskin"C_WHITE"."), 1;
 
         ShowPlayerDialog(playerid, DIALOG_WARDROBE, DIALOG_STYLE_TABLIST_HEADERS, "Wardrobe", list, "Wear", "Close");
         return 1;
@@ -20759,7 +21302,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new topic[256];
         topic = strtok(cmdtext, idx);
         if(!strlen(topic))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / hotel / games / caravan / licence / farm / rob / skins / casino]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / hotel / games / caravan / licence / farm / rob / skins / casino / auction]"C_WHITE"."), 1;
 
         new title[64];
         static body[6144]; // static: buffer mare fara cost pe stiva (/howto e sincron)
@@ -20883,7 +21426,7 @@ for "C_INFO"60%"C_WHITE" of its value\n\n\
 move money in/out of the business bank (near a bank/ATM)\n\n\
 {FFFF00}Where the income comes from:{E3E3E3} each business is tied to\n\
 an activity, and takes a cut every time someone uses it - fast-food\n\
-orders ("C_INFO"/pizza"C_WHITE", "C_INFO"/burger"C_WHITE", "C_INFO"/meal"C_WHITE"), the ATM withdrawal fee, phone &\n\
+orders ("C_INFO"/pizza"C_WHITE", "C_INFO"/burger"C_WHITE", "C_INFO"/meal"C_WHITE", "C_INFO"/desert"C_WHITE"), the ATM withdrawal fee, phone &\n\
 SIM sales, SMS and calls, fridge shopping, appliances (fridge/bed),\n\
 Glovo deliveries and exam fees. The busier the activity, the more it earns.\n\n\
 {FFFF00}ANAF audits:{E3E3E3} once a day at "C_INFO"12:00"C_WHITE", a random owned\n\
@@ -21025,7 +21568,7 @@ This is handy for setting up far from the city - drag the caravan somewhere remo
             title = "How to: Skins & Clothes";
             body = "{E3E3E3}Change how your character looks by buying and wearing outfits (skins).\n\n\
 {FFFF00}Clothing store:{E3E3E3} go to a store marked with the "C_INFO"clothes icon"C_WHITE" on the map.\n\
-- /skins - browse the catalogue and "C_INFO"buy"C_WHITE" an outfit ("C_INFO"$10.000"C_WHITE" each). Buying an outfit also puts it on.\n\
+- /buyskin - browse the catalogue and "C_INFO"buy"C_WHITE" an outfit ("C_INFO"$10.000"C_WHITE" each). Buying an outfit also puts it on.\n\
 - /wardrobe - switch between outfits you already own, "C_INFO"for free"C_WHITE".\n\n\
 Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them anytime at a store.\n\n\
 {FFFF00}Faction uniform:{E3E3E3} factions have "C_INFO"3 uniforms by rank"C_WHITE" (rank 1/2, rank 3/4, rank 5). You wear the one for your rank automatically when you spawn "C_INFO"on duty"C_WHITE" (faction spawn); as a civilian you wear your own outfit. Inside your faction HQ you can use "C_INFO"/changeskin"C_WHITE" to switch between your uniform and civilian clothes.";
@@ -21035,8 +21578,19 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             title = "How to: Casino";
             body = "{E3E3E3}Try your luck at the "C_INFO"Casino"C_WHITE" (casino icon on the map).\n\n{FFFF00}Getting in:{E3E3E3} walk to the entrance and press "C_INFO"ENTER"C_WHITE" (or type "C_INFO"/enter"C_WHITE"). Leave anytime with "C_INFO"ENTER"C_WHITE" at the door or "C_INFO"/leavecasino"C_WHITE".\n\n{FFFF00}Games (bets $"#CASINO_MIN_BET" - $"#CASINO_MAX_BET") - each is played at its own table (look for the signs):{E3E3E3}\n- "C_INFO"/slots [bet]"C_WHITE" - at a slot machine. Three Sevens = "C_SUCCESS"x10"C_WHITE", any other three of a kind = "C_SUCCESS"x5"C_WHITE", two Sevens = "C_SUCCESS"x2"C_WHITE".\n- "C_INFO"/roulette [red/black/even/odd/0-36] [bet]"C_WHITE" - at a roulette table. Color/parity pays "C_SUCCESS"x2"C_WHITE" (0 loses), exact number pays "C_SUCCESS"x36"C_WHITE".\n- "C_INFO"/dice [bet]"C_WHITE" - at the dice area. You and the house each roll two dice; higher total wins "C_SUCCESS"x2"C_WHITE", a tie returns your bet.\n\nGamble responsibly - the house always has the edge!";
         }
+        else if(!strcmp(topic, "auction", true) || !strcmp(topic, "auctions", true) || !strcmp(topic, "action", true))
+        {
+            title = "How to: Auctions";
+            body = "{E3E3E3}Admins can put a house, business, farm or hotel up for auction ("C_INFO"/licitatie"C_WHITE" or "C_INFO"/auction"C_WHITE") for everyone to bid on.\n\n\
+{FFFF00}Bidding:{E3E3E3}\n\
+- "C_INFO"/bid [amount]"C_WHITE" - place a bid; must be higher than the current one (or at least the starting price if there are no bids yet).\n\
+- Your bid is taken from your "C_INFO"bank"C_WHITE" immediately. If someone outbids you, it's refunded to your bank automatically.\n\
+- "C_INFO"/auctioninfo"C_WHITE" - see what's being sold (type, ID, name) and the current highest bid.\n\n\
+{FFFF00}The clock:{E3E3E3} each "C_INFO"/bid"C_WHITE" resets the timer to "C_INFO"90 seconds"C_WHITE". Everyone gets warned when "C_INFO"60"C_WHITE", "C_INFO"30"C_WHITE" and "C_INFO"5"C_WHITE" seconds are left, showing who's currently winning.\n\n\
+{FFFF00}When time runs out:{E3E3E3} the highest bidder wins and gets the property - if it already had an owner, that owner loses it "C_INFO"with no compensation"C_WHITE". If nobody ever bid, the auction just ends with no winner.";
+        }
         else
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / hotel / games / caravan / licence / farm / rob / skins / casino]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / hotel / games / caravan / licence / farm / rob / skins / casino / auction]"C_WHITE"."), 1;
 
         ShowPlayerDialog(playerid, DIALOG_HOWTO, DIALOG_STYLE_MSGBOX, title, body, "OK", "");
         return 1;
@@ -21157,14 +21711,16 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         HotelData[newHtlIdx][htlLocX]    = htx;
         HotelData[newHtlIdx][htlLocY]    = hty;
         HotelData[newHtlIdx][htlLocZ]    = htz;
+        HotelData[newHtlIdx][htlCapacity]    = HOTEL_DEFAULT_CAPACITY;
+        HotelData[newHtlIdx][htlRenterCount] = 0;
         g_HotelPickup[newHtlIdx]         = -1;
         g_HotelCount++;
 
         new htlq[256];
         mysql_format(g_SQL, htlq, sizeof(htlq),
-            "INSERT INTO `hotels` (`name`,`owner`,`owner_id`,`owned`,`price`,`loc_x`,`loc_y`,`loc_z`) \
-             VALUES ('%e','',0,0,50000,%.4f,%.4f,%.4f)",
-            htlname, htx, hty, htz);
+            "INSERT INTO `hotels` (`name`,`owner`,`owner_id`,`owned`,`price`,`loc_x`,`loc_y`,`loc_z`,`capacity`) \
+             VALUES ('%e','',0,0,50000,%.4f,%.4f,%.4f,%d)",
+            htlname, htx, hty, htz, HOTEL_DEFAULT_CAPACITY);
         mysql_tquery(g_SQL, htlq, "OnHotelCreated", "ii", playerid, newHtlIdx);
         return 1;
     }
@@ -21180,7 +21736,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         while(cmdtext[idx] > ' ' && htlcp < 15) { htlcopt[htlcp++] = cmdtext[idx]; idx++; }
         htlcopt[htlcp] = EOS;
         if(!strlen(htlcopt))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/htlc [loc / price / name / rentable / rentprice] [htlID]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/htlc [loc / price / name / rentable / rentprice / capacity] [htlID]"C_WHITE"."), 1;
 
         // ---- /htlc loc [htlID] (muta hotelul la pozitia ta) ----
         if(strcmp(htlcopt, "loc", true) == 0)
@@ -21355,7 +21911,42 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             return 1;
         }
 
-        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/htlc [loc / price / name / rentable / rentprice] [htlID]"C_WHITE"."), 1;
+        // ---- /htlc capacity [htlID] [nr] ----
+        if(strcmp(htlcopt, "capacity", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new p1[8], p2[8];
+            strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+            new htid = strval(p1);
+            while(cmdtext[idx] > ' ') idx++;
+            while(cmdtext[idx] == ' ') idx++;
+            strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
+
+            if(!strlen(p1) || !strlen(p2))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/htlc capacity [htlID] [nr]"C_WHITE"."), 1;
+
+            new htlidx = Hotels_FindByID(htid);
+            if(htlidx == -1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Hotel not found."), 1;
+
+            new newCapacity = strval(p2);
+            if(newCapacity < 1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Capacity must be at least 1."), 1;
+
+            HotelData[htlidx][htlCapacity] = newCapacity;
+
+            new q[128];
+            mysql_format(g_SQL, q, sizeof(q), "UPDATE `hotels` SET `capacity`=%d WHERE `id`=%d", newCapacity, htid);
+            mysql_tquery(g_SQL, q, "", "", 0);
+
+            new lmsg[144];
+            format(lmsg, sizeof(lmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Hotel "C_INFO"#%d"C_WHITE" can now be rented by "C_INFO"%d"C_WHITE" tenants at once.",
+                htid, newCapacity);
+            SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+            return 1;
+        }
+
+        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/htlc [loc / price / name / rentable / rentprice / capacity] [htlID]"C_WHITE"."), 1;
     }
 
     // ---- /hc [option] ... (admin: modifica o casa dupa ID) ----
@@ -22077,10 +22668,10 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             if(g_AnimalCount >= MAX_ANIMALS)
                 return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The animal limit on the server has been reached."), 1;
 
-            new huAq[256];
+            new huAq[300];
             mysql_format(g_SQL, huAq, sizeof(huAq),
-                "INSERT INTO `animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`) VALUES (%d,%d,%d,'%e')",
-                g_AnimalCatalog[huAcIdx][acModel], HouseData[huHidx][hOwnerId], HouseData[huHidx][hID], g_AnimalCatalog[huAcIdx][acName]);
+                "INSERT INTO `animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName`) VALUES (%d,%d,%d,'%e','%e')",
+                g_AnimalCatalog[huAcIdx][acModel], HouseData[huHidx][hOwnerId], HouseData[huHidx][hID], g_AnimalCatalog[huAcIdx][acName], g_AnimalCatalog[huAcIdx][acName]);
             mysql_tquery(g_SQL, huAq, "", "", 0);
 
             // Reincarca toate animalele din DB (recreeaza si obiectele) - include si noul animal
@@ -22094,6 +22685,196 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         }
 
         return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/hupgrade [houseid] [animal [name]/tree]"C_WHITE"."), 1;
+    }
+
+    // ---- /licitatie [house/business/farm/hotel] [id] [start-price] (admin: starts an auction) - /auction is an alias ----
+    if(strcmp(cmd, "/licitatie", true) == 0 || strcmp(cmd, "/auction", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 5)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
+
+        if(g_AuctionActive)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"An auction is already running. Use "C_INFO"/cancelauction"C_WHITE" first."), 1;
+
+        new liTypeStr[256], liIdStr[256], liPriceStr[256];
+        liTypeStr = strtok(cmdtext, idx);
+        liIdStr   = strtok(cmdtext, idx);
+        liPriceStr = strtok(cmdtext, idx);
+
+        if(!strlen(liTypeStr) || !strlen(liIdStr) || !strlen(liPriceStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/licitatie [house/business/farm/hotel] [id] [start-price]"C_WHITE"."), 1;
+
+        new liType = AUCTION_NONE;
+        if(!strcmp(liTypeStr, "house", true))          liType = AUCTION_HOUSE;
+        else if(!strcmp(liTypeStr, "business", true))  liType = AUCTION_BUSINESS;
+        else if(!strcmp(liTypeStr, "farm", true))      liType = AUCTION_FARM;
+        else if(!strcmp(liTypeStr, "hotel", true))     liType = AUCTION_HOTEL;
+        if(liType == AUCTION_NONE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid type. Use house/business/farm/hotel."), 1;
+
+        new liEntId = strval(liIdStr);
+        new liStartPrice = strval(liPriceStr);
+        if(liStartPrice <= 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The start price must be greater than 0."), 1;
+
+        new liPropName[32];
+        new bool:liFound = false;
+        switch(liType)
+        {
+            case AUCTION_HOUSE:
+            {
+                new hidx = Houses_FindByID(liEntId);
+                if(hidx != -1) { format(liPropName, 32, "%s", HouseData[hidx][hName]); liFound = true; }
+            }
+            case AUCTION_BUSINESS:
+            {
+                new bidx = Businesses_FindByID(liEntId);
+                if(bidx != -1) { format(liPropName, 32, "%s", BusinessData[bidx][bName]); liFound = true; }
+            }
+            case AUCTION_FARM:
+            {
+                new fidx = Farm_IndexByID(liEntId);
+                if(fidx != -1) { format(liPropName, 32, "%s", FarmData[fidx][fmName]); liFound = true; }
+            }
+            case AUCTION_HOTEL:
+            {
+                new htlidx = Hotels_FindByID(liEntId);
+                if(htlidx != -1) { format(liPropName, 32, "%s", HotelData[htlidx][htlName]); liFound = true; }
+            }
+        }
+
+        if(!liFound)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"No property of that type with that ID was found."), 1;
+
+        g_AuctionActive       = true;
+        g_AuctionType         = liType;
+        g_AuctionEntityID     = liEntId;
+        g_AuctionStartPrice   = liStartPrice;
+        g_AuctionCurrentBid   = 0;
+        g_AuctionBidderPID    = 0;
+        g_AuctionBidderName[0]= EOS;
+        format(g_AuctionPropName, 32, "%s", liPropName);
+        g_AuctionSecondsLeft  = 0;
+        g_AuctionTimer        = -1;
+
+        new liTn[12];
+        Auction_TypeName(liType, liTn);
+
+        new liMsg[220];
+        format(liMsg, sizeof(liMsg), C_SUCCESS"[Auction] "C_WHITE"An auction has started for %s #%d (%s). Starting price: "C_INFO"$%s"C_WHITE".",
+            liTn, liEntId, liPropName, MoneyStr(liStartPrice));
+        Auction_Announce(liMsg);
+        return 1;
+    }
+
+    // ---- /cancelauction (admin: anuleaza licitatia curenta, ramburseaza ofertantul) ----
+    if(strcmp(cmd, "/cancelauction", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 5)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
+
+        if(!g_AuctionActive)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"There is no active auction."), 1;
+
+        if(g_AuctionTimer != -1) { KillTimer(g_AuctionTimer); g_AuctionTimer = -1; }
+
+        if(g_AuctionBidderPID != 0)
+            Auction_RefundBidder(g_AuctionBidderPID, g_AuctionCurrentBid);
+
+        new caMsg[160];
+        format(caMsg, sizeof(caMsg), C_ERROR"[Auction] "C_WHITE"The auction for "C_INFO"'%s'"C_WHITE" was cancelled by an admin.", g_AuctionPropName);
+        Auction_Announce(caMsg);
+
+        Auction_Reset();
+        return 1;
+    }
+
+    // ---- /bid [amount] (participa la licitatia curenta) ----
+    if(strcmp(cmd, "/bid", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!g_AuctionActive)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"There is no active auction."), 1;
+
+        new bdStr[256];
+        bdStr = strtok(cmdtext, idx);
+        if(!strlen(bdStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bid [amount]"C_WHITE"."), 1;
+
+        new bdAmount = strval(bdStr);
+        new bdMinValid = (g_AuctionBidderPID == 0) ? g_AuctionStartPrice : (g_AuctionCurrentBid + 1);
+        if(bdAmount < bdMinValid)
+        {
+            new bdEm[144];
+            format(bdEm, sizeof(bdEm), C_ERROR"Error: "C_WHITE"Your bid must be at least "C_INFO"$%s"C_WHITE".", MoneyStr(bdMinValid));
+            return SendClientMessage(playerid, COLOR_ERROR, bdEm), 1;
+        }
+
+        if(g_AuctionBidderPID == PlayerData[playerid][pID])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are already the highest bidder."), 1;
+
+        if(PlayerData[playerid][pBank] < bdAmount)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have that much money in your bank."), 1;
+
+        // ia banii din banca (escrow)
+        PlayerData[playerid][pBank] -= bdAmount;
+        UpdatePlayer(playerid, pBank);
+
+        // ramburseaza ofertantul anterior (daca exista)
+        if(g_AuctionBidderPID != 0)
+            Auction_RefundBidder(g_AuctionBidderPID, g_AuctionCurrentBid);
+
+        g_AuctionCurrentBid = bdAmount;
+        g_AuctionBidderPID  = PlayerData[playerid][pID];
+        format(g_AuctionBidderName, 24, "%s", PlayerData[playerid][pName]);
+
+        g_AuctionSecondsLeft = AUCTION_BID_SECONDS;
+        if(g_AuctionTimer == -1)
+            g_AuctionTimer = SetTimer("Auction_Tick", 1000, true);
+
+        new bdTn[12];
+        Auction_TypeName(g_AuctionType, bdTn);
+
+        new bdMsg[220];
+        format(bdMsg, sizeof(bdMsg), C_SUCCESS"[Auction] "C_WHITE"%s made a bid of "C_INFO"$%s"C_WHITE" for %s #%d (%s).",
+            PlayerData[playerid][pName], MoneyStr(bdAmount), bdTn, g_AuctionEntityID, g_AuctionPropName);
+        Auction_Announce(bdMsg);
+        return 1;
+    }
+
+    // ---- /auctioninfo (details about the currently running auction) ----
+    if(strcmp(cmd, "/auctioninfo", true) == 0)
+    {
+        if(!g_AuctionActive)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"There is no active auction."), 1;
+
+        new aiTn[12];
+        Auction_TypeName(g_AuctionType, aiTn);
+
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"_____ Auction Info _______________________________");
+
+        new aiLine[144];
+        format(aiLine, sizeof(aiLine), C_WHITE"Type: "C_INFO"%s"C_WHITE" | ID: "C_INFO"#%d"C_WHITE" | Name: "C_INFO"%s", aiTn, g_AuctionEntityID, g_AuctionPropName);
+        SendClientMessage(playerid, COLOR_WHITE, aiLine);
+
+        if(g_AuctionBidderPID == 0)
+        {
+            format(aiLine, sizeof(aiLine), C_WHITE"Starting price: "C_INFO"$%s"C_WHITE" | No bids yet.", MoneyStr(g_AuctionStartPrice));
+            SendClientMessage(playerid, COLOR_WHITE, aiLine);
+        }
+        else
+        {
+            format(aiLine, sizeof(aiLine), C_WHITE"Current bid: "C_INFO"$%s"C_WHITE" by "C_INFO"%s", MoneyStr(g_AuctionCurrentBid), g_AuctionBidderName);
+            SendClientMessage(playerid, COLOR_WHITE, aiLine);
+
+            format(aiLine, sizeof(aiLine), C_WHITE"Time left: "C_INFO"%d seconds", g_AuctionSecondsLeft);
+            SendClientMessage(playerid, COLOR_WHITE, aiLine);
+        }
+
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"___________________________________________________");
+        return 1;
     }
 
     // ---- /buyhouse ----
@@ -22354,7 +23135,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         new rtidx = -1;
         for(new i = 0; i < g_HotelCount; i++)
         {
-            if(!HotelData[i][htlIsRentable] || HotelData[i][htlRenterId] != 0) continue;
+            if(!HotelData[i][htlIsRentable] || HotelData[i][htlRenterCount] >= HotelData[i][htlCapacity]) continue;
             if(IsPlayerInRangeOfPoint(playerid, RENT_FIND_RANGE, HotelData[i][htlLocX], HotelData[i][htlLocY], HotelData[i][htlLocZ]))
             {
                 rtidx = i;
@@ -22362,19 +23143,15 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             }
         }
         if(rtidx == -1)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not near a rentable hotel."), 1;
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not near a rentable hotel with free rooms."), 1;
 
-        HotelData[rtidx][htlRenterId] = PlayerData[playerid][pID];
+        HotelData[rtidx][htlRenterCount]++;
         PlayerData[playerid][pRentHotel] = HotelData[rtidx][htlID];
         UpdatePlayer(playerid, pRentHotel);
 
-        new rtq[128];
-        mysql_format(g_SQL, rtq, sizeof(rtq), "UPDATE `hotels` SET `renter_id`=%d WHERE `id`=%d", PlayerData[playerid][pID], HotelData[rtidx][htlID]);
-        mysql_tquery(g_SQL, rtq, "", "", 0);
-
         new rtmsg[160];
-        format(rtmsg, sizeof(rtmsg), C_SUCCESS"Success: "C_WHITE"You are now renting the hotel "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE"/PayDay. Use "C_INFO"/cspawn"C_WHITE" to spawn there.",
-            HotelData[rtidx][htlName], MoneyStr(HotelData[rtidx][htlRentPrice]));
+        format(rtmsg, sizeof(rtmsg), C_SUCCESS"Success: "C_WHITE"You are now renting the hotel "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE"/PayDay ("C_INFO"%d/%d"C_WHITE" rooms taken). Use "C_INFO"/cspawn"C_WHITE" to spawn there.",
+            HotelData[rtidx][htlName], MoneyStr(HotelData[rtidx][htlRentPrice]), HotelData[rtidx][htlRenterCount], HotelData[rtidx][htlCapacity]);
         SendClientMessage(playerid, COLOR_SUCCESS, rtmsg);
         return 1;
     }
@@ -22405,12 +23182,9 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         if(PlayerData[playerid][pRentHotel] != 0)
         {
             new erhtidx = Hotels_FindByID(PlayerData[playerid][pRentHotel]);
-            if(erhtidx != -1)
+            if(erhtidx != -1 && HotelData[erhtidx][htlRenterCount] > 0)
             {
-                HotelData[erhtidx][htlRenterId] = 0;
-                new erhtq[128];
-                mysql_format(g_SQL, erhtq, sizeof(erhtq), "UPDATE `hotels` SET `renter_id`=0 WHERE `id`=%d", HotelData[erhtidx][htlID]);
-                mysql_tquery(g_SQL, erhtq, "", "", 0);
+                HotelData[erhtidx][htlRenterCount]--;
             }
             PlayerData[playerid][pRentHotel] = 0;
             UpdatePlayer(playerid, pRentHotel);
@@ -22657,10 +23431,10 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             GivePlayerMoney(playerid, -ANIMAL_PRICE);
             UpdatePlayer(playerid, pMoney);
 
-            new aq[256];
+            new aq[300];
             mysql_format(g_SQL, aq, sizeof(aq),
-                "INSERT INTO `animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`) VALUES (%d,%d,%d,'%e')",
-                g_AnimalCatalog[acIdx][acModel], PlayerData[playerid][pID], HouseData[hidx][hID], g_AnimalCatalog[acIdx][acName]);
+                "INSERT INTO `animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName`) VALUES (%d,%d,%d,'%e','%e')",
+                g_AnimalCatalog[acIdx][acModel], PlayerData[playerid][pID], HouseData[hidx][hID], g_AnimalCatalog[acIdx][acName], g_AnimalCatalog[acIdx][acName]);
             mysql_tquery(g_SQL, aq, "", "", 0);
 
             // Reincarca toate animalele din DB (recreeaza si obiectele) - include si noul animal
@@ -23528,7 +24302,6 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         UpdatePlayer(playerid, pBusiness);
 
         Businesses_RecreatePickup(bidx);
-        Businesses_UpdatePlayersIcons();
 
         new q[256];
         mysql_format(g_SQL, q, sizeof(q),
@@ -23665,7 +24438,6 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             }
 
             Businesses_RecreatePickup(bidx);
-            Businesses_UpdatePlayersIcons();
 
             new q[256];
             mysql_format(g_SQL, q, sizeof(q),
@@ -24025,7 +24797,6 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         ShopData[sidx][shopY] = sy;
         ShopData[sidx][shopZ] = sz;
         Shop_Create(sidx);
-        Shop_RefreshAllIcons();
 
         new q[160];
         mysql_format(g_SQL, q, sizeof(q),
@@ -24072,12 +24843,197 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         mysql_format(g_SQL, q, sizeof(q), "DELETE FROM `shops` WHERE `shopID`=%d", delId);
         mysql_tquery(g_SQL, q, "", "", 0);
 
-        Shop_RefreshAllIcons();
-
         new dmsg[96];
         format(dmsg, sizeof(dmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Shop "C_INFO"#%d"C_WHITE" deleted.", delId);
         SendClientMessage(playerid, COLOR_SUCCESS, dmsg);
         return 1;
+    }
+
+    // ---- /createclothstore (creeaza un magazin de haine la pozitia ta, fara mapicon) ----
+    if(strcmp(cmd, "/createclothstore", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        if(g_ClothStoreDynCount >= MAX_CLOTHSTORES)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Limit of "C_INFO#MAX_CLOTHSTORES C_WHITE" clothing stores reached."), 1;
+
+        new Float:sx, Float:sy, Float:sz;
+        GetPlayerPos(playerid, sx, sy, sz);
+
+        new newIdx = g_ClothStoreDynCount;
+        ClothStoreData[newIdx][clstID]     = 0;
+        ClothStoreData[newIdx][clstX]      = sx;
+        ClothStoreData[newIdx][clstY]      = sy;
+        ClothStoreData[newIdx][clstZ]      = sz;
+        ClothStoreData[newIdx][clstName][0] = EOS;
+        ClothStoreData[newIdx][clstIntID]  = 0;
+        ClothStoreData[newIdx][clstVwID]   = 0;
+        ClothStoreData[newIdx][clstIntX]   = 0.0;
+        ClothStoreData[newIdx][clstIntY]   = 0.0;
+        ClothStoreData[newIdx][clstIntZ]   = 0.0;
+        g_ClothStoreDynPickup[newIdx] = -1;
+        g_ClothStoreDynLabel[newIdx]  = Text3D:INVALID_3DTEXT_ID;
+        g_ClothStoreDynCount++;
+
+        new q[160];
+        mysql_format(g_SQL, q, sizeof(q),
+            "INSERT INTO `clothstores` (`csLocX`,`csLocY`,`csLocZ`) VALUES (%.4f,%.4f,%.4f)",
+            sx, sy, sz);
+        mysql_tquery(g_SQL, q, "OnClothStoreCreated", "ii", playerid, newIdx);
+        return 1;
+    }
+
+    // ---- /clothstoredelete [id] ----
+    if(strcmp(cmd, "/clothstoredelete", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new csStr[8];
+        strmid(csStr, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(csStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/clothstoredelete [id]"C_WHITE"."), 1;
+
+        new csDelId = strval(csStr);
+        new csidx = ClothStore_FindByID(csDelId);
+        if(csidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid clothing store ID."), 1;
+
+        if(g_ClothStoreDynPickup[csidx] != -1) { DestroyPickup(g_ClothStoreDynPickup[csidx]); g_ClothStoreDynPickup[csidx] = -1; }
+        if(g_ClothStoreDynLabel[csidx] != Text3D:INVALID_3DTEXT_ID) { Delete3DTextLabel(g_ClothStoreDynLabel[csidx]); g_ClothStoreDynLabel[csidx] = Text3D:INVALID_3DTEXT_ID; }
+        if(IsValidDynamic3DTextLabel(g_ClothStoreIntLabel[csidx])) DestroyDynamic3DTextLabel(g_ClothStoreIntLabel[csidx]);
+
+        // compacteaza array-urile (muta si handle-urile odata cu datele)
+        for(new i = csidx; i < g_ClothStoreDynCount - 1; i++)
+        {
+            ClothStoreData[i]        = ClothStoreData[i + 1];
+            g_ClothStoreDynPickup[i] = g_ClothStoreDynPickup[i + 1];
+            g_ClothStoreDynLabel[i]  = g_ClothStoreDynLabel[i + 1];
+            g_ClothStoreIntLabel[i]  = g_ClothStoreIntLabel[i + 1];
+        }
+        g_ClothStoreDynCount--;
+
+        new csq[96];
+        mysql_format(g_SQL, csq, sizeof(csq), "DELETE FROM `clothstores` WHERE `csID`=%d", csDelId);
+        mysql_tquery(g_SQL, csq, "", "", 0);
+
+        new csdmsg[96];
+        format(csdmsg, sizeof(csdmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" deleted.", csDelId);
+        SendClientMessage(playerid, COLOR_SUCCESS, csdmsg);
+        return 1;
+    }
+
+    // ---- /clsc [id] [name/loc/int] (admin: configureaza un magazin de haine creat in-game) ----
+    if(strcmp(cmd, "/clsc", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 5)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new clscIdStr[8], clscIdPos = 0;
+        while(cmdtext[idx] > ' ' && clscIdPos < 7) { clscIdStr[clscIdPos++] = cmdtext[idx]; idx++; }
+        clscIdStr[clscIdPos] = EOS;
+        if(!strlen(clscIdStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/clsc [id] [name/loc/int]"C_WHITE"."), 1;
+
+        new clscCsIdx = ClothStore_FindByID(strval(clscIdStr));
+        if(clscCsIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Clothing store not found."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new clscOpt[16], clscOptPos = 0;
+        while(cmdtext[idx] > ' ' && clscOptPos < 15) { clscOpt[clscOptPos++] = cmdtext[idx]; idx++; }
+        clscOpt[clscOptPos] = EOS;
+        if(!strlen(clscOpt))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/clsc [id] [name/loc/int]"C_WHITE"."), 1;
+
+        // ---- /clsc [id] name [newName] ----
+        if(strcmp(clscOpt, "name", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new clscNewName[32];
+            strmid(clscNewName, cmdtext, idx, strlen(cmdtext), 32);
+            if(!strlen(clscNewName))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/clsc [id] name [newName]"C_WHITE"."), 1;
+
+            format(ClothStoreData[clscCsIdx][clstName], 32, "%s", clscNewName);
+            ClothStore_Create(clscCsIdx);
+
+            new clscq[160];
+            mysql_format(g_SQL, clscq, sizeof(clscq), "UPDATE `clothstores` SET `clsName`='%e' WHERE `csID`=%d",
+                ClothStoreData[clscCsIdx][clstName], ClothStoreData[clscCsIdx][clstID]);
+            mysql_tquery(g_SQL, clscq, "", "", 0);
+
+            new clscmsg[160];
+            format(clscmsg, sizeof(clscmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" name changed to "C_INFO"%s"C_WHITE".",
+                ClothStoreData[clscCsIdx][clstID], ClothStoreData[clscCsIdx][clstName]);
+            SendClientMessage(playerid, COLOR_SUCCESS, clscmsg);
+            return 1;
+        }
+
+        // ---- /clsc [id] loc (muta magazinul la pozitia ta) ----
+        if(strcmp(clscOpt, "loc", true) == 0)
+        {
+            new Float:clscx, Float:clscy, Float:clscz;
+            GetPlayerPos(playerid, clscx, clscy, clscz);
+
+            ClothStoreData[clscCsIdx][clstX] = clscx;
+            ClothStoreData[clscCsIdx][clstY] = clscy;
+            ClothStoreData[clscCsIdx][clstZ] = clscz;
+            ClothStore_Create(clscCsIdx);
+
+            new clscq[160];
+            mysql_format(g_SQL, clscq, sizeof(clscq),
+                "UPDATE `clothstores` SET `csLocX`=%.4f, `csLocY`=%.4f, `csLocZ`=%.4f WHERE `csID`=%d",
+                clscx, clscy, clscz, ClothStoreData[clscCsIdx][clstID]);
+            mysql_tquery(g_SQL, clscq, "", "", 0);
+
+            new clscmsg[128];
+            format(clscmsg, sizeof(clscmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" moved to your location.",
+                ClothStoreData[clscCsIdx][clstID]);
+            SendClientMessage(playerid, COLOR_SUCCESS, clscmsg);
+            return 1;
+        }
+
+        // ---- /clsc [id] int [intId] (leaga magazinul de un interior din gta_interiors, dupa gtaIntID) ----
+        if(strcmp(clscOpt, "int", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new clscIntStr[8];
+            strmid(clscIntStr, cmdtext, idx, strlen(cmdtext), 8);
+            if(!strlen(clscIntStr))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/clsc [id] int [intId]"C_WHITE" (intId = gtaIntID)."), 1;
+
+            new clscGiIdx = GTAInteriors_FindByID(strval(clscIntStr));
+            if(clscGiIdx == -1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid GTA interior ID (see gta_interiors)."), 1;
+
+            ClothStoreData[clscCsIdx][clstIntID] = GTAInteriorData[clscGiIdx][gtaIntInterior];
+            ClothStoreData[clscCsIdx][clstIntX]  = GTAInteriorData[clscGiIdx][gtaIntLocX];
+            ClothStoreData[clscCsIdx][clstIntY]  = GTAInteriorData[clscGiIdx][gtaIntLocY];
+            ClothStoreData[clscCsIdx][clstIntZ]  = GTAInteriorData[clscGiIdx][gtaIntLocZ];
+            if(ClothStoreData[clscCsIdx][clstVwID] == 0) ClothStoreData[clscCsIdx][clstVwID] = ClothStoreData[clscCsIdx][clstID];
+            ClothStore_Create(clscCsIdx);
+
+            new clscq[220];
+            mysql_format(g_SQL, clscq, sizeof(clscq),
+                "UPDATE `clothstores` SET `clsInteriorId`=%d, `clsVwId`=%d, `clsInteriorX`=%.4f, `clsInteriorY`=%.4f, `clsInteriorZ`=%.4f WHERE `csID`=%d",
+                ClothStoreData[clscCsIdx][clstIntID], ClothStoreData[clscCsIdx][clstVwID],
+                ClothStoreData[clscCsIdx][clstIntX], ClothStoreData[clscCsIdx][clstIntY], ClothStoreData[clscCsIdx][clstIntZ],
+                ClothStoreData[clscCsIdx][clstID]);
+            mysql_tquery(g_SQL, clscq, "", "", 0);
+
+            new clscmsg[160];
+            format(clscmsg, sizeof(clscmsg),
+                C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" now leads to "C_INFO"%s"C_WHITE" (interior "C_INFO"%d"C_WHITE"). Press ENTER at the store to try it.",
+                ClothStoreData[clscCsIdx][clstID], GTAInteriorData[clscGiIdx][gtaIntName], ClothStoreData[clscCsIdx][clstIntID]);
+            SendClientMessage(playerid, COLOR_SUCCESS, clscmsg);
+            return 1;
+        }
+
+        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/clsc [id] [name/loc/int]"C_WHITE"."), 1;
     }
 
     // ---- /ffcreate [pizza/burger/cluckin] [name] (creeaza o locatie fast-food la pozitia ta) ----
@@ -24092,8 +25048,9 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         if(!strcmp(tok, "pizza", true) || !strcmp(tok, "1", true))            type = 1;
         else if(!strcmp(tok, "burger", true) || !strcmp(tok, "2", true))      type = 2;
         else if(!strcmp(tok, "cluckin", true) || !strcmp(tok, "meal", true) || !strcmp(tok, "3", true)) type = 3;
+        else if(!strcmp(tok, "desert", true) || !strcmp(tok, "4", true))      type = 4;
         if(type == 0)
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffcreate [1=pizza / 2=burger / 3=cluckin] [name]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffcreate [1=pizza / 2=burger / 3=cluckin / 4=desert] [name]"C_WHITE"."), 1;
 
         new tname[8];
         FastFood_TypeName(type, tname);
@@ -24113,6 +25070,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         {
             if(type == 2)      format(ffname, sizeof(ffname), "Burger Shot");
             else if(type == 3) format(ffname, sizeof(ffname), "Cluckin Bell");
+            else if(type == 4) format(ffname, sizeof(ffname), "Donut Shop");
             else               format(ffname, sizeof(ffname), "Pizza Stack");
         }
 
@@ -24192,7 +25150,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             if(!strcmp(tStr, "pizza", true) || !strcmp(tStr, "1", true))       newType = 1;
             else if(!strcmp(tStr, "burger", true) || !strcmp(tStr, "2", true)) newType = 2;
             else if(!strcmp(tStr, "cluckin", true) || !strcmp(tStr, "meal", true) || !strcmp(tStr, "3", true)) newType = 3;
-            else return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc type <ffID> [pizza/burger/cluckin]"C_WHITE"."), 1;
+            else if(!strcmp(tStr, "desert", true) || !strcmp(tStr, "4", true)) newType = 4;
+            else return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc type <ffID> [pizza/burger/cluckin/desert]"C_WHITE"."), 1;
 
             new tnn[8];
             FastFood_TypeName(newType, tnn);
@@ -24325,7 +25284,6 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         {
             GetPlayerPos(playerid, BusinessData[bidx][bLocX], BusinessData[bidx][bLocY], BusinessData[bidx][bLocZ]);
             Businesses_RecreatePickup(bidx);
-            Businesses_UpdatePlayersIcons();
 
             new q[256];
             mysql_format(g_SQL, q, sizeof(q),
@@ -25407,6 +26365,46 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         new lmsg[128];
         format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"Cluckin Bell meal"C_WHITE" for "C_INFO"$%s"C_WHITE" (+%d HP).",
             MoneyStr(g_MealPrice), floatround(MEAL_HEAL_AMOUNT));
+        SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        return 1;
+    }
+
+    // ---- /desert (donut) ----
+    if(strcmp(cmd, "/desert", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!Desert_PlayerInRange(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a "C_INFO"Desert"C_WHITE" location to do this."), 1;
+
+        if(PlayerData[playerid][pMoney] < g_DesertPrice)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= g_DesertPrice;
+        GivePlayerMoney(playerid, -g_DesertPrice);
+        UpdatePlayer(playerid, pMoney);
+
+        new dsbidx = Businesses_FindByID(DESERT_BIZ_ID);
+        if(dsbidx != -1 && !BusinessData[dsbidx][bANAF])
+        {
+            BusinessData[dsbidx][bBank] += g_DesertPrice;
+
+            new dsbq[128];
+            mysql_format(g_SQL, dsbq, sizeof(dsbq), "UPDATE `businesses` SET `bank`=%d WHERE `id`=%d",
+                BusinessData[dsbidx][bBank], BusinessData[dsbidx][bID]);
+            mysql_tquery(g_SQL, dsbq, "", "", 0);
+        }
+
+        new Float:health;
+        GetPlayerHealth(playerid, health);
+        health += DESERT_HEAL_AMOUNT;
+        if(health > 100.0) health = 100.0;
+        SetPlayerHealth(playerid, health);
+
+        new lmsg[128];
+        format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"donut"C_WHITE" for "C_INFO"$%s"C_WHITE" (+%d HP).",
+            MoneyStr(g_DesertPrice), floatround(DESERT_HEAL_AMOUNT));
         SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
         return 1;
     }
@@ -27267,7 +28265,57 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         else
             SendClientMessage(playerid, COLOR_WHITE, "Bed: No");
 
+        new bool:hasAnimal = false;
+        for(new a = 0; a < g_AnimalCount; a++)
+        {
+            if(AnimalData[a][aHouseID] != HouseData[hsidx][hID]) continue;
+            if(!hasAnimal) { SendClientMessage(playerid, COLOR_WHITE, "Animals:"); hasAnimal = true; }
+            format(hline, sizeof(hline), "  #%d - %s (%s) - rename with /renameanimal %d [name]",
+                AnimalData[a][aID], AnimalData[a][aName], AnimalData[a][aDefaultName], AnimalData[a][aID]);
+            SendClientMessage(playerid, COLOR_WHITE, hline);
+        }
+        if(!hasAnimal) SendClientMessage(playerid, COLOR_WHITE, "Animals: None");
+
         SendClientMessage(playerid, COLOR_INFO, C_INFO"___________________________________________________");
+        return 1;
+    }
+
+    // ---- /renameanimal [aID] [new name] ----
+    if(strcmp(cmd, "/renameanimal", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new raIdStr[16], raIdPos = 0;
+        while(cmdtext[idx] == ' ') idx++;
+        while(cmdtext[idx] > ' ' && raIdPos < 15) { raIdStr[raIdPos++] = cmdtext[idx]; idx++; }
+        raIdStr[raIdPos] = EOS;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new raName[32];
+        strmid(raName, cmdtext, idx, strlen(cmdtext), 32);
+
+        if(!strlen(raIdStr) || !strlen(raName))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/renameanimal [aID] [new name]"C_WHITE" (see IDs with "C_INFO"/hstats"C_WHITE")."), 1;
+
+        new raID = strval(raIdStr);
+        new raIdx = Animals_FindByID(raID);
+        if(raIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid animal ID."), 1;
+
+        if(AnimalData[raIdx][aPlayerID] != PlayerData[playerid][pID])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This isn't your animal."), 1;
+
+        format(AnimalData[raIdx][aName], 32, "%s", raName);
+
+        new raq[96];
+        mysql_format(g_SQL, raq, sizeof(raq), "UPDATE `animals` SET `aName`='%e' WHERE `aID`=%d", raName, raID);
+        mysql_tquery(g_SQL, raq, "", "", 0);
+
+        new ramsg[144];
+        format(ramsg, sizeof(ramsg), C_SUCCESS"Success: "C_WHITE"Your "C_INFO"%s"C_WHITE" (#%d) is now named "C_INFO"%s"C_WHITE".",
+            AnimalData[raIdx][aDefaultName], raID, raName);
+        SendClientMessage(playerid, COLOR_SUCCESS, ramsg);
         return 1;
     }
 
@@ -27291,6 +28339,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             HotelData[htsidx][htlName], HotelData[htsidx][htlID], MoneyStr(HotelData[htsidx][htlPrice]),
             MoneyStr(HotelData[htsidx][htlBank]), HOTEL_SLEEP_PRICE);
         SendClientMessage(playerid, COLOR_WHITE, htline);
+
+        if(HotelData[htsidx][htlIsRentable])
+        {
+            new htline2[144];
+            format(htline2, sizeof(htline2), "Rent price: $%s/PayDay | Rooms taken: %d/%d",
+                MoneyStr(HotelData[htsidx][htlRentPrice]), HotelData[htsidx][htlRenterCount], HotelData[htsidx][htlCapacity]);
+            SendClientMessage(playerid, COLOR_WHITE, htline2);
+        }
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"___________________________________________________");
         return 1;
@@ -27403,10 +28459,18 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         CaravanData[newIdx][rCampRY]           = 0.0;
         CaravanData[newIdx][rCampRZ]           = 0.0;
         CaravanData[newIdx][rType]             = type;
+
+        new Float:csize, cweight, cname[16];
+        Caravan_GetSpecs(type, csize, cweight, cname);
+        CaravanData[newIdx][rSize]   = csize;
+        CaravanData[newIdx][rWeight] = cweight;
+        format(CaravanData[newIdx][rName], 16, "%s", cname);
+
         g_CaravanCount++;
 
-        new cq[160];
-        mysql_format(g_SQL, cq, sizeof(cq), "INSERT INTO `rulote_personale` (`rOwned`,`rOwner`,`rType`) VALUES (1,%d,%d)", PlayerData[targetid][pID], type);
+        new cq[200];
+        mysql_format(g_SQL, cq, sizeof(cq), "INSERT INTO `rulote_personale` (`rOwned`,`rOwner`,`rType`,`rSize`,`rWeight`,`rName`) VALUES (1,%d,%d,%.2f,%d,'%e')",
+            PlayerData[targetid][pID], type, csize, cweight, cname);
         mysql_tquery(g_SQL, cq, "OnCaravanCreated", "ii", targetid, newIdx);
 
         new cmsg[128];
@@ -28777,6 +29841,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 
         if(PlayerData[playerid][pLogged])
             Houses_InteriorToggle(playerid);
+
+        if(PlayerData[playerid][pLogged])
+            ClothStore_InteriorToggle(playerid);
     }
 
     // Faruri: newkeys exact 1 sau 132
@@ -28807,13 +29874,15 @@ stock GPSItem_GetCoords(type, ref, &Float:x, &Float:y, &Float:z)
         case GPSITEM_FARM:    { x = FarmData[ref][fmX]; y = FarmData[ref][fmY]; z = FarmData[ref][fmZ]; }
         case GPSITEM_FASTFOOD:
         {
-            if(ref >= 2 * MAX_FOOD_LOCATIONS)      { new mi = ref - 2 * MAX_FOOD_LOCATIONS; x = MealLocations[mi][0];   y = MealLocations[mi][1];   z = MealLocations[mi][2]; }
+            if(ref >= 3 * MAX_FOOD_LOCATIONS)      { new di = ref - 3 * MAX_FOOD_LOCATIONS; x = DesertLocations[di][0]; y = DesertLocations[di][1]; z = DesertLocations[di][2]; }
+            else if(ref >= 2 * MAX_FOOD_LOCATIONS) { new mi = ref - 2 * MAX_FOOD_LOCATIONS; x = MealLocations[mi][0];   y = MealLocations[mi][1];   z = MealLocations[mi][2]; }
             else if(ref >= MAX_FOOD_LOCATIONS)     { new bi = ref - MAX_FOOD_LOCATIONS;     x = BurgerLocations[bi][0]; y = BurgerLocations[bi][1]; z = BurgerLocations[bi][2]; }
             else                                   { x = PizzaLocations[ref][0];  y = PizzaLocations[ref][1];  z = PizzaLocations[ref][2]; }
         }
         case GPSITEM_LOC:     { x = LocationData[ref][locX]; y = LocationData[ref][locY]; z = LocationData[ref][locZ]; }
         case GPSITEM_HOUSE:   { x = HouseData[ref][hLocX]; y = HouseData[ref][hLocY]; z = HouseData[ref][hLocZ]; }
         case GPSITEM_HOTEL:   { x = HotelData[ref][htlLocX]; y = HotelData[ref][htlLocY]; z = HotelData[ref][htlLocZ]; }
+        case GPSITEM_CLOTHSTORE: { x = ClothStoreData[ref][clstX]; y = ClothStoreData[ref][clstY]; z = ClothStoreData[ref][clstZ]; }
         default:              { x = GPSData[ref][glLocX]; y = GPSData[ref][glLocY]; z = GPSData[ref][glLocZ]; }
     }
 }
@@ -28831,13 +29900,19 @@ stock GPSItem_GetName(type, ref, name[], len)
         case GPSITEM_FARM:    format(name, len, "%s #%d", FarmData[ref][fmName], FarmData[ref][fmID]);
         case GPSITEM_FASTFOOD:
         {
-            if(ref >= 2 * MAX_FOOD_LOCATIONS)  { new mi = ref - 2 * MAX_FOOD_LOCATIONS; format(name, len, "%s #%d", g_MealName[mi],   g_MealFFID[mi]); }
+            if(ref >= 3 * MAX_FOOD_LOCATIONS)  { new di = ref - 3 * MAX_FOOD_LOCATIONS; format(name, len, "%s #%d", g_DesertName[di], g_DesertFFID[di]); }
+            else if(ref >= 2 * MAX_FOOD_LOCATIONS) { new mi = ref - 2 * MAX_FOOD_LOCATIONS; format(name, len, "%s #%d", g_MealName[mi],   g_MealFFID[mi]); }
             else if(ref >= MAX_FOOD_LOCATIONS) { new bi = ref - MAX_FOOD_LOCATIONS;     format(name, len, "%s #%d", g_BurgerName[bi], g_BurgerFFID[bi]); }
             else                               { format(name, len, "%s #%d", g_PizzaName[ref], g_PizzaFFID[ref]); }
         }
         case GPSITEM_LOC:     format(name, len, "%s", LocationData[ref][locName]);
         case GPSITEM_HOUSE:   format(name, len, "%s #%d", HouseData[ref][hName], HouseData[ref][hID]);
         case GPSITEM_HOTEL:   format(name, len, "%s #%d", HotelData[ref][htlName], HotelData[ref][htlID]);
+        case GPSITEM_CLOTHSTORE:
+        {
+            if(strlen(ClothStoreData[ref][clstName])) format(name, len, "%s", ClothStoreData[ref][clstName]);
+            else format(name, len, "Clothing Store #%d", ClothStoreData[ref][clstID]);
+        }
         default:              format(name, len, "%s", GPSData[ref][glName]);
     }
 }
@@ -28872,7 +29947,7 @@ stock GPSList_Sort(playerid)
 }
 
 // Construieste lista GPS pentru o categorie si o sorteaza crescator dupa distanta.
-// cat: 0=Factions, 1=Businesses, 2=Banks & ATMs, 3=Shops, 4=FastFoods, 5=Farms, 6=Houses, 7=Hotels, 8+=dinamica (locations_admin, dupa dynCat)
+// cat: 0=Factions, 1=Businesses, 2=Banks & ATMs, 3=Shops, 4=FastFoods, 5=Farms, 6=Houses, 7=Hotels, 8=Clothing Stores, 9+=dinamica (locations_admin, dupa dynCat)
 stock GPSList_Build(playerid, cat, const dynCat[])
 {
     g_GPSListCount[playerid] = 0;
@@ -28897,7 +29972,7 @@ stock GPSList_Build(playerid, cat, const dynCat[])
         case 3: // shop-uri (tabelul shops)
             for(new i = 0; i < g_ShopCount; i++)
                 GPSList_AddItem(playerid, GPSITEM_SHOP, i);
-        case 4: // fast-food (tabelul fastfood: pizza + burger + cluckin)
+        case 4: // fast-food (tabelul fastfood: pizza + burger + cluckin + desert)
         {
             for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
                 if(PizzaLocations[i][0] != 0.0 || PizzaLocations[i][1] != 0.0)
@@ -28908,6 +29983,9 @@ stock GPSList_Build(playerid, cat, const dynCat[])
             for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
                 if(MealLocations[i][0] != 0.0 || MealLocations[i][1] != 0.0)
                     GPSList_AddItem(playerid, GPSITEM_FASTFOOD, 2 * MAX_FOOD_LOCATIONS + i);
+            for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+                if(DesertLocations[i][0] != 0.0 || DesertLocations[i][1] != 0.0)
+                    GPSList_AddItem(playerid, GPSITEM_FASTFOOD, 3 * MAX_FOOD_LOCATIONS + i);
         }
         case 5: // ferme cu locatie setata (tabelul farms)
             for(new i = 0; i < g_FarmCount; i++)
@@ -28919,6 +29997,9 @@ stock GPSList_Build(playerid, cat, const dynCat[])
         case 7: // hoteluri (tabelul hotels)
             for(new i = 0; i < g_HotelCount; i++)
                 GPSList_AddItem(playerid, GPSITEM_HOTEL, i);
+        case 8: // magazine de haine create in-game (tabelul clothstores)
+            for(new i = 0; i < g_ClothStoreDynCount; i++)
+                GPSList_AddItem(playerid, GPSITEM_CLOTHSTORE, i);
         default: // categorii dinamice din locations_admin (locForGPS=1, locCategory == dynCat)
             for(new i = 0; i < g_LocationCount; i++)
                 if(LocationData[i][locForGPS] && strcmp(LocationData[i][locCategory], dynCat, true) == 0)
@@ -28965,10 +30046,11 @@ stock GPS_ShowCategoryDialog(playerid)
     GPSList_Build(playerid, 5, ""); format(line, sizeof(line), "Farms\t%d\n",        g_GPSListCount[playerid]); strcat(list, line);
     GPSList_Build(playerid, 6, ""); format(line, sizeof(line), "Houses\t%d\n",       g_GPSListCount[playerid]); strcat(list, line);
     GPSList_Build(playerid, 7, ""); format(line, sizeof(line), "Hotels\t%d\n",       g_GPSListCount[playerid]); strcat(list, line);
+    GPSList_Build(playerid, 8, ""); format(line, sizeof(line), "Clothing Stores\t%d\n", g_GPSListCount[playerid]); strcat(list, line);
 
     for(new i = 0; i < dynCount; i++)
     {
-        GPSList_Build(playerid, 8 + i, dynCats[i]);
+        GPSList_Build(playerid, 9 + i, dynCats[i]);
         format(line, sizeof(line), "%s\t%d\n", dynCats[i], g_GPSListCount[playerid]);
         strcat(list, line);
     }
@@ -29381,8 +30463,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
     {
         if(!response) return 1; // Cancel
 
-        // Primele 8 randuri = categorii fixe; restul = categorii dinamice din locations_admin
-        if(listitem < 8)
+        // Primele 9 randuri = categorii fixe; restul = categorii dinamice din locations_admin
+        if(listitem < 9)
         {
             g_GPSDialogCategory[playerid] = listitem;
             g_GPSDynCat[playerid][0] = EOS;
@@ -29391,10 +30473,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         {
             new dynCats[GPS_MAX_DYNCATS][32];
             new dynCount = GPS_GetDynCategories(dynCats, GPS_MAX_DYNCATS);
-            new di = listitem - 8;
+            new di = listitem - 9;
             if(di < 0 || di >= dynCount) return 1;
 
-            g_GPSDialogCategory[playerid] = 8;
+            g_GPSDialogCategory[playerid] = 9;
             format(g_GPSDynCat[playerid], 32, "%s", dynCats[di]);
         }
 

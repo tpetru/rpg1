@@ -65,7 +65,7 @@ $locationsInLS = array_values(array_filter($allLocations, function($l) { return 
 $jobLocations  = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') === 0; }));
 $locations     = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') !== 0; }));
 
-$ffTypeName   = [1 => 'Pizza', 2 => 'Burger', 3 => 'Cluckin Bell'];
+$ffTypeName   = [1 => 'Pizza', 2 => 'Burger', 3 => 'Cluckin Bell', 4 => 'Desert'];
 $houseTypeName = [1 => 'Villa', 2 => 'City House', 3 => 'Apartment', 4 => 'Countryside House'];
 
 // Name of the "bank" business by id (for the ATM tooltips) - looked up in the full, unfiltered list
@@ -84,11 +84,11 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NostalgiaRP UCP — Los Santos Map</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<title>Nostalgia: Los Santos UCP — Los Santos Map</title>
+<link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
-  main { max-width: 1200px; }
-  .map-wrap { max-width: 1200px; margin: 0 auto; }
+  main { max-width: 1400px; }
+  .map-wrap { max-width: 1400px; margin: 0 auto; }
   .map-legend-actions { display: flex; gap: 8px; margin-bottom: 10px; }
   .map-legend-actions button {
     background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
@@ -167,20 +167,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">🏙️ NostalgiaRP UCP</div>
-  <nav>
-    <a href="dashboard.php">Dashboard</a>
-    <a href="maps.php">Map</a>
-    <a href="howto.php">How To</a>
-    <?php if (ucp_current_admin_level() > 0): ?>
-      <a href="admin.php">Admin</a>
-      <a href="admincmds.php">Admin Cmds</a>
-    <?php endif; ?>
-    <a href="logout.php">Logout</a>
-  </nav>
-  <div class="userbox"><?= ucp_escape($_SESSION['ucp_username']) ?></div>
-</header>
+<?php include __DIR__ . '/includes/header.php'; ?>
 
 <main>
   <h1>🗺️ Los Santos Map</h1>
@@ -275,7 +262,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
   </div>
 </main>
 
-<footer>NostalgiaRP UCP</footer>
+<footer>Nostalgia: Los Santos UCP</footer>
 
 <script>
 document.querySelectorAll('.map-legend input[type=checkbox]').forEach(function(cb) {

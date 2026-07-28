@@ -8,7 +8,7 @@ ucp_require_login();
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NostalgiaRP UCP — How To</title>
+<title>Nostalgia: Los Santos UCP — How To</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -21,6 +21,7 @@ ucp_require_login();
     --accent-2: #ffcc00;
     --green: #3ecf8e;
     --red: #ff5d5d;
+    --topbar-h: 90px;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -36,14 +37,32 @@ ucp_require_login();
 
   header.topbar {
     display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; row-gap: 8px;
     padding: 14px 24px;
     background: var(--panel);
     border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    min-height: var(--topbar-h);
   }
-  header.topbar .brand { font-weight: 700; font-size: 1.1rem; color: #fff; }
-  header.topbar nav a { margin-left: 16px; color: var(--text); font-size: 0.92rem; }
+  header.topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 1.1rem; color: #fff; text-decoration: none; }
+  header.topbar .brand:hover { text-decoration: none; opacity: 0.9; }
+  header.topbar .brand-logo { height: 34px; width: auto; border-radius: 6px; }
+  header.topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+  header.topbar nav a { color: var(--text); font-size: 0.92rem; }
   header.topbar nav a:hover { color: var(--accent); }
   header.topbar .userbox { color: var(--muted); font-size: 0.88rem; }
+
+  .nav-dd { position: relative; }
+  .nav-dd-menu {
+    display: none;
+    position: absolute; top: 100%; left: 0; margin-top: 0;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    min-width: 200px; padding: 6px; z-index: 200;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+  }
+  .nav-dd-menu a { display: block; padding: 7px 10px; border-radius: 6px; font-size: 0.88rem; white-space: nowrap; }
+  .nav-dd-menu a:hover { background: var(--panel); }
+  .nav-dd:hover .nav-dd-menu, .nav-dd:focus-within .nav-dd-menu { display: block; }
 
   header.hero {
     padding: 40px 24px 30px;
@@ -62,7 +81,7 @@ ucp_require_login();
   header.hero p { margin: 0 auto; max-width: 640px; color: var(--muted); font-size: 1rem; }
 
   nav.toc {
-    position: sticky; top: 0; z-index: 10;
+    position: sticky; top: var(--topbar-h); z-index: 90;
     display: flex; flex-wrap: wrap; gap: 6px;
     justify-content: center;
     padding: 12px 16px;
@@ -80,7 +99,7 @@ ucp_require_login();
   }
   nav.toc a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
 
-  main { max-width: 900px; margin: 0 auto; padding: 36px 24px 100px; }
+  main { max-width: 1400px; margin: 0 auto; padding: 36px 24px 100px; }
 
   section { margin-bottom: 46px; scroll-margin-top: 60px; }
   section h2 { font-size: 1.5rem; margin: 0 0 4px; color: #fff; }
@@ -131,20 +150,7 @@ ucp_require_login();
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">🏙️ NostalgiaRP UCP</div>
-  <nav>
-    <a href="dashboard.php">Dashboard</a>
-    <a href="maps.php">Map</a>
-    <a href="howto.php">How To</a>
-    <?php if (ucp_current_admin_level() > 0): ?>
-      <a href="admin.php">Admin</a>
-      <a href="admincmds.php">Admin Cmds</a>
-    <?php endif; ?>
-    <a href="logout.php">Logout</a>
-  </nav>
-  <div class="userbox"><?= ucp_escape($_SESSION['ucp_username']) ?></div>
-</header>
+<?php include __DIR__ . '/includes/header.php'; ?>
 
 <header class="hero">
   <h1>📖 Ghid How To</h1>
@@ -416,7 +422,7 @@ ucp_require_login();
     </ul>
 
     <h4>Where the income comes from</h4>
-    <p>Each business is tied to an activity, and takes a cut every time someone uses it - fast-food orders (<code>/pizza</code>, <code>/burger</code>, <code>/meal</code>), the ATM withdrawal fee, phone &amp; SIM sales, SMS and calls, fridge shopping, appliances (fridge/bed), Glovo deliveries and exam fees. The busier the activity, the more it earns.</p>
+    <p>Each business is tied to an activity, and takes a cut every time someone uses it - fast-food orders (<code>/pizza</code>, <code>/burger</code>, <code>/meal</code>, <code>/desert</code>), the ATM withdrawal fee, phone &amp; SIM sales, SMS and calls, fridge shopping, appliances (fridge/bed), Glovo deliveries and exam fees. The busier the activity, the more it earns.</p>
 
     <h4>ANAF audits</h4>
     <p>Once a day at <span class="num">12:00</span>, a random owned business gets flagged - it earns <span class="warn">nothing</span> until cleared. You're warned on respawn if yours is hit.</p>
@@ -727,7 +733,7 @@ ucp_require_login();
 
 </main>
 
-<footer>NostalgiaRP UCP — generat din comanda <code>/howto</code> a gamemode-ului</footer>
+<footer>Nostalgia: Los Santos UCP — generat din comanda <code>/howto</code> a gamemode-ului</footer>
 
 </body>
 </html>

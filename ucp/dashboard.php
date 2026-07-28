@@ -101,11 +101,11 @@ $farmEquipTypes = [
 ];
 
 $fridgeItems = [
-    'fridge_milk'   => ['Milk', 'L', 20],
+    'fridge_milk'   => ['Milk', 'cartons', 20],
     'fridge_banana' => ['Bananas', 'pcs', 30],
     'fridge_water'  => ['Water', 'L', 25],
-    'fridge_juice'  => ['Juice', 'L', 20],
-    'fridge_beer'   => ['Beer', 'L', 50],
+    'fridge_juice'  => ['Juice', 'bottles', 20],
+    'fridge_beer'   => ['Beer', 'cans', 50],
 ];
 
 // Owned business (full details for the dedicated card)
@@ -115,6 +115,23 @@ $stmt->execute();
 $myBusiness = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
+// Owned hotel (full details for the dedicated card)
+$stmt = $mysqli->prepare("SELECT * FROM `hotels` WHERE `owner_id` = ? AND `owned` = 1 LIMIT 1");
+$stmt->bind_param('i', $pid);
+$stmt->execute();
+$myHotel = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+// Current room occupancy of the owned hotel: renting is tracked per-tenant in `players`.`rent_hotel`, not on the `hotels` row
+$myHotelRenterCount = 0;
+if ($myHotel) {
+    $stmt = $mysqli->prepare("SELECT COUNT(*) AS `cnt` FROM `players` WHERE `rent_hotel` = ?");
+    $stmt->bind_param('i', $myHotel['id']);
+    $stmt->execute();
+    $myHotelRenterCount = (int)$stmt->get_result()->fetch_assoc()['cnt'];
+    $stmt->close();
+}
+
 // The player's skin is now persisted per player in the `players`.`skin` column (implemented: /skins, /wardrobe).
 $skinId = (int)$player['skin'];
 ?>
@@ -123,30 +140,17 @@ $skinId = (int)$player['skin'];
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NostalgiaRP UCP — Dashboard</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<title>Nostalgia: Los Santos UCP — Dashboard</title>
+<link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">🏙️ NostalgiaRP UCP</div>
-  <nav>
-    <a href="dashboard.php">Dashboard</a>
-    <a href="maps.php">Map</a>
-    <a href="howto.php">How To</a>
-    <?php if (ucp_current_admin_level() > 0): ?>
-      <a href="admin.php">Admin</a>
-      <a href="admincmds.php">Admin Cmds</a>
-    <?php endif; ?>
-    <a href="logout.php">Logout</a>
-  </nav>
-  <div class="userbox"><?= ucp_escape($_SESSION['ucp_username']) ?></div>
-</header>
+<?php include __DIR__ . '/includes/header.php'; ?>
 
 <main>
   <h1>Welcome, <?= ucp_escape($player['username']) ?></h1>
 
-  <div class="grid-2">
+  <div class="grid-3">
     <div class="card">
       <h2>👤 Your account</h2>
       <table>
@@ -156,7 +160,6 @@ $skinId = (int)$player['skin'];
         <tr><th>Bank</th><td>$<?= ucp_money($player['bank']) ?></td></tr>
         <tr><th>Faction</th><td><?= ucp_escape(ucp_faction_name($player['faction'])) ?><?= $player['faction'] > 0 ? ' (rank ' . (int)$player['faction_rank'] . ')' : '' ?></td></tr>
         <tr><th>Admin level</th><td><?= (int)$player['admin_level'] ?></td></tr>
-        <tr><th>Hotel</th><td><?= ((int)$player['hotel'] > 0) ? ('ID #' . (int)$player['hotel']) : 'None' ?></td></tr>
         <tr><th>Rent</th><td><?= $rentLabel ? ucp_escape($rentLabel) : 'No active rent' ?></td></tr>
       </table>
     </div>
@@ -166,10 +169,10 @@ $skinId = (int)$player['skin'];
       <table>
         <?php
         $licenses = [
-            'A' => $player['driving_lic_a_exp'],
-            'B' => $player['driving_lic_b_exp'],
-            'C' => $player['driving_lic_c_exp'],
-            'D' => $player['driving_lic_d_exp'],
+            'A (motorcycles)' => $player['driving_lic_a_exp'],
+            'B (cars)' => $player['driving_lic_b_exp'],
+            'C (trucks)' => $player['driving_lic_c_exp'],
+            'D (buses)' => $player['driving_lic_d_exp'],
             'P (plane)' => $player['airplane_lic_a_exp'],
             'H (helicopter)' => $player['airplane_lic_h_exp'],
         ];
@@ -192,29 +195,60 @@ $skinId = (int)$player['skin'];
         <?php endforeach; ?>
       </table>
     </div>
-  </div>
 
-  <div class="card" style="display:flex; gap:18px; align-items:center;">
-    <div class="skin-box">
-      <img src="assets/img/skins/skin_<?= (int)$skinId ?>.png" alt="Skin <?= (int)$skinId ?>"
-           onerror="this.parentElement.innerHTML='Skin #<?= (int)$skinId ?><br>(no image)';">
-    </div>
-    <div>
-      <h2 style="margin-bottom:4px">🧍 Your skin</h2>
-      <p style="color:var(--muted); margin:0">Model #<?= (int)$skinId ?>. Change it in-game with <code>/skins</code>
+    <div class="card skin-card">
+      <h2>🧍 Your skin</h2>
+      <div class="skin-box">
+        <img src="assets/img/skins/skin_<?= (int)$skinId ?>.png" alt="Skin <?= (int)$skinId ?>"
+             onerror="this.parentElement.innerHTML='Skin #<?= (int)$skinId ?><br>(no image)';">
+      </div>
+      <p style="color:var(--muted); margin:10px 0 0">Model #<?= (int)$skinId ?>. Change it in-game with <code>/skins</code>
       (buy new outfits) or <code>/wardrobe</code> (switch for free between owned ones).</p>
     </div>
   </div>
 
-  <?php if ($caravan): ?>
   <div class="card">
-    <h2>🚐 Your caravan</h2>
-    <p style="color:var(--muted)">Type <?= (int)$player['caravan_key'] ?> ·
-    <?= $caravan['rCamping'] ? 'Camping' : 'Parked' ?></p>
+    <h2>🚗 Your cars (<?= count($vehicles) ?>)</h2>
+    <?php if (!$vehicles): ?>
+      <p style="color:var(--muted)">You don't own any personal vehicles.</p>
+    <?php else: ?>
+      <table>
+        <tr><th>ID</th><th>Picture</th><th>Model</th><th>Plate</th><th>First registration</th><th>Dirty</th><th>Insurance</th><th>Medkit</th><th>Extinguisher</th><th>Inspection</th></tr>
+        <?php foreach ($vehicles as $v):
+            $ins = ucp_doc_status($v['insurance_exp']);
+            $med = ucp_doc_status($v['medkit_exp']);
+            $ext = ucp_doc_status($v['extinguisher_exp']);
+            $itp = ucp_doc_status($v['itp_exp']);
+            $dirtyPct = max(0, min(100, (int)$v['dirty']));
+            if ($dirtyPct >= 90)     $dirtyTier = 'bad';  // VEHICLE_DIRTY_LOCK - engine won't start
+            elseif ($dirtyPct >= 75) $dirtyTier = 'warn'; // VEHICLE_DIRTY_WARN
+            elseif ($dirtyPct >= 40) $dirtyTier = 'good';
+            else                     $dirtyTier = 'ok';
+        ?>
+        <tr>
+          <td>#<?= (int)$v['id'] ?></td>
+          <td>
+            <img src="<?= ucp_escape(ucp_vehicle_image($v['model_id'])) ?>" alt="<?= ucp_escape(ucp_vehicle_name($v['model_id'])) ?>"
+                 style="width:90px; height:60px; object-fit:contain; background:var(--panel-2); border-radius:6px;"
+                 onerror="this.style.display='none';">
+          </td>
+          <td><?= ucp_escape(ucp_vehicle_name($v['model_id'])) ?></td>
+          <td><?= ucp_escape($v['plate'] ?? '—') ?></td>
+          <td><?= $v['first_registration'] ? date('d.m.Y', strtotime($v['first_registration'])) : '—' ?></td>
+          <td>
+            <span class="meter"><span class="meter-fill <?= $dirtyTier ?>" style="width:<?= $dirtyPct ?>%"></span></span>
+            <span class="meter-label"><?= $dirtyPct ?>%</span>
+          </td>
+          <td><span class="pill pill-<?= ucp_doc_tier($ins) ?>"><?= ucp_escape($ins['label']) ?></span></td>
+          <td><span class="pill pill-<?= ucp_doc_tier($med) ?>"><?= ucp_escape($med['label']) ?></span></td>
+          <td><span class="pill pill-<?= ucp_doc_tier($ext) ?>"><?= ucp_escape($ext['label']) ?></span></td>
+          <td><span class="pill pill-<?= ucp_doc_tier($itp) ?>"><?= ucp_escape($itp['label']) ?></span></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    <?php endif; ?>
   </div>
-  <?php endif; ?>
 
-  <div class="grid-2">
     <?php if ($myHouse): ?>
     <div class="card">
       <h2>🏠 Your house</h2>
@@ -304,12 +338,12 @@ $skinId = (int)$player['skin'];
         <p style="color:var(--muted); margin:4px 0">No animals. Buy one with <code>/house upgrade animal [name]</code> ($5,000).</p>
       <?php else: ?>
         <table>
-          <tr><th>#</th><th>Name</th><th>Type</th></tr>
+          <tr><th>#</th><th>Type</th><th>Name</th></tr>
           <?php foreach ($houseAnimals as $animal): ?>
           <tr>
             <td>#<?= (int)$animal['aID'] ?></td>
-            <td><?= ucp_escape($animal['aName']) ?></td>
-            <td><?= (int)$animal['aType'] === 19833 ? 'Cow' : ucp_escape((string)$animal['aType']) ?></td>
+            <td><?= ucp_escape($animal['aDefaultName']) ?></td>
+            <td><?= ucp_escape($animal['aName']) ?> <span style="color:var(--muted)">(rename in-game: <code>/renameanimal <?= (int)$animal['aID'] ?> [name]</code>)</span></td>
           </tr>
           <?php endforeach; ?>
         </table>
@@ -337,6 +371,7 @@ $skinId = (int)$player['skin'];
         <tr><th>Name</th><td><?= ucp_escape($farm['name']) ?> (ID #<?= (int)$farm['id'] ?>)</td></tr>
         <tr><th>Price</th><td>$<?= ucp_money($farm['price']) ?></td></tr>
         <tr><th>Bank</th><td>$<?= ucp_money($farm['farmBank']) ?></td></tr>
+        <tr><th>Harvest in storage</th><td><?= ucp_money($farm['farmRecolta']) ?> <span style="color:var(--muted)">(sell with <code>/farm deliver</code>)</span></td></tr>
         <tr><th>For sale</th><td><span class="pill <?= $farm['is_for_sale'] ? 'pill-bad' : 'pill-ok' ?>"><?= $farm['is_for_sale'] ? 'Yes' : 'No' ?></span></td></tr>
         <tr><th>Current stage</th><td><?= $farm['isReadyToHarvest'] ? 'Ready to harvest' : ucp_escape($farm['nextStep']) ?></td></tr>
       </table>
@@ -355,54 +390,74 @@ $skinId = (int)$player['skin'];
         <p style="color:var(--muted); margin:4px 0">No equipment. Buy with <code>/farm buy [tractor/dozer/combina/truck/trailer]</code>.</p>
       <?php else: ?>
         <table>
-          <tr><th>Type</th><th>Uses</th><th>Status</th></tr>
+          <tr><th>Type</th><th>Health</th><th>Status</th></tr>
           <?php foreach ($farmEquipment as $eq):
               $eqInfo = $farmEquipTypes[(int)$eq['model']] ?? ['Unknown', 1];
               [$eqLabel, $eqMax] = $eqInfo;
               $eqBroken = (int)$eq['uses'] >= $eqMax;
+              $eqHealth = (int)round(min(100, (int)$eq['uses'] / $eqMax * 100));
+              if ($eqHealth >= 100)     { $eqTier = 'bad';  $eqWord = 'Broken'; }
+              elseif ($eqHealth >= 70)  { $eqTier = 'warn'; $eqWord = 'Poor'; }
+              elseif ($eqHealth >= 40)  { $eqTier = 'good'; $eqWord = 'Good'; }
+              else                      { $eqTier = 'ok';   $eqWord = 'Excellent'; }
           ?>
           <tr>
             <td><?= ucp_escape($eqLabel) ?> (#<?= (int)$eq['id'] ?>)</td>
-            <td><?= (int)$eq['uses'] ?>/<?= $eqMax ?></td>
-            <td><span class="pill <?= $eqBroken ? 'pill-bad' : 'pill-ok' ?>"><?= $eqBroken ? 'Broken' : 'Working' ?></span></td>
+            <td>
+              <span class="meter"><span class="meter-fill <?= $eqTier ?>" style="width:<?= $eqHealth ?>%"></span></span>
+              <span class="meter-label"><?= $eqHealth ?>%</span>
+            </td>
+            <td><span class="pill pill-<?= $eqTier ?>"><?= $eqWord ?></span></td>
           </tr>
           <?php endforeach; ?>
         </table>
       <?php endif; ?>
     </div>
     <?php endif; ?>
-  </div>
 
-  <div class="card">
-    <h2>🚗 Your cars (<?= count($vehicles) ?>)</h2>
-    <?php if (!$vehicles): ?>
-      <p style="color:var(--muted)">You don't own any personal vehicles.</p>
-    <?php else: ?>
+    <?php if ($myHotel): ?>
+    <div class="card">
+      <h2>🏨 Your hotel</h2>
       <table>
-        <tr><th>ID</th><th>Model</th><th>Plate</th><th>First registration</th><th>Insurance</th><th>Medkit</th><th>Extinguisher</th><th>Inspection</th></tr>
-        <?php foreach ($vehicles as $v):
-            $ins = ucp_doc_status($v['insurance_exp']);
-            $med = ucp_doc_status($v['medkit_exp']);
-            $ext = ucp_doc_status($v['extinguisher_exp']);
-            $itp = ucp_doc_status($v['itp_exp']);
-        ?>
-        <tr>
-          <td>#<?= (int)$v['id'] ?></td>
-          <td>Model #<?= (int)$v['model_id'] ?></td>
-          <td><?= ucp_escape($v['plate'] ?? '—') ?></td>
-          <td><?= $v['first_registration'] ? date('d.m.Y', strtotime($v['first_registration'])) : '—' ?></td>
-          <td><span class="pill <?= $ins['ok'] ? 'pill-ok' : 'pill-bad' ?>"><?= ucp_escape($ins['label']) ?></span></td>
-          <td><span class="pill <?= $med['ok'] ? 'pill-ok' : 'pill-bad' ?>"><?= ucp_escape($med['label']) ?></span></td>
-          <td><span class="pill <?= $ext['ok'] ? 'pill-ok' : 'pill-bad' ?>"><?= ucp_escape($ext['label']) ?></span></td>
-          <td><span class="pill <?= $itp['ok'] ? 'pill-ok' : 'pill-bad' ?>"><?= ucp_escape($itp['label']) ?></span></td>
-        </tr>
-        <?php endforeach; ?>
+        <tr><th>Name</th><td><?= ucp_escape($myHotel['name']) ?> (ID #<?= (int)$myHotel['id'] ?>)</td></tr>
+        <tr><th>Price</th><td>$<?= ucp_money($myHotel['price']) ?></td></tr>
+        <tr><th>Bank</th><td>$<?= ucp_money($myHotel['bank']) ?></td></tr>
+        <tr><th>For sale</th><td><span class="pill <?= $myHotel['is_for_sale'] ? 'pill-bad' : 'pill-ok' ?>"><?= $myHotel['is_for_sale'] ? 'Yes' : 'No' ?></span></td></tr>
+        <tr><th>Rentable</th><td><?= $myHotel['is_rentable'] ? ('Yes — $' . ucp_money($myHotel['rent_price']) . '/PayDay') : 'No' ?></td></tr>
+        <?php if ($myHotel['is_rentable']): ?>
+        <tr><th>Rooms taken</th><td><?= $myHotelRenterCount ?>/<?= (int)($myHotel['capacity'] ?? 5) ?></td></tr>
+        <?php endif; ?>
       </table>
+    </div>
     <?php endif; ?>
-  </div>
+
+    <?php
+    $caravanImg = [
+        1 => 'https://files.prineside.com/gtasa_samp_model_id/white/3174_w.jpg',
+        2 => 'https://files.prineside.com/gtasa_samp_model_id/white/3171_w.jpg',
+        3 => 'https://files.prineside.com/gtasa_samp_model_id/white/3172_w.jpg',
+    ];
+    ?>
+    <?php if ($caravan): ?>
+    <div class="card">
+      <h2>🚐 Your caravan</h2>
+      <table>
+        <tr>
+          <td rowspan="4" class="caravan-box">
+            <img src="<?= ucp_escape($caravanImg[(int)$player['caravan_key']] ?? '') ?>" alt="Caravan type <?= (int)$player['caravan_key'] ?>"
+                 onerror="this.parentElement.innerHTML='(no image)';">
+          </td>
+          <th>Type</th><td><?= ucp_escape($caravan['rName']) ?> (#<?= (int)$player['caravan_key'] ?>)</td>
+        </tr>
+        <tr><th>Size</th><td><?= number_format((float)$caravan['rSize'], 2) ?>m</td></tr>
+        <tr><th>Weight</th><td><?= (int)$caravan['rWeight'] ?>kg</td></tr>
+        <tr><th>Status</th><td><?= $caravan['rCamping'] ? 'Camping' : 'Parked' ?></td></tr>
+      </table>
+    </div>
+    <?php endif; ?>
 </main>
 
-<footer>NostalgiaRP UCP</footer>
+<footer>Nostalgia: Los Santos UCP</footer>
 
 </body>
 </html>

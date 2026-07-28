@@ -162,8 +162,8 @@ $ADMIN_COMMANDS = [
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NostalgiaRP UCP — Admin Commands Reference</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<title>Nostalgia: Los Santos UCP — Admin Commands Reference</title>
+<link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   table.cmdtable td:first-child { white-space: nowrap; }
   table.cmdtable td:last-child { color: var(--muted); }
@@ -171,18 +171,7 @@ $ADMIN_COMMANDS = [
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">🏙️ NostalgiaRP UCP</div>
-  <nav>
-    <a href="dashboard.php">Dashboard</a>
-    <a href="maps.php">Map</a>
-    <a href="howto.php">How To</a>
-    <a href="admin.php">Admin</a>
-    <a href="admincmds.php">Admin Cmds</a>
-    <a href="logout.php">Logout</a>
-  </nav>
-  <div class="userbox"><?= ucp_escape($_SESSION['ucp_username']) ?> · admin lvl <?= $myLevel ?></div>
-</header>
+<?php include __DIR__ . '/includes/header.php'; ?>
 
 <main>
   <h1>Admin command reference (your level: <?= $myLevel ?>)</h1>
@@ -207,7 +196,7 @@ $ADMIN_COMMANDS = [
   <?php endforeach; ?>
 </main>
 
-<footer>NostalgiaRP UCP</footer>
+<footer>Nostalgia: Los Santos UCP</footer>
 
 </body>
 </html>
