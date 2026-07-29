@@ -14,6 +14,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $forSale = isset($_POST['is_for_sale']) ? 1 : 0;
         $rentable = isset($_POST['is_rentable']) ? 1 : 0;
         $rentPrice = max(0, (int)($_POST['rent_price'] ?? 0));
+        $capacity = max(1, (int)($_POST['capacity'] ?? 1));
         $ownerRaw = trim($_POST['owner_id'] ?? '');
 
         if (strcasecmp($ownerRaw, 'none') === 0 || $ownerRaw === '') {
@@ -28,8 +29,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
 
         if (!$flashErr) {
-            $stmt = $mysqli->prepare("UPDATE `hotels` SET `name`=?, `price`=?, `bank`=?, `is_for_sale`=?, `is_rentable`=?, `rent_price`=?, `owner_id`=?, `owner`=?, `owned`=? WHERE `id`=?");
-            $stmt->bind_param('siiiiiisii', $name, $price, $bank, $forSale, $rentable, $rentPrice, $ownerId, $ownerName, $owned, $id);
+            $stmt = $mysqli->prepare("UPDATE `hotels` SET `name`=?, `price`=?, `bank`=?, `is_for_sale`=?, `is_rentable`=?, `rent_price`=?, `capacity`=?, `owner_id`=?, `owner`=?, `owned`=? WHERE `id`=?");
+            $stmt->bind_param('siiiiiiisii', $name, $price, $bank, $forSale, $rentable, $rentPrice, $capacity, $ownerId, $ownerName, $owned, $id);
             $stmt->execute();
             $stmt->close();
             $flash = "Hotel #$id updated.";
@@ -65,7 +66,7 @@ $adminActive = 'hotels';
   <div class="card">
     <div style="overflow-x:auto">
     <table class="edittable">
-      <tr><th>ID</th><th>Name</th><th>Price</th><th>Bank</th><th>Rent price</th><th>Owner (player ID / none)</th><th class="chk">For sale</th><th class="chk">Rentable</th><th></th></tr>
+      <tr><th>ID</th><th>Name</th><th>Price</th><th>Bank</th><th>Rent price</th><th>Max capacity</th><th>Owner (player ID / none)</th><th class="chk">For sale</th><th class="chk">Rentable</th><th></th></tr>
       <?php foreach ($hotels as $h): $fid = 'hotel-' . (int)$h['id']; ?>
       <tr>
           <td>#<?= (int)$h['id'] ?></td>
@@ -73,13 +74,15 @@ $adminActive = 'hotels';
           <td><input form="<?= $fid ?>" type="number" name="price" value="<?= (int)$h['price'] ?>"></td>
           <td><input form="<?= $fid ?>" type="number" name="bank" value="<?= (int)$h['bank'] ?>"></td>
           <td><input form="<?= $fid ?>" type="number" name="rent_price" value="<?= (int)$h['rent_price'] ?>"></td>
+          <td><input form="<?= $fid ?>" type="number" name="capacity" min="1" value="<?= (int)$h['capacity'] ?>"></td>
           <td><input form="<?= $fid ?>" type="text" name="owner_id" value="<?= $h['owned'] ? (int)$h['owner_id'] : 'none' ?>" placeholder="none"></td>
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="is_for_sale" <?= $h['is_for_sale'] ? 'checked' : '' ?>></td>
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="is_rentable" <?= $h['is_rentable'] ? 'checked' : '' ?>></td>
           <td>
-            <form id="<?= $fid ?>" method="post"></form>
-            <input form="<?= $fid ?>" type="hidden" name="id" value="<?= (int)$h['id'] ?>">
-            <button form="<?= $fid ?>" type="submit" class="save-btn">Save</button>
+            <form id="<?= $fid ?>" method="post">
+              <input type="hidden" name="id" value="<?= (int)$h['id'] ?>">
+              <button type="submit" class="save-btn">Save</button>
+            </form>
           </td>
       </tr>
       <?php endforeach; ?>

@@ -9,6 +9,8 @@ $adminPages = [
     'hotels'     => ['🏨 Hotels', 'hotels.php'],
     'shops'      => ['🛒 Shops', 'shops.php'],
     'fastfood'   => ['🍔 Fast-food', 'fastfood.php'],
+    'prices'     => ['💲 Prices', 'prices.php'],
+    'player'     => ['🧍 Player', 'player.php'],
 ];
 ?>
 <nav class="subtabs">

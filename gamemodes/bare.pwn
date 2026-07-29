@@ -79,6 +79,8 @@ forward OnShopsLoaded();
 forward OnShopCreated(playerid, idx);
 forward OnClothStoresLoaded();
 forward OnClothStoreCreated(playerid, idx);
+forward OnAmmoLoaded();
+forward OnAmmoCreated(playerid, idx);
 forward OnFastFoodLoaded();
 forward DrugTransport_Loaded(playerid);
 forward DrugTransport_Unloaded(playerid);
@@ -137,6 +139,15 @@ new g_BurgerPrice      = 55;
 new g_MealPrice        = 60;  // Cluckin Bell (/meal)
 new g_DesertPrice      = 30;  // Desert - donut (/desert)
 
+// Preturi arme la Ammu-Nation (/buyweapon), suprascrise din server_setup
+new g_WeaponColt45Price  = 5000;
+new g_WeaponDeaglePrice  = 7500;
+new g_WeaponShotgunPrice = 50000;
+new g_WeaponMP5Price     = 10000;
+new g_WeaponAK47Price    = 25000;
+new g_WeaponM4Price      = 20000;
+new g_WeaponUziPrice     = 9000;
+
 // ============================================================
 //  PRESEDINTE (alegeri saptamanale prin vot)
 // ============================================================
@@ -161,6 +172,7 @@ enum E_PLAYER_DATA
     pKey1, pKey2, pKey3,
     pDrivingLicA_exp[11], pDrivingLicB_exp[11], pDrivingLicC_exp[11], pDrivingLicD_exp[11],
     pAirLicA_exp[11], pAirLicH_exp[11], // permis avion: A = avioane, H = elicoptere
+    pWeaponLicW_exp[11], // permis arme (W), castigat la /examW
     bool:pLogged, bool:pRegistered, bool:pOnDuty,
     bool:pDiseased, pDiseasePaydays,
     pCaravanKey,
@@ -178,15 +190,24 @@ enum E_PLAYER_DATA
     pWatchModel,               // ceas: index marca (0-3, -1 = fara ceas); persistat in DB
     pPhoneExpire,              // timestamp unix cand se strica telefonul (0 = fara telefon / nesetat); persistat in DB
     pWatchExpire,              // timestamp unix cand se strica ceasul (0 = fara ceas / nesetat); persistat in DB
-    pTired                     // nivel de oboseala (0-100); +2/minut, resetat la 0 cu /sleep; persistat in DB
+    pTired,                    // nivel de oboseala (0-100); +2/minut, resetat la 0 cu /sleep; persistat in DB
+    pWarns,                    // numar de warn-uri primite de la admini (0-MAX_WARNS); persistat in DB
+    bool:pVIP                  // cont VIP (0/1), setat de admin cu /setvip; persistat in DB
 }
 
 // ---- Canistra de benzina (gas can) ----
 #define GASCAN_NONE      -1     // nu are canistra
 #define GASCAN_EMPTY      0     // are canistra, goala
 #define GASCAN_FULL       1     // are canistra, plina
-#define GASCAN_LITERS     20    // capacitatea canistrei (L) = +20 la rezervor (rezervorul e 0-100)
+#define GASCAN_LITERS     20    // capacitatea canistrei (L) pentru un player normal = +20 la rezervor (rezervorul e 0-100)
+#define GASCAN_LITERS_VIP 50    // capacitatea canistrei (L) pentru un VIP
 new PlayerData[MAX_PLAYERS][E_PLAYER_DATA];
+
+// Capacitatea canistrei (in litri) pentru acest player: VIP = 50L, normal = 20L
+stock GasCan_Liters(playerid)
+{
+    return PlayerData[playerid][pVIP] ? GASCAN_LITERS_VIP : GASCAN_LITERS;
+}
 
 // ============================================================
 //  CASINO (Four Dragons, LV) - slots / roulette / dice
@@ -340,7 +361,6 @@ stock Casino_Create()
     CreatePickup(CASINO_PICKUP_MODEL, 1, CASINO_ENT_X, CASINO_ENT_Y, CASINO_ENT_Z, -1);
     Create3DTextLabel("[ Casino ]\n[ Press ENTER or type /enter ]", COLOR_WHITE,
         CASINO_ENT_X, CASINO_ENT_Y, CASINO_ENT_Z - 0.5, 25.0, 0, 0);
-    CreateDynamicMapIcon(CASINO_ENT_X, CASINO_ENT_Y, CASINO_ENT_Z, CASINO_MAPICON_ID, 0, -1, -1, -1, 30000.0, MAPICON_GLOBAL);
 
     // iesire (interior)
     CreatePickup(CASINO_PICKUP_MODEL, 1, CASINO_INT_X, CASINO_INT_Y, CASINO_INT_Z, -1);
@@ -362,6 +382,8 @@ stock Casino_Create()
 
 // ---- Jaf / Robbery: constante + stare globala (helper-ele sunt langa sectiunea business) ----
 #define ROB_POINTS_MAX   10       // maxim (si necesar) rob points pentru a da /rob
+#define MAX_WARNS        3        // la cate warn-uri primeste playerul ban automat
+#define WARN_BAN_SECONDS (2 * 24 * 60 * 60) // durata ban-ului automat la MAX_WARNS: 2 zile
 #define ROB_COST         10       // rob points scazuti la /rob (tuturor din masina)
 #define ROB_RANGE        8.0      // distanta max fata de tinta (shop/fastfood) pentru a incepe jaful
 #define ROB_PAY_BASE     12000    // castig de baza per om
@@ -440,13 +462,13 @@ forward Smuggle_HandleCheckpoint(playerid);  // definit langa sectiunea rob/busi
 #define SKIN_DEFAULT      7        // skin-ul de start
 #define SKIN_PRICE        10000    // pret per skin cumparat din magazin
 #define SKIN_STORE_RANGE  3.0      // raza de folosire a magazinului
-#define SKIN_CELLS        10       // 320 biti (skinuri 0-311)
+#define SKIN_COUNT        312      // skinuri 0-311
 #define SKIN_MAX_WARDROBE 80       // cate skinuri poate lista wardrobe-ul
 
-// bitset skinuri detinute (owned) per player
-new g_SkinOwned[MAX_PLAYERS][SKIN_CELLS];
-#define Skin_Owns(%0,%1)   ((g_SkinOwned[(%0)][(%1)>>5] & (1 << ((%1)&31))) != 0)
-#define Skin_SetOwn(%0,%1) (g_SkinOwned[(%0)][(%1)>>5] |= (1 << ((%1)&31)))
+// cate copii dintr-un skin detine playerul (poate cumpara acelasi skin de mai multe ori)
+new g_SkinQty[MAX_PLAYERS][SKIN_COUNT];
+#define Skin_Owns(%0,%1)   (g_SkinQty[(%0)][(%1)] > 0)
+#define Skin_Qty(%0,%1)    (g_SkinQty[(%0)][(%1)])
 
 // lista skinurilor afisate in wardrobe la deschidere (pentru maparea listitem -> skin id)
 new g_WardrobeSkin[MAX_PLAYERS][SKIN_MAX_WARDROBE];
@@ -488,24 +510,6 @@ new const g_SkinShop[][E_SKINCAT] = {
     {141, "Rich Woman"},
     {178, "Nurse"}
 };
-
-// Locatiile magazinelor de haine (map icon 45 + pickup). Ajusteaza/adauga coordonate dupa nevoie.
-new Float:g_ClothStore[][3] = {
-    {862.3033, -2071.3489, 17.3200},   // Los Santos (langa spawn-ul civil)
-    {-2489.9370, -32.3873, 25.6106},   // San Fierro (verifica pozitia)
-    {2093.9219, 2110.0000, 10.8203}    // Las Venturas (verifica pozitia)
-};
-new g_ClothStorePickup[sizeof(g_ClothStore)];
-
-stock Skins_CreateStores()
-{
-    for(new i = 0; i < sizeof(g_ClothStore); i++)
-    {
-        g_ClothStorePickup[i] = CreatePickup(19133, 1, g_ClothStore[i][0], g_ClothStore[i][1], g_ClothStore[i][2], -1); // 19133 = t-shirt
-        // map icon global 45 = Clothes (Binco)
-        CreateDynamicMapIcon(g_ClothStore[i][0], g_ClothStore[i][1], g_ClothStore[i][2], 45, 0, -1, -1, -1, 30000.0, MAPICON_GLOBAL);
-    }
-}
 
 // Magazine de haine create in-game de admini (persistente in DB, fara mapicon)
 #define MAX_CLOTHSTORES        30
@@ -569,12 +573,9 @@ stock ClothStore_FindByID(id)
     return -1;
 }
 
-// True daca jucatorul e langa un magazin de haine (static sau creat in-game)
+// True daca jucatorul e langa un magazin de haine (creat in-game, din DB)
 stock bool:Skin_AtStore(playerid)
 {
-    for(new i = 0; i < sizeof(g_ClothStore); i++)
-        if(IsPlayerInRangeOfPoint(playerid, SKIN_STORE_RANGE, g_ClothStore[i][0], g_ClothStore[i][1], g_ClothStore[i][2]))
-            return true;
     for(new i = 0; i < g_ClothStoreDynCount; i++)
         if(IsPlayerInRangeOfPoint(playerid, SKIN_STORE_RANGE, ClothStoreData[i][clstX], ClothStoreData[i][clstY], ClothStoreData[i][clstZ]))
             return true;
@@ -614,6 +615,146 @@ stock bool:ClothStore_InteriorToggle(playerid)
         return true;
     }
     return false;
+}
+
+// ============================================================
+//  AMMU-NATION (magazine de arme create in-game de admini, persistente in DB, fara mapicon)
+// ============================================================
+#define MAX_AMMUNATIONS        30
+#define AMMO_STORE_RANGE       3.0
+
+enum E_AMMO_DATA
+{
+    amoID,
+    Float:amoX, Float:amoY, Float:amoZ,
+    amoName[32],
+    amoIntID, amoVwID,
+    Float:amoIntX, Float:amoIntY, Float:amoIntZ
+}
+new AmmoData[MAX_AMMUNATIONS][E_AMMO_DATA];
+new g_AmmoDynPickup[MAX_AMMUNATIONS];
+new Text3D:g_AmmoDynLabel[MAX_AMMUNATIONS];
+new STREAMER_TAG_3D_TEXT_LABEL:g_AmmoIntLabel[MAX_AMMUNATIONS];
+new g_AmmoDynCount = 0;
+
+// Catalogul de arme vandute la Ammu-Nation (preturile vin din server_setup)
+enum E_AMMOSHOP { Amsc_WeaponID, Amsc_Name[16], Amsc_Ammo }
+new g_AmmoShop[][E_AMMOSHOP] = {
+    {WEAPON_COLT45,  "Colt 45",  50},
+    {WEAPON_DEAGLE,  "Deagle",   75},
+    {WEAPON_SHOTGUN, "Shotgun",  25},
+    {WEAPON_MP5,     "MP5",      90},
+    {WEAPON_AK47,    "AK-47",    90},
+    {WEAPON_M4,      "M4",       100},
+    {WEAPON_UZI,     "Uzi",      90}
+};
+
+stock Ammo_PriceFor(weaponid)
+{
+    switch(weaponid)
+    {
+        case WEAPON_COLT45:  return g_WeaponColt45Price;
+        case WEAPON_DEAGLE:  return g_WeaponDeaglePrice;
+        case WEAPON_SHOTGUN: return g_WeaponShotgunPrice;
+        case WEAPON_MP5:     return g_WeaponMP5Price;
+        case WEAPON_AK47:    return g_WeaponAK47Price;
+        case WEAPON_M4:      return g_WeaponM4Price;
+        case WEAPON_UZI:     return g_WeaponUziPrice;
+    }
+    return 0;
+}
+
+// True daca magazinul are interior configurat (amoInteriorId sau coordonate setate)
+stock bool:Ammo_HasInterior(idx)
+{
+    return bool:(AmmoData[idx][amoIntID] != 0 || AmmoData[idx][amoIntX] != 0.0 || AmmoData[idx][amoIntY] != 0.0);
+}
+
+// Creeaza (sau recreeaza) pickup-ul + eticheta 3D pentru un ammunation dinamic (fara mapicon)
+stock Ammo_Create(idx)
+{
+    if(g_AmmoDynPickup[idx] != -1) { DestroyPickup(g_AmmoDynPickup[idx]); g_AmmoDynPickup[idx] = -1; }
+    g_AmmoDynPickup[idx] = CreatePickup(2061, 1, AmmoData[idx][amoX], AmmoData[idx][amoY], AmmoData[idx][amoZ], -1);
+
+    if(g_AmmoDynLabel[idx] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(g_AmmoDynLabel[idx]);
+        g_AmmoDynLabel[idx] = Text3D:INVALID_3DTEXT_ID;
+    }
+    new label[128];
+    if(strlen(AmmoData[idx][amoName]))
+        format(label, sizeof(label), "[ AmmuNation #%d ]\n[ %s ]%s",
+            AmmoData[idx][amoID], AmmoData[idx][amoName],
+            Ammo_HasInterior(idx) ? ("\n[ Press ENTER.. ]") : (""));
+    else
+        format(label, sizeof(label), "[ AmmuNation #%d ]%s",
+            AmmoData[idx][amoID], Ammo_HasInterior(idx) ? ("\n[ Press ENTER.. ]") : (""));
+    g_AmmoDynLabel[idx] = Create3DTextLabel(label, COLOR_WHITE,
+        AmmoData[idx][amoX], AmmoData[idx][amoY], AmmoData[idx][amoZ] - 0.5, 20.0, 0, 0);
+
+    if(IsValidDynamic3DTextLabel(g_AmmoIntLabel[idx]))
+        DestroyDynamic3DTextLabel(g_AmmoIntLabel[idx]);
+
+    if(Ammo_HasInterior(idx))
+        g_AmmoIntLabel[idx] = CreateDynamic3DTextLabel(C_WHITE"[ Use /buyweapon ]\n[ Press ENTER to exit ]", COLOR_WHITE,
+            AmmoData[idx][amoIntX], AmmoData[idx][amoIntY], AmmoData[idx][amoIntZ] - 0.5, 15.0,
+            INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0,
+            AmmoData[idx][amoVwID], AmmoData[idx][amoIntID]);
+}
+
+// Returneaza indexul (in AmmoData) al magazinului cu amoID dat, sau -1
+stock Ammo_FindByID(id)
+{
+    for(new i = 0; i < g_AmmoDynCount; i++)
+        if(AmmoData[i][amoID] == id) return i;
+    return -1;
+}
+
+// Intrare/iesire in interiorul unui ammunation (apasand KEY_SECONDARY_ATTACK/ENTER langa el). vw = amoVwId (implicit propriul ID al magazinului).
+stock bool:Ammo_InteriorToggle(playerid)
+{
+    if(GetPlayerVirtualWorld(playerid) == 0)
+    {
+        for(new i = 0; i < g_AmmoDynCount; i++)
+        {
+            if(!Ammo_HasInterior(i)) continue;
+            if(!IsPlayerInRangeOfPoint(playerid, AMMO_STORE_RANGE, AmmoData[i][amoX], AmmoData[i][amoY], AmmoData[i][amoZ])) continue;
+
+            AC_SetInterior(playerid, AmmoData[i][amoIntID]);
+            AC_SetVW(playerid, AmmoData[i][amoVwID]);
+            AC_SetPos(playerid, AmmoData[i][amoIntX], AmmoData[i][amoIntY], AmmoData[i][amoIntZ]);
+            return true;
+        }
+        return false;
+    }
+
+    for(new i = 0; i < g_AmmoDynCount; i++)
+    {
+        if(!Ammo_HasInterior(i)) continue;
+        if(AmmoData[i][amoVwID] != GetPlayerVirtualWorld(playerid)) continue;
+        if(GetPlayerInterior(playerid) != AmmoData[i][amoIntID]) continue;
+        if(!IsPlayerInRangeOfPoint(playerid, AMMO_STORE_RANGE, AmmoData[i][amoIntX], AmmoData[i][amoIntY], AmmoData[i][amoIntZ])) continue;
+
+        AC_SetInterior(playerid, 0);
+        AC_SetVW(playerid, 0);
+        AC_SetPos(playerid, AmmoData[i][amoX], AmmoData[i][amoY], AmmoData[i][amoZ]);
+        return true;
+    }
+    return false;
+}
+
+// Returneaza indexul (in AmmoData) al ammunation-ului al carui interior (vw+interior) il ocupa playerul, sau -1 (nu poate cumpara arme)
+stock Ammo_PlayerInside(playerid)
+{
+    if(GetPlayerVirtualWorld(playerid) == 0) return -1;
+    for(new i = 0; i < g_AmmoDynCount; i++)
+    {
+        if(!Ammo_HasInterior(i)) continue;
+        if(AmmoData[i][amoVwID] != GetPlayerVirtualWorld(playerid)) continue;
+        if(GetPlayerInterior(playerid) != AmmoData[i][amoIntID]) continue;
+        return i;
+    }
+    return -1;
 }
 
 // Returneaza indexul din catalog dupa skin id, sau -1
@@ -840,6 +981,7 @@ stock BuildDateTimeSqlValueFromUnix(ts, out[], len)
 #define LIC_B    2
 #define LIC_C    3
 #define LIC_D    4
+#define LIC_W    5 // permis arme (Weapon W)
 
 // Returneaza categoria de permis necesara pentru un model de vehicul (LIC_NONE/LIC_A/LIC_B/LIC_C/LIC_D)
 stock GetVehicleLicenseCategory(model)
@@ -854,6 +996,13 @@ stock GetVehicleLicenseCategory(model)
     for(new i = 0; i < sizeof(catC); i++) if(catC[i] == model) return LIC_C;
     for(new i = 0; i < sizeof(catD); i++) if(catD[i] == model) return LIC_D;
     return LIC_B; // restul masinilor
+}
+
+// VIP: orice permis/licenta obtinut(a) la un examen e valabil(a) cu 3 zile in plus fata de un player normal
+#define LICENSE_VIP_BONUS_SECONDS (3 * 86400)
+stock License_VipBonusSeconds(playerid)
+{
+    return PlayerData[playerid][pVIP] ? LICENSE_VIP_BONUS_SECONDS : 0;
 }
 
 // Verifica daca playerul are un permis valid (existent si neexpirat) pentru categoria data
@@ -884,11 +1033,28 @@ stock bool:Player_HasValidLicense(playerid, category)
             if(!strlen(PlayerData[playerid][pDrivingLicD_exp])) return false;
             expTs = DateStrToUnix(PlayerData[playerid][pDrivingLicD_exp]);
         }
+        case LIC_W:
+        {
+            if(!strlen(PlayerData[playerid][pWeaponLicW_exp])) return false;
+            expTs = DateStrToUnix(PlayerData[playerid][pWeaponLicW_exp]);
+        }
         default: return true;
     }
 
     // Valabil pe toata durata zilei calendaristice in care expira - doar ziua urmatoare devine "Expired"
     return ((expTs - (expTs % 86400)) >= (gettime() - (gettime() % 86400)));
+}
+
+// True daca weaponid e o arma ilegala (detinerea ei duce la confiscarea permisului W la /inspectplayer)
+stock bool:Weapon_IsIllegal(weaponid)
+{
+    switch(weaponid)
+    {
+        case WEAPON_GRENADE, WEAPON_TEARGAS, WEAPON_MOLTOV, WEAPON_SAWEDOFF, WEAPON_SHOTGSPA,
+             WEAPON_UZI, WEAPON_TEC9, WEAPON_SNIPER, WEAPON_ROCKETLAUNCHER, WEAPON_HEATSEEKER,
+             WEAPON_FLAMETHROWER, WEAPON_MINIGUN, WEAPON_SATCHEL, WEAPON_BOMB: return true;
+    }
+    return false;
 }
 
 // Returneaza litera categoriei ("A","B","C","D")
@@ -1258,7 +1424,7 @@ stock ExamA_Finish(playerid)
     if(vehid != -1) GetVehicleHealth(vehid, health);
 
     new bool:fullPass = (health >= EXAMA_PASS_HEALTH);
-    new expTs = gettime() + (fullPass ? EXAMA_PASS_DURATION : EXAMA_FAIL_DURATION);
+    new expTs = gettime() + (fullPass ? EXAMA_PASS_DURATION : EXAMA_FAIL_DURATION) + License_VipBonusSeconds(playerid);
 
     new dateStr[11];
     UnixToDateStr(expTs, dateStr, sizeof(dateStr));
@@ -1394,7 +1560,7 @@ stock Exam_Finish(playerid)
     if(vehid != -1) GetVehicleHealth(vehid, health);
 
     new bool:fullPass = (health >= EXAMB_PASS_HEALTH);
-    new expTs = gettime() + (fullPass ? EXAMB_PASS_DURATION : EXAMB_FAIL_DURATION);
+    new expTs = gettime() + (fullPass ? EXAMB_PASS_DURATION : EXAMB_FAIL_DURATION) + License_VipBonusSeconds(playerid);
 
     new dateStr[11];
     UnixToDateStr(expTs, dateStr, sizeof(dateStr));
@@ -1551,7 +1717,7 @@ stock ExamC_Finish(playerid)
     if(trailerid != -1) GetVehicleHealth(trailerid, trailerHealth);
 
     new bool:fullPass = (truckHealth >= EXAMC_PASS_HEALTH && trailerHealth >= EXAMC_PASS_HEALTH);
-    new expTs = gettime() + (fullPass ? EXAMC_PASS_DURATION : EXAMC_FAIL_DURATION);
+    new expTs = gettime() + (fullPass ? EXAMC_PASS_DURATION : EXAMC_FAIL_DURATION) + License_VipBonusSeconds(playerid);
 
     new dateStr[11];
     UnixToDateStr(expTs, dateStr, sizeof(dateStr));
@@ -1732,7 +1898,7 @@ stock ExamD_Finish(playerid)
     if(vehid != -1) GetVehicleHealth(vehid, health);
 
     new bool:fullPass = (health >= EXAMD_PASS_HEALTH);
-    new expTs = gettime() + (fullPass ? EXAMD_PASS_DURATION : EXAMD_FAIL_DURATION);
+    new expTs = gettime() + (fullPass ? EXAMD_PASS_DURATION : EXAMD_FAIL_DURATION) + License_VipBonusSeconds(playerid);
 
     new dateStr[11];
     UnixToDateStr(expTs, dateStr, sizeof(dateStr));
@@ -2419,6 +2585,7 @@ new STREAMER_TAG_OBJECT:g_HuntDeer[HUNT_SPAWN_COUNT]; // obiectul caprioarei (IN
 new g_HuntDeerRespawn[HUNT_SPAWN_COUNT];               // tick cand reapare (0 = activa acum)
 new g_HuntMeat[MAX_PLAYERS];                           // caprioare purtate
 new bool:g_HasSniper[MAX_PLAYERS];                     // a luat sniper prin /hunt
+new bool:g_DutyArmed[MAX_PLAYERS];                     // a primit arme de dotare prin /duty (Politie/RAR)
 
 stock Hunt_CreateDeer(idx)
 {
@@ -2508,8 +2675,179 @@ stock Hunt_Flee(idx)
     g_HuntDeerRespawn[idx] = GetTickCount() + HUNT_RESPAWN_MS;
 }
 
+// ============================================================
+//  EXAMEN ARME (Weapon W) - /examW, zona langa examD
+// ============================================================
+#define EXAMW_RANGE          5.0
+#define EXAMW_PRICE          1000
+new Float:EXAMW_LOC_X   = 1883.8743;
+new Float:EXAMW_LOC_Y   = -1270.3776;
+new Float:EXAMW_LOC_Z   = 13.5469;
+new Float:EXAMW_START_X = 1919.1855;
+new Float:EXAMW_START_Y = -1318.3583;
+new Float:EXAMW_START_Z = 16.2869;
+new Float:EXAMW_START_A = 92.3583;
+
+#define EXAMW_DEAGLE         24
+#define EXAMW_DEAGLE_AMMO    4
+#define EXAMW_MP5            29
+#define EXAMW_MP5_AMMO       2
+#define EXAMW_AK47           30
+#define EXAMW_AK47_AMMO      2
+#define EXAMW_TOTAL_AMMO     (EXAMW_DEAGLE_AMMO + EXAMW_MP5_AMMO + EXAMW_AK47_AMMO)
+
+#define EXAMW_TARGET_COUNT   6
+#define EXAMW_HIT_RADIUS     1.5     // distanta de la impact la tinta pentru a conta ca lovitura
+#define EXAMW_TIME_MS        90000   // 90 secunde
+
+#define EXAMW_PASS_FULL_DAYS 8        // toate cele 6 tinte -> permis 8 zile
+#define EXAMW_PASS_PART_DAYS 3        // 5/6 tinte -> permis 3 zile
+
+#define EXAMW_VW_BASE         5000    // vw = EXAMW_VW_BASE + playerid, fiecare examen in lumea lui (tintele sunt per-player)
+
+// Coordonatele + modelul + rotatia celor 6 tinte (create per-player la inceputul examenului)
+new const Float:g_ExamWTarget[EXAMW_TARGET_COUNT][3] = {
+    {1898.06140, -1325.05896, 15.60000},
+    {1898.06689, -1313.09387, 15.60000},
+    {1898.62207, -1321.98511, 13.38000},
+    {1898.61414, -1320.61267, 13.38000},
+    {1899.70825, -1321.32104, 13.38000},
+    {1898.26733, -1316.50000, 14.40000}
+};
+new const g_ExamWTargetModel[EXAMW_TARGET_COUNT] = {1238, 1238, 1512, 1512, 1512, 19825};
+new const Float:g_ExamWTargetRot[EXAMW_TARGET_COUNT][3] = {
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 0.0},
+    {0.0, 0.0, 90.0},
+    {0.0, 0.0, 90.0},
+    {0.0, 0.0, 90.0},
+    {0.0, 0.0, 90.0}
+};
+
+new bool:g_ExamWState[MAX_PLAYERS];
+new bool:g_ExamWHit[MAX_PLAYERS][EXAMW_TARGET_COUNT];
+new g_ExamWHitCount[MAX_PLAYERS];
+new g_ExamWShotsFired[MAX_PLAYERS];
+new g_ExamWTimer[MAX_PLAYERS] = {-1, ...};
+new STREAMER_TAG_OBJECT:g_ExamWTargetObj[MAX_PLAYERS][EXAMW_TARGET_COUNT];
+
+stock ExamW_KillTimer(playerid)
+{
+    if(g_ExamWTimer[playerid] != -1)
+    {
+        KillTimer(g_ExamWTimer[playerid]);
+        g_ExamWTimer[playerid] = -1;
+    }
+}
+
+// Creeaza cele 6 tinte doar pentru acest player, in lumea lui privata de examen
+stock ExamW_CreateTargets(playerid)
+{
+    for(new i = 0; i < EXAMW_TARGET_COUNT; i++)
+    {
+        g_ExamWTargetObj[playerid][i] = CreateDynamicObject(g_ExamWTargetModel[i],
+            g_ExamWTarget[i][0], g_ExamWTarget[i][1], g_ExamWTarget[i][2],
+            g_ExamWTargetRot[i][0], g_ExamWTargetRot[i][1], g_ExamWTargetRot[i][2],
+            EXAMW_VW_BASE + playerid);
+    }
+}
+
+// Distruge tintele ramase (apelat la sfarsitul examenului, timeout, sau deconectare)
+stock ExamW_DestroyTargets(playerid)
+{
+    for(new i = 0; i < EXAMW_TARGET_COUNT; i++)
+    {
+        if(g_ExamWTargetObj[playerid][i] != STREAMER_TAG_OBJECT:-1)
+        {
+            DestroyDynamicObject(g_ExamWTargetObj[playerid][i]);
+            g_ExamWTargetObj[playerid][i] = STREAMER_TAG_OBJECT:-1;
+        }
+    }
+}
+
+stock ExamW_Finish(playerid)
+{
+    ExamW_KillTimer(playerid);
+    g_ExamWState[playerid] = false;
+    ExamW_DestroyTargets(playerid);
+    AC_SetVW(playerid, 0);
+
+    // scoate armele date la examen, pastreaza restul armelor legitime
+    g_ACWeaponAllowed[playerid][EXAMW_DEAGLE] = false; g_ACWeaponAmmo[playerid][EXAMW_DEAGLE] = 0;
+    g_ACWeaponAllowed[playerid][EXAMW_MP5]    = false; g_ACWeaponAmmo[playerid][EXAMW_MP5]    = 0;
+    g_ACWeaponAllowed[playerid][EXAMW_AK47]   = false; g_ACWeaponAmmo[playerid][EXAMW_AK47]   = 0;
+    AC_RestoreWeapons(playerid);
+
+    new hits = g_ExamWHitCount[playerid];
+    new expDays = 0;
+    if(hits >= EXAMW_TARGET_COUNT) expDays = EXAMW_PASS_FULL_DAYS;
+    else if(hits == EXAMW_TARGET_COUNT - 1) expDays = EXAMW_PASS_PART_DAYS;
+
+    if(expDays > 0)
+    {
+        new expTs = gettime() + expDays * 86400 + License_VipBonusSeconds(playerid);
+        new dateStr[11];
+        UnixToDateStr(expTs, dateStr, sizeof(dateStr));
+        format(PlayerData[playerid][pWeaponLicW_exp], 11, "%s", dateStr);
+        UpdatePlayer(playerid, pWeaponLicW_exp);
+
+        new m[176];
+        format(m, sizeof(m), C_SUCCESS"Congratulations, "C_WHITE"you hit "C_INFO"%d/%d"C_WHITE" targets. Your Weapon W license is valid until "C_INFO"%s"C_WHITE".",
+            hits, EXAMW_TARGET_COUNT, dateStr);
+        SendClientMessage(playerid, COLOR_SUCCESS, m);
+    }
+    else
+    {
+        new m[144];
+        format(m, sizeof(m), C_ERROR"Error: "C_WHITE"You only hit "C_INFO"%d/%d"C_WHITE" targets - not enough for a Weapon W license. Try again.",
+            hits, EXAMW_TARGET_COUNT);
+        SendClientMessage(playerid, COLOR_ERROR, m);
+    }
+    return 1;
+}
+
+forward ExamW_Timeout(playerid);
+public ExamW_Timeout(playerid)
+{
+    if(!IsPlayerConnected(playerid)) return 0;
+    if(!g_ExamWState[playerid]) return 1;
+    ExamW_Finish(playerid);
+    return 1;
+}
+
 public OnPlayerWeaponShot(playerid, weaponid, hittype, hitid, Float:fX, Float:fY, Float:fZ)
 {
+    if(g_ExamWState[playerid] && (weaponid == EXAMW_DEAGLE || weaponid == EXAMW_MP5 || weaponid == EXAMW_AK47))
+    {
+        g_ExamWShotsFired[playerid]++;
+
+        new best = -1;
+        new Float:bestDist = 999999.0;
+        for(new i = 0; i < EXAMW_TARGET_COUNT; i++)
+        {
+            if(g_ExamWHit[playerid][i]) continue;
+            new Float:d = VectorSize(fX - g_ExamWTarget[i][0], fY - g_ExamWTarget[i][1], fZ - g_ExamWTarget[i][2]);
+            if(d < bestDist) { bestDist = d; best = i; }
+        }
+        if(best != -1 && bestDist <= EXAMW_HIT_RADIUS)
+        {
+            g_ExamWHit[playerid][best] = true;
+            g_ExamWHitCount[playerid]++;
+
+            if(g_ExamWTargetObj[playerid][best] != STREAMER_TAG_OBJECT:-1)
+            {
+                DestroyDynamicObject(g_ExamWTargetObj[playerid][best]);
+                g_ExamWTargetObj[playerid][best] = STREAMER_TAG_OBJECT:-1;
+            }
+
+            new hm[128];
+            format(hm, sizeof(hm), C_SUCCESS"[Exam W] "C_WHITE"Target hit! "C_INFO"%d/%d"C_WHITE".", g_ExamWHitCount[playerid], EXAMW_TARGET_COUNT);
+            SendClientMessage(playerid, COLOR_SUCCESS, hm);
+        }
+
+        if(g_ExamWState[playerid] && (g_ExamWHitCount[playerid] >= EXAMW_TARGET_COUNT || g_ExamWShotsFired[playerid] >= EXAMW_TOTAL_AMMO))
+            ExamW_Finish(playerid);
+    }
     if(weaponid == HUNT_SNIPER)
     {
         new Float:px, Float:py, Float:pz;
@@ -2567,8 +2905,8 @@ public OnPlayerWeaponShot(playerid, weaponid, hittype, hitid, Float:fX, Float:fY
 #define FARM_DOZER           486
 #define FARM_TRUCK           403     // camion (pt livrarea recoltei)
 #define FARM_TRAILER         450     // remorca
-#define FARM_TRUCK_PRICE     12500
-#define FARM_TRAILER_PRICE   10000
+#define FARM_TRUCK_PRICE     12500   // default, suprascris din payday_setup.farm_truck_price
+#define FARM_TRAILER_PRICE   10000   // default, suprascris din payday_setup.farm_trailer_price
 
 // Uzura utilajelor: numarul de utilizari dupa care un utilaj individual se defecteaza (uses >= max)
 #define FARM_TRACTOR_MAX_USES  16
@@ -2617,6 +2955,7 @@ new g_FarmWorkTimer[MAX_PLAYERS]; // timer id (-1 = niciunul)
 
 // Preturi utilaje (suprascrise din payday_setup)
 new g_FarmTractorPrice = 10000, g_FarmDozerPrice = 15000, g_FarmCombinePrice = 20000;
+new g_FarmTruckPrice = FARM_TRUCK_PRICE, g_FarmTrailerPrice = FARM_TRAILER_PRICE;
 
 new g_FarmPickup[MAX_FARMS];           // pickup-ul terenului (-1 = niciunul)
 new Text3D:g_FarmLabel[MAX_FARMS];     // eticheta 3D a terenului
@@ -2742,7 +3081,7 @@ stock Farm_SellRefundPct(model, uses)
     if(remaining < 0) remaining = 0;
     return FARM_SELL_REFUND_MIN_PCT + (FARM_SELL_REFUND_MAX_PCT - FARM_SELL_REFUND_MIN_PCT) * remaining / maxu;
 }
-// Consuma o utilizare pe cel mai putin uzat utilaj functional al fermei de acest model (distribuie uzura egal in flota)
+// Consuma o utilizare pe cel mai uzat utilaj functional al fermei de acest model (epuizeaza utilajele pe rand, nu egal)
 // Returneaza true daca utilajul folosit tocmai s-a stricat (uses a ajuns la maxim)
 stock bool:Farm_ConsumeUse(fidx, model)
 {
@@ -2752,7 +3091,7 @@ stock bool:Farm_ConsumeUse(fidx, model)
     {
         if(FarmEquipData[i][feFarmId] != FarmData[fidx][fmID] || FarmEquipData[i][feModel] != model) continue;
         if(FarmEquipData[i][feUses] >= maxu) continue; // deja stricat
-        if(best == -1 || FarmEquipData[i][feUses] < FarmEquipData[best][feUses]) best = i;
+        if(best == -1 || FarmEquipData[i][feUses] > FarmEquipData[best][feUses]) best = i;
     }
     if(best == -1) return false;
 
@@ -3009,8 +3348,8 @@ stock Farm_VehPrice(model)
     if(model == FARM_TRACTOR) return g_FarmTractorPrice;
     if(model == FARM_DOZER)   return g_FarmDozerPrice;
     if(model == FARM_COMBINE) return g_FarmCombinePrice;
-    if(model == FARM_TRUCK)   return FARM_TRUCK_PRICE;
-    if(model == FARM_TRAILER) return FARM_TRAILER_PRICE;
+    if(model == FARM_TRUCK)   return g_FarmTruckPrice;
+    if(model == FARM_TRAILER) return g_FarmTrailerPrice;
     return 0;
 }
 stock Farm_ModelFromType(const type[])
@@ -3270,6 +3609,14 @@ stock GPS_FindByName(const name[])
 #define DIALOG_HOWTO         9016
 #define DIALOG_CSLIST        9033
 #define DIALOG_HOUSELIST     9034
+#define DIALOG_HOWTO_LIST    9035
+#define DIALOG_CLSLIST       9036
+#define DIALOG_HOTELLIST     9037
+#define DIALOG_SHOPLIST      9038
+#define DIALOG_AMMOSHOP      9039
+#define DIALOG_INTERIORLIST  9040
+#define DIALOG_INTERIORLIST_CATEGORY 9041
+#define DIALOG_AMMOLIST      9042
 
 // ============================================================
 //  TELEFONIE
@@ -3281,7 +3628,7 @@ stock GPS_FindByName(const name[])
 #define PHONE_SHOP_BIZ_CUT_PCT     5
 #define PHONE_CARRIER_BIZ_ID       22        // business care primeste 50% din SMS-uri, apeluri si SIM-uri
 #define PHONE_CARRIER_CUT_PCT      50
-#define PHONE_SIM_PRICE            250       // $ per SIM (50% -> PHONE_CARRIER_BIZ_ID)
+new g_PhoneSimPrice = 250; // default, suprascris din payday_setup.phone_sim_price ($ per SIM, 50% -> PHONE_CARRIER_BIZ_ID)
 #define PHONE_SMS_PRICE            5         // $ per SMS
 #define PHONE_CALL_PRICE           3         // $ per interval de taxare
 #define PHONE_CALL_CHARGE_INTERVAL 10        // secunde intre taxari pe durata apelului
@@ -3291,9 +3638,9 @@ stock GPS_FindByName(const name[])
 new const g_PhoneModels[PHONE_MODEL_COUNT][24] = {
     "Samsung A70", "Samsung S27", "iPhone 16", "iPhone 17", "Motorola 67"
 };
-new const g_PhonePrices[PHONE_MODEL_COUNT] = {
+new g_PhonePrices[PHONE_MODEL_COUNT] = {
     1000, 2000, 1600, 2200, 500
-};
+}; // defaults, suprascrise din payday_setup.phone_price_1..5
 
 // Stare apel (doar in memorie). Un apel are un initiator (caller) si un destinatar (callee).
 new g_PhoneCallPartner[MAX_PLAYERS];      // celalalt participant; INVALID_PLAYER_ID = niciun apel
@@ -3315,9 +3662,9 @@ new g_PhonePendingSim[MAX_PLAYERS];
 new const g_WatchModels[WATCH_MODEL_COUNT][24] = {
     "Xiaomi Watch", "Galaxy Watch", "Apple Watch", "Rolex Watch"
 };
-new const g_WatchPrices[WATCH_MODEL_COUNT] = {
+new g_WatchPrices[WATCH_MODEL_COUNT] = {
     300, 700, 1000, 10000
-};
+}; // defaults, suprascrise din payday_setup.watch_price_1..4
 
 // Tari cunoscute + offset GMT (ore). Server-ul e considerat GMT+0 (gettime()/getdate() = timpul de referinta).
 new const g_WatchCountry[][24] = {
@@ -3491,7 +3838,7 @@ stock FlightExam_Finish(playerid)
     if(vehid != -1) GetVehicleHealth(vehid, health);
     new bool:fullPass = (health >= FLIGHT_PASS_HEALTH);
     new passDur = isH ? FLIGHT_PASS_DURATION_H : FLIGHT_PASS_DURATION_P;
-    new expTs = gettime() + (fullPass ? passDur : FLIGHT_FAIL_DURATION);
+    new expTs = gettime() + (fullPass ? passDur : FLIGHT_FAIL_DURATION) + License_VipBonusSeconds(playerid);
 
     new dateStr[11];
     UnixToDateStr(expTs, dateStr, sizeof(dateStr));
@@ -3910,7 +4257,6 @@ new Float:CITYHALL_INT_Y = 0.0;
 new Float:CITYHALL_INT_Z = 0.0;
 #define CITYHALL_INTERIOR     3
 #define CITYHALL_PICKUP_MODEL 1276
-#define CITYHALL_MAPICON      35
 #define CITYHALL_RANGE        2.5
 
 // Creeaza pickup-urile, map icon-ul si etichetele 3D pentru Cityhall (exterior + interior)
@@ -3918,8 +4264,6 @@ stock Cityhall_Create()
 {
     CreateDynamicPickup(CITYHALL_PICKUP_MODEL, 1, CITYHALL_EXT_X, CITYHALL_EXT_Y, CITYHALL_EXT_Z, 0, 0);
     CreateDynamicPickup(CITYHALL_PICKUP_MODEL, 1, CITYHALL_INT_X, CITYHALL_INT_Y, CITYHALL_INT_Z, 0, CITYHALL_INTERIOR);
-
-    CreateDynamicMapIcon(CITYHALL_EXT_X, CITYHALL_EXT_Y, CITYHALL_EXT_Z, CITYHALL_MAPICON, 0, 0, 0, -1, 99999.0, MAPICON_GLOBAL);
 
     CreateDynamic3DTextLabel("[ Cityhall ]\n[ Press enter to enter ]", COLOR_WHITE,
         CITYHALL_EXT_X, CITYHALL_EXT_Y, CITYHALL_EXT_Z-0.5, 20.0,
@@ -3953,6 +4297,8 @@ stock Cityhall_Toggle(playerid)
 stock Factions_SetPlayerIcons(playerid)
 {
     SetPlayerMapIcon(playerid, 0, 846.4172, -2059.0867, 12.8672, 35, 0, MAPICON_GLOBAL); // SPAWN POINT
+    SetPlayerMapIcon(playerid, 1, CASINO_ENT_X, CASINO_ENT_Y, CASINO_ENT_Z, CASINO_MAPICON_ID, 0, MAPICON_GLOBAL); // CASINO
+    SetPlayerMapIcon(playerid, 2, g_HuntStartX, g_HuntStartY, g_HuntStartZ, HUNT_MAPICON_ID, 0, MAPICON_GLOBAL); // HUNTING
 }
 
 // Actualizeaza icon-urile pentru toti playerii logati
@@ -4258,6 +4604,12 @@ enum E_GTA_INTERIOR_DATA
 new GTAInteriorData[MAX_GTA_INTERIORS][E_GTA_INTERIOR_DATA];
 new g_GTAInteriorCount = 0;
 
+// Per-player /interiorlist browsing state: selected category + displayed-row -> GTAInteriorData index map
+new g_IntListCat[MAX_PLAYERS][40][24];
+new g_IntListCatCount[MAX_PLAYERS];
+new g_IntListMap[MAX_PLAYERS][MAX_GTA_INTERIORS];
+new g_IntListMapCount[MAX_PLAYERS];
+
 // Returneaza indexul (in GTAInteriorData) al interiorului cu gtaIntID == id, sau -1
 stock GTAInteriors_FindByID(id)
 {
@@ -4520,7 +4872,7 @@ stock Animals_FindByID(id)
 #define TREE_HARVEST_SPOILED_MAX 3
 
 // ---- Unealta Shovel (/shop), necesara pentru /tree plant ----
-#define SHOVEL_PRICE           2500
+new g_ShovelPrice = 2500; // default, suprascris din payday_setup.shovel_price
 #define SHOVEL_BIZ_CUT_PCT     10  // % din pret care merge in banca business-ului (acelasi ca la frigider/pat/copac: APPLIANCE_BIZ_ID)
 
 enum E_TREE_DATA
@@ -4557,7 +4909,7 @@ stock Trees_SavePlant(idx)
 {
     new q[220];
     mysql_format(g_SQL, q, sizeof(q),
-        "UPDATE `trees` SET `treePlantedDate`=%d, `treeFruitStatus`=%d, `treeLocX`=%.4f, `treeLocY`=%.4f, `treeLocZ`=%.4f WHERE `treeId`=%d",
+        "UPDATE `houses_tree` SET `treePlantedDate`=%d, `treeFruitStatus`=%d, `treeLocX`=%.4f, `treeLocY`=%.4f, `treeLocZ`=%.4f WHERE `treeId`=%d",
         TreeData[idx][treePlantedDate], TreeData[idx][treeFruitStatus],
         TreeData[idx][treeLocX], TreeData[idx][treeLocY], TreeData[idx][treeLocZ], TreeData[idx][treeID]);
     mysql_tquery(g_SQL, q, "", "", 0);
@@ -4567,7 +4919,7 @@ stock Trees_SavePlant(idx)
 stock Trees_SaveStatus(idx)
 {
     new q[128];
-    mysql_format(g_SQL, q, sizeof(q), "UPDATE `trees` SET `treeFruitStatus`=%d WHERE `treeId`=%d",
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `houses_tree` SET `treeFruitStatus`=%d WHERE `treeId`=%d",
         TreeData[idx][treeFruitStatus], TreeData[idx][treeID]);
     mysql_tquery(g_SQL, q, "", "", 0);
 }
@@ -4587,7 +4939,7 @@ stock Trees_DestroyAll()
 stock Trees_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `treeId`,`treeHouseId`,`treeType`,`treeName`,`treePlantedDate`,`treeFruitStatus`,`treeLocX`,`treeLocY`,`treeLocZ` FROM `trees` ORDER BY `treeId` ASC",
+        "SELECT `treeId`,`treeHouseId`,`treeType`,`treeName`,`treePlantedDate`,`treeFruitStatus`,`treeLocX`,`treeLocY`,`treeLocZ` FROM `houses_tree` ORDER BY `treeId` ASC",
         "OnTreesLoaded");
 }
 
@@ -4915,6 +5267,17 @@ stock Rob_Payout(leaderid)
 
         // premiu / om: 12000 + 2000*nr participanti + random(5000)
         new pay = ROB_PAY_BASE + ROB_PAY_PERCREW * g_RobCrewCount[leaderid] + random(ROB_PAY_RAND);
+
+        if(PlayerData[pid][pVIP])
+        {
+            new vipBonus = pay / 10; // VIP: +10% la /rob
+            pay += vipBonus;
+
+            new vbm[128];
+            format(vbm, sizeof(vbm), "{FFD700}[VIP] "C_WHITE"You received a "C_SUCCESS"+$%s"C_WHITE" bonus for being VIP.", MoneyStr(vipBonus));
+            SendClientMessage(pid, COLOR_WHITE, vbm);
+        }
+
         PlayerData[pid][pMoney] += pay;
         GivePlayerMoney(pid, pay);
 
@@ -4956,7 +5319,7 @@ stock Businesses_RecreatePickup(idx)
         DestroyPickup(g_BusinessPickup[idx]);
         g_BusinessPickup[idx] = -1;
     }
-    g_BusinessPickup[idx] = CreatePickup(1274, 1,
+    g_BusinessPickup[idx] = CreatePickup(BusinessData[idx][bOwned] ? 19523 : 1274, 1,
         BusinessData[idx][bLocX], BusinessData[idx][bLocY], BusinessData[idx][bLocZ], -1);
 
     if(g_BusinessLabel[idx] != Text3D:INVALID_3DTEXT_ID)
@@ -5660,7 +6023,7 @@ stock bool:Player_NearHospital(playerid)
 
 enum E_SHOP_DATA
 {
-    shopID,
+    shopID, shopName[32],
     Float:shopX, Float:shopY, Float:shopZ
 }
 new ShopData[MAX_SHOPS][E_SHOP_DATA];
@@ -5679,8 +6042,11 @@ stock Shop_Create(idx)
         Delete3DTextLabel(g_ShopLabel[idx]);
         g_ShopLabel[idx] = Text3D:INVALID_3DTEXT_ID;
     }
-    new label[64];
-    format(label, sizeof(label), "[ Shop #%d ]\n[ Use /shop ]", ShopData[idx][shopID]);
+    new label[112];
+    if(strlen(ShopData[idx][shopName]))
+        format(label, sizeof(label), "[ Shop #%d ]\n[ %s ]\n[ Use /shop ]", ShopData[idx][shopID], ShopData[idx][shopName]);
+    else
+        format(label, sizeof(label), "[ Shop #%d ]\n[ Use /shop ]", ShopData[idx][shopID]);
     g_ShopLabel[idx] = Create3DTextLabel(label, COLOR_WHITE, ShopData[idx][shopX], ShopData[idx][shopY], ShopData[idx][shopZ] - 0.5, 40.0, 0, 0);
 }
 
@@ -5813,7 +6179,7 @@ stock Pizza_CreateWorld()
         format(label, sizeof(label), "[ %s %d ]\n[ Type /pizza ]\n[ Price: %s$ ]\n[ Heal: +%d ]",
             g_PizzaName[i], g_PizzaFFID[i], MoneyStr(g_PizzaPrice), floatround(PIZZA_HEAL_AMOUNT));
 
-        g_PizzaPickup[i] = CreatePickup(PIZZA_PICKUP_MODEL, 1, PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2], -1);
+        g_PizzaPickup[i] = CreatePickup(PIZZA_PICKUP_MODEL, 1, PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2] - 1.0, -1);
         g_PizzaLabel[i]  = Create3DTextLabel(label, COLOR_WHITE, PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2] - 0.5, 25.0, 0, 0);
     }
 }
@@ -5847,7 +6213,7 @@ stock Burger_CreateWorld()
         format(label, sizeof(label), "[ %s %d ]\n[ Type /burger ]\n[ Price: %s$ ]\n[ Heal: +%d ]",
             g_BurgerName[i], g_BurgerFFID[i], MoneyStr(g_BurgerPrice), floatround(BURGER_HEAL_AMOUNT));
 
-        g_BurgerPickup[i] = CreatePickup(BURGER_PICKUP_MODEL, 1, BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2], -1);
+        g_BurgerPickup[i] = CreatePickup(BURGER_PICKUP_MODEL, 1, BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2] - 1.0, -1);
         g_BurgerLabel[i]  = Create3DTextLabel(label, COLOR_WHITE, BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2] - 0.5, 25.0, 0, 0);
     }
 }
@@ -5894,7 +6260,7 @@ stock Meal_CreateWorld()
         format(label, sizeof(label), "[ %s %d ]\n[ Type /meal ]\n[ Price: %s$ ]\n[ Heal: +%d ]",
             g_MealName[i], g_MealFFID[i], MoneyStr(g_MealPrice), floatround(MEAL_HEAL_AMOUNT));
 
-        g_MealPickup[i] = CreatePickup(MEAL_PICKUP_MODEL, 1, MealLocations[i][0], MealLocations[i][1], MealLocations[i][2], -1);
+        g_MealPickup[i] = CreatePickup(MEAL_PICKUP_MODEL, 1, MealLocations[i][0], MealLocations[i][1], MealLocations[i][2] - 1.0, -1);
         g_MealLabel[i]  = Create3DTextLabel(label, COLOR_WHITE, MealLocations[i][0], MealLocations[i][1], MealLocations[i][2] - 0.5, 25.0, 0, 0);
         // scos temporar (map icon de cluckin bell dezactivat)
         //g_MealIcon[i]   = CreateDynamicMapIcon(MealLocations[i][0], MealLocations[i][1], MealLocations[i][2], MEAL_MAPICON_ID, 0, -1, -1, -1, 30000.0, MAPICON_GLOBAL);
@@ -5929,7 +6295,7 @@ stock Desert_CreateWorld()
         format(label, sizeof(label), "[ %s %d ]\n[ Type /desert ]\n[ Price: %s$ ]\n[ Heal: +%d ]",
             g_DesertName[i], g_DesertFFID[i], MoneyStr(g_DesertPrice), floatround(DESERT_HEAL_AMOUNT));
 
-        g_DesertPickup[i] = CreatePickup(DESERT_PICKUP_MODEL, 1, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2], -1);
+        g_DesertPickup[i] = CreatePickup(DESERT_PICKUP_MODEL, 1, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2] - 1.0, -1);
         g_DesertLabel[i]  = Create3DTextLabel(label, COLOR_WHITE, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2] - 0.5, 25.0, 0, 0);
     }
 }
@@ -9672,7 +10038,7 @@ new g_VehicleToPVIndex[MAX_VEHICLES];
 enum E_PVEHICLE_DATA
 {
     pvID, pvOwnerId, pvModelID,
-    pvColor1, pvColor2, pvPlate[16], pvPrice,
+    pvColor1, pvColor2, pvPlate[24], pvPrice, // pvPlate: max 10 chars typed + optional VIP color code prefix ({FF2700} = 8 chars)
     Float:pvLocX, Float:pvLocY, Float:pvLocZ, Float:pvRotation,
     pvInsuranceExp, pvMedkitExp, pvExtinguisherExp, pvITPExp,
     bool:pvLocked,
@@ -10546,6 +10912,7 @@ stock DB_CreateTables()
         `driving_lic_d_exp` DATE DEFAULT NULL,\
         `airplane_lic_a_exp` DATE DEFAULT NULL,\
         `airplane_lic_h_exp` DATE DEFAULT NULL,\
+        `weapon_lic_w_exp` DATE DEFAULT NULL,\
         `diseased`         TINYINT DEFAULT 0,\
         `disease_paydays`  INT     DEFAULT 0,\
         `caravan_key`      INT     DEFAULT 0,\
@@ -10565,10 +10932,15 @@ stock DB_CreateTables()
         `gas_can`          INT     DEFAULT -1,\
         `watch_model`      INT     DEFAULT -1,\
         `phone_expire`     INT     DEFAULT 0,\
-        `watch_expire`     INT     DEFAULT 0,\
-        `tired`            INT     DEFAULT 0\
+        `watch_expire`     DATE    DEFAULT NULL,\
+        `tired`            INT     DEFAULT 0,\
+        `warns`            INT     DEFAULT 0,\
+        `vip`              TINYINT DEFAULT 0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `warns` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `weapon_lic_w_exp` DATE DEFAULT NULL", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `vip` TINYINT DEFAULT 0", "", "", 0);
     print("[DB] Tabel `players` verificat/creat.");
 
     mysql_tquery(g_SQL,
@@ -10578,7 +10950,19 @@ stock DB_CreateTables()
         `ip`        VARCHAR(46)  NOT NULL DEFAULT '',\
         `reason`    VARCHAR(128) NOT NULL DEFAULT '',\
         `banned_by` VARCHAR(24)  NOT NULL DEFAULT '',\
-        `ban_date`  INT DEFAULT 0\
+        `ban_date`  INT DEFAULT 0,\
+        `expire`    INT DEFAULT 0\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `bans` ADD COLUMN IF NOT EXISTS `expire` INT DEFAULT 0", "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `warns` (\
+        `warnID`    INT AUTO_INCREMENT PRIMARY KEY,\
+        `username`  VARCHAR(24)  NOT NULL DEFAULT '',\
+        `reason`    VARCHAR(128) NOT NULL DEFAULT '',\
+        `warned_by` VARCHAR(24)  NOT NULL DEFAULT '',\
+        `warn_date` INT DEFAULT 0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
 
@@ -10641,39 +11025,23 @@ stock DB_CreateTables()
         `id`        INT AUTO_INCREMENT PRIMARY KEY,\
         `player_id` INT NOT NULL,\
         `skin_id`   INT NOT NULL,\
+        `qty`       INT NOT NULL DEFAULT 1,\
         UNIQUE KEY `uniq_player_skin` (`player_id`,`skin_id`)\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `player_skins` ADD COLUMN IF NOT EXISTS `qty` INT NOT NULL DEFAULT 1", "", "", 0);
 
+    // Key-value settings table (replaces the old one-column-per-setting `payday_setup`): one row per setting,
+    // ssSetare is the English setting name (matches the old column names), ssValue is stored as text and
+    // parsed with strval()/floatstr() as needed. See Server_Setup_Seed() for the full list of defaults.
     mysql_tquery(g_SQL,
-        "CREATE TABLE IF NOT EXISTS `payday_setup` (\
-        `id`                INT PRIMARY KEY DEFAULT 1,\
-        `min_salary`        INT   DEFAULT 5000,\
-        `tax`               INT   DEFAULT 10,\
-        `cass`              INT   DEFAULT 10,\
-        `bank_interest`     FLOAT DEFAULT 0.10,\
-        `insurance_price`   INT   DEFAULT 500,\
-        `medkit_price`      INT   DEFAULT 500,\
-        `extinguisher_price` INT  DEFAULT 500,\
-        `gascan_price`      INT   DEFAULT 500,\
-        `itp_price`         INT   DEFAULT 750,\
-        `plate_price`       INT   DEFAULT 250,\
-        `rent_bike_price`   INT   DEFAULT 15,\
-        `exam_a_price`      INT   DEFAULT 200,\
-        `exam_b_price`      INT   DEFAULT 300,\
-        `exam_c_price`      INT   DEFAULT 500,\
-        `exam_d_price`      INT   DEFAULT 400,\
-        `exam_p_price`      INT   DEFAULT 1000,\
-        `exam_h_price`      INT   DEFAULT 1000,\
-        `pizza_price`       INT   DEFAULT 50,\
-        `burger_price`      INT   DEFAULT 55,\
-        `meal_price`        INT   DEFAULT 60,\
-        `desert_price`      INT   DEFAULT 30,\
-        `farm_tractor_price` INT  DEFAULT 10000,\
-        `farm_dozer_price`  INT   DEFAULT 15000,\
-        `farm_combine_price` INT  DEFAULT 20000\
+        "CREATE TABLE IF NOT EXISTS `server_setup` (\
+        `ssId`     INT AUTO_INCREMENT PRIMARY KEY,\
+        `ssSetare` VARCHAR(40) UNIQUE,\
+        `ssValue`  VARCHAR(24)\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    Server_Setup_Seed();
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `houses` (\
@@ -10760,7 +11128,7 @@ stock DB_CreateTables()
         "", "", 0);
 
     mysql_tquery(g_SQL,
-        "CREATE TABLE IF NOT EXISTS `animals` (\
+        "CREATE TABLE IF NOT EXISTS `houses_animals` (\
         `aID`          INT AUTO_INCREMENT PRIMARY KEY,\
         `aType`        INT DEFAULT 0,\
         `aPlayerID`    INT DEFAULT 0,\
@@ -10771,7 +11139,7 @@ stock DB_CreateTables()
         "", "", 0);
 
     mysql_tquery(g_SQL,
-        "CREATE TABLE IF NOT EXISTS `trees` (\
+        "CREATE TABLE IF NOT EXISTS `houses_tree` (\
         `treeId`          INT AUTO_INCREMENT PRIMARY KEY,\
         `treeHouseId`     INT DEFAULT 0,\
         `treeType`        INT DEFAULT 0,\
@@ -10825,7 +11193,7 @@ stock DB_CreateTables()
         `model_id`         INT NOT NULL,\
         `color1`           INT DEFAULT 1,\
         `color2`           INT DEFAULT 1,\
-        `plate`            VARCHAR(16) UNIQUE DEFAULT NULL,\
+        `plate`            VARCHAR(24) UNIQUE DEFAULT NULL,\
         `price`            INT DEFAULT 0,\
         `loc_x`            FLOAT DEFAULT 0.0,\
         `loc_y`            FLOAT DEFAULT 0.0,\
@@ -10954,6 +11322,8 @@ stock DB_CreateTables()
         `shopLocZ` FLOAT DEFAULT 0.0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `shopName` VARCHAR(32) NOT NULL DEFAULT '24/7 Shop'", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `shops` SET `shopName`='24/7 Shop' WHERE `shopName`=''", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `clothstores` (\
@@ -10969,6 +11339,21 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsInteriorX` FLOAT DEFAULT 0.0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsInteriorY` FLOAT DEFAULT 0.0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `clothstores` ADD COLUMN IF NOT EXISTS `clsInteriorZ` FLOAT DEFAULT 0.0", "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `ammunations` (\
+        `amoID`   INT AUTO_INCREMENT PRIMARY KEY,\
+        `amoLocX` FLOAT DEFAULT 0.0,\
+        `amoLocY` FLOAT DEFAULT 0.0,\
+        `amoLocZ` FLOAT DEFAULT 0.0\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `ammunations` ADD COLUMN IF NOT EXISTS `amoName` VARCHAR(32) NOT NULL DEFAULT ''", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `ammunations` ADD COLUMN IF NOT EXISTS `amoInteriorId` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `ammunations` ADD COLUMN IF NOT EXISTS `amoVwId` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `ammunations` ADD COLUMN IF NOT EXISTS `amoInteriorX` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `ammunations` ADD COLUMN IF NOT EXISTS `amoInteriorY` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `ammunations` ADD COLUMN IF NOT EXISTS `amoInteriorZ` FLOAT DEFAULT 0.0", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `fastfood` (\
@@ -11102,23 +11487,26 @@ public OnFactionsLoaded()
 public OnPlayerSkinsLoaded(playerid)
 {
     if(!IsPlayerConnected(playerid)) return 1;
-    for(new sc = 0; sc < SKIN_CELLS; sc++) g_SkinOwned[playerid][sc] = 0;
+    for(new s = 0; s < SKIN_COUNT; s++) g_SkinQty[playerid][s] = 0;
 
     new rows = cache_num_rows();
     for(new i = 0; i < rows; i++)
     {
-        new sid;
+        new sid, qty;
         cache_get_value_name_int(i, "skin_id", sid);
-        if(sid >= 0 && sid <= 311) Skin_SetOwn(playerid, sid);
+        cache_get_value_name_int(i, "qty", qty);
+        if(sid >= 0 && sid <= 311) g_SkinQty[playerid][sid] = qty;
     }
 
     // garanteaza ca detine skin-ul purtat curent (il insereaza in DB daca lipsea)
     new cur = PlayerData[playerid][pSkin];
     if(cur >= 0 && cur <= 311 && !Skin_Owns(playerid, cur))
     {
-        Skin_SetOwn(playerid, cur);
-        new q[96];
-        mysql_format(g_SQL, q, sizeof(q), "INSERT IGNORE INTO `player_skins` (`player_id`,`skin_id`) VALUES (%d,%d)", PlayerData[playerid][pID], cur);
+        g_SkinQty[playerid][cur] = 1;
+        new q[128];
+        mysql_format(g_SQL, q, sizeof(q),
+            "INSERT INTO `player_skins` (`player_id`,`skin_id`,`qty`) VALUES (%d,%d,1) ON DUPLICATE KEY UPDATE `qty`=`qty`+1",
+            PlayerData[playerid][pID], cur);
         mysql_tquery(g_SQL, q, "", "", 0);
     }
     return 1;
@@ -11179,6 +11567,7 @@ public OnHousesLoaded()
         cache_get_value_name_int  (i, "rent_price",    HouseData[idx][hRentPrice]);
         cache_get_value_name_int  (i, "renter_id",     HouseData[idx][hRenterId]);
         g_HousePickup[idx] = -1;
+        g_HouseLabel[idx]  = Text3D:INVALID_3DTEXT_ID;
         Houses_RecreatePickup(idx);
         g_HouseCount++;
     }
@@ -11252,6 +11641,7 @@ public OnHotelsLoaded()
         if(HotelData[idx][htlCapacity] <= 0) HotelData[idx][htlCapacity] = HOTEL_DEFAULT_CAPACITY;
         HotelData[idx][htlRenterCount] = 0;
         g_HotelPickup[idx] = -1;
+        g_HotelLabel[idx]  = Text3D:INVALID_3DTEXT_ID;
         Hotels_RecreatePickup(idx);
         g_HotelCount++;
     }
@@ -11283,7 +11673,7 @@ public OnHotelRenterCountsLoaded()
 stock Animals_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `aID`,`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName` FROM `animals` ORDER BY `aID` ASC",
+        "SELECT `aID`,`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName` FROM `houses_animals` ORDER BY `aID` ASC",
         "OnAnimalsLoaded");
 }
 
@@ -11382,7 +11772,7 @@ public OnATMCreated(playerid, idx)
 stock Shops_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `shopID`,`shopLocX`,`shopLocY`,`shopLocZ` FROM `shops` ORDER BY `shopID` ASC",
+        "SELECT `shopID`,`shopLocX`,`shopLocY`,`shopLocZ`,`shopName` FROM `shops` ORDER BY `shopID` ASC",
         "OnShopsLoaded");
 }
 
@@ -11397,6 +11787,7 @@ public OnShopsLoaded()
         cache_get_value_name_float(i, "shopLocX", ShopData[idx][shopX]);
         cache_get_value_name_float(i, "shopLocY", ShopData[idx][shopY]);
         cache_get_value_name_float(i, "shopLocZ", ShopData[idx][shopZ]);
+        cache_get_value_name      (i, "shopName", ShopData[idx][shopName], 32);
         g_ShopPickup[idx] = -1;
         g_ShopLabel[idx]  = Text3D:INVALID_3DTEXT_ID;
         Shop_Create(idx);
@@ -11465,6 +11856,57 @@ public OnClothStoreCreated(playerid, idx)
     if(!IsPlayerConnected(playerid)) return 0;
     new m[96];
     format(m, sizeof(m), C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" created.", ClothStoreData[idx][clstID]);
+    SendClientMessage(playerid, COLOR_SUCCESS, m);
+    return 1;
+}
+
+stock Ammo_Load()
+{
+    mysql_tquery(g_SQL,
+        "SELECT `amoID`,`amoLocX`,`amoLocY`,`amoLocZ`,`amoName`,`amoInteriorId`,`amoVwId`,`amoInteriorX`,`amoInteriorY`,`amoInteriorZ` FROM `ammunations` ORDER BY `amoID` ASC",
+        "OnAmmoLoaded");
+}
+
+public OnAmmoLoaded()
+{
+    new rows = cache_num_rows();
+    g_AmmoDynCount = 0;
+    for(new i = 0; i < rows && g_AmmoDynCount < MAX_AMMUNATIONS; i++)
+    {
+        new idx = g_AmmoDynCount;
+        cache_get_value_name_int  (i, "amoID",          AmmoData[idx][amoID]);
+        cache_get_value_name_float(i, "amoLocX",        AmmoData[idx][amoX]);
+        cache_get_value_name_float(i, "amoLocY",        AmmoData[idx][amoY]);
+        cache_get_value_name_float(i, "amoLocZ",        AmmoData[idx][amoZ]);
+        cache_get_value_name      (i, "amoName",        AmmoData[idx][amoName], 32);
+        cache_get_value_name_int  (i, "amoInteriorId",  AmmoData[idx][amoIntID]);
+        cache_get_value_name_int  (i, "amoVwId",        AmmoData[idx][amoVwID]);
+        cache_get_value_name_float(i, "amoInteriorX",   AmmoData[idx][amoIntX]);
+        cache_get_value_name_float(i, "amoInteriorY",   AmmoData[idx][amoIntY]);
+        cache_get_value_name_float(i, "amoInteriorZ",   AmmoData[idx][amoIntZ]);
+        g_AmmoDynPickup[idx] = -1;
+        g_AmmoDynLabel[idx]  = Text3D:INVALID_3DTEXT_ID;
+        Ammo_Create(idx);
+        g_AmmoDynCount++;
+    }
+    printf("[Load] Ammu-Nation-uri (create in-game): %d", g_AmmoDynCount);
+    return 1;
+}
+
+public OnAmmoCreated(playerid, idx)
+{
+    AmmoData[idx][amoID]   = cache_insert_id();
+    AmmoData[idx][amoVwID] = AmmoData[idx][amoID]; // implicit: vw = propriul ID al magazinului
+    Ammo_Create(idx);
+
+    new q[96];
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `ammunations` SET `amoVwId`=%d WHERE `amoID`=%d",
+        AmmoData[idx][amoVwID], AmmoData[idx][amoID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+
+    if(!IsPlayerConnected(playerid)) return 0;
+    new m[96];
+    format(m, sizeof(m), C_SUCCESS"[ADM] Success: "C_WHITE"Ammu-Nation "C_INFO"#%d"C_WHITE" created.", AmmoData[idx][amoID]);
     SendClientMessage(playerid, COLOR_SUCCESS, m);
     return 1;
 }
@@ -11636,13 +12078,13 @@ Locations_ApplyToCommands()
     idx = Locations_FindByName("examD");           if(idx != -1) { EXAMD_LOC_X = LocationData[idx][locX]; EXAMD_LOC_Y = LocationData[idx][locY]; EXAMD_LOC_Z = LocationData[idx][locZ]; }
     idx = Locations_FindByID(5);                   if(idx != -1) { EXAMP_LOC_X = LocationData[idx][locX]; EXAMP_LOC_Y = LocationData[idx][locY]; EXAMP_LOC_Z = LocationData[idx][locZ]; } // examP (avion)
     idx = Locations_FindByID(6);                   if(idx != -1) { EXAMH_LOC_X = LocationData[idx][locX]; EXAMH_LOC_Y = LocationData[idx][locY]; EXAMH_LOC_Z = LocationData[idx][locZ]; } // examH (elicopter)
+    idx = Locations_FindByID(40);                  if(idx != -1) { EXAMW_LOC_X = LocationData[idx][locX]; EXAMW_LOC_Y = LocationData[idx][locY]; EXAMW_LOC_Z = LocationData[idx][locZ]; } // examW (arme)
     idx = Locations_FindByName("lspd_barrier");    if(idx != -1) { LSPD_BARRIER_X = LocationData[idx][locX]; LSPD_BARRIER_Y = LocationData[idx][locY]; LSPD_BARRIER_Z = LocationData[idx][locZ]; }
 
-    // Hunting (locID 24): coordonate + pickup sniper + map icon
+    // Hunting (locID 24): coordonate + pickup sniper (map icon-ul e local, vezi Factions_SetPlayerIcons)
     idx = Locations_FindByID(24);                  if(idx != -1) { g_HuntStartX = LocationData[idx][locX]; g_HuntStartY = LocationData[idx][locY]; g_HuntStartZ = LocationData[idx][locZ]; }
     CreatePickup(HUNT_PICKUP_MODEL, 1, g_HuntStartX, g_HuntStartY, g_HuntStartZ, -1);
     Create3DTextLabel("[ Hunting ]\nUse /hunt", COLOR_WHITE, g_HuntStartX, g_HuntStartY, g_HuntStartZ + 0.4, 20.0, 0, 0);
-    CreateDynamicMapIcon(g_HuntStartX, g_HuntStartY, g_HuntStartZ, HUNT_MAPICON_ID, 0, 0, 0, -1, 99999.0, MAPICON_GLOBAL);
 
     // SGR Unload (locID 31): coordonate + pickup + eticheta 3D
     idx = Locations_FindByID(31);
@@ -11706,27 +12148,47 @@ Cmd_CreateMarkers()
     new examLabel[64];
     CreatePickup(1210, 1, EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category A Exam ]\n[ /examA ]\n[ Price: $%s ]", MoneyStr(g_ExamAPrice));
-    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z - 0.5, 30.0, 0, 0);
+    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMA_LOC_X, EXAMA_LOC_Y, EXAMA_LOC_Z - 0.5, 25.0, 0, 0);
 
     CreatePickup(1210, 1, EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category B Exam ]\n[ /examB ]\n[ Price: $%s ]", MoneyStr(g_ExamBPrice));
-    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z - 0.5, 30.0, 0, 0);
+    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMB_LOC_X, EXAMB_LOC_Y, EXAMB_LOC_Z - 0.5, 25.0, 0, 0);
 
     CreatePickup(1210, 1, EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category C Exam ]\n[ /examC ]\n[ Price: $%s ]", MoneyStr(g_ExamCPrice));
-    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z - 0.5, 30.0, 0, 0);
+    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMC_LOC_X, EXAMC_LOC_Y, EXAMC_LOC_Z - 0.5, 25.0, 0, 0);
 
     CreatePickup(1210, 1, EXAMD_LOC_X, EXAMD_LOC_Y, EXAMD_LOC_Z, -1);
     format(examLabel, sizeof(examLabel), "[ Category D Exam ]\n[ /examD ]\n[ Price: $%s ]", MoneyStr(g_ExamDPrice));
-    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMD_LOC_X, EXAMD_LOC_Y, EXAMD_LOC_Z - 0.5, 30.0, 0, 0);
+    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMD_LOC_X, EXAMD_LOC_Y, EXAMD_LOC_Z - 0.5, 25.0, 0, 0);
+
+    CreatePickup(1210, 1, EXAMW_LOC_X, EXAMW_LOC_Y, EXAMW_LOC_Z, -1);
+    format(examLabel, sizeof(examLabel), "[ Weapons Exam ]\n[ /examW ]\n[ Price: $%s ]", MoneyStr(EXAMW_PRICE));
+    Create3DTextLabel(examLabel, COLOR_WHITE, EXAMW_LOC_X, EXAMW_LOC_Y, EXAMW_LOC_Z - 0.5, 25.0, 0, 0);
+
+    // Tintele /examW (1238/1238/1512/1512/1512/19825) nu mai sunt create global aici -
+    // sunt create per-player, doar pentru durata examenului (vezi ExamW_CreateTargets).
+    CreateDynamicObject(19121, 1917.39551, -1324.59167, 13.18454,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(19121, 1917.49048, -1313.43347, 13.18454,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(2035, 1918.93030, -1313.94202, 15.30000,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(2035, 1919.12012, -1317.59680, 15.30000,   0.00000, 0.00000, 20.00000);
+    CreateDynamicObject(355, 1918.92261, -1323.79553, 15.34420,   90.00000, 0.00000, 70.00000);
+    CreateDynamicObject(355, 1918.03723, -1314.99841, 15.32400,   92.00000, 0.00000, -70.00000);
+    CreateDynamicObject(346, 1918.02966, -1321.26611, 15.26420,   90.00000, 0.00000, 0.00000);
+    CreateDynamicObject(346, 1919.09961, -1317.33472, 15.26420,   90.00000, 0.00000, 90.00000);
+    CreateDynamicObject(346, 1918.79150, -1320.37463, 15.26420,   90.00000, 0.00000, 160.00000);
+    CreateDynamicObject(3014, 1920.44238, -1323.71838, 15.15070,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(3014, 1920.44312, -1323.12439, 15.15070,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(3014, 1920.39270, -1322.50586, 15.15070,   0.00000, 0.00000, 0.00000);
+    CreateDynamicObject(3014, 1920.52258, -1324.30835, 15.15070,   0.00000, 0.00000, 0.00000);
 
     // Examene de zbor (examH elicopter, examP avion)
     CreatePickup(1239, 1, EXAMH_LOC_X, EXAMH_LOC_Y, EXAMH_LOC_Z, -1);
     Create3DTextLabel("[ Helicopter Exam ]\n[ /examH ]\n[ Price: $1.000 ]", COLOR_WHITE,
-        EXAMH_LOC_X, EXAMH_LOC_Y, EXAMH_LOC_Z + 0.5, 20.0, 0, 0);
+        EXAMH_LOC_X, EXAMH_LOC_Y, EXAMH_LOC_Z + 0.5, 15.0, 0, 0);
     CreatePickup(1239, 1, EXAMP_LOC_X, EXAMP_LOC_Y, EXAMP_LOC_Z, -1);
     Create3DTextLabel("[ Airplane Exam ]\n[ /examP ]\n[ Price: $1.000 ]", COLOR_WHITE,
-        EXAMP_LOC_X, EXAMP_LOC_Y, EXAMP_LOC_Z + 0.5, 20.0, 0, 0);
+        EXAMP_LOC_X, EXAMP_LOC_Y, EXAMP_LOC_Z + 0.5, 15.0, 0, 0);
 
     // Garaj (point 20) -> interior. Interior/VW din globalele suprascrise din DB.
     CreateDynamic3DTextLabel("[ Police Garage ]\n[ Press ENTER (F) to go inside ]", COLOR_WHITE,
@@ -11933,7 +12395,7 @@ public OnVehiclesPersonalLoaded()
         cache_get_value_name_int  (i, "model_id",          PVehicleData[idx][pvModelID]);
         cache_get_value_name_int  (i, "color1",            PVehicleData[idx][pvColor1]);
         cache_get_value_name_int  (i, "color2",            PVehicleData[idx][pvColor2]);
-        cache_get_value_name      (i, "plate",             PVehicleData[idx][pvPlate], 16);
+        cache_get_value_name      (i, "plate",             PVehicleData[idx][pvPlate], 24);
         cache_get_value_name_int  (i, "price",             PVehicleData[idx][pvPrice]);
         cache_get_value_name_float(i, "loc_x",             PVehicleData[idx][pvLocX]);
         cache_get_value_name_float(i, "loc_y",              PVehicleData[idx][pvLocY]);
@@ -11972,7 +12434,7 @@ public OnVehiclePersonalCreated(playerid, idx)
 {
     if(!IsPlayerConnected(playerid)) return 0;
     PVehicleData[idx][pvID] = cache_insert_id();
-    format(PVehicleData[idx][pvPlate], 16, "LV %d", PVehicleData[idx][pvID]);
+    format(PVehicleData[idx][pvPlate], 24, "LV %d", PVehicleData[idx][pvID]);
     PVehicles_Create(idx);
 
     new q[128];
@@ -12013,7 +12475,7 @@ public OnVehiclePlateChecked(playerid, pvidx, plate[])
     UpdatePlayer(playerid, pMoney);
     Faction_AddBank(FACTION_RAR, g_PlatePrice);
 
-    format(PVehicleData[pvidx][pvPlate], 16, "%s", plate);
+    format(PVehicleData[pvidx][pvPlate], 24, "%s", plate);
 
     new vehid = g_PVehicleVehicle[pvidx];
     if(vehid != -1) SetVehicleNumberPlate(vehid, PVehicleData[pvidx][pvPlate]);
@@ -12074,42 +12536,91 @@ public OnVehicleITPCheck(playerid, pvidx, vehid)
 // ============================================================
 //  PAYDAY
 // ============================================================
+// Seeds `server_setup` with every known setting (INSERT IGNORE - only fills in rows missing on a fresh install,
+// never overwrites a value an admin already changed via /settax /setcass or the UCP Prices page).
+stock Server_Setup_Seed()
+{
+    new const defaults[][2][32] = {
+        {"min_salary", "5000"}, {"tax", "10"}, {"cass", "10"}, {"bank_interest", "0.10"},
+        {"insurance_price", "500"}, {"medkit_price", "500"}, {"extinguisher_price", "500"}, {"gascan_price", "500"},
+        {"itp_price", "750"}, {"plate_price", "250"}, {"rent_bike_price", "15"},
+        {"exam_a_price", "200"}, {"exam_b_price", "300"}, {"exam_c_price", "500"}, {"exam_d_price", "400"},
+        {"exam_p_price", "1000"}, {"exam_h_price", "1000"},
+        {"pizza_price", "50"}, {"burger_price", "55"}, {"meal_price", "60"}, {"desert_price", "30"},
+        {"farm_tractor_price", "10000"}, {"farm_dozer_price", "15000"}, {"farm_combine_price", "20000"},
+        {"farm_truck_price", "12500"}, {"farm_trailer_price", "10000"},
+        {"shovel_price", "2500"}, {"phone_sim_price", "250"},
+        {"phone_price_1", "1000"}, {"phone_price_2", "2000"}, {"phone_price_3", "1600"}, {"phone_price_4", "2200"}, {"phone_price_5", "500"},
+        {"watch_price_1", "300"}, {"watch_price_2", "700"}, {"watch_price_3", "1000"}, {"watch_price_4", "10000"},
+        {"weapon_colt45_price", "5000"}, {"weapon_deagle_price", "7500"}, {"weapon_shotgun_price", "50000"},
+        {"weapon_mp5_price", "10000"}, {"weapon_ak47_price", "25000"}, {"weapon_m4_price", "20000"}, {"weapon_uzi_price", "9000"}
+    };
+    for(new i = 0; i < sizeof(defaults); i++)
+    {
+        new q[128];
+        mysql_format(g_SQL, q, sizeof(q), "INSERT IGNORE INTO `server_setup` (`ssSetare`,`ssValue`) VALUES ('%e','%e')", defaults[i][0], defaults[i][1]);
+        mysql_tquery(g_SQL, q, "", "", 0);
+    }
+}
+
 stock PayDay_Load()
 {
-    mysql_tquery(g_SQL,
-        "SELECT `min_salary`,`tax`,`cass`,`bank_interest`,`insurance_price`,`medkit_price`,`extinguisher_price`,`gascan_price`,`itp_price`,`plate_price`,`rent_bike_price`,`exam_a_price`,`exam_b_price`,`exam_c_price`,`exam_d_price`,`exam_p_price`,`exam_h_price`,`pizza_price`,`burger_price`,`meal_price`,`desert_price`,`farm_tractor_price`,`farm_dozer_price`,`farm_combine_price` \
-         FROM `payday_setup` WHERE `id`=1 LIMIT 1",
-        "OnPayDayLoaded");
+    mysql_tquery(g_SQL, "SELECT `ssSetare`,`ssValue` FROM `server_setup`", "OnPayDayLoaded");
 }
 
 public OnPayDayLoaded()
 {
-    if(cache_num_rows() > 0)
+    new rows = cache_num_rows();
+    for(new i = 0; i < rows; i++)
     {
-        cache_get_value_name_int  (0, "min_salary",        g_PDMinSalary);
-        cache_get_value_name_int  (0, "tax",                g_PDTax);
-        cache_get_value_name_int  (0, "cass",               g_PDCASS);
-        cache_get_value_name_float(0, "bank_interest",      g_PDInterest);
-        cache_get_value_name_int  (0, "insurance_price",    g_InsurancePrice);
-        cache_get_value_name_int  (0, "medkit_price",       g_MedkitPrice);
-        cache_get_value_name_int  (0, "extinguisher_price", g_ExtinguisherPrice);
-        cache_get_value_name_int  (0, "gascan_price",       g_GasCanPrice);
-        cache_get_value_name_int  (0, "itp_price",          g_ITPPrice);
-        cache_get_value_name_int  (0, "plate_price",        g_PlatePrice);
-        cache_get_value_name_int  (0, "rent_bike_price",    g_RentBikePrice);
-        cache_get_value_name_int  (0, "exam_a_price",       g_ExamAPrice);
-        cache_get_value_name_int  (0, "exam_b_price",       g_ExamBPrice);
-        cache_get_value_name_int  (0, "exam_c_price",       g_ExamCPrice);
-        cache_get_value_name_int  (0, "exam_d_price",       g_ExamDPrice);
-        cache_get_value_name_int  (0, "exam_p_price",       g_ExamPPrice);
-        cache_get_value_name_int  (0, "exam_h_price",       g_ExamHPrice);
-        cache_get_value_name_int  (0, "pizza_price",        g_PizzaPrice);
-        cache_get_value_name_int  (0, "burger_price",       g_BurgerPrice);
-        cache_get_value_name_int  (0, "meal_price",         g_MealPrice);
-        cache_get_value_name_int  (0, "desert_price",       g_DesertPrice);
-        cache_get_value_name_int  (0, "farm_tractor_price", g_FarmTractorPrice);
-        cache_get_value_name_int  (0, "farm_dozer_price",   g_FarmDozerPrice);
-        cache_get_value_name_int  (0, "farm_combine_price", g_FarmCombinePrice);
+        new key[40], val[24];
+        cache_get_value_name(i, "ssSetare", key, sizeof(key));
+        cache_get_value_name(i, "ssValue", val, sizeof(val));
+
+        if(!strcmp(key, "min_salary"))               g_PDMinSalary = strval(val);
+        else if(!strcmp(key, "tax"))                g_PDTax = strval(val);
+        else if(!strcmp(key, "cass"))                g_PDCASS = strval(val);
+        else if(!strcmp(key, "bank_interest"))       g_PDInterest = floatstr(val);
+        else if(!strcmp(key, "insurance_price"))     g_InsurancePrice = strval(val);
+        else if(!strcmp(key, "medkit_price"))        g_MedkitPrice = strval(val);
+        else if(!strcmp(key, "extinguisher_price"))  g_ExtinguisherPrice = strval(val);
+        else if(!strcmp(key, "gascan_price"))        g_GasCanPrice = strval(val);
+        else if(!strcmp(key, "itp_price"))           g_ITPPrice = strval(val);
+        else if(!strcmp(key, "plate_price"))         g_PlatePrice = strval(val);
+        else if(!strcmp(key, "rent_bike_price"))     g_RentBikePrice = strval(val);
+        else if(!strcmp(key, "exam_a_price"))        g_ExamAPrice = strval(val);
+        else if(!strcmp(key, "exam_b_price"))        g_ExamBPrice = strval(val);
+        else if(!strcmp(key, "exam_c_price"))        g_ExamCPrice = strval(val);
+        else if(!strcmp(key, "exam_d_price"))        g_ExamDPrice = strval(val);
+        else if(!strcmp(key, "exam_p_price"))        g_ExamPPrice = strval(val);
+        else if(!strcmp(key, "exam_h_price"))        g_ExamHPrice = strval(val);
+        else if(!strcmp(key, "pizza_price"))         g_PizzaPrice = strval(val);
+        else if(!strcmp(key, "burger_price"))        g_BurgerPrice = strval(val);
+        else if(!strcmp(key, "meal_price"))          g_MealPrice = strval(val);
+        else if(!strcmp(key, "desert_price"))        g_DesertPrice = strval(val);
+        else if(!strcmp(key, "farm_tractor_price"))  g_FarmTractorPrice = strval(val);
+        else if(!strcmp(key, "farm_dozer_price"))    g_FarmDozerPrice = strval(val);
+        else if(!strcmp(key, "farm_combine_price"))  g_FarmCombinePrice = strval(val);
+        else if(!strcmp(key, "farm_truck_price"))    g_FarmTruckPrice = strval(val);
+        else if(!strcmp(key, "farm_trailer_price"))  g_FarmTrailerPrice = strval(val);
+        else if(!strcmp(key, "shovel_price"))        g_ShovelPrice = strval(val);
+        else if(!strcmp(key, "phone_sim_price"))     g_PhoneSimPrice = strval(val);
+        else if(!strcmp(key, "phone_price_1"))       g_PhonePrices[0] = strval(val);
+        else if(!strcmp(key, "phone_price_2"))       g_PhonePrices[1] = strval(val);
+        else if(!strcmp(key, "phone_price_3"))       g_PhonePrices[2] = strval(val);
+        else if(!strcmp(key, "phone_price_4"))       g_PhonePrices[3] = strval(val);
+        else if(!strcmp(key, "phone_price_5"))       g_PhonePrices[4] = strval(val);
+        else if(!strcmp(key, "watch_price_1"))       g_WatchPrices[0] = strval(val);
+        else if(!strcmp(key, "watch_price_2"))       g_WatchPrices[1] = strval(val);
+        else if(!strcmp(key, "watch_price_3"))       g_WatchPrices[2] = strval(val);
+        else if(!strcmp(key, "watch_price_4"))       g_WatchPrices[3] = strval(val);
+        else if(!strcmp(key, "weapon_colt45_price"))  g_WeaponColt45Price = strval(val);
+        else if(!strcmp(key, "weapon_deagle_price"))  g_WeaponDeaglePrice = strval(val);
+        else if(!strcmp(key, "weapon_shotgun_price")) g_WeaponShotgunPrice = strval(val);
+        else if(!strcmp(key, "weapon_mp5_price"))     g_WeaponMP5Price = strval(val);
+        else if(!strcmp(key, "weapon_ak47_price"))    g_WeaponAK47Price = strval(val);
+        else if(!strcmp(key, "weapon_m4_price"))      g_WeaponM4Price = strval(val);
+        else if(!strcmp(key, "weapon_uzi_price"))     g_WeaponUziPrice = strval(val);
     }
     printf("[Setari] PayDay: Salar minim $%d | Impozit %d%% | CASS %d%% | Dobanda %.2f%%",
         g_PDMinSalary, g_PDTax, g_PDCASS, g_PDInterest);
@@ -12183,9 +12694,15 @@ stock PayDay_Apply()
 
         new level    = PlayerData[i][pLevel];
         new salary   = g_PDMinSalary + 1000 * level + random(1500);
+        new vipSalaryBonus = 0;
+        if(PlayerData[i][pVIP]) { vipSalaryBonus = salary / 10; salary += vipSalaryBonus; } // VIP: +10% salariu
+
+        new Float:interestRate = g_PDInterest;
+        if(PlayerData[i][pVIP]) interestRate += 0.01; // VIP: +0.01% dobanda
+
         new tax      = salary * g_PDTax  / 100;
         new cass     = salary * g_PDCASS / 100;
-        new interest = floatround(float(PlayerData[i][pBank]) * g_PDInterest / 100.0);
+        new interest = floatround(float(PlayerData[i][pBank]) * interestRate / 100.0);
         if(interest > BANK_INTEREST_CAP) interest = BANK_INTEREST_CAP; // plafon dobanda
 
         // --- Taxe pe proprietati ---
@@ -12228,8 +12745,20 @@ stock PayDay_Apply()
 
         PlayerData[i][pMoney] += net;
         PlayerData[i][pBank]  += interest;
-        PlayerData[i][pRP]    += 1;
-        if(PlayerData[i][pRobPoints] < ROB_POINTS_MAX) PlayerData[i][pRobPoints]++; // +1 rob point / payday
+
+        // VIP: 2RP in loc de 1 la ora para (00, 02, 04...), sau 2 rob points in loc de 1 la ora impara
+        new rpGain = 1, robGain = 1;
+        if(PlayerData[i][pVIP])
+        {
+            if(hour % 2 == 0) rpGain = 2;
+            else robGain = 2;
+        }
+        PlayerData[i][pRP] += rpGain;
+        if(PlayerData[i][pRobPoints] < ROB_POINTS_MAX)
+        {
+            PlayerData[i][pRobPoints] += robGain;
+            if(PlayerData[i][pRobPoints] > ROB_POINTS_MAX) PlayerData[i][pRobPoints] = ROB_POINTS_MAX;
+        }
 
         GivePlayerMoney(i, net);
         GameTextForPlayer(i, "~g~Payday", 3000, 1);
@@ -12239,8 +12768,12 @@ stock PayDay_Apply()
         new msg[256];
         SendClientMessage(i, COLOR_INFO, C_INFO"========== PayDay ==========");
 
-        format(msg, sizeof(msg), C_SUCCESS"Income: "C_WHITE"Salary: "C_SUCCESS"$%s"C_WHITE", Interest: "C_SUCCESS"$%s",
-            MoneyStr(salary), MoneyStr(interest));
+        if(vipSalaryBonus > 0)
+            format(msg, sizeof(msg), C_SUCCESS"Income: "C_WHITE"Salary: "C_SUCCESS"$%s"C_WHITE" (+$%s from VIP)"C_WHITE", Interest: "C_SUCCESS"$%s",
+                MoneyStr(salary), MoneyStr(vipSalaryBonus), MoneyStr(interest));
+        else
+            format(msg, sizeof(msg), C_SUCCESS"Income: "C_WHITE"Salary: "C_SUCCESS"$%s"C_WHITE", Interest: "C_SUCCESS"$%s",
+                MoneyStr(salary), MoneyStr(interest));
         SendClientMessage(i, COLOR_WHITE, msg);
 
         // Impartit in 2 linii: linia intreaga depasea limita de afisare a SendClientMessage (~144 car. cu codurile de culoare)
@@ -12775,6 +13308,7 @@ public OnPlayerRegister(playerid)
     PlayerData[playerid][pDrivingLicD_exp][0] = EOS;
     PlayerData[playerid][pAirLicA_exp][0] = EOS;
     PlayerData[playerid][pAirLicH_exp][0] = EOS;
+    PlayerData[playerid][pWeaponLicW_exp][0] = EOS;
     PlayerData[playerid][pDiseased]       = false;
     PlayerData[playerid][pDiseasePaydays] = 0;
     PlayerData[playerid][pCaravanKey]      = 0;
@@ -12812,8 +13346,8 @@ stock Player_Login(playerid, const pass[])
     new query[720];
     mysql_format(g_SQL, query, sizeof(query),
         "SELECT `id`,`password`,`email`,`level`,`money`,`bank`,`rp`,`admin_level`,`faction`,`faction_rank`,`faction_join`,`house`,`hotel`,`business`,`rent_house`,`rent_hotel`,`spawn_type`,`key1`,`key2`,`key3`,\
-         `driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`airplane_lic_a_exp`,`airplane_lic_h_exp`,`diseased`,`disease_paydays`,\
-         `caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds`,`rob_points`,`skin`,`gas_can`,`watch_model`,`phone_expire`,`watch_expire`,`tired` \
+         `driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`airplane_lic_a_exp`,`airplane_lic_h_exp`,`weapon_lic_w_exp`,`diseased`,`disease_paydays`,\
+         `caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds`,`rob_points`,`skin`,`gas_can`,`watch_model`,`phone_expire`,`watch_expire`,`tired`,`warns`,`vip` \
          FROM `players` WHERE `id`=%d LIMIT 1",
         PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, query, "OnPlayerLogin", "i", playerid);
@@ -12853,6 +13387,7 @@ public OnPlayerLogin(playerid)
     cache_get_value_name(0, "driving_lic_d_exp", PlayerData[playerid][pDrivingLicD_exp], 11);
     cache_get_value_name(0, "airplane_lic_a_exp", PlayerData[playerid][pAirLicA_exp], 11);
     cache_get_value_name(0, "airplane_lic_h_exp", PlayerData[playerid][pAirLicH_exp], 11);
+    cache_get_value_name(0, "weapon_lic_w_exp", PlayerData[playerid][pWeaponLicW_exp], 11);
 
     new diseasedInt;
     cache_get_value_name_int(0, "diseased",        diseasedInt);
@@ -12898,16 +13433,23 @@ public OnPlayerLogin(playerid)
     if(PlayerData[playerid][pWatchModel] < -1 || PlayerData[playerid][pWatchModel] >= WATCH_MODEL_COUNT)
         PlayerData[playerid][pWatchModel] = -1;
     cache_get_value_name_int(0, "phone_expire", PlayerData[playerid][pPhoneExpire]);
-    cache_get_value_name_int(0, "watch_expire", PlayerData[playerid][pWatchExpire]);
+    new watchExpBuf[11];
+    cache_get_value_name(0, "watch_expire", watchExpBuf, sizeof(watchExpBuf));
+    PlayerData[playerid][pWatchExpire] = DateStrToUnix(watchExpBuf);
     cache_get_value_name_int(0, "tired", PlayerData[playerid][pTired]);
     if(PlayerData[playerid][pTired] < 0) PlayerData[playerid][pTired] = 0;
     if(PlayerData[playerid][pTired] > TIRED_MAX) PlayerData[playerid][pTired] = TIRED_MAX;
+    cache_get_value_name_int(0, "warns", PlayerData[playerid][pWarns]);
+    if(PlayerData[playerid][pWarns] < 0) PlayerData[playerid][pWarns] = 0;
+    new vipInt;
+    cache_get_value_name_int(0, "vip", vipInt);
+    PlayerData[playerid][pVIP] = bool:vipInt;
     g_Sleeping[playerid] = false;
     g_FixReqType[playerid] = 0; // orice cerere de reparatie (Electrician) din sesiunea anterioara e invalidata
 
     // incarca skinurile detinute (owned) din player_skins
     new sq[96];
-    mysql_format(g_SQL, sq, sizeof(sq), "SELECT `skin_id` FROM `player_skins` WHERE `player_id`=%d", PlayerData[playerid][pID]);
+    mysql_format(g_SQL, sq, sizeof(sq), "SELECT `skin_id`,`qty` FROM `player_skins` WHERE `player_id`=%d", PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, sq, "OnPlayerSkinsLoaded", "i", playerid);
 
     PlayerData[playerid][pLogged]  = true;
@@ -13179,24 +13721,26 @@ stock FullUpdatePlayer(playerid)
 {
     if(!PlayerData[playerid][pLogged]) return;
 
-    new licA[14], licB[14], licC[14], licD[14], licAirA[14], licAirH[14], facJoin[14];
+    new licA[14], licB[14], licC[14], licD[14], licAirA[14], licAirH[14], licW[14], facJoin[14], watchExp[14];
     BuildDateSqlValue(PlayerData[playerid][pDrivingLicA_exp], licA, sizeof(licA));
     BuildDateSqlValue(PlayerData[playerid][pDrivingLicB_exp], licB, sizeof(licB));
     BuildDateSqlValue(PlayerData[playerid][pDrivingLicC_exp], licC, sizeof(licC));
     BuildDateSqlValue(PlayerData[playerid][pDrivingLicD_exp], licD, sizeof(licD));
     BuildDateSqlValue(PlayerData[playerid][pAirLicA_exp], licAirA, sizeof(licAirA));
     BuildDateSqlValue(PlayerData[playerid][pAirLicH_exp], licAirH, sizeof(licAirH));
+    BuildDateSqlValue(PlayerData[playerid][pWeaponLicW_exp], licW, sizeof(licW));
     BuildDateSqlValueFromUnix(PlayerData[playerid][pFactionJoin], facJoin, sizeof(facJoin));
+    BuildDateSqlValueFromUnix(PlayerData[playerid][pWatchExpire], watchExp, sizeof(watchExp));
 
-    new query[860];
+    new query[900];
     mysql_format(g_SQL, query, sizeof(query),
         "UPDATE `players` SET \
         `password`='%e', `level`=%d, `money`=%d, `bank`=%d, \
         `rp`=%d, `admin_level`=%d, `faction`=%d, `faction_rank`=%d, `faction_join`=%s, `house`=%d, `hotel`=%d, `business`=%d, `rent_house`=%d, `rent_hotel`=%d, `spawn_type`=%d, \
         `key1`=%d, `key2`=%d, `key3`=%d, \
         `driving_lic_a_exp`=%s, `driving_lic_b_exp`=%s, `driving_lic_c_exp`=%s, `driving_lic_d_exp`=%s, \
-        `airplane_lic_a_exp`=%s, `airplane_lic_h_exp`=%s, \
-        `phone_model`=%d, `phone_number`=%d, `medkits`=%d, `extinguishers`=%d, `mute_expire`=%d, `wanted_level`=%d, `jail_seconds`=%d, `rob_points`=%d, `skin`=%d, `gas_can`=%d, `watch_model`=%d, `phone_expire`=%d, `watch_expire`=%d, `tired`=%d \
+        `airplane_lic_a_exp`=%s, `airplane_lic_h_exp`=%s, `weapon_lic_w_exp`=%s, \
+        `phone_model`=%d, `phone_number`=%d, `medkits`=%d, `extinguishers`=%d, `mute_expire`=%d, `wanted_level`=%d, `jail_seconds`=%d, `rob_points`=%d, `skin`=%d, `gas_can`=%d, `watch_model`=%d, `phone_expire`=%d, `watch_expire`=%s, `tired`=%d, `vip`=%d \
         WHERE `id`=%d",
         PlayerData[playerid][pPass],
         PlayerData[playerid][pLevel],
@@ -13217,7 +13761,7 @@ stock FullUpdatePlayer(playerid)
         PlayerData[playerid][pKey2],
         PlayerData[playerid][pKey3],
         licA, licB, licC, licD,
-        licAirA, licAirH,
+        licAirA, licAirH, licW,
         PlayerData[playerid][pPhoneModel],
         PlayerData[playerid][pPhoneNumber],
         PlayerData[playerid][pMedkits],
@@ -13230,8 +13774,9 @@ stock FullUpdatePlayer(playerid)
         PlayerData[playerid][pGasCan],
         PlayerData[playerid][pWatchModel],
         PlayerData[playerid][pPhoneExpire],
-        PlayerData[playerid][pWatchExpire],
+        watchExp,
         PlayerData[playerid][pTired],
+        PlayerData[playerid][pVIP],
         PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, query, "", "", 0);
 }
@@ -13372,6 +13917,11 @@ stock UpdatePlayer(playerid, E_PLAYER_DATA:field)
                 "UPDATE `players` SET `airplane_lic_h_exp`='%s' WHERE `id`=%d",
                 PlayerData[playerid][pAirLicH_exp], PlayerData[playerid][pID]);
 
+        case pWeaponLicW_exp:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `weapon_lic_w_exp`='%s' WHERE `id`=%d",
+                PlayerData[playerid][pWeaponLicW_exp], PlayerData[playerid][pID]);
+
         case pDiseased:
             mysql_format(g_SQL, query, sizeof(query),
                 "UPDATE `players` SET `diseased`=%d WHERE `id`=%d",
@@ -13468,14 +14018,28 @@ stock UpdatePlayer(playerid, E_PLAYER_DATA:field)
                 PlayerData[playerid][pPhoneExpire], PlayerData[playerid][pID]);
 
         case pWatchExpire:
+        {
+            new watchExpQ[14];
+            BuildDateSqlValueFromUnix(PlayerData[playerid][pWatchExpire], watchExpQ, sizeof(watchExpQ));
             mysql_format(g_SQL, query, sizeof(query),
-                "UPDATE `players` SET `watch_expire`=%d WHERE `id`=%d",
-                PlayerData[playerid][pWatchExpire], PlayerData[playerid][pID]);
+                "UPDATE `players` SET `watch_expire`=%s WHERE `id`=%d",
+                watchExpQ, PlayerData[playerid][pID]);
+        }
 
         case pTired:
             mysql_format(g_SQL, query, sizeof(query),
                 "UPDATE `players` SET `tired`=%d WHERE `id`=%d",
                 PlayerData[playerid][pTired], PlayerData[playerid][pID]);
+
+        case pWarns:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `warns`=%d WHERE `id`=%d",
+                PlayerData[playerid][pWarns], PlayerData[playerid][pID]);
+
+        case pVIP:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `vip`=%d WHERE `id`=%d",
+                PlayerData[playerid][pVIP], PlayerData[playerid][pID]);
 
         default: return;
     }
@@ -13527,7 +14091,7 @@ stock Phone_FindByNumber(number)
 stock Phone_ShowBuyDialog(playerid)
 {
     new dlg[320], line[64];
-    format(line, sizeof(line), "SIM (phone number)\t$%s\n", MoneyStr(PHONE_SIM_PRICE));
+    format(line, sizeof(line), "SIM (phone number)\t$%s\n", MoneyStr(g_PhoneSimPrice));
     strcat(dlg, line);
     for(new i = 0; i < PHONE_MODEL_COUNT; i++)
     {
@@ -13604,21 +14168,21 @@ public OnPhoneSimChecked(playerid, candidate)
     }
 
     // taxa SIM: reverifica banii la momentul atribuirii (pot fi cheltuiti intre /buysim si callback)
-    if(PlayerData[playerid][pMoney] < PHONE_SIM_PRICE)
+    if(PlayerData[playerid][pMoney] < g_PhoneSimPrice)
     {
         new emsg[128];
-        format(emsg, sizeof(emsg), C_ERROR"Error: "C_WHITE"You no longer have enough money for a SIM ("C_INFO"$%s"C_WHITE").", MoneyStr(PHONE_SIM_PRICE));
+        format(emsg, sizeof(emsg), C_ERROR"Error: "C_WHITE"You no longer have enough money for a SIM ("C_INFO"$%s"C_WHITE").", MoneyStr(g_PhoneSimPrice));
         SendClientMessage(playerid, COLOR_ERROR, emsg);
         return 1;
     }
 
     new bool:wasChange = (PlayerData[playerid][pPhoneNumber] > 0);
 
-    PlayerData[playerid][pMoney] -= PHONE_SIM_PRICE;
-    GivePlayerMoney(playerid, -PHONE_SIM_PRICE);
+    PlayerData[playerid][pMoney] -= g_PhoneSimPrice;
+    GivePlayerMoney(playerid, -g_PhoneSimPrice);
     UpdatePlayer(playerid, pMoney);
 
-    new cut = Phone_CarrierCut(PHONE_SIM_PRICE);
+    new cut = Phone_CarrierCut(g_PhoneSimPrice);
     if(cut > 0) Job_AddBizIncome(PHONE_CARRIER_BIZ_ID, cut);
 
     PlayerData[playerid][pPhoneNumber] = candidate;
@@ -13628,10 +14192,10 @@ public OnPhoneSimChecked(playerid, candidate)
     new msg[144];
     if(wasChange)
         format(msg, sizeof(msg), C_SUCCESS"[%s]: "C_WHITE"You changed your SIM for "C_INFO"$%s"C_WHITE". Your new phone number is "C_INFO"%05d"C_WHITE".",
-            brand, MoneyStr(PHONE_SIM_PRICE), candidate);
+            brand, MoneyStr(g_PhoneSimPrice), candidate);
     else
         format(msg, sizeof(msg), C_SUCCESS"[%s]: "C_WHITE"You got a new SIM for "C_INFO"$%s"C_WHITE". Your phone number is "C_INFO"%05d"C_WHITE".",
-            brand, MoneyStr(PHONE_SIM_PRICE), candidate);
+            brand, MoneyStr(g_PhoneSimPrice), candidate);
     SendClientMessage(playerid, COLOR_SUCCESS, msg);
     return 1;
 }
@@ -13751,7 +14315,7 @@ stock Ban_Check(playerid)
 
     new q[160];
     mysql_format(g_SQL, q, sizeof(q),
-        "SELECT `reason` FROM `bans` WHERE `username`='%e' OR `ip`='%e' LIMIT 1",
+        "SELECT `banID`,`reason`,`expire` FROM `bans` WHERE `username`='%e' OR `ip`='%e' LIMIT 1",
         name, ip);
     mysql_tquery(g_SQL, q, "OnPlayerBanCheck", "i", playerid);
 }
@@ -13761,11 +14325,30 @@ public OnPlayerBanCheck(playerid)
     if(!IsPlayerConnected(playerid)) return 0;
     if(cache_num_rows() == 0) return 1; // nu e banat
 
+    new banID, expire;
+    cache_get_value_name_int(0, "banID", banID);
+    cache_get_value_name_int(0, "expire", expire);
+
+    if(expire != 0 && gettime() >= expire)
+    {
+        // ban temporar expirat -> il stergem si lasam jucatorul sa intre
+        new dq[64];
+        mysql_format(g_SQL, dq, sizeof(dq), "DELETE FROM `bans` WHERE `banID`=%d", banID);
+        mysql_tquery(g_SQL, dq, "", "", 0);
+        return 1;
+    }
+
     new reason[128];
     cache_get_value_name(0, "reason", reason, sizeof(reason));
 
-    new msg[160];
-    format(msg, sizeof(msg), C_ERROR"You are banned from this server."C_WHITE" Reason: "C_INFO"%s", reason[0] ? reason : "No reason");
+    new msg[192];
+    if(expire != 0)
+    {
+        new remainH = (expire - gettime() + 3599) / 3600;
+        format(msg, sizeof(msg), C_ERROR"You are temporarily banned."C_WHITE" Reason: "C_INFO"%s"C_WHITE" | Time left: "C_INFO"%d hours", reason[0] ? reason : "No reason", remainH);
+    }
+    else
+        format(msg, sizeof(msg), C_ERROR"You are banned from this server."C_WHITE" Reason: "C_INFO"%s", reason[0] ? reason : "No reason");
     SendClientMessage(playerid, COLOR_ERROR, msg);
     Admin_KickDelayed(playerid);
     return 1;
@@ -13935,6 +14518,10 @@ public OnGameModeInit()
     AllowAdminTeleport(1);
     DisableInteriorEnterExits();
 
+    for(new p = 0; p < MAX_PLAYERS; p++)
+        for(new t = 0; t < EXAMW_TARGET_COUNT; t++)
+            g_ExamWTargetObj[p][t] = STREAMER_TAG_OBJECT:-1;
+
     AddPlayerClass(7,868.2825,-2071.2629,17.3279,32.4158,0,0,0,0,0,0); // spawn civil 1
     AddPlayerClass(7,855.5033,-2073.2300,17.3279,16.4357,0,0,0,0,0,0); // spawn civil 2
     AddPlayerClass(7,842.9693,-2071.7813,17.3279,5.1556,0,0,0,0,0,0);  // spawn civil 3
@@ -13942,7 +14529,6 @@ public OnGameModeInit()
     AddPlayerClass(7,841.6141,-2080.4556,17.3279,15.8090,0,0,0,0,0,0); // spawn civil 5
     AddPlayerClass(7,857.5778,-2073.7075,17.3279,15.4957,0,0,0,0,0,0); // spawn civil 6
 
-    Skins_CreateStores(); // magazinele de haine (pickup + map icon)
     Casino_Create();      // casino-ul Four Dragons (intrare/iesire + map icon)
     CarWash_Create();      // spalatoriile auto (pickup + eticheta 3D)
 
@@ -14190,6 +14776,7 @@ public OnGameModeInit()
     ATMs_Load();
     Shops_Load();
     ClothStores_Load(); // magazine de haine create in-game de admini (DB)
+    Ammo_Load();         // magazine de arme create in-game de admini (DB)
     FastFood_Load();  // locatiile /pizza /burger din DB (dupa DB_Init, altfel g_SQL nu e gata)
     Locations_Load();
     GPS_Load();
@@ -14372,7 +14959,7 @@ public OnPlayerConnect(playerid)
     g_SGRHouseID[playerid]       = 0;
     g_TrashCarrying[playerid]    = 0;
     g_TrashHouseID[playerid]     = 0;
-    for(new sc = 0; sc < SKIN_CELLS; sc++) g_SkinOwned[playerid][sc] = 0; // reset skinuri detinute
+    for(new s = 0; s < SKIN_COUNT; s++) g_SkinQty[playerid][s] = 0; // reset skinuri detinute
     g_RobActive[playerid]        = false;
     g_RobCrewCount[playerid]     = 0;
     g_RobStage[playerid]         = 0;
@@ -14923,7 +15510,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         else format(watchTxt, sizeof(watchTxt), "None");
 
         format(line, sizeof(line), "Rob points: %d/%d |  Gas can: %s (%dL) | Watch: %s",
-            PlayerData[playerid][pRobPoints], ROB_POINTS_MAX, gasTxt, GASCAN_LITERS, watchTxt);
+            PlayerData[playerid][pRobPoints], ROB_POINTS_MAX, gasTxt, GasCan_Liters(playerid), watchTxt);
         SendClientMessage(playerid, COLOR_WHITE, line);
 
         if(PlayerData[playerid][pAdminLevel] > 0)
@@ -15100,7 +15687,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
     {
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
-        if(ATM_FindNearbyIndex(playerid) == -1)
+        if(!PlayerData[playerid][pVIP] && ATM_FindNearbyIndex(playerid) == -1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Bank] "C_WHITE"You must be near a bank or ATM."), 1;
 
         new mbl[128];
@@ -15217,8 +15804,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a "C_INFO"Shop"C_WHITE" to do this."), 1;
 
         new dlg[384];
-        format(dlg, sizeof(dlg), ""C_INFO"Item\t"C_INFO"Price\n"C_WHITE"Medical Kit\t"C_SUCCESS"$%s\n"C_WHITE"Extinctor\t"C_SUCCESS"$%s\n"C_WHITE"Gas Can ("#GASCAN_LITERS"L, empty)\t"C_SUCCESS"$%s\n"C_WHITE"Shovel\t"C_SUCCESS"$%s\n"C_WHITE"Phone\t"C_INFO"Next\n"C_WHITE"Watch\t"C_INFO"Next",
-            MoneyStr(g_MedkitPrice), MoneyStr(g_ExtinguisherPrice), MoneyStr(g_GasCanPrice), MoneyStr(SHOVEL_PRICE));
+        format(dlg, sizeof(dlg), ""C_INFO"Item\t"C_INFO"Price\n"C_WHITE"Medical Kit\t"C_SUCCESS"$%s\n"C_WHITE"Extinctor\t"C_SUCCESS"$%s\n"C_WHITE"Gas Can (%dL, empty)\t"C_SUCCESS"$%s\n"C_WHITE"Shovel\t"C_SUCCESS"$%s\n"C_WHITE"Phone\t"C_INFO"Next\n"C_WHITE"Watch\t"C_INFO"Next",
+            MoneyStr(g_MedkitPrice), MoneyStr(g_ExtinguisherPrice), GasCan_Liters(playerid), MoneyStr(g_GasCanPrice), MoneyStr(g_ShovelPrice));
         ShowPlayerDialog(playerid, DIALOG_SHOP, DIALOG_STYLE_TABLIST_HEADERS, "Shop", dlg, "Select", "Close");
         return 1;
     }
@@ -15309,7 +15896,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             format(bsMsg, sizeof(bsMsg), C_ERROR"Error: "C_WHITE"Your "C_INFO"%s"C_WHITE" is broken and can no longer be used. Buy a new one at "C_INFO"/shop"C_WHITE".", bsBrand);
             return SendClientMessage(playerid, COLOR_ERROR, bsMsg), 1;
         }
-        if(PlayerData[playerid][pMoney] < PHONE_SIM_PRICE)
+        if(PlayerData[playerid][pMoney] < g_PhoneSimPrice)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for a SIM ("C_INFO"$250"C_WHITE")."), 1;
 
         Phone_RequestSim(playerid);
@@ -17040,8 +17627,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new fidx = Farm_PlayerIn(playerid);
         if(fidx == -1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Farm] "C_WHITE"You are not on a farm."), 1;
-        // cumperi daca: e liber (de la server) SAU e al altui player si pus la vanzare
-        if(FarmData[fidx][fmOwned] && (!FarmData[fidx][fmForSale] || FarmData[fidx][fmOwnerId] == PlayerData[playerid][pID]))
+        // cumperi DOAR daca e pusa la vanzare (is_for_sale=1), indiferent daca are sau nu proprietar
+        if(!FarmData[fidx][fmForSale] || (FarmData[fidx][fmOwned] && FarmData[fidx][fmOwnerId] == PlayerData[playerid][pID]))
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Farm] "C_WHITE"This farm is not for sale."), 1;
 
         new price = FarmData[fidx][fmPrice];
@@ -17147,12 +17734,12 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         FarmData[fidx][fmOwned]        = 0;
         FarmData[fidx][fmOwnerId]      = 0;
-        FarmData[fidx][fmForSale]      = 0;
+        FarmData[fidx][fmForSale]      = 1; // inapoi la stat = cumparabila din nou
         FarmData[fidx][fmOwnerName][0] = EOS;
         PlayerData[playerid][pFarmKey] = 0;
 
         new q[176];
-        mysql_format(g_SQL, q, sizeof(q), "UPDATE `farms` SET `owner`='', `owner_id`=0, `isOwned`=0, `is_for_sale`=0 WHERE `id`=%d", FarmData[fidx][fmID]);
+        mysql_format(g_SQL, q, sizeof(q), "UPDATE `farms` SET `owner`='', `owner_id`=0, `isOwned`=0, `is_for_sale`=1 WHERE `id`=%d", FarmData[fidx][fmID]);
         mysql_tquery(g_SQL, q, "", "", 0);
         Farm_RecreatePickup(fidx);
 
@@ -17472,6 +18059,33 @@ public OnPlayerCommandText(playerid, cmdtext[])
         {
             if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pFaction] == fid)
                 SendClientMessage(i, COLOR_WHITE, fmsg);
+        }
+        return 1;
+    }
+
+    // ---- /vipc [text] (VIP chat, difuzat tuturor membrilor VIP, indiferent de distanta) ----
+    if(strcmp(cmd, "/vipc", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(!PlayerData[playerid][pVIP])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This command is for VIP members only."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new text[128];
+        strmid(text, cmdtext, idx, strlen(cmdtext), 128);
+
+        if(!strlen(text))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/vipc [message]"C_WHITE"."), 1;
+
+        new vcmsg[192];
+        format(vcmsg, sizeof(vcmsg), "{FFD700}[VIPChat] "C_WHITE"%s"C_INFO": %s", PlayerData[playerid][pName], text);
+
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pVIP])
+                SendClientMessage(i, COLOR_WHITE, vcmsg);
         }
         return 1;
     }
@@ -17807,6 +18421,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         if(!IsPlayerInRangeOfPoint(playerid, EQUIP_RANGE, EQUIP_X, EQUIP_Y, EQUIP_Z))
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the armory point inside your faction HQ."), 1;
+
+        if(!Player_HasValidLicense(playerid, LIC_W))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You did not receive any weapons - you don't have a valid Weapon W license. Get one with "C_INFO"/examW"C_WHITE"."), 1;
 
         SetPlayerHealth(playerid, 100.0);
         AC_GiveWeapon(playerid, WEAPON_GRENADE, 1);
@@ -18203,7 +18820,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         g_PDTax = newTax;
         new tq[96];
-        mysql_format(g_SQL, tq, sizeof(tq), "UPDATE `payday_setup` SET `tax`=%d WHERE `id`=1", newTax);
+        mysql_format(g_SQL, tq, sizeof(tq), "UPDATE `server_setup` SET `ssValue`='%d' WHERE `ssSetare`='tax'", newTax);
         mysql_tquery(g_SQL, tq, "", "", 0);
 
         new tmsg[128];
@@ -18234,7 +18851,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         g_PDCASS = newCass;
         new cq[96];
-        mysql_format(g_SQL, cq, sizeof(cq), "UPDATE `payday_setup` SET `cass`=%d WHERE `id`=1", newCass);
+        mysql_format(g_SQL, cq, sizeof(cq), "UPDATE `server_setup` SET `ssValue`='%d' WHERE `ssSetare`='cass'", newCass);
         mysql_tquery(g_SQL, cq, "", "", 0);
 
         new cmsg[128];
@@ -18916,7 +19533,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         // Reseteaza playerul scos
         PlayerData[targetid][pFaction]     = 0;
-        PlayerData[targetid][pFactionRank] = 1;
+        PlayerData[targetid][pFactionRank] = -1;
         PlayerData[targetid][pFactionJoin] = 0;
         SetPlayerColor(targetid, FactionColors[FACTION_NONE]);
         Factions_SetPlayerIcons(targetid);
@@ -18924,7 +19541,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         new q[160];
         mysql_format(g_SQL, q, sizeof(q),
-            "UPDATE `players` SET `faction`=0, `faction_rank`=1, `faction_join`=NULL WHERE `id`=%d",
+            "UPDATE `players` SET `faction`=0, `faction_rank`=-1, `faction_join`=NULL WHERE `id`=%d",
             PlayerData[targetid][pID]);
         mysql_tquery(g_SQL, q, "", "", 0);
 
@@ -19019,9 +19636,57 @@ public OnPlayerCommandText(playerid, cmdtext[])
         PlayerData[playerid][pOnDuty] = !PlayerData[playerid][pOnDuty];
 
         if(PlayerData[playerid][pOnDuty])
+        {
             SendClientMessage(playerid, COLOR_SUCCESS, C_INFO"Info: "C_WHITE"You are now "C_SUCCESS"ON-DUTY"C_WHITE".");
+
+            // Politia si RAR primesc arme de dotare pe tura - necesita permis W valabil
+            if(fid == FACTION_POLICE || fid == FACTION_RAR)
+            {
+                if(!Player_HasValidLicense(playerid, LIC_W))
+                    SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You did not receive any weapons - you don't have a valid Weapon W license. Get one with "C_INFO"/examW"C_WHITE".");
+                else
+                {
+                    if(fid == FACTION_POLICE)
+                    {
+                        new prank = PlayerData[playerid][pFactionRank];
+                        AC_GiveWeapon(playerid, WEAPON_DEAGLE, 150);
+                        if(prank >= 3)
+                        {
+                            AC_GiveWeapon(playerid, WEAPON_MP5, 300);
+                            AC_GiveWeapon(playerid, WEAPON_M4,  300);
+                            AC_GiveWeapon(playerid, WEAPON_SPRAYCAN, 300);
+                        }
+                        else if(prank == 2)
+                        {
+                            AC_GiveWeapon(playerid, WEAPON_MP5, 300);
+                            AC_GiveWeapon(playerid, WEAPON_SPRAYCAN, 200);
+                        }
+                        else
+                            AC_GiveWeapon(playerid, WEAPON_SPRAYCAN, 100);
+                    }
+                    else // FACTION_RAR
+                        AC_GiveWeapon(playerid, WEAPON_DEAGLE, 100);
+
+                    g_DutyArmed[playerid] = true;
+                    SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"You have been issued your duty weapons.");
+                }
+            }
+        }
         else
+        {
             SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"You are now "C_ERROR"OFF-DUTY"C_WHITE".");
+
+            // Scoate armele de dotare primite pe tura (pastreaza restul armelor legitime)
+            if(g_DutyArmed[playerid])
+            {
+                g_ACWeaponAllowed[playerid][WEAPON_DEAGLE]    = false; g_ACWeaponAmmo[playerid][WEAPON_DEAGLE]    = 0;
+                g_ACWeaponAllowed[playerid][WEAPON_MP5]       = false; g_ACWeaponAmmo[playerid][WEAPON_MP5]       = 0;
+                g_ACWeaponAllowed[playerid][WEAPON_M4]        = false; g_ACWeaponAmmo[playerid][WEAPON_M4]        = 0;
+                g_ACWeaponAllowed[playerid][WEAPON_SPRAYCAN]  = false; g_ACWeaponAmmo[playerid][WEAPON_SPRAYCAN]  = 0;
+                AC_RestoreWeapons(playerid);
+                g_DutyArmed[playerid] = false;
+            }
+        }
         return 1;
     }
 
@@ -19381,10 +20046,14 @@ public OnPlayerCommandText(playerid, cmdtext[])
         VehicleDoc_Status(PVehicleData[pvidx][pvMedkitExp], medStatus, sizeof(medStatus));
         VehicleDoc_Status(PVehicleData[pvidx][pvExtinguisherExp], extStatus, sizeof(extStatus));
 
+        new plateColor[9];
+        if(PlayerData[targetid][pVIP]) format(plateColor, sizeof(plateColor), "{FF0000}");
+        else format(plateColor, sizeof(plateColor), C_INFO);
+
         new line[160];
         SendClientMessage(playerid, COLOR_INFO, C_INFO"_____ Vehicle Inspection ____________________________");
-        format(line, sizeof(line), C_WHITE"Driver: "C_INFO"%s"C_WHITE" | Vehicle: "C_INFO"%s"C_WHITE" | Plate: "C_INFO"%s",
-            PlayerData[targetid][pName], vname, PVehicleData[pvidx][pvPlate]);
+        format(line, sizeof(line), C_WHITE"Driver: "C_INFO"%s"C_WHITE" | Vehicle: "C_INFO"%s"C_WHITE" | Plate: %s%s",
+            PlayerData[targetid][pName], vname, plateColor, PVehicleData[pvidx][pvPlate]);
         SendClientMessage(playerid, COLOR_WHITE, line);
 
         if(PlayerData[playerid][pFaction] == FACTION_POLICE)
@@ -19449,7 +20118,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             strmid(lp2, cmdtext, idx, strlen(cmdtext), 8);
 
             if(!strlen(lp1) || !strlen(lp2))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/confiscate licence [A/B/C/D/P/H/all] [playerid]"C_WHITE"."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/confiscate licence [A/B/C/D/P/H/W/all] [playerid]"C_WHITE"."), 1;
 
             new targetid = strval(lp2);
             if(!IsPlayerConnected(targetid) || !PlayerData[targetid][pLogged])
@@ -19470,9 +20139,10 @@ public OnPlayerCommandText(playerid, cmdtext[])
                 PlayerData[targetid][pDrivingLicD_exp][0] = EOS;
                 PlayerData[targetid][pAirLicA_exp][0] = EOS; // P = avion
                 PlayerData[targetid][pAirLicH_exp][0] = EOS; // H = elicopter
+                PlayerData[targetid][pWeaponLicW_exp][0] = EOS; // W = arme
 
                 mysql_format(g_SQL, lq, sizeof(lq),
-                    "UPDATE `players` SET `driving_lic_a_exp`=NULL, `driving_lic_b_exp`=NULL, `driving_lic_c_exp`=NULL, `driving_lic_d_exp`=NULL, `airplane_lic_a_exp`=NULL, `airplane_lic_h_exp`=NULL WHERE `id`=%d",
+                    "UPDATE `players` SET `driving_lic_a_exp`=NULL, `driving_lic_b_exp`=NULL, `driving_lic_c_exp`=NULL, `driving_lic_d_exp`=NULL, `airplane_lic_a_exp`=NULL, `airplane_lic_h_exp`=NULL, `weapon_lic_w_exp`=NULL WHERE `id`=%d",
                     PlayerData[targetid][pID]);
                 format(catLabel, sizeof(catLabel), "ALL");
             }
@@ -19512,8 +20182,14 @@ public OnPlayerCommandText(playerid, cmdtext[])
                 mysql_format(g_SQL, lq, sizeof(lq), "UPDATE `players` SET `airplane_lic_h_exp`=NULL WHERE `id`=%d", PlayerData[targetid][pID]);
                 format(catLabel, sizeof(catLabel), "H");
             }
+            else if(strcmp(lp1, "W", true) == 0) // W = permis arme
+            {
+                PlayerData[targetid][pWeaponLicW_exp][0] = EOS;
+                mysql_format(g_SQL, lq, sizeof(lq), "UPDATE `players` SET `weapon_lic_w_exp`=NULL WHERE `id`=%d", PlayerData[targetid][pID]);
+                format(catLabel, sizeof(catLabel), "W");
+            }
             else
-                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid category. Use A, B, C, D, P, H or all."), 1;
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid category. Use A, B, C, D, P, H, W or all."), 1;
 
             mysql_tquery(g_SQL, lq, "", "", 0);
 
@@ -19539,7 +20215,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         {
             new umsg[96];
             format(umsg, sizeof(umsg), C_INFO"Info: "C_WHITE"Use "C_INFO"%s"C_WHITE".",
-                isPolice ? "/confiscate [insurance [playerid] / licence [A/B/C/D/all] [playerid]]" : "/confiscate [extinctor/medkit/itp] [playerid]");
+                isPolice ? "/confiscate [insurance [playerid] / licence [A/B/C/D/P/H/W/all] [playerid]]" : "/confiscate [extinctor/medkit/itp] [playerid]");
             return SendClientMessage(playerid, COLOR_INFO, umsg), 1;
         }
 
@@ -20103,6 +20779,101 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /warn [playerid] [motiv] ----
+    if(strcmp(cmd, "/warn", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new wp1[8]; strmid(wp1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++; while(cmdtext[idx] == ' ') idx++;
+        new wreason[128]; strmid(wreason, cmdtext, idx, strlen(cmdtext), 128);
+
+        if(!strlen(wp1) || !strlen(wreason))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/warn [playerid] [reason]"C_WHITE"."), 1;
+
+        new wtargetid = strval(wp1);
+        if(!IsPlayerConnected(wtargetid) || !PlayerData[wtargetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+        if(wtargetid == playerid)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't warn yourself."), 1;
+        if(PlayerData[wtargetid][pAdminLevel] >= PlayerData[playerid][pAdminLevel])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't moderate an admin of equal or higher level."), 1;
+
+        PlayerData[wtargetid][pWarns]++;
+        UpdatePlayer(wtargetid, pWarns);
+
+        new wq[256];
+        mysql_format(g_SQL, wq, sizeof(wq),
+            "INSERT INTO `warns` (`username`,`reason`,`warned_by`,`warn_date`) VALUES ('%e','%e','%e',%d)",
+            PlayerData[wtargetid][pName], wreason, PlayerData[playerid][pName], gettime());
+        mysql_tquery(g_SQL, wq, "", "", 0);
+
+        new wmsg[176];
+        format(wmsg, sizeof(wmsg), C_ERROR"[ADM] "C_INFO"%s"C_WHITE" gave a warn ["C_INFO"%d/%d"C_WHITE"] to "C_INFO"%s"C_WHITE". Reason: "C_INFO"%s",
+            PlayerData[playerid][pName], PlayerData[wtargetid][pWarns], MAX_WARNS, PlayerData[wtargetid][pName], wreason);
+        SendClientMessageToAll(COLOR_INFO, wmsg);
+
+        if(PlayerData[wtargetid][pWarns] >= MAX_WARNS)
+        {
+            PlayerData[wtargetid][pWarns] = 0;
+            UpdatePlayer(wtargetid, pWarns);
+
+            new wip[46];
+            GetPlayerIp(wtargetid, wip, sizeof(wip));
+
+            new wbanReason[160];
+            format(wbanReason, sizeof(wbanReason), "Reached %d warns (last: %s)", MAX_WARNS, wreason);
+
+            new wbq[320];
+            mysql_format(g_SQL, wbq, sizeof(wbq),
+                "INSERT INTO `bans` (`username`,`ip`,`reason`,`banned_by`,`ban_date`,`expire`) VALUES ('%e','%e','%e','%e',%d,%d)",
+                PlayerData[wtargetid][pName], wip, wbanReason, "System (warns)", gettime(), gettime() + WARN_BAN_SECONDS);
+            mysql_tquery(g_SQL, wbq, "", "", 0);
+
+            new wbmsg[176];
+            format(wbmsg, sizeof(wbmsg), C_ERROR"[ADM] "C_INFO"%s"C_WHITE" reached "C_INFO"%d warns"C_WHITE" and was banned for "C_INFO"2 days"C_WHITE".",
+                PlayerData[wtargetid][pName], MAX_WARNS);
+            SendClientMessageToAll(COLOR_INFO, wbmsg);
+
+            SendClientMessage(wtargetid, COLOR_ERROR, C_ERROR"You have been banned for 2 days."C_WHITE" Reason: "C_INFO"Reached maximum warns.");
+            Admin_KickDelayed(wtargetid);
+        }
+        return 1;
+    }
+
+    // ---- /unwarn [playerid] [motiv] ----
+    if(strcmp(cmd, "/unwarn", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new uwp1[8]; strmid(uwp1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++; while(cmdtext[idx] == ' ') idx++;
+        new uwreason[128]; strmid(uwreason, cmdtext, idx, strlen(cmdtext), 128);
+
+        if(!strlen(uwp1) || !strlen(uwreason))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/unwarn [playerid] [reason]"C_WHITE"."), 1;
+
+        new uwtargetid = strval(uwp1);
+        if(!IsPlayerConnected(uwtargetid) || !PlayerData[uwtargetid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        if(PlayerData[uwtargetid][pWarns] <= 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This player has no warns."), 1;
+
+        PlayerData[uwtargetid][pWarns]--;
+        UpdatePlayer(uwtargetid, pWarns);
+
+        new uwmsg[176];
+        format(uwmsg, sizeof(uwmsg), C_SUCCESS"[ADM] "C_INFO"%s"C_WHITE" removed a warn ["C_INFO"%d/%d"C_WHITE"] from "C_INFO"%s"C_WHITE". Reason: "C_INFO"%s",
+            PlayerData[playerid][pName], PlayerData[uwtargetid][pWarns], MAX_WARNS, PlayerData[uwtargetid][pName], uwreason);
+        SendClientMessageToAll(COLOR_INFO, uwmsg);
+        return 1;
+    }
+
     // ---- /businesslist ----
     if(strcmp(cmd, "/businesslist", true) == 0)
     {
@@ -20253,8 +21024,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
     // ---- /bizzlist (lista business-uri cu teleport, admin 2+) ----
     if(strcmp(cmd, "/bizzlist", true) == 0)
     {
-        if(PlayerData[playerid][pAdminLevel] < 2)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
 
         if(g_BusinessCount == 0)
             return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no businesses on the server."), 1;
@@ -20282,8 +21053,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
     // ---- /houselist (lista caselor cu teleport, admin 2+) ----
     if(strcmp(cmd, "/houselist", true) == 0)
     {
-        if(PlayerData[playerid][pAdminLevel] < 2)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
 
         if(g_HouseCount == 0)
             return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no houses on the server."), 1;
@@ -20314,8 +21085,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
     // ---- /farmlist (lista terenurilor cu teleport, admin 2+) ----
     if(strcmp(cmd, "/farmlist", true) == 0)
     {
-        if(PlayerData[playerid][pAdminLevel] < 2)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
 
         if(g_FarmCount == 0)
             return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no farms on the server."), 1;
@@ -20342,6 +21113,121 @@ public OnPlayerCommandText(playerid, cmdtext[])
         }
 
         ShowPlayerDialog(playerid, DIALOG_FARMLIST, DIALOG_STYLE_TABLIST_HEADERS, "Farm List", list, "Teleport", "Close");
+        return 1;
+    }
+
+    // ---- /clslist (lista magazinelor de haine create in-game cu teleport, admin 2+) ----
+    if(strcmp(cmd, "/clslist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        if(g_ClothStoreDynCount == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no clothing stores on the server."), 1;
+
+        static list[4096];
+        list[0] = EOS;
+        strcat(list, ""C_INFO"ID\t"C_INFO"Name\t"C_INFO"Interior\n");
+        for(new i = 0; i < g_ClothStoreDynCount; i++)
+        {
+            new clsIntState[16];
+            if(ClothStore_HasInterior(i)) format(clsIntState, sizeof(clsIntState), ""C_SUCCESS"set");
+            else format(clsIntState, sizeof(clsIntState), ""C_ERROR"not set");
+
+            new clsName[32];
+            if(strlen(ClothStoreData[i][clstName])) format(clsName, sizeof(clsName), "%s", ClothStoreData[i][clstName]);
+            else format(clsName, sizeof(clsName), "-");
+
+            new line[100];
+            format(line, sizeof(line), ""C_WHITE"#%d\t%s\t%s\n", ClothStoreData[i][clstID], clsName, clsIntState);
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_CLSLIST, DIALOG_STYLE_TABLIST_HEADERS, "Clothing Store List", list, "Teleport", "Close");
+        return 1;
+    }
+
+    // ---- /ammolist (lista magazinelor de arme (ammunation) create in-game cu teleport, admin 1+) ----
+    if(strcmp(cmd, "/ammolist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        if(g_AmmoDynCount == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no ammunations on the server."), 1;
+
+        static list[4096];
+        list[0] = EOS;
+        strcat(list, ""C_INFO"ID\t"C_INFO"Name\t"C_INFO"Interior\n");
+        for(new i = 0; i < g_AmmoDynCount; i++)
+        {
+            new amoIntState[16];
+            if(Ammo_HasInterior(i)) format(amoIntState, sizeof(amoIntState), ""C_SUCCESS"set");
+            else format(amoIntState, sizeof(amoIntState), ""C_ERROR"not set");
+
+            new amoNameStr[32];
+            if(strlen(AmmoData[i][amoName])) format(amoNameStr, sizeof(amoNameStr), "%s", AmmoData[i][amoName]);
+            else format(amoNameStr, sizeof(amoNameStr), "-");
+
+            new line[100];
+            format(line, sizeof(line), ""C_WHITE"#%d\t%s\t%s\n", AmmoData[i][amoID], amoNameStr, amoIntState);
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_AMMOLIST, DIALOG_STYLE_TABLIST_HEADERS, "Ammunation List", list, "Teleport", "Close");
+        return 1;
+    }
+
+    // ---- /hotellist (lista hotelurilor cu teleport, admin 2+) ----
+    if(strcmp(cmd, "/hotellist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        if(g_HotelCount == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no hotels on the server."), 1;
+
+        static list[10000];
+        list[0] = EOS;
+        strcat(list, ""C_INFO"ID\t"C_INFO"Name\t"C_INFO"Owner / Status\t"C_INFO"Price\n");
+        for(new i = 0; i < g_HotelCount; i++)
+        {
+            new htlState[64];
+            if(HotelData[i][htlOwned] && HotelData[i][htlForSale]) format(htlState, sizeof(htlState), ""C_WHITE"%s "C_SUCCESS"(For Sale)", HotelData[i][htlOwnerName]);
+            else if(HotelData[i][htlOwned]) format(htlState, sizeof(htlState), ""C_WHITE"%s", HotelData[i][htlOwnerName]);
+            else format(htlState, sizeof(htlState), ""C_ERROR"For Sale");
+
+            new line[220];
+            format(line, sizeof(line), ""C_WHITE"#%d\t"C_WHITE"%s\t%s\t"C_SUCCESS"$%s\n",
+                HotelData[i][htlID], HotelData[i][htlName], htlState, MoneyStr(HotelData[i][htlPrice]));
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_HOTELLIST, DIALOG_STYLE_TABLIST_HEADERS, "Hotel List", list, "Teleport", "Close");
+        return 1;
+    }
+
+    // ---- /shoplist (lista magazinelor de item-uri cu teleport, admin 2+) ----
+    if(strcmp(cmd, "/shoplist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        if(g_ShopCount == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no shops on the server."), 1;
+
+        static list[4096];
+        list[0] = EOS;
+        strcat(list, ""C_INFO"ID\t"C_INFO"Location\n");
+        for(new i = 0; i < g_ShopCount; i++)
+        {
+            new line[80];
+            format(line, sizeof(line), ""C_WHITE"#%d\t%.1f, %.1f, %.1f\n",
+                ShopData[i][shopID], ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ]);
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_SHOPLIST, DIALOG_STYLE_TABLIST_HEADERS, "Shop List", list, "Teleport", "Close");
         return 1;
     }
 
@@ -20446,6 +21332,92 @@ public OnPlayerCommandText(playerid, cmdtext[])
             format(gwMsg, sizeof(gwMsg), C_INFO"Info: "C_WHITE"Admin "C_INFO"%s"C_WHITE" gave you a "C_INFO"%s"C_WHITE" ("C_INFO"%d ammo"C_WHITE").", gwAdmin, gwName, gwAmmo);
             SendClientMessage(gwTarget, COLOR_INFO, gwMsg);
         }
+        return 1;
+    }
+
+    // ---- /givemoney [playerid] [amount] (admin: da bani unui player, din nimic) ----
+    if(strcmp(cmd, "/givemoney", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new gmp1[8]; strmid(gmp1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++; while(cmdtext[idx] == ' ') idx++;
+        new gmp2[16]; strmid(gmp2, cmdtext, idx, strlen(cmdtext), 16);
+
+        if(!strlen(gmp1) || !strlen(gmp2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/givemoney [playerid] [amount]"C_WHITE"."), 1;
+
+        new gmTarget = strval(gmp1);
+        if(!IsPlayerConnected(gmTarget) || !PlayerData[gmTarget][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        new gmAmount = strval(gmp2);
+        if(gmAmount <= 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid amount."), 1;
+
+        PlayerData[gmTarget][pMoney] += gmAmount;
+        GivePlayerMoney(gmTarget, gmAmount);
+        UpdatePlayer(gmTarget, pMoney);
+
+        new gmMsg[144];
+        format(gmMsg, sizeof(gmMsg), C_SUCCESS"[ADM] Success: "C_WHITE"You gave "C_INFO"$%s"C_WHITE" to "C_INFO"%s"C_WHITE".",
+            MoneyStr(gmAmount), PlayerData[gmTarget][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, gmMsg);
+
+        if(gmTarget != playerid)
+        {
+            new gmTmsg[128];
+            format(gmTmsg, sizeof(gmTmsg), C_SUCCESS"Success: "C_WHITE"An admin gave you "C_INFO"$%s"C_WHITE".", MoneyStr(gmAmount));
+            SendClientMessage(gmTarget, COLOR_SUCCESS, gmTmsg);
+        }
+        return 1;
+    }
+
+    // ---- /pay [playerid] [amount] (transfera cash catre un alt player) ----
+    if(strcmp(cmd, "/pay", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new payp1[8]; strmid(payp1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++; while(cmdtext[idx] == ' ') idx++;
+        new payp2[16]; strmid(payp2, cmdtext, idx, strlen(cmdtext), 16);
+
+        if(!strlen(payp1) || !strlen(payp2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/pay [playerid] [amount]"C_WHITE"."), 1;
+
+        new payTarget = strval(payp1);
+        if(!IsPlayerConnected(payTarget) || !PlayerData[payTarget][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+        if(payTarget == playerid)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't pay yourself."), 1;
+
+        new payAmount = strval(payp2);
+        if(payAmount <= 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid amount."), 1;
+        if(PlayerData[playerid][pMoney] < payAmount)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have that much cash."), 1;
+
+        PlayerData[playerid][pMoney] -= payAmount;
+        GivePlayerMoney(playerid, -payAmount);
+        UpdatePlayer(playerid, pMoney);
+
+        PlayerData[payTarget][pMoney] += payAmount;
+        GivePlayerMoney(payTarget, payAmount);
+        UpdatePlayer(payTarget, pMoney);
+
+        new payMsg[128];
+        format(payMsg, sizeof(payMsg), C_SUCCESS"Success: "C_WHITE"You paid "C_INFO"$%s"C_WHITE" to "C_INFO"%s"C_WHITE".",
+            MoneyStr(payAmount), PlayerData[payTarget][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, payMsg);
+
+        new payTmsg[128];
+        format(payTmsg, sizeof(payTmsg), C_SUCCESS"Success: "C_INFO"%s"C_WHITE" paid you "C_INFO"$%s"C_WHITE".",
+            PlayerData[playerid][pName], MoneyStr(payAmount));
+        SendClientMessage(payTarget, COLOR_SUCCESS, payTmsg);
         return 1;
     }
 
@@ -20897,6 +21869,44 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /interiorlist (categorii -> lista interioarelor GTA cu teleport, admin 1+) ----
+    if(strcmp(cmd, "/interiorlist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        if(g_GTAInteriorCount == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no GTA interiors loaded."), 1;
+
+        g_IntListCatCount[playerid] = 0;
+        for(new i = 0; i < g_GTAInteriorCount; i++)
+        {
+            new found = 0;
+            for(new j = 0; j < g_IntListCatCount[playerid]; j++)
+            {
+                if(!strcmp(g_IntListCat[playerid][j], GTAInteriorData[i][gtaIntFor], true)) { found = 1; break; }
+            }
+            if(!found && g_IntListCatCount[playerid] < 40)
+            {
+                format(g_IntListCat[playerid][g_IntListCatCount[playerid]], 24, "%s", GTAInteriorData[i][gtaIntFor]);
+                g_IntListCatCount[playerid]++;
+            }
+        }
+
+        static catList[2000];
+        catList[0] = EOS;
+        strcat(catList, ""C_INFO"Category\n");
+        for(new k = 0; k < g_IntListCatCount[playerid]; k++)
+        {
+            new cline[48];
+            format(cline, sizeof(cline), ""C_WHITE"%s\n", g_IntListCat[playerid][k]);
+            strcat(catList, cline);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_INTERIORLIST_CATEGORY, DIALOG_STYLE_TABLIST_HEADERS, "GTA Interior List - Category", catList, "Select", "Close");
+        return 1;
+    }
+
     // ---- /gotofaction [faction_id] ----
     if(strcmp(cmd, "/gotofaction", true) == 0)
     {
@@ -21095,18 +22105,18 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Player Commands =================");
 
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Account] "C_WHITE" /help /howto /buylevel");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /rentcar /rentbike /curedisease /rob /buyskin /wardrobe /changeskin");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /rentcar /rentbike /curedisease /rob /buyskin /wardrobe /changeskin /pay /buyweapon /vipc");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Casino] "C_WHITE"/leavecasino /slots /roulette /dice");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Houses] "C_WHITE"/buyhouse /house /frigde /tree /sleep /hstats /findhouse /myhouse");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Hotels] "C_WHITE"/buyhotel /sellhotel /sellhotelstate /sleep /htlstats /findhotel /myhotel /mybank hotel");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Hotels] "C_WHITE"/buyhotel /sellhotel /sellhotelstate /sleep /htlstats /findhotel /myhotel /mybank");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[SGR] "C_WHITE"/sgrload /sgrunload /trashload /trashunload");
         SendClientMessage(playerid, COLOR_WHITE,
             C_INFO"[Vehicles] "C_WHITE"/vstats /vbuy /sellveh /sellvehtostate /vpark /vsellto /vcolor /vplate /lock /engine /myveh1 /myveh2 /myveh3 /vwash");
         SendClientMessage(playerid, COLOR_WHITE,
-            C_INFO"[Fuel] "C_WHITE"/refuel (la benzinarie) /fillgascan (umple canistra) /fill (toarna canistra in masina)");
+            C_INFO"[Fuel] "C_WHITE"/refuel /fillgascan /fill");
         SendClientMessage(playerid, COLOR_WHITE,
             C_INFO"[Vehicles] "C_WHITE"/vInsurance /vMedicalKit /vExtinctor /vITP");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Licenses] "C_WHITE"/licenses /examA /examB /examC /examD /examP /examH");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Licenses] "C_WHITE"/licenses /examA /examB /examC /examD /examP /examH /examW");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Business] "C_WHITE"/buyBiz /bBank /biz /mybiz");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Phone] "C_WHITE"/buyphone /buysim /call /pickup /hangup /sms /time /watch");
         SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Caravan] "C_WHITE"/attach /detach /camp /findmycaravan");
@@ -21116,7 +22126,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(PlayerData[playerid][pFaction] == NEWS_FACTION_ID)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News] "C_WHITE"/news /newspaper /qa");
         else
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News] "C_WHITE"/newspaper open /question /answer /accept");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News] "C_WHITE"/newspaper /question /answer /accept");
 
         return 1;
     }
@@ -21127,15 +22137,15 @@ public OnPlayerCommandText(playerid, cmdtext[])
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
         if(!Skin_AtStore(playerid))
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a clothing store (look for the clothes icon on the map)."), 1;
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a clothing store."), 1;
 
         static list[2048];
         list[0] = EOS;
         strcat(list, C_INFO"Outfit\t"C_INFO"Price\t"C_INFO"Status\n");
         for(new i = 0; i < sizeof(g_SkinShop); i++)
         {
-            new stat[16];
-            if(Skin_Owns(playerid, g_SkinShop[i][Skc_ID])) format(stat, sizeof(stat), C_SUCCESS"Owned");
+            new stat[24];
+            if(Skin_Owns(playerid, g_SkinShop[i][Skc_ID])) format(stat, sizeof(stat), C_SUCCESS"Buy (own x%d)", Skin_Qty(playerid, g_SkinShop[i][Skc_ID]));
             else format(stat, sizeof(stat), C_ERROR"Buy");
 
             new line[128];
@@ -21144,6 +22154,28 @@ public OnPlayerCommandText(playerid, cmdtext[])
             strcat(list, line);
         }
         ShowPlayerDialog(playerid, DIALOG_SKINSHOP, DIALOG_STYLE_TABLIST_HEADERS, "Clothing Store", list, "Select", "Close");
+        return 1;
+    }
+
+    // ---- /buyweapon (Ammu-Nation: cumpara arme, doar in interiorul magazinului) ----
+    if(strcmp(cmd, "/buyweapon", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+        if(Ammo_PlayerInside(playerid) == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be inside an Ammu-Nation to buy weapons."), 1;
+
+        static list[1024];
+        list[0] = EOS;
+        strcat(list, C_INFO"Weapon\t"C_INFO"Ammo\t"C_INFO"Price\n");
+        for(new i = 0; i < sizeof(g_AmmoShop); i++)
+        {
+            new line[80];
+            format(line, sizeof(line), C_WHITE"%s\t"C_INFO"%d\t"C_SUCCESS"$%s\n",
+                g_AmmoShop[i][Amsc_Name], g_AmmoShop[i][Amsc_Ammo], MoneyStr(Ammo_PriceFor(g_AmmoShop[i][Amsc_WeaponID])));
+            strcat(list, line);
+        }
+        ShowPlayerDialog(playerid, DIALOG_AMMOSHOP, DIALOG_STYLE_TABLIST_HEADERS, "Ammu-Nation", list, "Buy", "Close");
         return 1;
     }
 
@@ -21172,8 +22204,12 @@ public OnPlayerCommandText(playerid, cmdtext[])
             if(s == PlayerData[playerid][pSkin]) format(worn, sizeof(worn), " "C_SUCCESS"[worn]");
             else worn[0] = EOS;
 
-            new line[80];
-            format(line, sizeof(line), C_WHITE"%s (%d)%s\n", nm, s, worn);
+            new qtyTag[16];
+            if(Skin_Qty(playerid, s) > 1) format(qtyTag, sizeof(qtyTag), " "C_INFO"x%d", Skin_Qty(playerid, s));
+            else qtyTag[0] = EOS;
+
+            new line[96];
+            format(line, sizeof(line), C_WHITE"%s (%d)%s%s\n", nm, s, qtyTag, worn);
             strcat(list, line);
             cnt++;
         }
@@ -21243,18 +22279,55 @@ public OnPlayerCommandText(playerid, cmdtext[])
         SetPlayerSkin(starget, skinid);
         UpdatePlayer(starget, pSkin);
 
-        // ii daruieste si proprietatea skin-ului
+        // ii daruieste si proprietatea skin-ului (daca nu-l detine deja)
         if(!Skin_Owns(starget, skinid))
         {
-            Skin_SetOwn(starget, skinid);
-            new gq[96];
-            mysql_format(g_SQL, gq, sizeof(gq), "INSERT IGNORE INTO `player_skins` (`player_id`,`skin_id`) VALUES (%d,%d)", PlayerData[starget][pID], skinid);
+            g_SkinQty[starget][skinid] = 1;
+            new gq[128];
+            mysql_format(g_SQL, gq, sizeof(gq),
+                "INSERT INTO `player_skins` (`player_id`,`skin_id`,`qty`) VALUES (%d,%d,1) ON DUPLICATE KEY UPDATE `qty`=`qty`+1",
+                PlayerData[starget][pID], skinid);
             mysql_tquery(g_SQL, gq, "", "", 0);
         }
 
         new smsg[128];
         format(smsg, sizeof(smsg), C_SUCCESS"[ADM] Success: "C_WHITE"Set "C_INFO"%s"C_WHITE"'s skin to "C_INFO"%d"C_WHITE".", PlayerData[starget][pName], skinid);
         SendClientMessage(playerid, COLOR_SUCCESS, smsg);
+        return 1;
+    }
+
+    // ---- /setvip [playerid] [0-1] (admin 2+) ----
+    if(strcmp(cmd, "/setvip", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 2."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new p1[8], p2[8];
+        strmid(p1, cmdtext, idx, strlen(cmdtext), 8);
+        while(cmdtext[idx] > ' ') idx++;
+        while(cmdtext[idx] == ' ') idx++;
+        strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(p1) || !strlen(p2))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/setvip [playerid] [0-1]"C_WHITE"."), 1;
+
+        new vtarget = strval(p1), vval = strval(p2);
+        if(!IsPlayerConnected(vtarget) || !PlayerData[vtarget][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+        if(vval != 0 && vval != 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Value must be 0 or 1."), 1;
+
+        PlayerData[vtarget][pVIP] = bool:vval;
+        UpdatePlayer(vtarget, pVIP);
+
+        new vmsg[128];
+        format(vmsg, sizeof(vmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Set "C_INFO"%s"C_WHITE"'s VIP status to "C_INFO"%d"C_WHITE".", PlayerData[vtarget][pName], vval);
+        SendClientMessage(playerid, COLOR_SUCCESS, vmsg);
+
+        if(vval == 1)
+            SendClientMessage(vtarget, COLOR_SUCCESS, C_SUCCESS"[VIP] "C_WHITE"You are now a "C_INFO"VIP"C_WHITE" member! Use "C_INFO"/vipc"C_WHITE" to talk to other VIPs.");
+        else
+            SendClientMessage(vtarget, COLOR_INFO, C_INFO"[VIP] "C_WHITE"Your VIP status has been removed.");
         return 1;
     }
 
@@ -21302,7 +22375,11 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new topic[256];
         topic = strtok(cmdtext, idx);
         if(!strlen(topic))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / hotel / games / caravan / licence / farm / rob / skins / casino / auction]"C_WHITE"."), 1;
+        {
+            ShowPlayerDialog(playerid, DIALOG_HOWTO_LIST, DIALOG_STYLE_LIST, "How to - Topics",
+                "Jobs\nFactions\nVehicles\nBusinesses\nHouses\nHotels\nGames\nCaravan\nLicences\nFarm\nRob\nSkins & Clothes\nCasino\nAuction\nHunting", "Select", "Close");
+            return 1;
+        }
 
         new title[64];
         static body[6144]; // static: buffer mare fara cost pe stiva (/howto e sincron)
@@ -21443,9 +22520,7 @@ is cleared at the "C_INFO"next payday"C_WHITE"";
             body = "{E3E3E3}A house is your spawn point and storage. You can own only ONE. Stand on the pickup to interact; be at YOUR OWN house for the fridge/bed/tree/animal/SGR/trash commands.\n\n\
 {FFFF00}Buy & sell:{E3E3E3}\n\
 - "C_INFO"/buyhouse"C_WHITE" - buy the house you stand on (from server or a player)\n\
-- "C_INFO"/house sell [price]"C_WHITE" - list for sale (money to your bank when sold); "C_INFO"/house sell 0"C_WHITE" cancels\n\
-- "C_INFO"/house sellto [playerid] [amount]"C_WHITE" - offer it directly to a player (cash, via /accept house)\n\
-- "C_INFO"/house selltostate"C_WHITE" - sell to the state for "C_INFO"60%"C_WHITE"\n\n\
+- "C_INFO"/house sell [price]"C_WHITE" / "C_INFO"/house sellto [playerid] [amount]"C_WHITE" / "C_INFO"/house selltostate"C_WHITE"\n\n\
 {FFFF00}Renting:{E3E3E3} "C_INFO"/renthouse"C_WHITE"/"C_INFO"/rentappartment"C_WHITE" - rent a nearby rentable one (blocked if you own/rent already). "C_INFO"/endrent"C_WHITE" to give it up.\n\n\
 {FFFF00}Info:{E3E3E3}\n\
 - "C_INFO"/hstats"C_WHITE" - name, ID, price, type, fridge contents + break dates\n\
@@ -21457,7 +22532,7 @@ If the house has an interior, press "C_INFO"ENTER"C_WHITE" at the pickup to go i
 - "C_INFO"bed"C_WHITE" - "C_INFO"$7.500"C_WHITE", breaks after "C_INFO"29 days"C_WHITE"\n\
 - "C_INFO"tree"C_WHITE" - "C_INFO"$20.000"C_WHITE" (city or countryside house), unlocks "C_INFO"/tree plant"C_WHITE"\n\
 - "C_INFO"animal [name]"C_WHITE" - "C_INFO"$5.000"C_WHITE": Turtle/Deer (Villa only), Cow (countryside only)\n\
-Same command replaces a broken fridge/bed (1%% to Home Furnitures).\n\n\
+Same command replaces a broken fridge/bed (1%% to Home Furnitures). Rename an owned animal with "C_INFO"/renameanimal [id] [name]"C_WHITE" (see IDs with "C_INFO"/hstats"C_WHITE").\n\n\
 {FFFF00}Fridge - "C_INFO"/frigde"C_WHITE":{E3E3E3}\n\
 - "C_INFO"/frigde"C_WHITE" - view contents\n\
 - "C_INFO"/frigde buy [item] [qty]"C_WHITE" - stock milk/banana/water/juice/beer, only "C_INFO"15:00-20:00"C_WHITE"\n\
@@ -21545,7 +22620,9 @@ You have "C_INFO"15 minutes"C_WHITE".\n\
 - "C_INFO"/findmycaravan"C_WHITE" - set a checkpoint to your parked caravan\n\
 - "C_INFO"/camp"C_WHITE" - start camping. You must be "C_INFO"driving"C_WHITE" with the caravan "C_INFO"attached"C_WHITE".\n\n\
 {FFFF00}Towing:{E3E3E3} while attached, the caravan follows your car. Park on "C_INFO"flat ground"C_WHITE" before /detach, otherwise it can end up tilted or stuck.\n\n\
-{FFFF00}Camping - what /camp actually does:{E3E3E3} your "C_INFO"SPAWN POINT"C_WHITE" moves to the caravan's spot for "C_INFO"3 hours"C_WHITE" (= "C_INFO"3 paydays"C_WHITE", since payday runs once an hour). Every time you die or reconnect you respawn at the camp instead of your normal spawn. When it expires, your spawn resets to normal automatically (house, faction or civilian, whatever you had).\n\n\
+{FFFF00}Camping - what /camp actually does:{E3E3E3} your "C_INFO"SPAWN POINT"C_WHITE" moves to the caravan's spot for "C_INFO"3 hours"C_WHITE" \
+(= "C_INFO"3 paydays"C_WHITE", since payday runs once an hour). Every time you die or reconnect you respawn at the camp instead of your normal spawn.\n\
+When it expires, your spawn resets to normal automatically (house, faction or civilian, whatever you had).\n\n\
 This is handy for setting up far from the city - drag the caravan somewhere remote, /camp, and you stop losing time travelling back after every death.";
         }
         else if(!strcmp(topic, "licence", true) || !strcmp(topic, "license", true) || !strcmp(topic, "licences", true) || !strcmp(topic, "licenses", true))
@@ -21567,7 +22644,7 @@ This is handy for setting up far from the city - drag the caravan somewhere remo
         {
             title = "How to: Skins & Clothes";
             body = "{E3E3E3}Change how your character looks by buying and wearing outfits (skins).\n\n\
-{FFFF00}Clothing store:{E3E3E3} go to a store marked with the "C_INFO"clothes icon"C_WHITE" on the map.\n\
+{FFFF00}Clothing store:{E3E3E3} find one with "C_INFO"/gps"C_WHITE" (category "C_INFO"Clothing Stores"C_WHITE") and go stand at the pickup.\n\
 - /buyskin - browse the catalogue and "C_INFO"buy"C_WHITE" an outfit ("C_INFO"$10.000"C_WHITE" each). Buying an outfit also puts it on.\n\
 - /wardrobe - switch between outfits you already own, "C_INFO"for free"C_WHITE".\n\n\
 Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them anytime at a store.\n\n\
@@ -21589,8 +22666,20 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 {FFFF00}The clock:{E3E3E3} each "C_INFO"/bid"C_WHITE" resets the timer to "C_INFO"90 seconds"C_WHITE". Everyone gets warned when "C_INFO"60"C_WHITE", "C_INFO"30"C_WHITE" and "C_INFO"5"C_WHITE" seconds are left, showing who's currently winning.\n\n\
 {FFFF00}When time runs out:{E3E3E3} the highest bidder wins and gets the property - if it already had an owner, that owner loses it "C_INFO"with no compensation"C_WHITE". If nobody ever bid, the auction just ends with no winner.";
         }
+        else if(!strcmp(topic, "hunt", true) || !strcmp(topic, "hunting", true))
+        {
+            title = "How to: Hunting";
+            body = "{E3E3E3}Hunt deer in the forest and sell the meat for cash.\n\n\
+{FFFF00}Getting started:{E3E3E3} go to the hunting spot ("C_INFO"hunting icon"C_WHITE" on the map) and use "C_INFO"/hunt"C_WHITE" - you get a sniper rifle for free.\n\n\
+{FFFF00}The hunt:{E3E3E3} deer roam the forest. Get within "C_INFO"30m"C_WHITE" and they start to flee, so snipe from a distance.\n\
+- A shot landing within "C_INFO"2.5m"C_WHITE" of a deer is a hit (it drops).\n\
+- A shot within "C_INFO"8m"C_WHITE" (but not close enough to hit) is a near-miss - the deer flees.\n\
+You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer respawns elsewhere after "C_INFO"8 seconds"C_WHITE".\n\n\
+{FFFF00}Selling:{E3E3E3} go to any "C_INFO"shop"C_WHITE" and use "C_INFO"/sellmeat"C_WHITE" - "C_INFO"$2.500"C_WHITE" per deer, all at once.\n\n\
+{FFFF00}Finishing up:{E3E3E3} use "C_INFO"/stophunt"C_WHITE" to put the rifle away when you're done.";
+        }
         else
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / hotel / games / caravan / licence / farm / rob / skins / casino / auction]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/howto [job / faction / vehicle / business / house / hotel / games / caravan / licence / farm / rob / skins / casino / auction / hunt]"C_WHITE"."), 1;
 
         ShowPlayerDialog(playerid, DIALOG_HOWTO, DIALOG_STYLE_MSGBOX, title, body, "OK", "");
         return 1;
@@ -21607,31 +22696,31 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         if(alv >= 1)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /aa /slap /setskin /businesslist /showradars /removeradar /fixcar /flipcar /setInterior /setVw /setjob");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/settired /setsick");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/ahelp /respawn /aheal /aa /slap /setskin /businesslist /showradars /removeradar /fixcar /flipcar");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/setinterior /setvw /setjob /settired /setsick /adminwanted /reportreply /reports /warn /unwarn");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[1] "C_WHITE"/bizzlist /houselist /farmlist /clslist /hotellist /shoplist /fflist /fastfoodlist /interiorlist /ammolist");
         }
         if(alv >= 2)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createFire /healall /gotoLoc /gotoBiz /gotoHouse /gotoFaction /goto /bizzlist /houselist /farmlist /openGolfTournament /startGolf");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/cscreate [csType] [name] /csdelete [csID] /cslist /event cs open|start [nr]|stop [nr]");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/event htm open|start|stop");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/getcar /gotocar /saveloc /gotosave /giveweapon [playerid] [weapon] [ammo]");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/event race [lap1/2/3] [vehicle/random], /event start, /event stop  (race events)");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/createfire /healall /gotoloc /gotobiz /gotohouse /gotofaction /goto /gotocar /gotogtainterior /gotosave /saveloc");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/joblist /getcar /giveweapon /givemoney /kick /mute /unmute /setvip");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[2] "C_WHITE"/event /cscreate /csdelete /cslist /opengolftournament /startgolf");
         }
         if(alv >= 3)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[3] "C_WHITE"/setlic /veh /rac /createDisease /forceunlock /gotoxyz /changecar");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[3] "C_WHITE"/setlic /veh /rac /createdisease /forceunlock /gotoxyz /changecar /setworldtime");
         }
         if(alv >= 4)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[4] "C_WHITE"/forcewar /adminuninvite");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[4] "C_WHITE"/ban /unban /forcewar /adminuninvite");
         if(alv >= 5)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[5] "C_WHITE"/vc /bc /hc /fc /farmc /setfactionskin /payday /jetpack /removejetpack");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[5] "C_WHITE"/vc /bc /hc /fc /farmc /htlc /setfactionskin /payday /jetpack /removejetpack /cancelauction");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[5] "C_WHITE"/clsc /ammoc /ffc /ffcreate /hupgrade /licitatie");
         }
         if(alv >= 6)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] "C_WHITE"/hcreate /htlcreate /htlc /bcreate /vcreate");
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] "C_WHITE"/setbballspawn /createCaravan /createatm /deleteatm /moveatm");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] "C_WHITE"/hcreate /htlcreate /bcreate /vcreate /setbballspawn /createcaravan");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[6] "C_WHITE"/createatm /deleteatm /moveatm /createclothstore /clothstoredelete /createammunation /ammunationdelete /shopcreate /shopc /shopDelete");
         }
 
         return 1;
@@ -21661,6 +22750,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         HouseData[newIdx][hOwnerName][0] = EOS;
         HouseData[newIdx][hOwnerId]  = 0;
         HouseData[newIdx][hOwned]    = 0;
+        HouseData[newIdx][hForSale]      = 1; // cumparabila imediat (is_for_sale=1 e obligatoriu pentru /buyhouse)
         HouseData[newIdx][hPrice]        = 2000000;
         HouseData[newIdx][hDefaultPrice] = 2000000;
         HouseData[newIdx][hType]     = 1;
@@ -21676,8 +22766,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         new q[256];
         mysql_format(g_SQL, q, sizeof(q),
-            "INSERT INTO `houses` (`name`,`owner`,`owner_id`,`owned`,`price`,`default_price`,`loc_x`,`loc_y`,`loc_z`) \
-             VALUES ('%e','',0,0,2000000,2000000,%.4f,%.4f,%.4f)",
+            "INSERT INTO `houses` (`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`default_price`,`loc_x`,`loc_y`,`loc_z`) \
+             VALUES ('%e','',0,0,1,2000000,2000000,%.4f,%.4f,%.4f)",
             hname, hx, hy, hz);
         mysql_tquery(g_SQL, q, "OnHouseCreated", "ii", playerid, newIdx);
         return 1;
@@ -21707,6 +22797,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         HotelData[newHtlIdx][htlOwnerName][0] = EOS;
         HotelData[newHtlIdx][htlOwnerId] = 0;
         HotelData[newHtlIdx][htlOwned]   = 0;
+        HotelData[newHtlIdx][htlForSale] = 1; // cumparabil imediat (is_for_sale=1 e obligatoriu pentru /buyhotel)
         HotelData[newHtlIdx][htlPrice]   = 50000;
         HotelData[newHtlIdx][htlLocX]    = htx;
         HotelData[newHtlIdx][htlLocY]    = hty;
@@ -21718,8 +22809,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         new htlq[256];
         mysql_format(g_SQL, htlq, sizeof(htlq),
-            "INSERT INTO `hotels` (`name`,`owner`,`owner_id`,`owned`,`price`,`loc_x`,`loc_y`,`loc_z`,`capacity`) \
-             VALUES ('%e','',0,0,50000,%.4f,%.4f,%.4f,%d)",
+            "INSERT INTO `hotels` (`name`,`owner`,`owner_id`,`owned`,`is_for_sale`,`price`,`loc_x`,`loc_y`,`loc_z`,`capacity`) \
+             VALUES ('%e','',0,0,1,50000,%.4f,%.4f,%.4f,%d)",
             htlname, htx, hty, htz, HOTEL_DEFAULT_CAPACITY);
         mysql_tquery(g_SQL, htlq, "OnHotelCreated", "ii", playerid, newHtlIdx);
         return 1;
@@ -21728,8 +22819,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
     // ---- /htlc [loc / price / name] [htlID] ... (admin 6+: modifica un hotel dupa ID) ----
     if(strcmp(cmd, "/htlc", true) == 0)
     {
-        if(PlayerData[playerid][pAdminLevel] < 6)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+        if(PlayerData[playerid][pAdminLevel] < 5)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
 
         while(cmdtext[idx] == ' ') idx++;
         new htlcopt[16], htlcp = 0;
@@ -22124,13 +23215,13 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             {
                 FarmData[fi][fmOwnerId]  = 0;
                 FarmData[fi][fmOwned]    = 0;
-                FarmData[fi][fmForSale]  = 0;
+                FarmData[fi][fmForSale]  = 1; // inapoi la vanzare standard = cumparabila din nou
                 FarmData[fi][fmOwnerName][0] = EOS;
 
                 Farm_RecreatePickup(fi);
 
                 new q0[160];
-                mysql_format(g_SQL, q0, sizeof(q0), "UPDATE `farms` SET `owner`='', `owner_id`=0, `isOwned`=0, `is_for_sale`=0 WHERE `id`=%d", FarmData[fi][fmID]);
+                mysql_format(g_SQL, q0, sizeof(q0), "UPDATE `farms` SET `owner`='', `owner_id`=0, `isOwned`=0, `is_for_sale`=1 WHERE `id`=%d", FarmData[fi][fmID]);
                 mysql_tquery(g_SQL, q0, "", "", 0);
 
                 new foiMsg0[128];
@@ -22377,14 +23468,14 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             {
                 HouseData[hidx][hOwnerId] = 0;
                 HouseData[hidx][hOwned]   = 0;
-                HouseData[hidx][hForSale] = 0;
+                HouseData[hidx][hForSale] = 1; // inapoi la vanzare standard = cumparabila din nou
                 HouseData[hidx][hOwnerName][0] = EOS;
 
                 Houses_RecreatePickup(hidx);
 
                 new q0[192];
                 mysql_format(g_SQL, q0, sizeof(q0),
-                    "UPDATE `houses` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=0 WHERE `id`=%d",
+                    "UPDATE `houses` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=1 WHERE `id`=%d",
                     HouseData[hidx][hID]);
                 mysql_tquery(g_SQL, q0, "", "", 0);
 
@@ -22627,7 +23718,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
                 return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This house already has a tree."), 1;
 
             new huTq[128];
-            mysql_format(g_SQL, huTq, sizeof(huTq), "INSERT INTO `trees` (`treeHouseId`) VALUES (%d)", HouseData[huHidx][hID]);
+            mysql_format(g_SQL, huTq, sizeof(huTq), "INSERT INTO `houses_tree` (`treeHouseId`) VALUES (%d)", HouseData[huHidx][hID]);
             mysql_tquery(g_SQL, huTq, "OnTreeUpgradeBought", "ii", playerid, huHidx);
             return 1;
         }
@@ -22670,7 +23761,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
             new huAq[300];
             mysql_format(g_SQL, huAq, sizeof(huAq),
-                "INSERT INTO `animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName`) VALUES (%d,%d,%d,'%e','%e')",
+                "INSERT INTO `houses_animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName`) VALUES (%d,%d,%d,'%e','%e')",
                 g_AnimalCatalog[huAcIdx][acModel], HouseData[huHidx][hOwnerId], HouseData[huHidx][hID], g_AnimalCatalog[huAcIdx][acName], g_AnimalCatalog[huAcIdx][acName]);
             mysql_tquery(g_SQL, huAq, "", "", 0);
 
@@ -22889,8 +23980,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         new hidx = -1;
         for(new i = 0; i < g_HouseCount; i++)
         {
-            // cumperi daca: e liber (de la server) SAU e al altui player si pus la vanzare
-            new bool:buyable = (!HouseData[i][hOwned]) || (HouseData[i][hForSale] && HouseData[i][hOwnerId] != PlayerData[playerid][pID]);
+            // cumperi DOAR daca e pusa la vanzare (is_for_sale=1), indiferent daca are sau nu proprietar
+            new bool:buyable = (HouseData[i][hForSale] == 1) && (!HouseData[i][hOwned] || HouseData[i][hOwnerId] != PlayerData[playerid][pID]);
             if(!buyable) continue;
             if(IsPlayerInRangeOfPoint(playerid, 5.0, HouseData[i][hLocX], HouseData[i][hLocY], HouseData[i][hLocZ]))
             {
@@ -22949,7 +24040,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         new htlidx = -1;
         for(new i = 0; i < g_HotelCount; i++)
         {
-            new bool:buyable = (!HotelData[i][htlOwned]) || (HotelData[i][htlForSale] && HotelData[i][htlOwnerId] != PlayerData[playerid][pID]);
+            // cumperi DOAR daca e pus la vanzare (is_for_sale=1), indiferent daca are sau nu proprietar
+            new bool:buyable = (HotelData[i][htlForSale] == 1) && (!HotelData[i][htlOwned] || HotelData[i][htlOwnerId] != PlayerData[playerid][pID]);
             if(!buyable) continue;
             if(IsPlayerInRangeOfPoint(playerid, 5.0, HotelData[i][htlLocX], HotelData[i][htlLocY], HotelData[i][htlLocZ]))
             {
@@ -23222,7 +24314,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         HotelData[htlidx][htlOwned]   = 0;
         HotelData[htlidx][htlOwnerId] = 0;
-        HotelData[htlidx][htlForSale] = 0;
+        HotelData[htlidx][htlForSale] = 1; // inapoi la stat = cumparabil din nou
         HotelData[htlidx][htlOwnerName][0] = EOS;
 
         Hotels_RecreatePickup(htlidx);
@@ -23230,7 +24322,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         new htlq[192];
         mysql_format(g_SQL, htlq, sizeof(htlq),
-            "UPDATE `hotels` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=0 WHERE `id`=%d",
+            "UPDATE `hotels` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=1 WHERE `id`=%d",
             HotelData[htlidx][htlID]);
         mysql_tquery(g_SQL, htlq, "", "", 0);
 
@@ -23312,7 +24404,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
             HouseData[hidx][hOwned]    = 0;
             HouseData[hidx][hOwnerId]  = 0;
-            HouseData[hidx][hForSale]  = 0;
+            HouseData[hidx][hForSale]  = 1; // inapoi la stat = cumparabila din nou
             HouseData[hidx][hOwnerName][0] = EOS;
 
             Houses_RecreatePickup(hidx);
@@ -23320,7 +24412,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
             new q[192];
             mysql_format(g_SQL, q, sizeof(q),
-                "UPDATE `houses` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=0 WHERE `id`=%d",
+                "UPDATE `houses` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=1 WHERE `id`=%d",
                 HouseData[hidx][hID]);
             mysql_tquery(g_SQL, q, "", "", 0);
 
@@ -23433,7 +24525,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
             new aq[300];
             mysql_format(g_SQL, aq, sizeof(aq),
-                "INSERT INTO `animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName`) VALUES (%d,%d,%d,'%e','%e')",
+                "INSERT INTO `houses_animals` (`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName`) VALUES (%d,%d,%d,'%e','%e')",
                 g_AnimalCatalog[acIdx][acModel], PlayerData[playerid][pID], HouseData[hidx][hID], g_AnimalCatalog[acIdx][acName], g_AnimalCatalog[acIdx][acName]);
             mysql_tquery(g_SQL, aq, "", "", 0);
 
@@ -23468,7 +24560,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             if(trCut > 0) Job_AddBizIncome(APPLIANCE_BIZ_ID, trCut);
 
             new tq[128];
-            mysql_format(g_SQL, tq, sizeof(tq), "INSERT INTO `trees` (`treeHouseId`) VALUES (%d)", HouseData[hidx][hID]);
+            mysql_format(g_SQL, tq, sizeof(tq), "INSERT INTO `houses_tree` (`treeHouseId`) VALUES (%d)", HouseData[hidx][hID]);
             mysql_tquery(g_SQL, tq, "OnTreeUpgradeBought", "ii", playerid, hidx);
             return 1;
         }
@@ -24268,8 +25360,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         new bidx = -1;
         for(new i = 0; i < g_BusinessCount; i++)
         {
-            // cumperi daca: e liber (de la server) SAU e al altui player si pus la vanzare
-            new bool:buyable = (!BusinessData[i][bOwned]) || (BusinessData[i][bForSale] && BusinessData[i][bOwnerId] != PlayerData[playerid][pID]);
+            // cumperi DOAR daca e pus la vanzare (is_for_sale=1), indiferent daca are sau nu proprietar
+            new bool:buyable = (BusinessData[i][bForSale] == 1) && (!BusinessData[i][bOwned] || BusinessData[i][bOwnerId] != PlayerData[playerid][pID]);
             if(!buyable) continue;
             if(IsPlayerInRangeOfPoint(playerid, BUSINESS_RANGE, BusinessData[i][bLocX], BusinessData[i][bLocY], BusinessData[i][bLocZ]))
             {
@@ -24427,7 +25519,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
             BusinessData[bidx][bOwned]    = 0;
             BusinessData[bidx][bOwnerId]  = 0;
-            BusinessData[bidx][bForSale]  = 0;
+            BusinessData[bidx][bForSale]  = 1; // inapoi la stat = cumparabil din nou
             BusinessData[bidx][bOwnerName][0] = EOS;
             BusinessData[bidx][bBank]     = 0;
 
@@ -24441,7 +25533,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
             new q[256];
             mysql_format(g_SQL, q, sizeof(q),
-                "UPDATE `businesses` SET `owner`='', `owner_id`=0, `owned`=0, `bank`=0, `is_for_sale`=0 WHERE `id`=%d",
+                "UPDATE `businesses` SET `owner`='', `owner_id`=0, `owned`=0, `bank`=0, `is_for_sale`=1 WHERE `id`=%d",
                 BusinessData[bidx][bID]);
             mysql_tquery(g_SQL, q, "", "", 0);
 
@@ -24621,6 +25713,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         BusinessData[newIdx][bOwnerName][0] = EOS;
         BusinessData[newIdx][bOwnerId]  = 0;
         BusinessData[newIdx][bOwned]    = 0;
+        BusinessData[newIdx][bForSale]      = 1; // cumparabil imediat (is_for_sale=1 e obligatoriu pentru /buybiz)
         BusinessData[newIdx][bPrice]        = 3000000;
         BusinessData[newIdx][bDefaultPrice] = 3000000;
         BusinessData[newIdx][bBank]     = 0;
@@ -24632,8 +25725,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         new q[256];
         mysql_format(g_SQL, q, sizeof(q),
-            "INSERT INTO `businesses` (`name`,`owned`,`owner`,`owner_id`,`price`,`default_price`,`bank`,`loc_x`,`loc_y`,`loc_z`) \
-             VALUES ('Business',0,'',0,3000000,3000000,0,%.4f,%.4f,%.4f)",
+            "INSERT INTO `businesses` (`name`,`owned`,`owner`,`owner_id`,`is_for_sale`,`price`,`default_price`,`bank`,`loc_x`,`loc_y`,`loc_z`) \
+             VALUES ('Business',0,'',0,1,3000000,3000000,0,%.4f,%.4f,%.4f)",
             bx, by, bz);
         mysql_tquery(g_SQL, q, "OnBusinessCreated", "ii", playerid, newIdx);
         return 1;
@@ -24758,7 +25851,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         GetPlayerPos(playerid, sx, sy, sz);
 
         new newIdx = g_ShopCount;
-        ShopData[newIdx][shopID] = 0;
+        ShopData[newIdx][shopID]      = 0;
+        format(ShopData[newIdx][shopName], 32, "24/7 Shop");
         ShopData[newIdx][shopX]  = sx;
         ShopData[newIdx][shopY]  = sy;
         ShopData[newIdx][shopZ]  = sz;
@@ -24774,40 +25868,78 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         return 1;
     }
 
-    // ---- /shopChangeLoc [id] (muta shop-ul la pozitia ta) ----
-    if(strcmp(cmd, "/shopChangeLoc", true) == 0)
+    // ---- /shopc [id] [loc/name] (admin: configureaza un shop dupa ID) ----
+    if(strcmp(cmd, "/shopc", true) == 0)
     {
         if(PlayerData[playerid][pAdminLevel] < 6)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
 
         while(cmdtext[idx] == ' ') idx++;
-        new mStr[8];
-        strmid(mStr, cmdtext, idx, strlen(cmdtext), 8);
-        if(!strlen(mStr))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopChangeLoc [id]"C_WHITE"."), 1;
+        new shpIdStr[8], shpIdPos = 0;
+        while(cmdtext[idx] > ' ' && shpIdPos < 7) { shpIdStr[shpIdPos++] = cmdtext[idx]; idx++; }
+        shpIdStr[shpIdPos] = EOS;
+        if(!strlen(shpIdStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopc [id] [loc/name]"C_WHITE"."), 1;
 
-        new sidx = Shop_FindByID(strval(mStr));
+        new sidx = Shop_FindByID(strval(shpIdStr));
         if(sidx == -1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid shop ID."), 1;
 
-        new Float:sx, Float:sy, Float:sz;
-        GetPlayerPos(playerid, sx, sy, sz);
+        while(cmdtext[idx] == ' ') idx++;
+        new shpOpt[16], shpOptPos = 0;
+        while(cmdtext[idx] > ' ' && shpOptPos < 15) { shpOpt[shpOptPos++] = cmdtext[idx]; idx++; }
+        shpOpt[shpOptPos] = EOS;
+        if(!strlen(shpOpt))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopc [id] [loc/name]"C_WHITE"."), 1;
 
-        ShopData[sidx][shopX] = sx;
-        ShopData[sidx][shopY] = sy;
-        ShopData[sidx][shopZ] = sz;
-        Shop_Create(sidx);
+        // ---- /shopc [id] loc (muta shop-ul la pozitia ta) ----
+        if(strcmp(shpOpt, "loc", true) == 0)
+        {
+            new Float:sx, Float:sy, Float:sz;
+            GetPlayerPos(playerid, sx, sy, sz);
 
-        new q[160];
-        mysql_format(g_SQL, q, sizeof(q),
-            "UPDATE `shops` SET `shopLocX`=%.4f, `shopLocY`=%.4f, `shopLocZ`=%.4f WHERE `shopID`=%d",
-            sx, sy, sz, ShopData[sidx][shopID]);
-        mysql_tquery(g_SQL, q, "", "", 0);
+            ShopData[sidx][shopX] = sx;
+            ShopData[sidx][shopY] = sy;
+            ShopData[sidx][shopZ] = sz;
+            Shop_Create(sidx);
 
-        new mmsg[96];
-        format(mmsg, sizeof(mmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Shop "C_INFO"#%d"C_WHITE" moved to your position.", ShopData[sidx][shopID]);
-        SendClientMessage(playerid, COLOR_SUCCESS, mmsg);
-        return 1;
+            new q[160];
+            mysql_format(g_SQL, q, sizeof(q),
+                "UPDATE `shops` SET `shopLocX`=%.4f, `shopLocY`=%.4f, `shopLocZ`=%.4f WHERE `shopID`=%d",
+                sx, sy, sz, ShopData[sidx][shopID]);
+            mysql_tquery(g_SQL, q, "", "", 0);
+
+            new mmsg[128];
+            format(mmsg, sizeof(mmsg), C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"loc"C_WHITE" of Shop "C_INFO"#%d"C_WHITE" to your location.", ShopData[sidx][shopID]);
+            SendClientMessage(playerid, COLOR_SUCCESS, mmsg);
+            return 1;
+        }
+
+        // ---- /shopc [id] name [newName] ----
+        if(strcmp(shpOpt, "name", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new shpNewName[32];
+            strmid(shpNewName, cmdtext, idx, strlen(cmdtext), 32);
+            if(!strlen(shpNewName))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopc [id] name [newName]"C_WHITE"."), 1;
+
+            format(ShopData[sidx][shopName], 32, "%s", shpNewName);
+            Shop_Create(sidx);
+
+            new q[160];
+            mysql_format(g_SQL, q, sizeof(q), "UPDATE `shops` SET `shopName`='%e' WHERE `shopID`=%d",
+                ShopData[sidx][shopName], ShopData[sidx][shopID]);
+            mysql_tquery(g_SQL, q, "", "", 0);
+
+            new nmsg[160];
+            format(nmsg, sizeof(nmsg), C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"name"C_WHITE" of Shop "C_INFO"#%d"C_WHITE" to "C_INFO"%s"C_WHITE".",
+                ShopData[sidx][shopID], ShopData[sidx][shopName]);
+            SendClientMessage(playerid, COLOR_SUCCESS, nmsg);
+            return 1;
+        }
+
+        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/shopc [id] [loc/name]"C_WHITE"."), 1;
     }
 
     // ---- /shopDelete [id] ----
@@ -24925,6 +26057,82 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         return 1;
     }
 
+    // ---- /createammunation (creeaza un magazin de arme la pozitia ta, fara mapicon) ----
+    if(strcmp(cmd, "/createammunation", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        if(g_AmmoDynCount >= MAX_AMMUNATIONS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Limit of "C_INFO#MAX_AMMUNATIONS C_WHITE" ammunations reached."), 1;
+
+        new Float:sx, Float:sy, Float:sz;
+        GetPlayerPos(playerid, sx, sy, sz);
+
+        new newIdx = g_AmmoDynCount;
+        AmmoData[newIdx][amoID]      = 0;
+        AmmoData[newIdx][amoX]       = sx;
+        AmmoData[newIdx][amoY]       = sy;
+        AmmoData[newIdx][amoZ]       = sz;
+        AmmoData[newIdx][amoName][0] = EOS;
+        AmmoData[newIdx][amoIntID]   = 0;
+        AmmoData[newIdx][amoVwID]    = 0;
+        AmmoData[newIdx][amoIntX]    = 0.0;
+        AmmoData[newIdx][amoIntY]    = 0.0;
+        AmmoData[newIdx][amoIntZ]    = 0.0;
+        g_AmmoDynPickup[newIdx] = -1;
+        g_AmmoDynLabel[newIdx]  = Text3D:INVALID_3DTEXT_ID;
+        g_AmmoDynCount++;
+
+        new q[160];
+        mysql_format(g_SQL, q, sizeof(q),
+            "INSERT INTO `ammunations` (`amoLocX`,`amoLocY`,`amoLocZ`) VALUES (%.4f,%.4f,%.4f)",
+            sx, sy, sz);
+        mysql_tquery(g_SQL, q, "OnAmmoCreated", "ii", playerid, newIdx);
+        return 1;
+    }
+
+    // ---- /ammunationdelete [id] ----
+    if(strcmp(cmd, "/ammunationdelete", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new amStr[8];
+        strmid(amStr, cmdtext, idx, strlen(cmdtext), 8);
+        if(!strlen(amStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ammunationdelete [id]"C_WHITE"."), 1;
+
+        new amDelId = strval(amStr);
+        new amidx = Ammo_FindByID(amDelId);
+        if(amidx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid ammunation ID."), 1;
+
+        if(g_AmmoDynPickup[amidx] != -1) { DestroyPickup(g_AmmoDynPickup[amidx]); g_AmmoDynPickup[amidx] = -1; }
+        if(g_AmmoDynLabel[amidx] != Text3D:INVALID_3DTEXT_ID) { Delete3DTextLabel(g_AmmoDynLabel[amidx]); g_AmmoDynLabel[amidx] = Text3D:INVALID_3DTEXT_ID; }
+        if(IsValidDynamic3DTextLabel(g_AmmoIntLabel[amidx])) DestroyDynamic3DTextLabel(g_AmmoIntLabel[amidx]);
+
+        // compacteaza array-urile (muta si handle-urile odata cu datele)
+        for(new i = amidx; i < g_AmmoDynCount - 1; i++)
+        {
+            AmmoData[i]        = AmmoData[i + 1];
+            g_AmmoDynPickup[i] = g_AmmoDynPickup[i + 1];
+            g_AmmoDynLabel[i]  = g_AmmoDynLabel[i + 1];
+            g_AmmoIntLabel[i]  = g_AmmoIntLabel[i + 1];
+        }
+        g_AmmoDynCount--;
+
+        new amq[96];
+        mysql_format(g_SQL, amq, sizeof(amq), "DELETE FROM `ammunations` WHERE `amoID`=%d", amDelId);
+        mysql_tquery(g_SQL, amq, "", "", 0);
+
+        new amdmsg[96];
+        format(amdmsg, sizeof(amdmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Ammu-Nation "C_INFO"#%d"C_WHITE" deleted.", amDelId);
+        SendClientMessage(playerid, COLOR_SUCCESS, amdmsg);
+        return 1;
+    }
+
     // ---- /clsc [id] [name/loc/int] (admin: configureaza un magazin de haine creat in-game) ----
     if(strcmp(cmd, "/clsc", true) == 0)
     {
@@ -24967,7 +26175,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             mysql_tquery(g_SQL, clscq, "", "", 0);
 
             new clscmsg[160];
-            format(clscmsg, sizeof(clscmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" name changed to "C_INFO"%s"C_WHITE".",
+            format(clscmsg, sizeof(clscmsg), C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"name"C_WHITE" of ClothingStore "C_INFO"#%d"C_WHITE" to "C_INFO"%s"C_WHITE".",
                 ClothStoreData[clscCsIdx][clstID], ClothStoreData[clscCsIdx][clstName]);
             SendClientMessage(playerid, COLOR_SUCCESS, clscmsg);
             return 1;
@@ -24991,7 +26199,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             mysql_tquery(g_SQL, clscq, "", "", 0);
 
             new clscmsg[128];
-            format(clscmsg, sizeof(clscmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" moved to your location.",
+            format(clscmsg, sizeof(clscmsg), C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"loc"C_WHITE" of ClothingStore "C_INFO"#%d"C_WHITE" to your location.",
                 ClothStoreData[clscCsIdx][clstID]);
             SendClientMessage(playerid, COLOR_SUCCESS, clscmsg);
             return 1;
@@ -25025,15 +26233,126 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
                 ClothStoreData[clscCsIdx][clstID]);
             mysql_tquery(g_SQL, clscq, "", "", 0);
 
-            new clscmsg[160];
+            new clscmsg[176];
             format(clscmsg, sizeof(clscmsg),
-                C_SUCCESS"[ADM] Success: "C_WHITE"Clothing store "C_INFO"#%d"C_WHITE" now leads to "C_INFO"%s"C_WHITE" (interior "C_INFO"%d"C_WHITE"). Press ENTER at the store to try it.",
+                C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"int"C_WHITE" of ClothingStore "C_INFO"#%d"C_WHITE" (now leads to "C_INFO"%s"C_WHITE", interior "C_INFO"%d"C_WHITE"). Press ENTER at the store to try it.",
                 ClothStoreData[clscCsIdx][clstID], GTAInteriorData[clscGiIdx][gtaIntName], ClothStoreData[clscCsIdx][clstIntID]);
             SendClientMessage(playerid, COLOR_SUCCESS, clscmsg);
             return 1;
         }
 
         return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/clsc [id] [name/loc/int]"C_WHITE"."), 1;
+    }
+
+    // ---- /ammoc [id] [name/loc/int] (admin: configureaza un ammunation creat in-game) ----
+    if(strcmp(cmd, "/ammoc", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 5)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new amcIdStr[8], amcIdPos = 0;
+        while(cmdtext[idx] > ' ' && amcIdPos < 7) { amcIdStr[amcIdPos++] = cmdtext[idx]; idx++; }
+        amcIdStr[amcIdPos] = EOS;
+        if(!strlen(amcIdStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ammoc [id] [name/loc/int]"C_WHITE"."), 1;
+
+        new amcIdx = Ammo_FindByID(strval(amcIdStr));
+        if(amcIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Ammunation not found."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new amcOpt[16], amcOptPos = 0;
+        while(cmdtext[idx] > ' ' && amcOptPos < 15) { amcOpt[amcOptPos++] = cmdtext[idx]; idx++; }
+        amcOpt[amcOptPos] = EOS;
+        if(!strlen(amcOpt))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ammoc [id] [name/loc/int]"C_WHITE"."), 1;
+
+        // ---- /ammoc [id] name [newName] ----
+        if(strcmp(amcOpt, "name", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new amcNewName[32];
+            strmid(amcNewName, cmdtext, idx, strlen(cmdtext), 32);
+            if(!strlen(amcNewName))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ammoc [id] name [newName]"C_WHITE"."), 1;
+
+            format(AmmoData[amcIdx][amoName], 32, "%s", amcNewName);
+            Ammo_Create(amcIdx);
+
+            new amcq[160];
+            mysql_format(g_SQL, amcq, sizeof(amcq), "UPDATE `ammunations` SET `amoName`='%e' WHERE `amoID`=%d",
+                AmmoData[amcIdx][amoName], AmmoData[amcIdx][amoID]);
+            mysql_tquery(g_SQL, amcq, "", "", 0);
+
+            new amcmsg[160];
+            format(amcmsg, sizeof(amcmsg), C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"name"C_WHITE" of Ammunation "C_INFO"#%d"C_WHITE" to "C_INFO"%s"C_WHITE".",
+                AmmoData[amcIdx][amoID], AmmoData[amcIdx][amoName]);
+            SendClientMessage(playerid, COLOR_SUCCESS, amcmsg);
+            return 1;
+        }
+
+        // ---- /ammoc [id] loc (muta magazinul la pozitia ta) ----
+        if(strcmp(amcOpt, "loc", true) == 0)
+        {
+            new Float:amcx, Float:amcy, Float:amcz;
+            GetPlayerPos(playerid, amcx, amcy, amcz);
+
+            AmmoData[amcIdx][amoX] = amcx;
+            AmmoData[amcIdx][amoY] = amcy;
+            AmmoData[amcIdx][amoZ] = amcz;
+            Ammo_Create(amcIdx);
+
+            new amcq[160];
+            mysql_format(g_SQL, amcq, sizeof(amcq),
+                "UPDATE `ammunations` SET `amoLocX`=%.4f, `amoLocY`=%.4f, `amoLocZ`=%.4f WHERE `amoID`=%d",
+                amcx, amcy, amcz, AmmoData[amcIdx][amoID]);
+            mysql_tquery(g_SQL, amcq, "", "", 0);
+
+            new amcmsg[128];
+            format(amcmsg, sizeof(amcmsg), C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"loc"C_WHITE" of Ammunation "C_INFO"#%d"C_WHITE" to your location.",
+                AmmoData[amcIdx][amoID]);
+            SendClientMessage(playerid, COLOR_SUCCESS, amcmsg);
+            return 1;
+        }
+
+        // ---- /ammoc [id] int [intId] (leaga magazinul de un interior din gta_interiors, dupa gtaIntID) ----
+        if(strcmp(amcOpt, "int", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new amcIntStr[8];
+            strmid(amcIntStr, cmdtext, idx, strlen(cmdtext), 8);
+            if(!strlen(amcIntStr))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ammoc [id] int [intId]"C_WHITE" (intId = gtaIntID)."), 1;
+
+            new amcGiIdx = GTAInteriors_FindByID(strval(amcIntStr));
+            if(amcGiIdx == -1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid GTA interior ID (see gta_interiors)."), 1;
+
+            AmmoData[amcIdx][amoIntID] = GTAInteriorData[amcGiIdx][gtaIntInterior];
+            AmmoData[amcIdx][amoIntX]  = GTAInteriorData[amcGiIdx][gtaIntLocX];
+            AmmoData[amcIdx][amoIntY]  = GTAInteriorData[amcGiIdx][gtaIntLocY];
+            AmmoData[amcIdx][amoIntZ]  = GTAInteriorData[amcGiIdx][gtaIntLocZ];
+            if(AmmoData[amcIdx][amoVwID] == 0) AmmoData[amcIdx][amoVwID] = AmmoData[amcIdx][amoID];
+            Ammo_Create(amcIdx);
+
+            new amcq[220];
+            mysql_format(g_SQL, amcq, sizeof(amcq),
+                "UPDATE `ammunations` SET `amoInteriorId`=%d, `amoVwId`=%d, `amoInteriorX`=%.4f, `amoInteriorY`=%.4f, `amoInteriorZ`=%.4f WHERE `amoID`=%d",
+                AmmoData[amcIdx][amoIntID], AmmoData[amcIdx][amoVwID],
+                AmmoData[amcIdx][amoIntX], AmmoData[amcIdx][amoIntY], AmmoData[amcIdx][amoIntZ],
+                AmmoData[amcIdx][amoID]);
+            mysql_tquery(g_SQL, amcq, "", "", 0);
+
+            new amcmsg[176];
+            format(amcmsg, sizeof(amcmsg),
+                C_SUCCESS"[ADM] Success: "C_WHITE"You changed "C_INFO"int"C_WHITE" of Ammunation "C_INFO"#%d"C_WHITE" (now leads to "C_INFO"%s"C_WHITE", interior "C_INFO"%d"C_WHITE"). Press ENTER at the store to try it.",
+                AmmoData[amcIdx][amoID], GTAInteriorData[amcGiIdx][gtaIntName], AmmoData[amcIdx][amoIntID]);
+            SendClientMessage(playerid, COLOR_SUCCESS, amcmsg);
+            return 1;
+        }
+
+        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/ammoc [id] [name/loc/int]"C_WHITE"."), 1;
     }
 
     // ---- /ffcreate [pizza/burger/cluckin] [name] (creeaza o locatie fast-food la pozitia ta) ----
@@ -25090,23 +26409,30 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         return 1;
     }
 
-    // ---- /ffc <loc|name|type> <ffID> [value] (modifica o locatie fast-food) ----
+    // ---- /ffc [ffID] [loc/name/type] [value] (modifica o locatie fast-food) ----
     if(strcmp(cmd, "/ffc", true) == 0)
     {
         if(PlayerData[playerid][pAdminLevel] < 5)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
 
-        new field[256];
-        field = strtok(cmdtext, idx);
-        new idStr[256];
-        idStr = strtok(cmdtext, idx);
-        if(!strlen(field) || !strlen(idStr))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc <loc / name / type> <ffID> [value]"C_WHITE"."), 1;
+        while(cmdtext[idx] == ' ') idx++;
+        new ffidStr[8], ffidPos = 0;
+        while(cmdtext[idx] > ' ' && ffidPos < 7) { ffidStr[ffidPos++] = cmdtext[idx]; idx++; }
+        ffidStr[ffidPos] = EOS;
+        if(!strlen(ffidStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc [ffID] [loc/name/type]"C_WHITE"."), 1;
 
-        new ffid = strval(idStr);
+        new ffid = strval(ffidStr);
         new type = FastFood_FindType(ffid);
         if(type == 0)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid ffID (not loaded)."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new field[16], fpos = 0;
+        while(cmdtext[idx] > ' ' && fpos < 15) { field[fpos++] = cmdtext[idx]; idx++; }
+        field[fpos] = EOS;
+        if(!strlen(field))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc [ffID] [loc/name/type]"C_WHITE"."), 1;
 
         new q[256];
 
@@ -25131,7 +26457,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             new ffname[32];
             strmid(ffname, cmdtext, idx, strlen(cmdtext), 32);
             if(!strlen(ffname))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc name <ffID> [new name]"C_WHITE"."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc [ffID] name [new name]"C_WHITE"."), 1;
 
             mysql_format(g_SQL, q, sizeof(q), "UPDATE `fastfood` SET `ffName`='%e' WHERE `ffID`=%d", ffname, ffid);
             mysql_tquery(g_SQL, q, "", "", 0);
@@ -25151,7 +26477,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             else if(!strcmp(tStr, "burger", true) || !strcmp(tStr, "2", true)) newType = 2;
             else if(!strcmp(tStr, "cluckin", true) || !strcmp(tStr, "meal", true) || !strcmp(tStr, "3", true)) newType = 3;
             else if(!strcmp(tStr, "desert", true) || !strcmp(tStr, "4", true)) newType = 4;
-            else return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc type <ffID> [pizza/burger/cluckin/desert]"C_WHITE"."), 1;
+            else return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc [ffID] type [pizza/burger/cluckin/desert]"C_WHITE"."), 1;
 
             new tnn[8];
             FastFood_TypeName(newType, tnn);
@@ -25173,14 +26499,14 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             return 1;
         }
 
-        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc <loc|name|type> <ffID> [value]"C_WHITE"."), 1;
+        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/ffc [ffID] [loc/name/type]"C_WHITE"."), 1;
     }
 
     // ---- /fastfoodlist (dialog cu toate locatiile fast-food; click = teleport) ----
-    if(strcmp(cmd, "/fastfoodlist", true) == 0)
+    if(strcmp(cmd, "/fastfoodlist", true) == 0 || strcmp(cmd, "/fflist", true) == 0)
     {
-        if(PlayerData[playerid][pAdminLevel] < 5)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
 
         new Float:fx, Float:fy, Float:fz, fType, ffid, fname[32];
         new list[2048], line[80], tn[8], shown = 0;
@@ -25394,14 +26720,14 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             {
                 BusinessData[bidx][bOwnerId] = 0;
                 BusinessData[bidx][bOwned]   = 0;
-                BusinessData[bidx][bForSale] = 0;
+                BusinessData[bidx][bForSale] = 1; // inapoi la vanzare standard = cumparabil din nou
                 BusinessData[bidx][bOwnerName][0] = EOS;
 
                 Businesses_RecreatePickup(bidx);
 
                 new q0[192];
                 mysql_format(g_SQL, q0, sizeof(q0),
-                    "UPDATE `businesses` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=0 WHERE `id`=%d",
+                    "UPDATE `businesses` SET `owner`='', `owner_id`=0, `owned`=0, `is_for_sale`=1 WHERE `id`=%d",
                     BusinessData[bidx][bID]);
                 mysql_tquery(g_SQL, q0, "", "", 0);
 
@@ -25725,6 +27051,47 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         return FlightExam_Begin(playerid, FLIGHT_CAT_H);
     }
 
+    // ---- /examW (examen arme -> Weapon W) ----
+    if(strcmp(cmd, "/examW", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+        if(!IsPlayerInRangeOfPoint(playerid, EXAMW_RANGE, EXAMW_LOC_X, EXAMW_LOC_Y, EXAMW_LOC_Z))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the exam location."), 1;
+        if(g_ExamWState[playerid])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already have an exam in progress."), 1;
+        if(PlayerData[playerid][pMoney] < EXAMW_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        PlayerData[playerid][pMoney] -= EXAMW_PRICE;
+        GivePlayerMoney(playerid, -EXAMW_PRICE);
+        UpdatePlayer(playerid, pMoney);
+
+        ResetPlayerWeapons(playerid); // confisca toate armele inainte de teleport (li se restaureaza dupa examen, via AC_RestoreWeapons)
+
+        AC_SetPos(playerid, EXAMW_START_X, EXAMW_START_Y, EXAMW_START_Z);
+        SetPlayerFacingAngle(playerid, EXAMW_START_A);
+        AC_SetVW(playerid, EXAMW_VW_BASE + playerid);
+        AC_SetInterior(playerid, 0);
+
+        AC_GiveWeapon(playerid, EXAMW_DEAGLE, EXAMW_DEAGLE_AMMO);
+        AC_GiveWeapon(playerid, EXAMW_MP5, EXAMW_MP5_AMMO);
+        AC_GiveWeapon(playerid, EXAMW_AK47, EXAMW_AK47_AMMO);
+
+        g_ExamWState[playerid]       = true;
+        g_ExamWHitCount[playerid]    = 0;
+        g_ExamWShotsFired[playerid]  = 0;
+        for(new i = 0; i < EXAMW_TARGET_COUNT; i++) g_ExamWHit[playerid][i] = false;
+        ExamW_DestroyTargets(playerid);
+        ExamW_CreateTargets(playerid);
+        ExamW_KillTimer(playerid);
+        g_ExamWTimer[playerid] = SetTimerEx("ExamW_Timeout", EXAMW_TIME_MS, false, "i", playerid);
+
+        SendClientMessage(playerid, COLOR_INFO,
+            C_INFO"Info: "C_WHITE"Shoot all "C_INFO"6"C_WHITE" targets within "C_INFO"90 seconds"C_WHITE". Hit all 6 for an "C_INFO"8-day"C_WHITE" license, "C_INFO"5/6"C_WHITE" for "C_INFO"3 days"C_WHITE", less than that fails.");
+        return 1;
+    }
+
     // ---- /vbuy ----
     if(strcmp(cmd, "/vbuy", true) == 0)
     {
@@ -25739,8 +27106,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
         if(pvidx == -1)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This is not a personal vehicle."), 1;
 
-        // cumperi daca: e liber (owner_id 0) SAU e al altui player si pus la vanzare
-        new bool:vBuyable = (PVehicleData[pvidx][pvOwnerId] == 0) || (PVehicleData[pvidx][pvForSale] && PVehicleData[pvidx][pvOwnerId] != PlayerData[playerid][pID]);
+        // cumperi DOAR daca e pus la vanzare (is_for_sale=1), indiferent daca are sau nu proprietar
+        new bool:vBuyable = (PVehicleData[pvidx][pvForSale] == 1) && (PVehicleData[pvidx][pvOwnerId] != PlayerData[playerid][pID]);
         if(!vBuyable)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This vehicle is not for sale."), 1;
 
@@ -25764,6 +27131,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
             PVehicleData[pvidx][pvOwnerId] = PlayerData[playerid][pID];
             PVehicleData[pvidx][pvForSale] = 0;
+            PVehicleData[pvidx][pvDirty]   = 0;
             PlayerData[playerid][slot] = PVehicleData[pvidx][pvID];
             UpdatePlayer(playerid, slot);
             PVehicles_RecreateLabel(pvidx);
@@ -25773,7 +27141,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
             SetVehicleParamsEx(vehid, 1, lightsP, alarmP, doorsP, bonnetP, bootP, objectiveP);
 
             new qp[128];
-            mysql_format(g_SQL, qp, sizeof(qp), "UPDATE `vehicles_personal` SET `owner_id`=%d, `is_for_sale`=0 WHERE `id`=%d",
+            mysql_format(g_SQL, qp, sizeof(qp), "UPDATE `vehicles_personal` SET `owner_id`=%d, `is_for_sale`=0, `dirty`=0 WHERE `id`=%d",
                 PVehicleData[pvidx][pvOwnerId], PVehicleData[pvidx][pvID]);
             mysql_tquery(g_SQL, qp, "", "", 0);
 
@@ -25788,6 +27156,8 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         // ---- cumparare de la server (masina noua din showroom) ----
         PVehicleData[pvidx][pvOwnerId] = PlayerData[playerid][pID];
+        PVehicleData[pvidx][pvForSale] = 0; // altfel PVehicles_RecreateLabel() lasa eticheta "FOR SALE" pe masina cumparata
+        PVehicleData[pvidx][pvDirty]   = 0;
         PlayerData[playerid][slot] = PVehicleData[pvidx][pvID];
         UpdatePlayer(playerid, slot);
         PVehicles_RecreateLabel(pvidx);
@@ -25814,7 +27184,7 @@ Outfits you buy are "C_INFO"yours forever"C_WHITE" - you can swap between them a
 
         new q[320];
         mysql_format(g_SQL, q, sizeof(q),
-            "UPDATE `vehicles_personal` SET `owner_id`=%d, `insurance_exp`='%s', `medkit_exp`='%s', `extinguisher_exp`='%s', `itp_exp`='%s', `first_registration`='%s' WHERE `id`=%d",
+            "UPDATE `vehicles_personal` SET `owner_id`=%d, `is_for_sale`=0, `dirty`=0, `insurance_exp`='%s', `medkit_exp`='%s', `extinguisher_exp`='%s', `itp_exp`='%s', `first_registration`='%s' WHERE `id`=%d",
             PVehicleData[pvidx][pvOwnerId], insDate, medDate, extDate, itpDate, firstRegDate, PVehicleData[pvidx][pvID]);
         mysql_tquery(g_SQL, q, "", "", 0);
 
@@ -25864,7 +27234,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         PVehicles_ClearKeySlot(playerid, PVehicleData[pvidx][pvID]);
         PVehicleData[pvidx][pvOwnerId] = 0;
-        PVehicleData[pvidx][pvForSale] = 0;
+        PVehicleData[pvidx][pvForSale] = 1; // inapoi la stat = cumparabil din nou
         PVehicles_RecreateLabel(pvidx);
 
         new engine, lights, alarm, doors, bonnet, boot, objective;
@@ -25872,7 +27242,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         SetVehicleParamsEx(vehid, 0, lights, alarm, doors, bonnet, boot, objective);
 
         new q[128];
-        mysql_format(g_SQL, q, sizeof(q), "UPDATE `vehicles_personal` SET `owner_id`=0, `is_for_sale`=0 WHERE `id`=%d", PVehicleData[pvidx][pvID]);
+        mysql_format(g_SQL, q, sizeof(q), "UPDATE `vehicles_personal` SET `owner_id`=0, `is_for_sale`=1 WHERE `id`=%d", PVehicleData[pvidx][pvID]);
         mysql_tquery(g_SQL, q, "", "", 0);
 
         new lmsg[128];
@@ -26187,11 +27557,16 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(!strlen(plate))
             return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/vplate [NUMBER] (Ex: LV 001 AAA)"C_WHITE" (max 10 characters)."), 1;
 
+        // VIP: plate stored (and shown) in a distinct color ({FF2700})
+        new finalPlate[24];
+        if(PlayerData[playerid][pVIP]) format(finalPlate, sizeof(finalPlate), "{FF2700}%s", plate);
+        else format(finalPlate, sizeof(finalPlate), "%s", plate);
+
         new q[160];
         mysql_format(g_SQL, q, sizeof(q),
             "SELECT `id` FROM `vehicles_personal` WHERE `plate`='%e' AND `id`!=%d LIMIT 1",
-            plate, PVehicleData[pvidx][pvID]);
-        mysql_tquery(g_SQL, q, "OnVehiclePlateChecked", "iis", playerid, pvidx, plate);
+            finalPlate, PVehicleData[pvidx][pvID]);
+        mysql_tquery(g_SQL, q, "OnVehiclePlateChecked", "iis", playerid, pvidx, finalPlate);
         return 1;
     }
 
@@ -27486,7 +28861,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(!Fuel_PlayerAtStation(playerid))
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a "C_INFO"Gas Station"C_WHITE" to fill your gas can."), 1;
 
-        new gcCost = GASCAN_LITERS * FUEL_PRICE_PER_PCT;
+        new gcCost = GasCan_Liters(playerid) * FUEL_PRICE_PER_PCT;
         if(PlayerData[playerid][pMoney] < gcCost)
         {
             new gcErr[128];
@@ -27502,8 +28877,8 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         UpdatePlayer(playerid, pGasCan);
 
         new gcMsg[144];
-        format(gcMsg, sizeof(gcMsg), C_SUCCESS"[Fuel] "C_WHITE"Gas can filled with "C_INFO""#GASCAN_LITERS"L"C_WHITE" for "C_INFO"$%s"C_WHITE". Use "C_INFO"/fill"C_WHITE" in a car to pour it.",
-            MoneyStr(gcCost));
+        format(gcMsg, sizeof(gcMsg), C_SUCCESS"[Fuel] "C_WHITE"Gas can filled with "C_INFO"%dL"C_WHITE" for "C_INFO"$%s"C_WHITE". Use "C_INFO"/fill"C_WHITE" in a car to pour it.",
+            GasCan_Liters(playerid), MoneyStr(gcCost));
         SendClientMessage(playerid, COLOR_SUCCESS, gcMsg);
         return 1;
     }
@@ -27527,7 +28902,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(g_VehicleFuel[fvehid] >= FUEL_MAX)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The tank is already full."), 1;
 
-        g_VehicleFuel[fvehid] += float(GASCAN_LITERS);
+        g_VehicleFuel[fvehid] += float(GasCan_Liters(playerid));
         if(g_VehicleFuel[fvehid] > FUEL_MAX) g_VehicleFuel[fvehid] = FUEL_MAX;
         Vehicle_SaveFuel(fvehid);
 
@@ -27535,8 +28910,8 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         UpdatePlayer(playerid, pGasCan);
 
         new fMsg[144];
-        format(fMsg, sizeof(fMsg), C_SUCCESS"[Fuel] "C_WHITE"You poured "C_INFO""#GASCAN_LITERS"L"C_WHITE" into the tank (now "C_INFO"%.0f%%"C_WHITE"). The gas can is now "C_ERROR"empty"C_WHITE".",
-            g_VehicleFuel[fvehid]);
+        format(fMsg, sizeof(fMsg), C_SUCCESS"[Fuel] "C_WHITE"You poured "C_INFO"%dL"C_WHITE" into the tank (now "C_INFO"%.0f%%"C_WHITE"). The gas can is now "C_ERROR"empty"C_WHITE".",
+            GasCan_Liters(playerid), g_VehicleFuel[fvehid]);
         SendClientMessage(playerid, COLOR_SUCCESS, fMsg);
         return 1;
     }
@@ -27891,13 +29266,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
 
-        new statusA[24], statusB[24], statusC[24], statusD[24], statusAirA[24], statusAirH[24];
+        new statusA[24], statusB[24], statusC[24], statusD[24], statusAirA[24], statusAirH[24], statusW[24];
         License_FormatStatus(PlayerData[playerid][pDrivingLicA_exp], statusA, sizeof(statusA));
         License_FormatStatus(PlayerData[playerid][pDrivingLicB_exp], statusB, sizeof(statusB));
         License_FormatStatus(PlayerData[playerid][pDrivingLicC_exp], statusC, sizeof(statusC));
         License_FormatStatus(PlayerData[playerid][pDrivingLicD_exp], statusD, sizeof(statusD));
         License_FormatStatus(PlayerData[playerid][pAirLicA_exp], statusAirA, sizeof(statusAirA));
         License_FormatStatus(PlayerData[playerid][pAirLicH_exp], statusAirH, sizeof(statusAirH));
+        License_FormatStatus(PlayerData[playerid][pWeaponLicW_exp], statusW, sizeof(statusW));
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"_____ Your Licenses ____________________");
 
@@ -27913,6 +29289,8 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         format(line, sizeof(line), "Airplane A (Planes): "C_INFO"%s", statusAirA);
         SendClientMessage(playerid, COLOR_WHITE, line);
         format(line, sizeof(line), "Airplane H (Helicopters): "C_INFO"%s", statusAirH);
+        SendClientMessage(playerid, COLOR_WHITE, line);
+        format(line, sizeof(line), "Weapon W: "C_INFO"%s", statusW);
         SendClientMessage(playerid, COLOR_WHITE, line);
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"___________________________________________");
@@ -28007,12 +29385,19 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         // Arme
         SendClientMessage(playerid, COLOR_WHITE, C_WHITE"Weapons:");
         new wCount = 0, iwid, iwammo, iwname[32];
+        new bool:hasIllegalWeapon = false;
         for(new slot = 0; slot < 13; slot++)
         {
             GetPlayerWeaponData(targetid, slot, iwid, iwammo);
             if(iwid <= 0) continue;
             GetWeaponName(iwid, iwname, sizeof(iwname));
-            format(iline, sizeof(iline), C_ERROR"- %s "C_INFO"(%d ammo)", iwname, iwammo);
+            if(Weapon_IsIllegal(iwid))
+            {
+                hasIllegalWeapon = true;
+                format(iline, sizeof(iline), C_ERROR"- %s "C_INFO"(%d ammo) "C_ERROR"[ILLEGAL]", iwname, iwammo);
+            }
+            else
+                format(iline, sizeof(iline), C_ERROR"- %s "C_INFO"(%d ammo)", iwname, iwammo);
             SendClientMessage(playerid, COLOR_WHITE, iline);
             wCount++;
         }
@@ -28031,6 +29416,19 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         new itmsg[128];
         format(itmsg, sizeof(itmsg), C_INFO"[Police] "C_WHITE"Officer "C_INFO"%s"C_WHITE" searched you for weapons and drugs.", PlayerData[playerid][pName]);
         SendClientMessage(targetid, COLOR_INFO, itmsg);
+
+        // Arme ilegale gasite -> confisca permisul de arme (Weapon W)
+        if(hasIllegalWeapon)
+        {
+            PlayerData[targetid][pWeaponLicW_exp][0] = EOS;
+            UpdatePlayer(targetid, pWeaponLicW_exp);
+
+            new ilmsg[176];
+            format(ilmsg, sizeof(ilmsg), C_ERROR"[Police] "C_WHITE"%s"C_WHITE" was found carrying illegal weapons - their Weapon W license has been confiscated.", PlayerData[targetid][pName]);
+            SendClientMessage(playerid, COLOR_ERROR, ilmsg);
+
+            SendClientMessage(targetid, COLOR_ERROR, C_ERROR"[Police] "C_WHITE"You were found carrying illegal weapons - your Weapon W license has been confiscated.");
+        }
         return 1;
     }
 
@@ -28189,10 +29587,14 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             if(PVehicleData[pvidx][pvLocked]) format(lockTxt, sizeof(lockTxt), "Locked");
             else                              format(lockTxt, sizeof(lockTxt), "Unlocked");
 
+            new plateColor[9];
+            if(PlayerData[playerid][pVIP]) format(plateColor, sizeof(plateColor), "{FF0000}");
+            else plateColor[0] = EOS;
+
             new line[256];
             format(line, sizeof(line),
-                "[ID: %d] %s | Plate: %s | Fuel: %s | %s | Insurance: %s | Medkit: %s | Extinguisher: %s | ITP: %s",
-                PVehicleData[pvidx][pvID], vname, PVehicleData[pvidx][pvPlate], fuelTxt, lockTxt, insStatus, medStatus, extStatus, itpStatus);
+                "[ID: %d] %s | Plate: %s%s"C_WHITE" | Fuel: %s | %s | Insurance: %s | Medkit: %s | Extinguisher: %s | ITP: %s",
+                PVehicleData[pvidx][pvID], vname, plateColor, PVehicleData[pvidx][pvPlate], fuelTxt, lockTxt, insStatus, medStatus, extStatus, itpStatus);
             SendClientMessage(playerid, COLOR_WHITE, line);
 
             new dirtyTag[16];
@@ -28265,6 +29667,34 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         else
             SendClientMessage(playerid, COLOR_WHITE, "Bed: No");
 
+        if(!House_CanHaveTree(HouseData[hsidx][hType]))
+        {
+            SendClientMessage(playerid, COLOR_WHITE, "Tree: Not available for this house type");
+        }
+        else if(HouseData[hsidx][hTreeId] == 0)
+        {
+            SendClientMessage(playerid, COLOR_WHITE, "Tree: None - plant one with /house upgrade tree");
+        }
+        else
+        {
+            new tsidx = Trees_FindByID(HouseData[hsidx][hTreeId]);
+            if(tsidx == -1)
+                SendClientMessage(playerid, COLOR_WHITE, "Tree: Could not be found");
+            else if(TreeData[tsidx][treePlantedDate] == 0)
+                SendClientMessage(playerid, COLOR_WHITE, "Tree: Not planted yet - use /tree plant");
+            else
+            {
+                new tsStatus = TreeData[tsidx][treeFruitStatus];
+                new tsWord[24];
+                if(tsStatus >= TREE_GROWTH_MAX) format(tsWord, sizeof(tsWord), "Overripe, resetting soon");
+                else if(tsStatus >= TREE_GROWTH_RIPE_MIN) format(tsWord, sizeof(tsWord), "Ripe - use /tree collect");
+                else format(tsWord, sizeof(tsWord), "Growing");
+                format(hline, sizeof(hline), "Tree: %s | Growth: %d/%d | Status: %s",
+                    TreeData[tsidx][treeName], tsStatus, TREE_GROWTH_MAX, tsWord);
+                SendClientMessage(playerid, COLOR_WHITE, hline);
+            }
+        }
+
         new bool:hasAnimal = false;
         for(new a = 0; a < g_AnimalCount; a++)
         {
@@ -28309,7 +29739,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         format(AnimalData[raIdx][aName], 32, "%s", raName);
 
         new raq[96];
-        mysql_format(g_SQL, raq, sizeof(raq), "UPDATE `animals` SET `aName`='%e' WHERE `aID`=%d", raName, raID);
+        mysql_format(g_SQL, raq, sizeof(raq), "UPDATE `houses_animals` SET `aName`='%e' WHERE `aID`=%d", raName, raID);
         mysql_tquery(g_SQL, raq, "", "", 0);
 
         new ramsg[144];
@@ -28522,10 +29952,11 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         new newIdx = g_PVehicleCount;
         PVehicleData[newIdx][pvOwnerId]         = 0;
+        PVehicleData[newIdx][pvForSale]         = 1; // cumparabil imediat (is_for_sale=1 e obligatoriu pentru /vbuy)
         PVehicleData[newIdx][pvModelID]         = model;
         PVehicleData[newIdx][pvColor1]          = 1;
         PVehicleData[newIdx][pvColor2]          = 1;
-        format(PVehicleData[newIdx][pvPlate], 16, "NoRP");
+        format(PVehicleData[newIdx][pvPlate], 24, "NoRP");
         PVehicleData[newIdx][pvPrice]           = price;
         PVehicleData[newIdx][pvLocX]            = vx;
         PVehicleData[newIdx][pvLocY]            = vy;
@@ -28543,8 +29974,8 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         new q[256];
         mysql_format(g_SQL, q, sizeof(q),
-            "INSERT INTO `vehicles_personal` (`owner_id`,`model_id`,`color1`,`color2`,`plate`,`price`,`loc_x`,`loc_y`,`loc_z`,`rotation`,`from_biz`) \
-             VALUES (0,%d,1,1,NULL,%d,%.4f,%.4f,%.4f,%.4f,%d)",
+            "INSERT INTO `vehicles_personal` (`owner_id`,`is_for_sale`,`model_id`,`color1`,`color2`,`plate`,`price`,`loc_x`,`loc_y`,`loc_z`,`rotation`,`from_biz`) \
+             VALUES (0,1,%d,1,1,NULL,%d,%.4f,%.4f,%.4f,%.4f,%d)",
             model, price, vx, vy, vz, vangle, fromBiz);
         mysql_tquery(g_SQL, q, "OnVehiclePersonalCreated", "ii", playerid, newIdx);
         return 1;
@@ -28788,11 +30219,11 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             if(vcClearOwner)
             {
                 PVehicleData[pvidx][pvOwnerId] = 0;
-                PVehicleData[pvidx][pvForSale] = 0;
+                PVehicleData[pvidx][pvForSale] = 1; // inapoi la showroom = cumparabil din nou
                 PVehicles_RecreateLabel(pvidx);
 
                 new q0[128];
-                mysql_format(g_SQL, q0, sizeof(q0), "UPDATE `vehicles_personal` SET `owner_id`=0, `is_for_sale`=0 WHERE `id`=%d", PVehicleData[pvidx][pvID]);
+                mysql_format(g_SQL, q0, sizeof(q0), "UPDATE `vehicles_personal` SET `owner_id`=0, `is_for_sale`=1 WHERE `id`=%d", PVehicleData[pvidx][pvID]);
                 mysql_tquery(g_SQL, q0, "", "", 0);
 
                 new voiMsg0[128];
@@ -29346,7 +30777,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         // Reseteaza playerul
         PlayerData[targetid][pFaction]     = 0;
-        PlayerData[targetid][pFactionRank] = 1;
+        PlayerData[targetid][pFactionRank] = -1;
         PlayerData[targetid][pFactionJoin] = 0;
         SetPlayerColor(targetid, FactionColors[FACTION_NONE]);
         Factions_SetPlayerIcons(targetid);
@@ -29354,7 +30785,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         new q[160];
         mysql_format(g_SQL, q, sizeof(q),
-            "UPDATE `players` SET `faction`=0, `faction_rank`=1, `faction_join`=NULL WHERE `id`=%d",
+            "UPDATE `players` SET `faction`=0, `faction_rank`=-1, `faction_join`=NULL WHERE `id`=%d",
             PlayerData[targetid][pID]);
         mysql_tquery(g_SQL, q, "", "", 0);
 
@@ -29541,9 +30972,12 @@ public OnPlayerText(playerid, text[])
         return 1;
     }
 
-    new colorcode[9], msg[144];
+    new colorcode[9], msg[152];
     GetFactionColorCode(PlayerData[playerid][pFaction], colorcode, sizeof(colorcode));
-    format(msg, sizeof(msg), "%s%s"C_WHITE": %s", colorcode, PlayerData[playerid][pName], text);
+    if(PlayerData[playerid][pVIP])
+        format(msg, sizeof(msg), "{FFD700}[VIP] "C_WHITE"%s%s"C_WHITE": %s", colorcode, PlayerData[playerid][pName], text);
+    else
+        format(msg, sizeof(msg), "%s%s"C_WHITE": %s", colorcode, PlayerData[playerid][pName], text);
 
     new Float:x, Float:y, Float:z;
     GetPlayerPos(playerid, x, y, z);
@@ -29760,6 +31194,10 @@ public OnPlayerDisconnect(playerid, reason)
     g_FlightState[playerid]   = FLIGHT_STATE_NONE;
     g_FlightVehicle[playerid] = -1;
 
+    ExamW_KillTimer(playerid);
+    g_ExamWState[playerid] = false;
+    ExamW_DestroyTargets(playerid);
+
     g_RadarActive[playerid] = false;
     Radar_DestroyProps(playerid);
 
@@ -29844,6 +31282,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 
         if(PlayerData[playerid][pLogged])
             ClothStore_InteriorToggle(playerid);
+
+        if(PlayerData[playerid][pLogged])
+            Ammo_InteriorToggle(playerid);
     }
 
     // Faruri: newkeys exact 1 sau 132
@@ -30192,27 +31633,27 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
                 UpdatePlayer(playerid, pGasCan);
 
                 new gm[144];
-                format(gm, sizeof(gm), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"gas can"C_WHITE" ("#GASCAN_LITERS"L) for "C_INFO"$%s"C_WHITE". It is "C_ERROR"empty"C_WHITE".",
-                    MoneyStr(g_GasCanPrice));
+                format(gm, sizeof(gm), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"gas can"C_WHITE" (%dL) for "C_INFO"$%s"C_WHITE". It is "C_ERROR"empty"C_WHITE".",
+                    GasCan_Liters(playerid), MoneyStr(g_GasCanPrice));
                 SendClientMessage(playerid, COLOR_SUCCESS, gm);
                 SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Fill it at a gas station with "C_INFO"/fillgascan"C_WHITE", then pour it into a car with "C_INFO"/fill"C_WHITE".");
             }
             case 3: // Shovel -> unealta (arma), necesara pentru /tree plant
             {
-                if(PlayerData[playerid][pMoney] < SHOVEL_PRICE)
+                if(PlayerData[playerid][pMoney] < g_ShovelPrice)
                     return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for a shovel."), 1;
 
-                PlayerData[playerid][pMoney] -= SHOVEL_PRICE;
-                GivePlayerMoney(playerid, -SHOVEL_PRICE);
+                PlayerData[playerid][pMoney] -= g_ShovelPrice;
+                GivePlayerMoney(playerid, -g_ShovelPrice);
                 UpdatePlayer(playerid, pMoney);
 
-                new shCut = SHOVEL_PRICE * SHOVEL_BIZ_CUT_PCT / 100;
+                new shCut = g_ShovelPrice * SHOVEL_BIZ_CUT_PCT / 100;
                 if(shCut > 0) Job_AddBizIncome(APPLIANCE_BIZ_ID, shCut);
 
                 AC_GiveWeapon(playerid, WEAPON_SHOVEL, 1);
 
                 new shm[144];
-                format(shm, sizeof(shm), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"Shovel"C_WHITE" for "C_INFO"$%s"C_WHITE".", MoneyStr(SHOVEL_PRICE));
+                format(shm, sizeof(shm), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"Shovel"C_WHITE" for "C_INFO"$%s"C_WHITE".", MoneyStr(g_ShovelPrice));
                 SendClientMessage(playerid, COLOR_SUCCESS, shm);
                 SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use it to plant a tree with "C_INFO"/tree plant"C_WHITE".");
             }
@@ -30233,7 +31674,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         {
             if(!Phone_HasPhone(playerid))
                 return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You need a phone before buying a SIM."), 1;
-            if(PlayerData[playerid][pMoney] < PHONE_SIM_PRICE)
+            if(PlayerData[playerid][pMoney] < g_PhoneSimPrice)
                 return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for a SIM ("C_INFO"$250"C_WHITE")."), 1;
 
             Phone_RequestSim(playerid);
@@ -30322,6 +31763,63 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         return 1;
     }
 
+    if(dialogid == DIALOG_INTERIORLIST_CATEGORY)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_IntListCatCount[playerid]) return 1;
+
+        g_IntListMapCount[playerid] = 0;
+        for(new i = 0; i < g_GTAInteriorCount; i++)
+        {
+            if(!strcmp(GTAInteriorData[i][gtaIntFor], g_IntListCat[playerid][listitem], true) && g_IntListMapCount[playerid] < MAX_GTA_INTERIORS)
+            {
+                g_IntListMap[playerid][g_IntListMapCount[playerid]] = i;
+                g_IntListMapCount[playerid]++;
+            }
+        }
+
+        if(g_IntListMapCount[playerid] == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"No interiors found in that category."), 1;
+
+        static list[10000];
+        list[0] = EOS;
+        strcat(list, ""C_INFO"ID\t"C_INFO"Name\t"C_INFO"Interior\n");
+        for(new k = 0; k < g_IntListMapCount[playerid]; k++)
+        {
+            new idx = g_IntListMap[playerid][k];
+            new line[128];
+            format(line, sizeof(line), ""C_WHITE"#%d\t"C_WHITE"%s\t"C_WHITE"%d\n",
+                GTAInteriorData[idx][gtaIntID], GTAInteriorData[idx][gtaIntName], GTAInteriorData[idx][gtaIntInterior]);
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_INTERIORLIST, DIALOG_STYLE_TABLIST_HEADERS, "GTA Interior List", list, "Teleport", "Close");
+        return 1;
+    }
+
+    if(dialogid == DIALOG_INTERIORLIST)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_IntListMapCount[playerid]) return 1;
+
+        new idx = g_IntListMap[playerid][listitem];
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), GTAInteriorData[idx][gtaIntLocX], GTAInteriorData[idx][gtaIntLocY], GTAInteriorData[idx][gtaIntLocZ]);
+        else
+            AC_SetPos(playerid, GTAInteriorData[idx][gtaIntLocX], GTAInteriorData[idx][gtaIntLocY], GTAInteriorData[idx][gtaIntLocZ]);
+        AC_SetVW(playerid, 0);
+        AC_SetInterior(playerid, GTAInteriorData[idx][gtaIntInterior]);
+
+        new ilmsg[144];
+        format(ilmsg, sizeof(ilmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to "C_INFO"%s"C_WHITE" ("C_INFO"%s"C_WHITE", interior "C_INFO"%d"C_WHITE").",
+            GTAInteriorData[idx][gtaIntName], GTAInteriorData[idx][gtaIntFor], GTAInteriorData[idx][gtaIntInterior]);
+        SendClientMessage(playerid, COLOR_SUCCESS, ilmsg);
+        return 1;
+    }
+
     if(dialogid == DIALOG_HOUSELIST)
     {
         if(!response) return 1; // Close
@@ -30358,6 +31856,22 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         return 1;
     }
 
+    if(dialogid == DIALOG_HOWTO_LIST)
+    {
+        if(!response) return 1; // Close
+
+        new const howtoTopics[][] = {
+            "job", "faction", "vehicle", "business", "house", "hotel", "games",
+            "caravan", "licence", "farm", "rob", "skins", "casino", "auction", "hunt"
+        };
+        if(listitem < 0 || listitem >= sizeof(howtoTopics)) return 1;
+
+        new howtoCmd[24];
+        format(howtoCmd, sizeof(howtoCmd), "/howto %s", howtoTopics[listitem]);
+        OnPlayerCommandText(playerid, howtoCmd);
+        return 1;
+    }
+
     if(dialogid == DIALOG_FARMLIST)
     {
         if(!response) return 1; // Close
@@ -30378,6 +31892,74 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         return 1;
     }
 
+    if(dialogid == DIALOG_CLSLIST)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_ClothStoreDynCount) return 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), ClothStoreData[listitem][clstX], ClothStoreData[listitem][clstY], ClothStoreData[listitem][clstZ] + 0.5);
+        else
+            AC_SetPos(playerid, ClothStoreData[listitem][clstX], ClothStoreData[listitem][clstY], ClothStoreData[listitem][clstZ] + 0.5);
+
+        new clslmsg[96];
+        format(clslmsg, sizeof(clslmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to clothing store "C_INFO"#%d"C_WHITE".", ClothStoreData[listitem][clstID]);
+        SendClientMessage(playerid, COLOR_SUCCESS, clslmsg);
+        return 1;
+    }
+
+    if(dialogid == DIALOG_AMMOLIST)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_AmmoDynCount) return 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), AmmoData[listitem][amoX], AmmoData[listitem][amoY], AmmoData[listitem][amoZ] + 0.5);
+        else
+            AC_SetPos(playerid, AmmoData[listitem][amoX], AmmoData[listitem][amoY], AmmoData[listitem][amoZ] + 0.5);
+
+        new amolmsg[96];
+        format(amolmsg, sizeof(amolmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to ammunation "C_INFO"#%d"C_WHITE".", AmmoData[listitem][amoID]);
+        SendClientMessage(playerid, COLOR_SUCCESS, amolmsg);
+        return 1;
+    }
+
+    if(dialogid == DIALOG_HOTELLIST)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_HotelCount) return 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), HotelData[listitem][htlLocX], HotelData[listitem][htlLocY], HotelData[listitem][htlLocZ] + 0.5);
+        else
+            AC_SetPos(playerid, HotelData[listitem][htlLocX], HotelData[listitem][htlLocY], HotelData[listitem][htlLocZ] + 0.5);
+
+        new htllmsg[96];
+        format(htllmsg, sizeof(htllmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to hotel "C_INFO"#%d"C_WHITE".", HotelData[listitem][htlID]);
+        SendClientMessage(playerid, COLOR_SUCCESS, htllmsg);
+        return 1;
+    }
+
+    if(dialogid == DIALOG_SHOPLIST)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_ShopCount) return 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), ShopData[listitem][shopX], ShopData[listitem][shopY], ShopData[listitem][shopZ] + 0.5);
+        else
+            AC_SetPos(playerid, ShopData[listitem][shopX], ShopData[listitem][shopY], ShopData[listitem][shopZ] + 0.5);
+
+        new shplmsg[96];
+        format(shplmsg, sizeof(shplmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to shop "C_INFO"#%d"C_WHITE".", ShopData[listitem][shopID]);
+        SendClientMessage(playerid, COLOR_SUCCESS, shplmsg);
+        return 1;
+    }
+
     if(dialogid == DIALOG_SKINSHOP)
     {
         if(!response) return 1; // Close
@@ -30387,25 +31969,25 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 
         new skinid = g_SkinShop[listitem][Skc_ID];
 
-        // daca nu il detine, il cumpara
-        if(!Skin_Owns(playerid, skinid))
-        {
-            if(PlayerData[playerid][pMoney] < SKIN_PRICE)
-                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for this outfit."), 1;
+        // /buyskin cumpara mereu o copie noua (poti detine acelasi skin de mai multe ori); pentru a purta gratuit un skin deja detinut, foloseste /wardrobe
+        if(PlayerData[playerid][pMoney] < SKIN_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for this outfit."), 1;
 
-            PlayerData[playerid][pMoney] -= SKIN_PRICE;
-            GivePlayerMoney(playerid, -SKIN_PRICE);
-            UpdatePlayer(playerid, pMoney);
+        PlayerData[playerid][pMoney] -= SKIN_PRICE;
+        GivePlayerMoney(playerid, -SKIN_PRICE);
+        UpdatePlayer(playerid, pMoney);
 
-            Skin_SetOwn(playerid, skinid);
-            new q[96];
-            mysql_format(g_SQL, q, sizeof(q), "INSERT IGNORE INTO `player_skins` (`player_id`,`skin_id`) VALUES (%d,%d)", PlayerData[playerid][pID], skinid);
-            mysql_tquery(g_SQL, q, "", "", 0);
+        g_SkinQty[playerid][skinid]++;
+        new q[128];
+        mysql_format(g_SQL, q, sizeof(q),
+            "INSERT INTO `player_skins` (`player_id`,`skin_id`,`qty`) VALUES (%d,%d,1) ON DUPLICATE KEY UPDATE `qty`=`qty`+1",
+            PlayerData[playerid][pID], skinid);
+        mysql_tquery(g_SQL, q, "", "", 0);
 
-            new bm[128];
-            format(bm, sizeof(bm), C_SUCCESS"Success: "C_WHITE"You bought the outfit "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE".", g_SkinShop[listitem][Skc_Name], MoneyStr(SKIN_PRICE));
-            SendClientMessage(playerid, COLOR_SUCCESS, bm);
-        }
+        new bm[144];
+        format(bm, sizeof(bm), C_SUCCESS"Success: "C_WHITE"You bought the outfit "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE" (now own "C_INFO"x%d"C_WHITE").",
+            g_SkinShop[listitem][Skc_Name], MoneyStr(SKIN_PRICE), Skin_Qty(playerid, skinid));
+        SendClientMessage(playerid, COLOR_SUCCESS, bm);
 
         // il imbraca
         PlayerData[playerid][pSkin] = skinid;
@@ -30415,6 +31997,33 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         new wm[96];
         format(wm, sizeof(wm), C_INFO"Info: "C_WHITE"You are now wearing "C_INFO"%s"C_WHITE".", g_SkinShop[listitem][Skc_Name]);
         SendClientMessage(playerid, COLOR_INFO, wm);
+        return 1;
+    }
+
+    if(dialogid == DIALOG_AMMOSHOP)
+    {
+        if(!response) return 1; // Close
+        if(listitem < 0 || listitem >= sizeof(g_AmmoShop)) return 1;
+        if(Ammo_PlayerInside(playerid) == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be inside an Ammu-Nation to buy weapons."), 1;
+
+        new awWeaponID = g_AmmoShop[listitem][Amsc_WeaponID];
+        new awAmmo     = g_AmmoShop[listitem][Amsc_Ammo];
+        new awPrice    = Ammo_PriceFor(awWeaponID);
+
+        if(PlayerData[playerid][pMoney] < awPrice)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for this weapon."), 1;
+
+        PlayerData[playerid][pMoney] -= awPrice;
+        GivePlayerMoney(playerid, -awPrice);
+        UpdatePlayer(playerid, pMoney);
+
+        AC_GiveWeapon(playerid, awWeaponID, awAmmo);
+
+        new awmsg[144];
+        format(awmsg, sizeof(awmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"%s"C_WHITE" ("C_INFO"%d ammo"C_WHITE") for "C_INFO"$%s"C_WHITE".",
+            g_AmmoShop[listitem][Amsc_Name], awAmmo, MoneyStr(awPrice));
+        SendClientMessage(playerid, COLOR_SUCCESS, awmsg);
         return 1;
     }
 

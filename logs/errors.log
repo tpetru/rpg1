@@ -1,0 +1,2 @@
+[23:44:55] [plugins/mysql] error #1146 while executing query "SELECT `aID`,`aType`,`aPlayerID`,`aHouseID`,`aName`,`aDefaultName` FROM `animals` ORDER BY `aID` ASC": Table 'rpg1.animals' doesn't exist
+[23:44:55] [plugins/mysql] error #1146 while executing query "SELECT `treeId`,`treeHouseId`,`treeType`,`treeName`,`treePlantedDate`,`treeFruitStatus`,`treeLocX`,`treeLocY`,`treeLocZ` FROM `trees` ORDER BY `treeId` ASC": Table 'rpg1.trees' doesn't exist

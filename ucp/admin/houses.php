@@ -37,7 +37,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $flash = "Bed removed from house #$id.";
         } elseif ($rowAction === 'create_tree') {
             $now = time();
-            $stmt = $mysqli->prepare("INSERT INTO `trees` (`treeHouseId`, `treePlantedDate`) VALUES (?, ?)");
+            $stmt = $mysqli->prepare("INSERT INTO `houses_tree` (`treeHouseId`, `treePlantedDate`) VALUES (?, ?)");
             $stmt->bind_param('ii', $id, $now);
             $stmt->execute();
             $newTreeId = $stmt->insert_id;
@@ -49,7 +49,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         } elseif ($rowAction === 'delete_tree') {
             $treeId = (int)($_POST['tree_id'] ?? 0);
             if ($treeId > 0) {
-                $stmt = $mysqli->prepare("DELETE FROM `trees` WHERE `treeId`=?");
+                $stmt = $mysqli->prepare("DELETE FROM `houses_tree` WHERE `treeId`=?");
                 $stmt->bind_param('i', $treeId);
                 $stmt->execute(); $stmt->close();
             }
@@ -102,7 +102,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             if (isset($_POST['tree_fruit_status']) && (int)($_POST['tree_id'] ?? 0) > 0) {
                 $treeId = (int)$_POST['tree_id'];
                 $fruitStatus = max(0, min(30, (int)$_POST['tree_fruit_status']));
-                $stmt = $mysqli->prepare("UPDATE `trees` SET `treeFruitStatus`=? WHERE `treeId`=?");
+                $stmt = $mysqli->prepare("UPDATE `houses_tree` SET `treeFruitStatus`=? WHERE `treeId`=?");
                 $stmt->bind_param('ii', $fruitStatus, $treeId);
                 $stmt->execute();
                 $stmt->close();
@@ -117,7 +117,7 @@ $houses = $mysqli->query("SELECT * FROM `houses` ORDER BY `id` ASC")->fetch_all(
 
 // Trees, keyed by treeId (see tree_id on houses)
 $treesById = [];
-$treeRows = $mysqli->query("SELECT * FROM `trees`")->fetch_all(MYSQLI_ASSOC);
+$treeRows = $mysqli->query("SELECT * FROM `houses_tree`")->fetch_all(MYSQLI_ASSOC);
 foreach ($treeRows as $t) { $treesById[(int)$t['treeId']] = $t; }
 
 $fridgeItems = [
@@ -174,9 +174,10 @@ $adminActive = 'houses';
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="is_for_sale" <?= $h['is_for_sale'] ? 'checked' : '' ?>></td>
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="is_rentable" <?= $h['is_rentable'] ? 'checked' : '' ?>></td>
           <td>
-            <form id="<?= $fid ?>" method="post"></form>
-            <input form="<?= $fid ?>" type="hidden" name="id" value="<?= (int)$h['id'] ?>">
-            <button form="<?= $fid ?>" type="submit" class="save-btn">Save</button>
+            <form id="<?= $fid ?>" method="post">
+              <input type="hidden" name="id" value="<?= (int)$h['id'] ?>">
+              <button type="submit" class="save-btn">Save</button>
+            </form>
           </td>
       </tr>
       <tr>

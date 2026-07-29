@@ -13,6 +13,46 @@
 	<members>
 
 		<!-- enumerations -->
+		<member name="T:E_AMMOSHOP" value="18">
+			<tagname value="E_AMMOSHOP"/>
+			<member name="C:Amsc_WeaponID" value="0">
+			</member>
+			<member name="C:Amsc_Name" value="1">
+				<size value="16"/>
+			</member>
+			<member name="C:Amsc_Ammo" value="17">
+			</member>
+		</member>
+		<member name="T:E_AMMO_DATA" value="41">
+			<tagname value="E_AMMO_DATA"/>
+			<member name="C:amoID" value="0">
+			</member>
+			<member name="C:amoX" value="1">
+				<tagname value="Float"/>
+			</member>
+			<member name="C:amoY" value="2">
+				<tagname value="Float"/>
+			</member>
+			<member name="C:amoZ" value="3">
+				<tagname value="Float"/>
+			</member>
+			<member name="C:amoName" value="4">
+				<size value="32"/>
+			</member>
+			<member name="C:amoIntID" value="36">
+			</member>
+			<member name="C:amoVwID" value="37">
+			</member>
+			<member name="C:amoIntX" value="38">
+				<tagname value="Float"/>
+			</member>
+			<member name="C:amoIntY" value="39">
+				<tagname value="Float"/>
+			</member>
+			<member name="C:amoIntZ" value="40">
+				<tagname value="Float"/>
+			</member>
+		</member>
 		<member name="T:E_ANIMAL_CATALOG" value="33">
 			<tagname value="E_ANIMAL_CATALOG"/>
 			<member name="C:acModel" value="0">
@@ -558,7 +598,7 @@
 				<size value="64"/>
 			</member>
 		</member>
-		<member name="T:E_PLAYER_DATA" value="264">
+		<member name="T:E_PLAYER_DATA" value="276">
 			<tagname value="E_PLAYER_DATA"/>
 			<member name="C:pID" value="0">
 			</member>
@@ -632,62 +672,67 @@
 			<member name="C:pAirLicH_exp" value="228">
 				<size value="11"/>
 			</member>
-			<member name="C:pLogged" value="239">
+			<member name="C:pWeaponLicW_exp" value="239">
+				<size value="11"/>
+			</member>
+			<member name="C:pLogged" value="250">
 				<tagname value="bool"/>
 			</member>
-			<member name="C:pRegistered" value="240">
+			<member name="C:pRegistered" value="251">
 				<tagname value="bool"/>
 			</member>
-			<member name="C:pOnDuty" value="241">
+			<member name="C:pOnDuty" value="252">
 				<tagname value="bool"/>
 			</member>
-			<member name="C:pDiseased" value="242">
+			<member name="C:pDiseased" value="253">
 				<tagname value="bool"/>
 			</member>
-			<member name="C:pDiseasePaydays" value="243">
+			<member name="C:pDiseasePaydays" value="254">
 			</member>
-			<member name="C:pCaravanKey" value="244">
+			<member name="C:pCaravanKey" value="255">
 			</member>
-			<member name="C:pFarmKey" value="245">
+			<member name="C:pFarmKey" value="256">
 			</member>
-			<member name="C:pIsPresident" value="246">
+			<member name="C:pIsPresident" value="257">
 				<tagname value="bool"/>
 			</member>
-			<member name="C:pVoted" value="247">
+			<member name="C:pVoted" value="258">
 				<tagname value="bool"/>
 			</member>
-			<member name="C:pWasPresident" value="248">
+			<member name="C:pWasPresident" value="259">
 				<tagname value="bool"/>
 			</member>
-			<member name="C:pJob" value="249">
+			<member name="C:pJob" value="260">
 			</member>
-			<member name="C:pPhoneModel" value="250">
+			<member name="C:pPhoneModel" value="261">
 			</member>
-			<member name="C:pPhoneNumber" value="251">
+			<member name="C:pPhoneNumber" value="262">
 			</member>
-			<member name="C:pMedkits" value="252">
+			<member name="C:pMedkits" value="263">
 			</member>
-			<member name="C:pExtinguishers" value="253">
+			<member name="C:pExtinguishers" value="264">
 			</member>
-			<member name="C:pMuteExpire" value="254">
+			<member name="C:pMuteExpire" value="265">
 			</member>
-			<member name="C:pWanted" value="255">
+			<member name="C:pWanted" value="266">
 			</member>
-			<member name="C:pJailSeconds" value="256">
+			<member name="C:pJailSeconds" value="267">
 			</member>
-			<member name="C:pRobPoints" value="257">
+			<member name="C:pRobPoints" value="268">
 			</member>
-			<member name="C:pSkin" value="258">
+			<member name="C:pSkin" value="269">
 			</member>
-			<member name="C:pGasCan" value="259">
+			<member name="C:pGasCan" value="270">
 			</member>
-			<member name="C:pWatchModel" value="260">
+			<member name="C:pWatchModel" value="271">
 			</member>
-			<member name="C:pPhoneExpire" value="261">
+			<member name="C:pPhoneExpire" value="272">
 			</member>
-			<member name="C:pWatchExpire" value="262">
+			<member name="C:pWatchExpire" value="273">
 			</member>
-			<member name="C:pTired" value="263">
+			<member name="C:pTired" value="274">
+			</member>
+			<member name="C:pWarns" value="275">
 			</member>
 		</member>
 		<member name="T:E_PVEHICLE_DATA" value="37">
@@ -745,17 +790,20 @@
 			<member name="C:pvDirty" value="36">
 			</member>
 		</member>
-		<member name="T:E_SHOP_DATA" value="4">
+		<member name="T:E_SHOP_DATA" value="36">
 			<tagname value="E_SHOP_DATA"/>
 			<member name="C:shopID" value="0">
 			</member>
-			<member name="C:shopX" value="1">
+			<member name="C:shopName" value="1">
+				<size value="32"/>
+			</member>
+			<member name="C:shopX" value="33">
 				<tagname value="Float"/>
 			</member>
-			<member name="C:shopY" value="2">
+			<member name="C:shopY" value="34">
 				<tagname value="Float"/>
 			</member>
-			<member name="C:shopZ" value="3">
+			<member name="C:shopZ" value="35">
 				<tagname value="Float"/>
 			</member>
 		</member>
@@ -911,8 +959,10 @@
 			<referrer name="Roulette_IsRed"/>
 			<referrer name="Skin_AtStore"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
 			<referrer name="IsValidDateStr"/>
 			<referrer name="Player_HasValidLicense"/>
+			<referrer name="Weapon_IsIllegal"/>
 			<referrer name="Player_HasValidAirLicense"/>
 			<referrer name="Newspaper_ResetAll"/>
 			<referrer name="QA_Reset"/>
@@ -938,6 +988,7 @@
 			<referrer name="AC_ResetWeapons"/>
 			<referrer name="AC_Tick"/>
 			<referrer name="Hunt_Tick"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="Farm_ConsumeUse"/>
 			<referrer name="Farm_Cancel"/>
 			<referrer name="Farm_Complete"/>
@@ -1067,8 +1118,10 @@
 			<referrer name="Roulette_IsRed"/>
 			<referrer name="Skin_AtStore"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
 			<referrer name="IsValidDateStr"/>
 			<referrer name="Player_HasValidLicense"/>
+			<referrer name="Weapon_IsIllegal"/>
 			<referrer name="Player_HasValidAirLicense"/>
 			<referrer name="IsRentBikeVehicle"/>
 			<referrer name="IsRentCarVehicle"/>
@@ -1082,6 +1135,7 @@
 			<referrer name="Weapon_FindByName"/>
 			<referrer name="AC_InitPlayer"/>
 			<referrer name="Hunt_Tick"/>
+			<referrer name="OnPlayerWeaponShot"/>
 			<referrer name="Farm_StepIndex"/>
 			<referrer name="Farm_ActionIndex"/>
 			<referrer name="Farm_Complete"/>
@@ -1205,6 +1259,16 @@
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="GPSItem_GetCoords"/>
 			<referrer name="GPSItem_GetName"/>
+		</member>
+		<member name="F:AmmoData">
+			<referrer name="Ammo_HasInterior"/>
+			<referrer name="Ammo_Create"/>
+			<referrer name="Ammo_FindByID"/>
+			<referrer name="Ammo_InteriorToggle"/>
+			<referrer name="Ammo_PlayerInside"/>
+			<referrer name="OnAmmoLoaded"/>
+			<referrer name="OnAmmoCreated"/>
+			<referrer name="OnPlayerCommandText"/>
 		</member>
 		<member name="F:AnimalData">
 			<referrer name="Animals_Spawn"/>
@@ -1369,6 +1433,7 @@
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="GPSItem_GetCoords"/>
 			<referrer name="GPSItem_GetName"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:DUTY_LOC_INT">
 			<referrer name="Locations_ApplyToCommands"/>
@@ -1512,6 +1577,40 @@
 			<referrer name="Locations_ApplyToCommands"/>
 			<referrer name="Cmd_CreateMarkers"/>
 			<referrer name="FlightExam_Begin"/>
+		</member>
+		<member name="F:EXAMW_LOC_X">
+			<tagname value="Float"/>
+			<referrer name="Locations_ApplyToCommands"/>
+			<referrer name="Cmd_CreateMarkers"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:EXAMW_LOC_Y">
+			<tagname value="Float"/>
+			<referrer name="Locations_ApplyToCommands"/>
+			<referrer name="Cmd_CreateMarkers"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:EXAMW_LOC_Z">
+			<tagname value="Float"/>
+			<referrer name="Locations_ApplyToCommands"/>
+			<referrer name="Cmd_CreateMarkers"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:EXAMW_START_A">
+			<tagname value="Float"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:EXAMW_START_X">
+			<tagname value="Float"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:EXAMW_START_Y">
+			<tagname value="Float"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:EXAMW_START_Z">
+			<tagname value="Float"/>
+			<referrer name="OnPlayerCommandText"/>
 		</member>
 		<member name="F:ExamACheckpoints">
 			<tagname value="Float"/>
@@ -1674,6 +1773,7 @@
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="GPSItem_GetCoords"/>
 			<referrer name="GPSItem_GetName"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:HouseData">
 			<referrer name="Houses_RecreatePickup"/>
@@ -1941,6 +2041,7 @@
 			<referrer name="AC_Flag"/>
 			<referrer name="AC_Tick"/>
 			<referrer name="Hunt_Tick"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="Farm_IsOwner"/>
 			<referrer name="Farm_SyncPlayerKey"/>
 			<referrer name="Prop_BankTransfer"/>
@@ -2082,6 +2183,7 @@
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="GPSItem_GetCoords"/>
 			<referrer name="GPSItem_GetName"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:Speedometer_Text">
 			<tagname value="PlayerText"/>
@@ -2223,13 +2325,42 @@
 			<referrer name="AC_ResetWeapons"/>
 			<referrer name="AC_RestoreWeapons"/>
 			<referrer name="AC_Tick"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="OnPlayerCommandText"/>
 		</member>
 		<member name="F:g_ACWeaponAmmo">
 			<referrer name="AC_GiveWeapon"/>
 			<referrer name="AC_ResetWeapons"/>
 			<referrer name="AC_RestoreWeapons"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_AmmoDynCount">
+			<referrer name="Ammo_FindByID"/>
+			<referrer name="Ammo_InteriorToggle"/>
+			<referrer name="Ammo_PlayerInside"/>
+			<referrer name="OnAmmoLoaded"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_AmmoDynLabel">
+			<tagname value="Text3D"/>
+			<referrer name="Ammo_Create"/>
+			<referrer name="OnAmmoLoaded"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_AmmoDynPickup">
+			<referrer name="Ammo_Create"/>
+			<referrer name="OnAmmoLoaded"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_AmmoIntLabel">
+			<tagname value="Text3D"/>
+			<referrer name="Ammo_Create"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_AmmoShop">
+			<referrer name="OnPlayerCommandText"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:g_AnafX">
 			<tagname value="Float"/>
@@ -2776,11 +2907,6 @@
 			<referrer name="Job_CreateCementVehicles"/>
 			<referrer name="Job_IsCementVehicle"/>
 		</member>
-		<member name="F:g_ClothStore">
-			<tagname value="Float"/>
-			<referrer name="Skins_CreateStores"/>
-			<referrer name="Skin_AtStore"/>
-		</member>
 		<member name="F:g_ClothStoreDynCount">
 			<referrer name="ClothStore_FindByID"/>
 			<referrer name="Skin_AtStore"/>
@@ -2788,6 +2914,7 @@
 			<referrer name="OnClothStoresLoaded"/>
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="GPSList_Build"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:g_ClothStoreDynLabel">
 			<tagname value="Text3D"/>
@@ -2804,9 +2931,6 @@
 			<tagname value="Text3D"/>
 			<referrer name="ClothStore_Create"/>
 			<referrer name="OnPlayerCommandText"/>
-		</member>
-		<member name="F:g_ClothStorePickup">
-			<referrer name="Skins_CreateStores"/>
 		</member>
 		<member name="F:g_CraftLabel">
 			<tagname value="Text3D"/>
@@ -2858,6 +2982,10 @@
 			<referrer name="OnPlayerConnect"/>
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="OnPlayerDeath"/>
+		</member>
+		<member name="F:g_DutyArmed">
+			<tagname value="bool"/>
+			<referrer name="OnPlayerCommandText"/>
 		</member>
 		<member name="F:g_EmergencyLoad">
 			<tagname value="Float"/>
@@ -3064,6 +3192,32 @@
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="OnPlayerStateChange"/>
 		</member>
+		<member name="F:g_ExamWHit">
+			<tagname value="bool"/>
+			<referrer name="OnPlayerWeaponShot"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_ExamWHitCount">
+			<referrer name="ExamW_Finish"/>
+			<referrer name="OnPlayerWeaponShot"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_ExamWState">
+			<tagname value="bool"/>
+			<referrer name="ExamW_Finish"/>
+			<referrer name="ExamW_Timeout"/>
+			<referrer name="OnPlayerWeaponShot"/>
+			<referrer name="OnPlayerCommandText"/>
+			<referrer name="OnPlayerDisconnect"/>
+		</member>
+		<member name="F:g_ExamWTarget">
+			<tagname value="Float"/>
+			<referrer name="OnPlayerWeaponShot"/>
+		</member>
+		<member name="F:g_ExamWTimer">
+			<referrer name="ExamW_KillTimer"/>
+			<referrer name="OnPlayerCommandText"/>
+		</member>
 		<member name="F:g_ExtinguisherPrice">
 			<referrer name="OnPayDayLoaded"/>
 			<referrer name="OnPlayerCommandText"/>
@@ -3167,6 +3321,14 @@
 			<referrer name="OnPlayerCommandText"/>
 		</member>
 		<member name="F:g_FarmTractorPrice">
+			<referrer name="Farm_VehPrice"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_FarmTrailerPrice">
+			<referrer name="Farm_VehPrice"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_FarmTruckPrice">
 			<referrer name="Farm_VehPrice"/>
 			<referrer name="OnPayDayLoaded"/>
 		</member>
@@ -3563,10 +3725,12 @@
 			<referrer name="PayDay_Apply"/>
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="GPSList_Build"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:g_HotelLabel">
 			<tagname value="Text3D"/>
 			<referrer name="Hotels_RecreatePickup"/>
+			<referrer name="OnHotelsLoaded"/>
 		</member>
 		<member name="F:g_HotelPickup">
 			<referrer name="Hotels_RecreatePickup"/>
@@ -3598,6 +3762,7 @@
 		<member name="F:g_HouseLabel">
 			<tagname value="Text3D"/>
 			<referrer name="Houses_RecreatePickup"/>
+			<referrer name="OnHousesLoaded"/>
 			<referrer name="OnGameModeInit"/>
 		</member>
 		<member name="F:g_HouseOfferAmount">
@@ -3645,16 +3810,19 @@
 		</member>
 		<member name="F:g_HuntStartX">
 			<tagname value="Float"/>
+			<referrer name="Factions_SetPlayerIcons"/>
 			<referrer name="Locations_ApplyToCommands"/>
 			<referrer name="OnPlayerCommandText"/>
 		</member>
 		<member name="F:g_HuntStartY">
 			<tagname value="Float"/>
+			<referrer name="Factions_SetPlayerIcons"/>
 			<referrer name="Locations_ApplyToCommands"/>
 			<referrer name="OnPlayerCommandText"/>
 		</member>
 		<member name="F:g_HuntStartZ">
 			<tagname value="Float"/>
+			<referrer name="Factions_SetPlayerIcons"/>
 			<referrer name="Locations_ApplyToCommands"/>
 			<referrer name="OnPlayerCommandText"/>
 		</member>
@@ -3945,6 +4113,7 @@
 			<referrer name="OnPlayerConnect"/>
 		</member>
 		<member name="F:g_PhonePrices">
+			<referrer name="OnPayDayLoaded"/>
 			<referrer name="Phone_ShowBuyDialog"/>
 			<referrer name="OnDialogResponse"/>
 		</member>
@@ -3953,6 +4122,13 @@
 			<referrer name="Phone_RingTimeout"/>
 			<referrer name="OnPlayerConnect"/>
 			<referrer name="OnPlayerCommandText"/>
+		</member>
+		<member name="F:g_PhoneSimPrice">
+			<referrer name="OnPayDayLoaded"/>
+			<referrer name="Phone_ShowBuyDialog"/>
+			<referrer name="OnPhoneSimChecked"/>
+			<referrer name="OnPlayerCommandText"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:g_PizzaFFID">
 			<referrer name="Pizza_CreateWorld"/>
@@ -4342,6 +4518,8 @@
 			<referrer name="Shops_Load"/>
 			<referrer name="ClothStores_Load"/>
 			<referrer name="OnClothStoreCreated"/>
+			<referrer name="Ammo_Load"/>
+			<referrer name="OnAmmoCreated"/>
 			<referrer name="Businesses_Load"/>
 			<referrer name="Turfs_Load"/>
 			<referrer name="Locations_Load"/>
@@ -4352,6 +4530,7 @@
 			<referrer name="OnVehiclePersonalCreated"/>
 			<referrer name="OnVehiclePlateChecked"/>
 			<referrer name="OnVehicleITPCheck"/>
+			<referrer name="Server_Setup_Seed"/>
 			<referrer name="PayDay_Load"/>
 			<referrer name="PayDay_Apply"/>
 			<referrer name="President_ClearVotes"/>
@@ -4371,6 +4550,7 @@
 			<referrer name="UpdatePlayer"/>
 			<referrer name="Phone_RequestSim"/>
 			<referrer name="Ban_Check"/>
+			<referrer name="OnPlayerBanCheck"/>
 			<referrer name="OnGameModeExit"/>
 			<referrer name="Prop_SettleSeller"/>
 			<referrer name="Prop_SettleSellerVehicle"/>
@@ -4405,6 +4585,7 @@
 			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="GPSList_Build"/>
+			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:g_ShopLabel">
 			<tagname value="Text3D"/>
@@ -4417,7 +4598,12 @@
 			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnPlayerCommandText"/>
 		</member>
-		<member name="F:g_SkinOwned">
+		<member name="F:g_ShovelPrice">
+			<referrer name="OnPayDayLoaded"/>
+			<referrer name="OnPlayerCommandText"/>
+			<referrer name="OnDialogResponse"/>
+		</member>
+		<member name="F:g_SkinQty">
 			<referrer name="OnPlayerSkinsLoaded"/>
 			<referrer name="OnPlayerConnect"/>
 			<referrer name="OnPlayerCommandText"/>
@@ -4734,8 +4920,37 @@
 			<referrer name="OnDialogResponse"/>
 		</member>
 		<member name="F:g_WatchPrices">
+			<referrer name="OnPayDayLoaded"/>
 			<referrer name="Watch_ShowBuyDialog"/>
 			<referrer name="OnDialogResponse"/>
+		</member>
+		<member name="F:g_WeaponAK47Price">
+			<referrer name="Ammo_PriceFor"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_WeaponColt45Price">
+			<referrer name="Ammo_PriceFor"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_WeaponDeaglePrice">
+			<referrer name="Ammo_PriceFor"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_WeaponM4Price">
+			<referrer name="Ammo_PriceFor"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_WeaponMP5Price">
+			<referrer name="Ammo_PriceFor"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_WeaponShotgunPrice">
+			<referrer name="Ammo_PriceFor"/>
+			<referrer name="OnPayDayLoaded"/>
+		</member>
+		<member name="F:g_WeaponUziPrice">
+			<referrer name="Ammo_PriceFor"/>
+			<referrer name="OnPayDayLoaded"/>
 		</member>
 
 		<!-- functions -->
@@ -4787,6 +5002,7 @@
 			<tagname value="bool"/>
 			<stacksize value="4"/>
 			<referrer name="ClothStore_HasInterior"/>
+			<referrer name="Ammo_HasInterior"/>
 			<referrer name="Factions_RecreateLabel"/>
 			<referrer name="Factions_RecreatePickup"/>
 			<referrer name="Factions_InteriorToggle"/>
@@ -4922,8 +5138,10 @@
 			<referrer name="operator--(Float:)"/>
 			<referrer name="Casino_Create"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="AC_Tick"/>
 			<referrer name="Hunt_DistPointSeg"/>
+			<referrer name="OnPlayerWeaponShot"/>
 			<referrer name="Factions_RecreateLabel"/>
 			<referrer name="Factions_RecreateInteriorPickup"/>
 			<referrer name="Cityhall_Create"/>
@@ -5359,6 +5577,7 @@
 		<member name="M:AC_RestoreWeapons" syntax="AC_RestoreWeapons(playerid)">
 			<stacksize value="6"/>
 			<referrer name="AC_Tick"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="OnPlayerCommandText"/>
 			<dependency name="GivePlayerWeapon"/>
 			<dependency name="ResetPlayerWeapons"/>
@@ -5373,6 +5592,7 @@
 			<referrer name="Casino_Enter"/>
 			<referrer name="Casino_Exit"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
 			<referrer name="Factions_InteriorToggle"/>
 			<referrer name="Cityhall_Toggle"/>
 			<referrer name="Houses_InteriorToggle"/>
@@ -5400,6 +5620,7 @@
 			<referrer name="Casino_Enter"/>
 			<referrer name="Casino_Exit"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
 			<referrer name="Factions_InteriorToggle"/>
 			<referrer name="Cityhall_Toggle"/>
 			<referrer name="Houses_InteriorToggle"/>
@@ -5437,6 +5658,7 @@
 			<referrer name="Casino_Enter"/>
 			<referrer name="Casino_Exit"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
 			<referrer name="Factions_InteriorToggle"/>
 			<referrer name="Houses_InteriorToggle"/>
 			<referrer name="Race_End"/>
@@ -5677,6 +5899,124 @@
 			<attribute name="native"/>
 			<referrer name="OnGameModeInit"/>
 			<param name="allow">
+			</param>
+		</member>
+		<member name="M:Ammo_Create" syntax="Ammo_Create(idx)">
+			<stacksize value="113"/>
+			<referrer name="OnAmmoLoaded"/>
+			<referrer name="OnAmmoCreated"/>
+			<referrer name="OnPlayerCommandText"/>
+			<dependency name="operator-(Float:,Float:)"/>
+			<dependency name="AmmoData"/>
+			<dependency name="AmmoData"/>
+			<dependency name="Ammo_HasInterior"/>
+			<dependency name="Create3DTextLabel"/>
+			<dependency name="CreateDynamic3DTextLabel"/>
+			<dependency name="CreatePickup"/>
+			<dependency name="Delete3DTextLabel"/>
+			<dependency name="DestroyDynamic3DTextLabel"/>
+			<dependency name="DestroyPickup"/>
+			<dependency name="IsValidDynamic3DTextLabel"/>
+			<dependency name="amoID"/>
+			<dependency name="amoIntID"/>
+			<dependency name="amoIntX"/>
+			<dependency name="amoIntY"/>
+			<dependency name="amoIntZ"/>
+			<dependency name="amoName"/>
+			<dependency name="amoVwID"/>
+			<dependency name="amoX"/>
+			<dependency name="amoY"/>
+			<dependency name="amoZ"/>
+			<dependency name="format"/>
+			<dependency name="g_AmmoDynLabel"/>
+			<dependency name="g_AmmoDynPickup"/>
+			<dependency name="g_AmmoIntLabel"/>
+			<dependency name="strlen"/>
+			<param name="idx">
+			</param>
+		</member>
+		<member name="M:Ammo_FindByID" syntax="Ammo_FindByID(id)">
+			<stacksize value="2"/>
+			<referrer name="OnPlayerCommandText"/>
+			<dependency name="AmmoData"/>
+			<dependency name="amoID"/>
+			<dependency name="g_AmmoDynCount"/>
+			<param name="id">
+			</param>
+		</member>
+		<member name="M:Ammo_HasInterior" syntax="Ammo_HasInterior(idx)">
+			<tagname value="bool"/>
+			<stacksize value="1"/>
+			<referrer name="Ammo_Create"/>
+			<referrer name="Ammo_InteriorToggle"/>
+			<referrer name="Ammo_PlayerInside"/>
+			<dependency name="operator!=(Float:,Float:)"/>
+			<dependency name="AmmoData"/>
+			<dependency name="amoIntID"/>
+			<dependency name="amoIntX"/>
+			<dependency name="amoIntY"/>
+			<param name="idx">
+			</param>
+		</member>
+		<member name="M:Ammo_InteriorToggle" syntax="Ammo_InteriorToggle(playerid)">
+			<tagname value="bool"/>
+			<stacksize value="8"/>
+			<referrer name="OnPlayerKeyStateChange"/>
+			<dependency name="AC_SetInterior"/>
+			<dependency name="AC_SetPos"/>
+			<dependency name="AC_SetVW"/>
+			<dependency name="AmmoData"/>
+			<dependency name="AmmoData"/>
+			<dependency name="Ammo_HasInterior"/>
+			<dependency name="GetPlayerInterior"/>
+			<dependency name="GetPlayerVirtualWorld"/>
+			<dependency name="IsPlayerInRangeOfPoint"/>
+			<dependency name="amoIntID"/>
+			<dependency name="amoIntX"/>
+			<dependency name="amoIntY"/>
+			<dependency name="amoIntZ"/>
+			<dependency name="amoVwID"/>
+			<dependency name="amoX"/>
+			<dependency name="amoY"/>
+			<dependency name="amoZ"/>
+			<dependency name="false"/>
+			<dependency name="g_AmmoDynCount"/>
+			<dependency name="true"/>
+			<param name="playerid">
+			</param>
+		</member>
+		<member name="M:Ammo_Load" syntax="Ammo_Load()">
+			<stacksize value="6"/>
+			<referrer name="OnGameModeInit"/>
+			<dependency name="g_SQL"/>
+			<dependency name="mysql_tquery"/>
+		</member>
+		<member name="M:Ammo_PlayerInside" syntax="Ammo_PlayerInside(playerid)">
+			<stacksize value="5"/>
+			<referrer name="OnPlayerCommandText"/>
+			<referrer name="OnDialogResponse"/>
+			<dependency name="AmmoData"/>
+			<dependency name="Ammo_HasInterior"/>
+			<dependency name="GetPlayerInterior"/>
+			<dependency name="GetPlayerVirtualWorld"/>
+			<dependency name="amoIntID"/>
+			<dependency name="amoVwID"/>
+			<dependency name="g_AmmoDynCount"/>
+			<param name="playerid">
+			</param>
+		</member>
+		<member name="M:Ammo_PriceFor" syntax="Ammo_PriceFor(weaponid)">
+			<stacksize value="1"/>
+			<referrer name="OnPlayerCommandText"/>
+			<referrer name="OnDialogResponse"/>
+			<dependency name="g_WeaponAK47Price"/>
+			<dependency name="g_WeaponColt45Price"/>
+			<dependency name="g_WeaponDeaglePrice"/>
+			<dependency name="g_WeaponM4Price"/>
+			<dependency name="g_WeaponMP5Price"/>
+			<dependency name="g_WeaponShotgunPrice"/>
+			<dependency name="g_WeaponUziPrice"/>
+			<param name="weaponid">
 			</param>
 		</member>
 		<member name="M:Animals_DestroyAll" syntax="Animals_DestroyAll()">
@@ -7322,11 +7662,10 @@
 			</param>
 		</member>
 		<member name="M:Casino_Create" syntax="Casino_Create()">
-			<stacksize value="14"/>
+			<stacksize value="11"/>
 			<referrer name="OnGameModeInit"/>
 			<dependency name="operator-(Float:,Float:)"/>
 			<dependency name="Create3DTextLabel"/>
-			<dependency name="CreateDynamicMapIcon"/>
 			<dependency name="CreatePickup"/>
 			<dependency name="g_CasinoDice"/>
 			<dependency name="g_CasinoRoulette"/>
@@ -7423,7 +7762,6 @@
 			<dependency name="CITYHALL_INT_Y"/>
 			<dependency name="CITYHALL_INT_Z"/>
 			<dependency name="CreateDynamic3DTextLabel"/>
-			<dependency name="CreateDynamicMapIcon"/>
 			<dependency name="CreateDynamicPickup"/>
 		</member>
 		<member name="M:Cityhall_Toggle" syntax="Cityhall_Toggle(playerid)">
@@ -7506,6 +7844,7 @@
 			<stacksize value="1"/>
 			<referrer name="ClothStore_Create"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="OnPlayerCommandText"/>
 			<dependency name="operator!=(Float:,Float:)"/>
 			<dependency name="ClothStoreData"/>
 			<dependency name="clstIntID"/>
@@ -7555,6 +7894,7 @@
 			<dependency name="Cityhall_Create"/>
 			<dependency name="Create3DTextLabel"/>
 			<dependency name="CreateDynamic3DTextLabel"/>
+			<dependency name="CreateDynamicObject"/>
 			<dependency name="CreateDynamicPickup"/>
 			<dependency name="CreatePickup"/>
 			<dependency name="EXAMA_LOC_X"/>
@@ -7575,6 +7915,9 @@
 			<dependency name="EXAMP_LOC_X"/>
 			<dependency name="EXAMP_LOC_Y"/>
 			<dependency name="EXAMP_LOC_Z"/>
+			<dependency name="EXAMW_LOC_X"/>
+			<dependency name="EXAMW_LOC_Y"/>
+			<dependency name="EXAMW_LOC_Z"/>
 			<dependency name="ITP_LOC_X"/>
 			<dependency name="ITP_LOC_Y"/>
 			<dependency name="ITP_LOC_Z"/>
@@ -7614,6 +7957,7 @@
 			<attribute name="native"/>
 			<referrer name="Casino_Create"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="Farm_RecreatePickup"/>
 			<referrer name="Factions_RecreateLabel"/>
 			<referrer name="Factions_RecreateInteriorPickup"/>
@@ -7660,6 +8004,7 @@
 			<tagname value="Text3D"/>
 			<attribute name="native"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="Cityhall_Create"/>
 			<referrer name="Houses_RecreateInteriorLabel"/>
 			<referrer name="Drugs_RecreateSeifMarker"/>
@@ -7708,41 +8053,6 @@
 			<param name="priority">
 			</param>
 		</member>
-		<member name="M:CreateDynamicMapIcon" syntax="CreateDynamicMapIcon(x, y, z, type, color, worldid, interiorid, playerid, streamdistance, style, areaid, priority)">
-			<attribute name="native"/>
-			<referrer name="Casino_Create"/>
-			<referrer name="Skins_CreateStores"/>
-			<referrer name="Cityhall_Create"/>
-			<referrer name="Locations_ApplyToCommands"/>
-			<param name="x">
-				<paraminfo>Float </paraminfo>
-			</param>
-			<param name="y">
-				<paraminfo>Float </paraminfo>
-			</param>
-			<param name="z">
-				<paraminfo>Float </paraminfo>
-			</param>
-			<param name="type">
-			</param>
-			<param name="color">
-			</param>
-			<param name="worldid">
-			</param>
-			<param name="interiorid">
-			</param>
-			<param name="playerid">
-			</param>
-			<param name="streamdistance">
-				<paraminfo>Float </paraminfo>
-			</param>
-			<param name="style">
-			</param>
-			<param name="areaid">
-			</param>
-			<param name="priority">
-			</param>
-		</member>
 		<member name="M:CreateDynamicObject" syntax="CreateDynamicObject(modelid, x, y, z, rx, ry, rz, worldid, interiorid, playerid, streamdistance, drawdistance, areaid, priority)">
 			<attribute name="native"/>
 			<referrer name="Hunt_CreateDeer"/>
@@ -7753,6 +8063,7 @@
 			<referrer name="BBall_ReleaseBall"/>
 			<referrer name="Caravan_ShowParked"/>
 			<referrer name="Caravans_RebuildAll"/>
+			<referrer name="Cmd_CreateMarkers"/>
 			<referrer name="OnGameModeInit"/>
 			<referrer name="OnPlayerCommandText"/>
 			<param name="modelid">
@@ -7876,8 +8187,8 @@
 		<member name="M:CreatePickup" syntax="CreatePickup(model, type, X, Y, Z, virtualworld)">
 			<attribute name="native"/>
 			<referrer name="Casino_Create"/>
-			<referrer name="Skins_CreateStores"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="Farm_RecreatePickup"/>
 			<referrer name="Factions_RecreateInteriorPickup"/>
 			<referrer name="Factions_RecreatePickup"/>
@@ -7965,6 +8276,7 @@
 		</member>
 		<member name="M:DB_CreateTables" syntax="DB_CreateTables()">
 			<stacksize value="8"/>
+			<dependency name="Server_Setup_Seed"/>
 			<dependency name="g_SQL"/>
 			<dependency name="mysql_tquery"/>
 			<dependency name="print"/>
@@ -8040,6 +8352,7 @@
 		<member name="M:Delete3DTextLabel" syntax="Delete3DTextLabel(id)">
 			<attribute name="native"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="Farm_RecreatePickup"/>
 			<referrer name="Factions_RecreateLabel"/>
 			<referrer name="Factions_RecreateInteriorPickup"/>
@@ -8098,6 +8411,7 @@
 		<member name="M:DestroyDynamic3DTextLabel" syntax="DestroyDynamic3DTextLabel(id)">
 			<attribute name="native"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="Houses_RecreateInteriorLabel"/>
 			<referrer name="Drugs_RecreateSeifMarker"/>
 			<referrer name="Factions_RecreateEquipLabel"/>
@@ -8150,6 +8464,7 @@
 		<member name="M:DestroyPickup" syntax="DestroyPickup(pickup)">
 			<attribute name="native"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="Farm_RecreatePickup"/>
 			<referrer name="Factions_RecreateInteriorPickup"/>
 			<referrer name="Factions_RecreatePickup"/>
@@ -8704,6 +9019,49 @@
 			<param name="playerid">
 			</param>
 		</member>
+		<member name="M:ExamW_Finish" syntax="ExamW_Finish(playerid)">
+			<stacksize value="199"/>
+			<referrer name="ExamW_Timeout"/>
+			<referrer name="OnPlayerWeaponShot"/>
+			<dependency name="AC_RestoreWeapons"/>
+			<dependency name="ExamW_KillTimer"/>
+			<dependency name="PlayerData"/>
+			<dependency name="PlayerData"/>
+			<dependency name="SendClientMessage"/>
+			<dependency name="UnixToDateStr"/>
+			<dependency name="UpdatePlayer"/>
+			<dependency name="false"/>
+			<dependency name="format"/>
+			<dependency name="g_ACWeaponAllowed"/>
+			<dependency name="g_ACWeaponAllowed"/>
+			<dependency name="g_ACWeaponAmmo"/>
+			<dependency name="g_ACWeaponAmmo"/>
+			<dependency name="g_ExamWHitCount"/>
+			<dependency name="g_ExamWState"/>
+			<dependency name="gettime"/>
+			<dependency name="pWeaponLicW_exp"/>
+			<param name="playerid">
+			</param>
+		</member>
+		<member name="M:ExamW_KillTimer" syntax="ExamW_KillTimer(playerid)">
+			<stacksize value="3"/>
+			<referrer name="ExamW_Finish"/>
+			<referrer name="OnPlayerCommandText"/>
+			<referrer name="OnPlayerDisconnect"/>
+			<dependency name="KillTimer"/>
+			<dependency name="g_ExamWTimer"/>
+			<param name="playerid">
+			</param>
+		</member>
+		<member name="M:ExamW_Timeout" syntax="ExamW_Timeout(playerid)">
+			<attribute name="public"/>
+			<stacksize value="4"/>
+			<dependency name="ExamW_Finish"/>
+			<dependency name="IsPlayerConnected"/>
+			<dependency name="g_ExamWState"/>
+			<param name="playerid">
+			</param>
+		</member>
 		<member name="M:Exam_Fail" syntax="Exam_Fail(playerid, reason[])">
 			<stacksize value="167"/>
 			<referrer name="Exam_Timeout"/>
@@ -8992,6 +9350,9 @@
 			<referrer name="OnPlayerLogin"/>
 			<referrer name="OnPlayerCommandText"/>
 			<dependency name="SetPlayerMapIcon"/>
+			<dependency name="g_HuntStartX"/>
+			<dependency name="g_HuntStartY"/>
+			<dependency name="g_HuntStartZ"/>
 			<param name="playerid">
 			</param>
 		</member>
@@ -9394,6 +9755,8 @@
 			<dependency name="g_FarmCombinePrice"/>
 			<dependency name="g_FarmDozerPrice"/>
 			<dependency name="g_FarmTractorPrice"/>
+			<dependency name="g_FarmTrailerPrice"/>
+			<dependency name="g_FarmTruckPrice"/>
 			<param name="model">
 			</param>
 		</member>
@@ -9804,7 +10167,7 @@
 			</param>
 		</member>
 		<member name="M:FullUpdatePlayer" syntax="FullUpdatePlayer(playerid)">
-			<stacksize value="1003"/>
+			<stacksize value="1072"/>
 			<referrer name="PayDay_Apply"/>
 			<referrer name="OnPlayerDisconnect"/>
 			<dependency name="BuildDateSqlValue"/>
@@ -9854,6 +10217,7 @@
 			<dependency name="pWanted"/>
 			<dependency name="pWatchExpire"/>
 			<dependency name="pWatchModel"/>
+			<dependency name="pWeaponLicW_exp"/>
 			<param name="playerid">
 			</param>
 		</member>
@@ -10377,6 +10741,8 @@
 			<referrer name="Casino_IsInside"/>
 			<referrer name="Casino_Toggle"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
+			<referrer name="Ammo_PlayerInside"/>
 			<referrer name="AC_Tick"/>
 			<referrer name="Factions_IsInOwnInterior"/>
 			<referrer name="Cityhall_Toggle"/>
@@ -10538,6 +10904,8 @@
 			<attribute name="native"/>
 			<referrer name="Casino_IsInside"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
+			<referrer name="Ammo_PlayerInside"/>
 			<referrer name="AC_Tick"/>
 			<referrer name="Factions_InteriorToggle"/>
 			<referrer name="Factions_IsInOwnInterior"/>
@@ -11783,6 +12151,7 @@
 			<referrer name="AC_Flag"/>
 			<referrer name="AC_Tick"/>
 			<referrer name="Hunt_Tick"/>
+			<referrer name="ExamW_Timeout"/>
 			<referrer name="Farm_Cancel"/>
 			<referrer name="FlightExam_Timeout"/>
 			<referrer name="Factions_UpdatePlayersIcons"/>
@@ -11864,6 +12233,7 @@
 			<referrer name="OnATMCreated"/>
 			<referrer name="OnShopCreated"/>
 			<referrer name="OnClothStoreCreated"/>
+			<referrer name="OnAmmoCreated"/>
 			<referrer name="OnHouseCreated"/>
 			<referrer name="OnHotelCreated"/>
 			<referrer name="OnBusinessCreated"/>
@@ -11922,6 +12292,7 @@
 			<referrer name="Casino_Toggle"/>
 			<referrer name="Skin_AtStore"/>
 			<referrer name="ClothStore_InteriorToggle"/>
+			<referrer name="Ammo_InteriorToggle"/>
 			<referrer name="Hunt_PlayerNearSpawn"/>
 			<referrer name="Farm_PlayerIn"/>
 			<referrer name="Factions_InteriorToggle"/>
@@ -12047,6 +12418,7 @@
 		<member name="M:IsValidDynamic3DTextLabel" syntax="IsValidDynamic3DTextLabel(id)">
 			<attribute name="native"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="Houses_RecreateInteriorLabel"/>
 			<referrer name="Drugs_RecreateSeifMarker"/>
 			<referrer name="Factions_RecreateEquipLabel"/>
@@ -12593,6 +12965,7 @@
 			<referrer name="Exam_KillTimer"/>
 			<referrer name="ExamC_KillTimer"/>
 			<referrer name="ExamD_KillTimer"/>
+			<referrer name="ExamW_KillTimer"/>
 			<referrer name="Farm_Cancel"/>
 			<referrer name="FlightExam_KillTimer"/>
 			<referrer name="Race_End"/>
@@ -12661,7 +13034,7 @@
 			</param>
 		</member>
 		<member name="M:Locations_ApplyToCommands" syntax="Locations_ApplyToCommands()">
-			<stacksize value="17"/>
+			<stacksize value="13"/>
 			<referrer name="OnLocationsLoaded"/>
 			<dependency name="operator-(Float:,Float:)"/>
 			<dependency name="operator+(Float:,Float:)"/>
@@ -12679,7 +13052,6 @@
 			<dependency name="CITYHALL_INT_Z"/>
 			<dependency name="Cmd_CreateMarkers"/>
 			<dependency name="Create3DTextLabel"/>
-			<dependency name="CreateDynamicMapIcon"/>
 			<dependency name="CreatePickup"/>
 			<dependency name="DUTY_LOC_INT"/>
 			<dependency name="DUTY_LOC_VW"/>
@@ -12704,6 +13076,9 @@
 			<dependency name="EXAMP_LOC_X"/>
 			<dependency name="EXAMP_LOC_Y"/>
 			<dependency name="EXAMP_LOC_Z"/>
+			<dependency name="EXAMW_LOC_X"/>
+			<dependency name="EXAMW_LOC_Y"/>
+			<dependency name="EXAMW_LOC_Z"/>
 			<dependency name="GETJOB_X"/>
 			<dependency name="GETJOB_Y"/>
 			<dependency name="GETJOB_Z"/>
@@ -12997,6 +13372,51 @@
 			<param name="forplayerid">
 			</param>
 		</member>
+		<member name="M:OnAmmoCreated" syntax="OnAmmoCreated(playerid, idx)">
+			<attribute name="public"/>
+			<stacksize value="198"/>
+			<dependency name="AmmoData"/>
+			<dependency name="AmmoData"/>
+			<dependency name="Ammo_Create"/>
+			<dependency name="IsPlayerConnected"/>
+			<dependency name="SendClientMessage"/>
+			<dependency name="amoID"/>
+			<dependency name="amoVwID"/>
+			<dependency name="cache_insert_id"/>
+			<dependency name="format"/>
+			<dependency name="g_SQL"/>
+			<dependency name="mysql_format"/>
+			<dependency name="mysql_tquery"/>
+			<param name="playerid">
+			</param>
+			<param name="idx">
+			</param>
+		</member>
+		<member name="M:OnAmmoLoaded" syntax="OnAmmoLoaded()">
+			<attribute name="public"/>
+			<stacksize value="9"/>
+			<dependency name="AmmoData"/>
+			<dependency name="AmmoData"/>
+			<dependency name="Ammo_Create"/>
+			<dependency name="amoID"/>
+			<dependency name="amoIntID"/>
+			<dependency name="amoIntX"/>
+			<dependency name="amoIntY"/>
+			<dependency name="amoIntZ"/>
+			<dependency name="amoName"/>
+			<dependency name="amoVwID"/>
+			<dependency name="amoX"/>
+			<dependency name="amoY"/>
+			<dependency name="amoZ"/>
+			<dependency name="cache_get_value_name"/>
+			<dependency name="cache_get_value_name_float"/>
+			<dependency name="cache_get_value_name_int"/>
+			<dependency name="cache_num_rows"/>
+			<dependency name="g_AmmoDynCount"/>
+			<dependency name="g_AmmoDynLabel"/>
+			<dependency name="g_AmmoDynPickup"/>
+			<dependency name="printf"/>
+		</member>
 		<member name="M:OnAnimalsLoaded" syntax="OnAnimalsLoaded()">
 			<attribute name="public"/>
 			<stacksize value="9"/>
@@ -13231,12 +13651,19 @@
 			<dependency name="AC_SetInterior"/>
 			<dependency name="AC_SetPos"/>
 			<dependency name="AC_SetVW"/>
+			<dependency name="Ammo_PlayerInside"/>
+			<dependency name="Ammo_PriceFor"/>
+			<dependency name="Amsc_Ammo"/>
+			<dependency name="Amsc_Name"/>
+			<dependency name="Amsc_WeaponID"/>
 			<dependency name="BusinessData"/>
 			<dependency name="BusinessData"/>
 			<dependency name="Businesses_FindByID"/>
 			<dependency name="CSLocData"/>
 			<dependency name="CSLocData"/>
 			<dependency name="CS_TypeName"/>
+			<dependency name="ClothStoreData"/>
+			<dependency name="ClothStoreData"/>
 			<dependency name="EOS"/>
 			<dependency name="FarmData"/>
 			<dependency name="FarmData"/>
@@ -13248,12 +13675,15 @@
 			<dependency name="GPS_ShowLocationDialog"/>
 			<dependency name="GetPlayerVehicleID"/>
 			<dependency name="GivePlayerMoney"/>
+			<dependency name="HotelData"/>
+			<dependency name="HotelData"/>
 			<dependency name="HouseData"/>
 			<dependency name="HouseData"/>
 			<dependency name="Job_AddBizIncome"/>
 			<dependency name="Kick"/>
 			<dependency name="MoneyStr"/>
 			<dependency name="MoneyStr"/>
+			<dependency name="OnPlayerCommandText"/>
 			<dependency name="Phone_HasPhone"/>
 			<dependency name="Phone_HasSim"/>
 			<dependency name="Phone_RequestSim"/>
@@ -13268,6 +13698,8 @@
 			<dependency name="SetPlayerCheckpoint"/>
 			<dependency name="SetPlayerSkin"/>
 			<dependency name="SetVehiclePos"/>
+			<dependency name="ShopData"/>
+			<dependency name="ShopData"/>
 			<dependency name="ShowPlayerDialog"/>
 			<dependency name="Skc_ID"/>
 			<dependency name="Skc_Name"/>
@@ -13281,6 +13713,10 @@
 			<dependency name="bLocY"/>
 			<dependency name="bLocZ"/>
 			<dependency name="bName"/>
+			<dependency name="clstID"/>
+			<dependency name="clstX"/>
+			<dependency name="clstY"/>
+			<dependency name="clstZ"/>
 			<dependency name="csID"/>
 			<dependency name="csLocX"/>
 			<dependency name="csLocY"/>
@@ -13295,8 +13731,11 @@
 			<dependency name="fmY"/>
 			<dependency name="fmZ"/>
 			<dependency name="format"/>
+			<dependency name="g_AmmoShop"/>
+			<dependency name="g_AmmoShop"/>
 			<dependency name="g_BusinessCount"/>
 			<dependency name="g_CSLocCount"/>
+			<dependency name="g_ClothStoreDynCount"/>
 			<dependency name="g_ExamAState"/>
 			<dependency name="g_ExamCState"/>
 			<dependency name="g_ExamDState"/>
@@ -13313,6 +13752,7 @@
 			<dependency name="g_GPSItemType"/>
 			<dependency name="g_GPSListCount"/>
 			<dependency name="g_GasCanPrice"/>
+			<dependency name="g_HotelCount"/>
 			<dependency name="g_HouseCount"/>
 			<dependency name="g_JobNames"/>
 			<dependency name="g_JobNames"/>
@@ -13322,12 +13762,15 @@
 			<dependency name="g_PhoneModels"/>
 			<dependency name="g_PhoneModels"/>
 			<dependency name="g_PhonePrices"/>
+			<dependency name="g_PhoneSimPrice"/>
 			<dependency name="g_ReportDialogCount"/>
 			<dependency name="g_ReportDialogIds"/>
 			<dependency name="g_ReportViewId"/>
 			<dependency name="g_SQL"/>
-			<dependency name="g_SkinOwned"/>
-			<dependency name="g_SkinOwned"/>
+			<dependency name="g_ShopCount"/>
+			<dependency name="g_ShovelPrice"/>
+			<dependency name="g_SkinQty"/>
+			<dependency name="g_SkinQty"/>
 			<dependency name="g_SkinShop"/>
 			<dependency name="g_SkinShop"/>
 			<dependency name="g_WardrobeCount"/>
@@ -13340,6 +13783,10 @@
 			<dependency name="hLocY"/>
 			<dependency name="hLocZ"/>
 			<dependency name="hName"/>
+			<dependency name="htlID"/>
+			<dependency name="htlLocX"/>
+			<dependency name="htlLocY"/>
+			<dependency name="htlLocZ"/>
 			<dependency name="mysql_format"/>
 			<dependency name="mysql_tquery"/>
 			<dependency name="pAdminLevel"/>
@@ -13354,6 +13801,10 @@
 			<dependency name="pSkin"/>
 			<dependency name="pWatchExpire"/>
 			<dependency name="pWatchModel"/>
+			<dependency name="shopID"/>
+			<dependency name="shopX"/>
+			<dependency name="shopY"/>
+			<dependency name="shopZ"/>
 			<dependency name="strcmp"/>
 			<dependency name="strlen"/>
 			<dependency name="true"/>
@@ -13632,6 +14083,7 @@
 			<dependency name="ATMs_Load"/>
 			<dependency name="AddPlayerClass"/>
 			<dependency name="AllowAdminTeleport"/>
+			<dependency name="Ammo_Load"/>
 			<dependency name="Animals_Load"/>
 			<dependency name="BBallHoops_Load"/>
 			<dependency name="BBallSpawns_Load"/>
@@ -13673,7 +14125,6 @@
 			<dependency name="Shops_Load"/>
 			<dependency name="ShowNameTags"/>
 			<dependency name="ShowPlayerMarkers"/>
-			<dependency name="Skins_CreateStores"/>
 			<dependency name="Trees_Load"/>
 			<dependency name="Turfs_Load"/>
 			<dependency name="VehiclesFaction_Load"/>
@@ -13739,6 +14190,7 @@
 			<dependency name="cache_get_value_name_int"/>
 			<dependency name="cache_num_rows"/>
 			<dependency name="g_HotelCount"/>
+			<dependency name="g_HotelLabel"/>
 			<dependency name="g_HotelPickup"/>
 			<dependency name="g_SQL"/>
 			<dependency name="htlBank"/>
@@ -13787,6 +14239,7 @@
 			<dependency name="cache_get_value_name_int"/>
 			<dependency name="cache_num_rows"/>
 			<dependency name="g_HouseCount"/>
+			<dependency name="g_HouseLabel"/>
 			<dependency name="g_HousePickup"/>
 			<dependency name="hBank"/>
 			<dependency name="hBedExpire"/>
@@ -13871,10 +14324,10 @@
 		</member>
 		<member name="M:OnPayDayLoaded" syntax="OnPayDayLoaded()">
 			<attribute name="public"/>
-			<stacksize value="19"/>
-			<dependency name="cache_get_value_name_float"/>
-			<dependency name="cache_get_value_name_int"/>
+			<stacksize value="72"/>
+			<dependency name="cache_get_value_name"/>
 			<dependency name="cache_num_rows"/>
+			<dependency name="floatstr"/>
 			<dependency name="g_BurgerPrice"/>
 			<dependency name="g_DesertPrice"/>
 			<dependency name="g_ExamAPrice"/>
@@ -13887,6 +14340,8 @@
 			<dependency name="g_FarmCombinePrice"/>
 			<dependency name="g_FarmDozerPrice"/>
 			<dependency name="g_FarmTractorPrice"/>
+			<dependency name="g_FarmTrailerPrice"/>
+			<dependency name="g_FarmTruckPrice"/>
 			<dependency name="g_GasCanPrice"/>
 			<dependency name="g_ITPPrice"/>
 			<dependency name="g_InsurancePrice"/>
@@ -13896,10 +14351,23 @@
 			<dependency name="g_PDInterest"/>
 			<dependency name="g_PDMinSalary"/>
 			<dependency name="g_PDTax"/>
+			<dependency name="g_PhonePrices"/>
+			<dependency name="g_PhoneSimPrice"/>
 			<dependency name="g_PizzaPrice"/>
 			<dependency name="g_PlatePrice"/>
 			<dependency name="g_RentBikePrice"/>
+			<dependency name="g_ShovelPrice"/>
+			<dependency name="g_WatchPrices"/>
+			<dependency name="g_WeaponAK47Price"/>
+			<dependency name="g_WeaponColt45Price"/>
+			<dependency name="g_WeaponDeaglePrice"/>
+			<dependency name="g_WeaponM4Price"/>
+			<dependency name="g_WeaponMP5Price"/>
+			<dependency name="g_WeaponShotgunPrice"/>
+			<dependency name="g_WeaponUziPrice"/>
 			<dependency name="printf"/>
+			<dependency name="strcmp"/>
+			<dependency name="strval"/>
 		</member>
 		<member name="M:OnPhoneSimChecked" syntax="OnPhoneSimChecked(playerid, candidate)">
 			<attribute name="public"/>
@@ -13918,6 +14386,7 @@
 			<dependency name="UpdatePlayer"/>
 			<dependency name="cache_num_rows"/>
 			<dependency name="format"/>
+			<dependency name="g_PhoneSimPrice"/>
 			<dependency name="pLogged"/>
 			<dependency name="pMoney"/>
 			<dependency name="pPhoneNumber"/>
@@ -13928,13 +14397,18 @@
 		</member>
 		<member name="M:OnPlayerBanCheck" syntax="OnPlayerBanCheck(playerid)">
 			<attribute name="public"/>
-			<stacksize value="294"/>
+			<stacksize value="331"/>
 			<dependency name="Admin_KickDelayed"/>
 			<dependency name="IsPlayerConnected"/>
 			<dependency name="SendClientMessage"/>
 			<dependency name="cache_get_value_name"/>
+			<dependency name="cache_get_value_name_int"/>
 			<dependency name="cache_num_rows"/>
 			<dependency name="format"/>
+			<dependency name="g_SQL"/>
+			<dependency name="gettime"/>
+			<dependency name="mysql_format"/>
+			<dependency name="mysql_tquery"/>
 			<param name="playerid">
 			</param>
 		</member>
@@ -14006,6 +14480,7 @@
 		<member name="M:OnPlayerCommandText" syntax="OnPlayerCommandText(playerid, cmdtext[])">
 			<attribute name="public"/>
 			<stacksize value="2443"/>
+			<referrer name="OnDialogResponse"/>
 			<dependency name="operator!=(Float:,Float:)"/>
 			<dependency name="operator*(Float:,_:)"/>
 			<dependency name="operator-(Float:)"/>
@@ -14038,6 +14513,15 @@
 			<dependency name="ATM_FindNearbyIndex"/>
 			<dependency name="ATM_NearestBank"/>
 			<dependency name="Admin_KickDelayed"/>
+			<dependency name="AmmoData"/>
+			<dependency name="AmmoData"/>
+			<dependency name="Ammo_Create"/>
+			<dependency name="Ammo_FindByID"/>
+			<dependency name="Ammo_PlayerInside"/>
+			<dependency name="Ammo_PriceFor"/>
+			<dependency name="Amsc_Ammo"/>
+			<dependency name="Amsc_Name"/>
+			<dependency name="Amsc_WeaponID"/>
 			<dependency name="AnimalData"/>
 			<dependency name="AnimalData"/>
 			<dependency name="Animals_FindByID"/>
@@ -14102,6 +14586,7 @@
 			<dependency name="ClothStoreData"/>
 			<dependency name="ClothStore_Create"/>
 			<dependency name="ClothStore_FindByID"/>
+			<dependency name="ClothStore_HasInterior"/>
 			<dependency name="Create3DTextLabel"/>
 			<dependency name="CreateDynamicObject"/>
 			<dependency name="CreateObject"/>
@@ -14135,9 +14620,17 @@
 			<dependency name="EXAMD_LOC_X"/>
 			<dependency name="EXAMD_LOC_Y"/>
 			<dependency name="EXAMD_LOC_Z"/>
+			<dependency name="EXAMW_LOC_X"/>
+			<dependency name="EXAMW_LOC_Y"/>
+			<dependency name="EXAMW_LOC_Z"/>
+			<dependency name="EXAMW_START_A"/>
+			<dependency name="EXAMW_START_X"/>
+			<dependency name="EXAMW_START_Y"/>
+			<dependency name="EXAMW_START_Z"/>
 			<dependency name="ExamA_KillTimer"/>
 			<dependency name="ExamC_StartStepTimer"/>
 			<dependency name="ExamD_KillTimer"/>
+			<dependency name="ExamW_KillTimer"/>
 			<dependency name="Exam_KillTimer"/>
 			<dependency name="FactionColors"/>
 			<dependency name="FactionData"/>
@@ -14314,6 +14807,7 @@
 			<dependency name="PlayerData"/>
 			<dependency name="Player_FindByName"/>
 			<dependency name="Player_FridgeHouse"/>
+			<dependency name="Player_HasValidLicense"/>
 			<dependency name="Player_Login"/>
 			<dependency name="Player_NearHospital"/>
 			<dependency name="Player_RecalcSpawn"/>
@@ -14403,6 +14897,7 @@
 			<dependency name="Watch_HasWatch"/>
 			<dependency name="Watch_IsBroken"/>
 			<dependency name="Weapon_FindByName"/>
+			<dependency name="Weapon_IsIllegal"/>
 			<dependency name="YesNoText"/>
 			<dependency name="aDefaultName"/>
 			<dependency name="aHouseID"/>
@@ -14411,6 +14906,16 @@
 			<dependency name="aPlayerID"/>
 			<dependency name="acModel"/>
 			<dependency name="acName"/>
+			<dependency name="amoID"/>
+			<dependency name="amoIntID"/>
+			<dependency name="amoIntX"/>
+			<dependency name="amoIntY"/>
+			<dependency name="amoIntZ"/>
+			<dependency name="amoName"/>
+			<dependency name="amoVwID"/>
+			<dependency name="amoX"/>
+			<dependency name="amoY"/>
+			<dependency name="amoZ"/>
 			<dependency name="atmBankOwner"/>
 			<dependency name="atmID"/>
 			<dependency name="atmType"/>
@@ -14513,6 +15018,12 @@
 			<dependency name="g_ACWeaponAllowed"/>
 			<dependency name="g_ACWeaponAmmo"/>
 			<dependency name="g_ACWeaponAmmo"/>
+			<dependency name="g_AmmoDynCount"/>
+			<dependency name="g_AmmoDynLabel"/>
+			<dependency name="g_AmmoDynPickup"/>
+			<dependency name="g_AmmoIntLabel"/>
+			<dependency name="g_AmmoShop"/>
+			<dependency name="g_AmmoShop"/>
 			<dependency name="g_AnafX"/>
 			<dependency name="g_AnafY"/>
 			<dependency name="g_AnafZ"/>
@@ -14581,6 +15092,7 @@
 			<dependency name="g_DrugPickup"/>
 			<dependency name="g_DrugPickup"/>
 			<dependency name="g_DrugStage"/>
+			<dependency name="g_DutyArmed"/>
 			<dependency name="g_ExamACheckpoint"/>
 			<dependency name="g_ExamAPrice"/>
 			<dependency name="g_ExamAState"/>
@@ -14601,6 +15113,11 @@
 			<dependency name="g_ExamState"/>
 			<dependency name="g_ExamTimer"/>
 			<dependency name="g_ExamVehicle"/>
+			<dependency name="g_ExamWHit"/>
+			<dependency name="g_ExamWHit"/>
+			<dependency name="g_ExamWHitCount"/>
+			<dependency name="g_ExamWState"/>
+			<dependency name="g_ExamWTimer"/>
 			<dependency name="g_ExtinguisherPrice"/>
 			<dependency name="g_FarmCount"/>
 			<dependency name="g_FarmDelivFarm"/>
@@ -14703,6 +15220,7 @@
 			<dependency name="g_PhoneCallPartner"/>
 			<dependency name="g_PhoneCallTimer"/>
 			<dependency name="g_PhoneRingTimer"/>
+			<dependency name="g_PhoneSimPrice"/>
 			<dependency name="g_PizzaPrice"/>
 			<dependency name="g_PlatePrice"/>
 			<dependency name="g_PlayerDrugs"/>
@@ -14768,8 +15286,9 @@
 			<dependency name="g_ShopCount"/>
 			<dependency name="g_ShopLabel"/>
 			<dependency name="g_ShopPickup"/>
-			<dependency name="g_SkinOwned"/>
-			<dependency name="g_SkinOwned"/>
+			<dependency name="g_ShovelPrice"/>
+			<dependency name="g_SkinQty"/>
+			<dependency name="g_SkinQty"/>
 			<dependency name="g_SkinShop"/>
 			<dependency name="g_SkinShop"/>
 			<dependency name="g_SleepTargetTired"/>
@@ -14921,7 +15440,9 @@
 			<dependency name="pTired"/>
 			<dependency name="pVoted"/>
 			<dependency name="pWanted"/>
+			<dependency name="pWarns"/>
 			<dependency name="pWatchExpire"/>
+			<dependency name="pWeaponLicW_exp"/>
 			<dependency name="printf"/>
 			<dependency name="pvColor1"/>
 			<dependency name="pvColor2"/>
@@ -14969,6 +15490,7 @@
 			<dependency name="rWeight"/>
 			<dependency name="random"/>
 			<dependency name="shopID"/>
+			<dependency name="shopName"/>
 			<dependency name="shopX"/>
 			<dependency name="shopY"/>
 			<dependency name="shopZ"/>
@@ -15089,8 +15611,8 @@
 			<dependency name="g_RobStage"/>
 			<dependency name="g_SGRCarrying"/>
 			<dependency name="g_SGRHouseID"/>
-			<dependency name="g_SkinOwned"/>
-			<dependency name="g_SkinOwned"/>
+			<dependency name="g_SkinQty"/>
+			<dependency name="g_SkinQty"/>
 			<dependency name="g_SmuggleActive"/>
 			<dependency name="g_SmuggleBusy"/>
 			<dependency name="g_SmuggleCrewCount"/>
@@ -15213,6 +15735,7 @@
 			<dependency name="ExamA_KillTimer"/>
 			<dependency name="ExamC_KillTimer"/>
 			<dependency name="ExamD_KillTimer"/>
+			<dependency name="ExamW_KillTimer"/>
 			<dependency name="Exam_KillTimer"/>
 			<dependency name="Farm_Cancel"/>
 			<dependency name="Farm_DeliverCleanup"/>
@@ -15257,6 +15780,7 @@
 			<dependency name="g_ExamCState"/>
 			<dependency name="g_ExamDState"/>
 			<dependency name="g_ExamState"/>
+			<dependency name="g_ExamWState"/>
 			<dependency name="g_FlightState"/>
 			<dependency name="g_FlightVehicle"/>
 			<dependency name="g_HTMMayor"/>
@@ -15611,6 +16135,7 @@
 		<member name="M:OnPlayerKeyStateChange" syntax="OnPlayerKeyStateChange(playerid, newkeys, oldkeys)">
 			<attribute name="public"/>
 			<stacksize value="10"/>
+			<dependency name="Ammo_InteriorToggle"/>
 			<dependency name="Casino_Toggle"/>
 			<dependency name="Cityhall_Toggle"/>
 			<dependency name="ClothStore_InteriorToggle"/>
@@ -15680,7 +16205,7 @@
 		</member>
 		<member name="M:OnPlayerLogin" syntax="OnPlayerLogin(playerid)">
 			<attribute name="public"/>
-			<stacksize value="262"/>
+			<stacksize value="273"/>
 			<dependency name="AC_SetVW"/>
 			<dependency name="BBall_SetPlayerIcon"/>
 			<dependency name="Burger_SetPlayerIcons"/>
@@ -15763,9 +16288,11 @@
 			<dependency name="pTired"/>
 			<dependency name="pVoted"/>
 			<dependency name="pWanted"/>
+			<dependency name="pWarns"/>
 			<dependency name="pWasPresident"/>
 			<dependency name="pWatchExpire"/>
 			<dependency name="pWatchModel"/>
+			<dependency name="pWeaponLicW_exp"/>
 			<dependency name="true"/>
 			<param name="playerid">
 			</param>
@@ -15842,6 +16369,7 @@
 			<dependency name="pRentHotel"/>
 			<dependency name="pRentHouse"/>
 			<dependency name="pSpawn"/>
+			<dependency name="pWeaponLicW_exp"/>
 			<dependency name="true"/>
 			<param name="playerid">
 			</param>
@@ -15925,15 +16453,15 @@
 		</member>
 		<member name="M:OnPlayerSkinsLoaded" syntax="OnPlayerSkinsLoaded(playerid)">
 			<attribute name="public"/>
-			<stacksize value="106"/>
+			<stacksize value="138"/>
 			<dependency name="IsPlayerConnected"/>
 			<dependency name="PlayerData"/>
 			<dependency name="PlayerData"/>
 			<dependency name="cache_get_value_name_int"/>
 			<dependency name="cache_num_rows"/>
 			<dependency name="g_SQL"/>
-			<dependency name="g_SkinOwned"/>
-			<dependency name="g_SkinOwned"/>
+			<dependency name="g_SkinQty"/>
+			<dependency name="g_SkinQty"/>
 			<dependency name="mysql_format"/>
 			<dependency name="mysql_tquery"/>
 			<dependency name="pID"/>
@@ -16186,19 +16714,28 @@
 		<member name="M:OnPlayerWeaponShot" syntax="OnPlayerWeaponShot(playerid, weaponid, hittype, hitid, fX, fY, fZ)">
 			<attribute name="public"/>
 			<stacksize value="157"/>
+			<dependency name="operator-(Float:,Float:)"/>
 			<dependency name="operator+(Float:,Float:)"/>
 			<dependency name="operator&lt;(Float:,Float:)"/>
 			<dependency name="operator&lt;=(Float:,Float:)"/>
+			<dependency name="ExamW_Finish"/>
 			<dependency name="GetPlayerPos"/>
 			<dependency name="Hunt_DistPointSeg"/>
 			<dependency name="Hunt_Flee"/>
 			<dependency name="IsValidDynamicObject"/>
 			<dependency name="SendClientMessage"/>
+			<dependency name="VectorSize"/>
 			<dependency name="format"/>
+			<dependency name="g_ExamWHit"/>
+			<dependency name="g_ExamWHit"/>
+			<dependency name="g_ExamWHitCount"/>
+			<dependency name="g_ExamWState"/>
+			<dependency name="g_ExamWTarget"/>
 			<dependency name="g_HuntDeer"/>
 			<dependency name="g_HuntMeat"/>
 			<dependency name="g_HuntSpawn"/>
 			<dependency name="g_HuntSpawn"/>
+			<dependency name="true"/>
 			<param name="playerid">
 			</param>
 			<param name="weaponid">
@@ -16426,10 +16963,11 @@
 		</member>
 		<member name="M:OnShopsLoaded" syntax="OnShopsLoaded()">
 			<attribute name="public"/>
-			<stacksize value="8"/>
+			<stacksize value="9"/>
 			<dependency name="ShopData"/>
 			<dependency name="ShopData"/>
 			<dependency name="Shop_Create"/>
+			<dependency name="cache_get_value_name"/>
 			<dependency name="cache_get_value_name_float"/>
 			<dependency name="cache_get_value_name_int"/>
 			<dependency name="cache_num_rows"/>
@@ -16438,6 +16976,7 @@
 			<dependency name="g_ShopPickup"/>
 			<dependency name="printf"/>
 			<dependency name="shopID"/>
+			<dependency name="shopName"/>
 			<dependency name="shopX"/>
 			<dependency name="shopY"/>
 			<dependency name="shopZ"/>
@@ -17216,6 +17755,7 @@
 			<dependency name="g_PhoneModels"/>
 			<dependency name="g_PhoneModels"/>
 			<dependency name="g_PhonePrices"/>
+			<dependency name="g_PhoneSimPrice"/>
 			<dependency name="strcat"/>
 			<param name="playerid">
 			</param>
@@ -17538,6 +18078,7 @@
 		<member name="M:Player_HasValidLicense" syntax="Player_HasValidLicense(playerid, category)">
 			<tagname value="bool"/>
 			<stacksize value="9"/>
+			<referrer name="OnPlayerCommandText"/>
 			<referrer name="OnPlayerStateChange"/>
 			<dependency name="DateStrToUnix"/>
 			<dependency name="PlayerData"/>
@@ -17548,6 +18089,7 @@
 			<dependency name="pDrivingLicB_exp"/>
 			<dependency name="pDrivingLicC_exp"/>
 			<dependency name="pDrivingLicD_exp"/>
+			<dependency name="pWeaponLicW_exp"/>
 			<dependency name="strlen"/>
 			<dependency name="true"/>
 			<param name="playerid">
@@ -18341,6 +18883,7 @@
 			<referrer name="ExamD_Finish"/>
 			<referrer name="AC_Flag"/>
 			<referrer name="Hunt_Tick"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="OnPlayerWeaponShot"/>
 			<referrer name="Farm_Cancel"/>
 			<referrer name="Farm_Complete"/>
@@ -18399,6 +18942,7 @@
 			<referrer name="ATM_AnnounceBank"/>
 			<referrer name="OnShopCreated"/>
 			<referrer name="OnClothStoreCreated"/>
+			<referrer name="OnAmmoCreated"/>
 			<referrer name="OnHouseCreated"/>
 			<referrer name="OnHotelCreated"/>
 			<referrer name="FlightExam_Begin"/>
@@ -18511,6 +19055,13 @@
 			<dependency name="TextDrawSetString"/>
 			<dependency name="format"/>
 			<dependency name="gettime"/>
+		</member>
+		<member name="M:Server_Setup_Seed" syntax="Server_Setup_Seed()">
+			<stacksize value="3085"/>
+			<referrer name="DB_CreateTables"/>
+			<dependency name="g_SQL"/>
+			<dependency name="mysql_format"/>
+			<dependency name="mysql_tquery"/>
 		</member>
 		<member name="M:SetCameraBehindPlayer" syntax="SetCameraBehindPlayer(playerid)">
 			<attribute name="native"/>
@@ -18953,7 +19504,7 @@
 			</param>
 		</member>
 		<member name="M:Shop_Create" syntax="Shop_Create(idx)">
-			<stacksize value="74"/>
+			<stacksize value="122"/>
 			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnShopCreated"/>
 			<referrer name="OnPlayerCommandText"/>
@@ -18968,9 +19519,11 @@
 			<dependency name="g_ShopLabel"/>
 			<dependency name="g_ShopPickup"/>
 			<dependency name="shopID"/>
+			<dependency name="shopName"/>
 			<dependency name="shopX"/>
 			<dependency name="shopY"/>
 			<dependency name="shopZ"/>
+			<dependency name="strlen"/>
 			<param name="idx">
 			</param>
 		</member>
@@ -19067,21 +19620,10 @@
 			<dependency name="clstY"/>
 			<dependency name="clstZ"/>
 			<dependency name="false"/>
-			<dependency name="g_ClothStore"/>
-			<dependency name="g_ClothStore"/>
 			<dependency name="g_ClothStoreDynCount"/>
 			<dependency name="true"/>
 			<param name="playerid">
 			</param>
-		</member>
-		<member name="M:Skins_CreateStores" syntax="Skins_CreateStores()">
-			<stacksize value="15"/>
-			<referrer name="OnGameModeInit"/>
-			<dependency name="CreateDynamicMapIcon"/>
-			<dependency name="CreatePickup"/>
-			<dependency name="g_ClothStore"/>
-			<dependency name="g_ClothStore"/>
-			<dependency name="g_ClothStorePickup"/>
 		</member>
 		<member name="M:Sleep_Finish" syntax="Sleep_Finish(playerid)">
 			<attribute name="public"/>
@@ -19873,6 +20415,7 @@
 			<referrer name="Exam_Finish"/>
 			<referrer name="ExamC_Finish"/>
 			<referrer name="ExamD_Finish"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="Farm_Save"/>
 			<referrer name="FlightExam_Finish"/>
 			<referrer name="OnVehicleITPCheck"/>
@@ -19918,6 +20461,7 @@
 			<referrer name="Exam_Finish"/>
 			<referrer name="ExamC_Finish"/>
 			<referrer name="ExamD_Finish"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="Prop_BankTransfer"/>
 			<referrer name="FlightExam_Finish"/>
 			<referrer name="OnPlayerEnterCheckpoint"/>
@@ -19998,9 +20542,11 @@
 			<dependency name="pTired"/>
 			<dependency name="pVoted"/>
 			<dependency name="pWanted"/>
+			<dependency name="pWarns"/>
 			<dependency name="pWasPresident"/>
 			<dependency name="pWatchExpire"/>
 			<dependency name="pWatchModel"/>
+			<dependency name="pWeaponLicW_exp"/>
 			<param name="playerid">
 			</param>
 			<param name="field">
@@ -20020,6 +20566,7 @@
 			<tagname value="Float"/>
 			<attribute name="native"/>
 			<referrer name="Hunt_DistPointSeg"/>
+			<referrer name="OnPlayerWeaponShot"/>
 			<referrer name="OnPlayerCommandText"/>
 			<param name="x">
 				<paraminfo>Float </paraminfo>
@@ -20571,6 +21118,15 @@
 				<paraminfo> [] </paraminfo>
 			</param>
 		</member>
+		<member name="M:Weapon_IsIllegal" syntax="Weapon_IsIllegal(weaponid)">
+			<tagname value="bool"/>
+			<stacksize value="1"/>
+			<referrer name="OnPlayerCommandText"/>
+			<dependency name="false"/>
+			<dependency name="true"/>
+			<param name="weaponid">
+			</param>
+		</member>
 		<member name="M:YesNoText" syntax="YesNoText(cond, dest[], size)">
 			<stacksize value="5"/>
 			<referrer name="OnPlayerCommandText"/>
@@ -20659,12 +21215,15 @@
 			<referrer name="OnGTAInteriorsLoaded"/>
 			<referrer name="OnHotelsLoaded"/>
 			<referrer name="OnAnimalsLoaded"/>
+			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnClothStoresLoaded"/>
+			<referrer name="OnAmmoLoaded"/>
 			<referrer name="OnBusinessesLoaded"/>
 			<referrer name="OnTurfsLoaded"/>
 			<referrer name="OnLocationsLoaded"/>
 			<referrer name="OnGPSLoaded"/>
 			<referrer name="OnVehiclesPersonalLoaded"/>
+			<referrer name="OnPayDayLoaded"/>
 			<referrer name="OnPresidentInfo"/>
 			<referrer name="OnPlayerCheckExists"/>
 			<referrer name="OnPlayerLogin"/>
@@ -20713,13 +21272,13 @@
 			<referrer name="OnATMsLoaded"/>
 			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnClothStoresLoaded"/>
+			<referrer name="OnAmmoLoaded"/>
 			<referrer name="OnBusinessesLoaded"/>
 			<referrer name="OnTurfsLoaded"/>
 			<referrer name="OnLocationsLoaded"/>
 			<referrer name="OnGPSLoaded"/>
 			<referrer name="OnVehiclesFactionLoaded"/>
 			<referrer name="OnVehiclesPersonalLoaded"/>
-			<referrer name="OnPayDayLoaded"/>
 			<param name="row_idx">
 			</param>
 			<param name="column_name">
@@ -20750,13 +21309,13 @@
 			<referrer name="OnATMsLoaded"/>
 			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnClothStoresLoaded"/>
+			<referrer name="OnAmmoLoaded"/>
 			<referrer name="OnBusinessesLoaded"/>
 			<referrer name="OnTurfsLoaded"/>
 			<referrer name="OnLocationsLoaded"/>
 			<referrer name="OnGPSLoaded"/>
 			<referrer name="OnVehiclesFactionLoaded"/>
 			<referrer name="OnVehiclesPersonalLoaded"/>
-			<referrer name="OnPayDayLoaded"/>
 			<referrer name="OnPresidentWinnerComputed"/>
 			<referrer name="OnPlayerCheckExists"/>
 			<referrer name="OnPlayerLogin"/>
@@ -20764,6 +21323,7 @@
 			<referrer name="OnOpenReportsCount"/>
 			<referrer name="OnReportsList"/>
 			<referrer name="OnReportReplyLookup"/>
+			<referrer name="OnPlayerBanCheck"/>
 			<param name="row_idx">
 			</param>
 			<param name="column_name">
@@ -20782,6 +21342,7 @@
 			<referrer name="OnATMCreated"/>
 			<referrer name="OnShopCreated"/>
 			<referrer name="OnClothStoreCreated"/>
+			<referrer name="OnAmmoCreated"/>
 			<referrer name="OnHouseCreated"/>
 			<referrer name="OnHotelCreated"/>
 			<referrer name="OnBusinessCreated"/>
@@ -20818,6 +21379,7 @@
 			<referrer name="OnATMsLoaded"/>
 			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnClothStoresLoaded"/>
+			<referrer name="OnAmmoLoaded"/>
 			<referrer name="OnBusinessesLoaded"/>
 			<referrer name="OnTurfsLoaded"/>
 			<referrer name="OnLocationsLoaded"/>
@@ -21004,6 +21566,7 @@
 		<member name="M:floatstr" syntax="floatstr(string[])">
 			<tagname value="Float"/>
 			<attribute name="native"/>
+			<referrer name="OnPayDayLoaded"/>
 			<referrer name="OnPlayerCommandText"/>
 			<param name="string">
 				<paraminfo> [] </paraminfo>
@@ -21025,6 +21588,7 @@
 			<attribute name="native"/>
 			<referrer name="Casino_ParseBet"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="GetFactionColorCode"/>
 			<referrer name="UnixToDateStr"/>
 			<referrer name="BuildDateSqlValue"/>
@@ -21044,6 +21608,7 @@
 			<referrer name="ExamD_Fail"/>
 			<referrer name="ExamD_Finish"/>
 			<referrer name="AC_Flag"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="OnPlayerWeaponShot"/>
 			<referrer name="Farm_RecreatePickup"/>
 			<referrer name="Farm_Complete"/>
@@ -21135,6 +21700,7 @@
 			<referrer name="ATM_AnnounceBank"/>
 			<referrer name="OnShopCreated"/>
 			<referrer name="OnClothStoreCreated"/>
+			<referrer name="OnAmmoCreated"/>
 			<referrer name="OnHouseCreated"/>
 			<referrer name="OnHotelCreated"/>
 			<referrer name="Cmd_CreateMarkers"/>
@@ -21217,6 +21783,7 @@
 			<referrer name="Exam_Finish"/>
 			<referrer name="ExamC_Finish"/>
 			<referrer name="ExamD_Finish"/>
+			<referrer name="ExamW_Finish"/>
 			<referrer name="FlightExam_Finish"/>
 			<referrer name="Houses_FridgeBroken"/>
 			<referrer name="Houses_BedBroken"/>
@@ -21238,6 +21805,7 @@
 			<referrer name="Phone_IsBroken"/>
 			<referrer name="Watch_IsBroken"/>
 			<referrer name="Player_IsMuted"/>
+			<referrer name="OnPlayerBanCheck"/>
 			<referrer name="OnPlayerCommandText"/>
 			<referrer name="OnPlayerText"/>
 			<referrer name="OnDialogResponse"/>
@@ -21317,10 +21885,12 @@
 			<referrer name="Vehicle_SaveFuel"/>
 			<referrer name="OnPlayerSkinsLoaded"/>
 			<referrer name="OnClothStoreCreated"/>
+			<referrer name="OnAmmoCreated"/>
 			<referrer name="FlightExam_Begin"/>
 			<referrer name="OnVehiclePersonalCreated"/>
 			<referrer name="OnVehiclePlateChecked"/>
 			<referrer name="OnVehicleITPCheck"/>
+			<referrer name="Server_Setup_Seed"/>
 			<referrer name="PayDay_Apply"/>
 			<referrer name="OnPresidentWinnerComputed"/>
 			<referrer name="Player_CheckExists"/>
@@ -21336,6 +21906,7 @@
 			<referrer name="UpdatePlayer"/>
 			<referrer name="Phone_RequestSim"/>
 			<referrer name="Ban_Check"/>
+			<referrer name="OnPlayerBanCheck"/>
 			<referrer name="Prop_SettleSeller"/>
 			<referrer name="Prop_SettleSellerVehicle"/>
 			<referrer name="Auction_RefundBidder"/>
@@ -21428,6 +21999,8 @@
 			<referrer name="Shops_Load"/>
 			<referrer name="ClothStores_Load"/>
 			<referrer name="OnClothStoreCreated"/>
+			<referrer name="Ammo_Load"/>
+			<referrer name="OnAmmoCreated"/>
 			<referrer name="Businesses_Load"/>
 			<referrer name="Turfs_Load"/>
 			<referrer name="Locations_Load"/>
@@ -21438,6 +22011,7 @@
 			<referrer name="OnVehiclePersonalCreated"/>
 			<referrer name="OnVehiclePlateChecked"/>
 			<referrer name="OnVehicleITPCheck"/>
+			<referrer name="Server_Setup_Seed"/>
 			<referrer name="PayDay_Load"/>
 			<referrer name="PayDay_Apply"/>
 			<referrer name="President_ClearVotes"/>
@@ -21457,6 +22031,7 @@
 			<referrer name="UpdatePlayer"/>
 			<referrer name="Phone_RequestSim"/>
 			<referrer name="Ban_Check"/>
+			<referrer name="OnPlayerBanCheck"/>
 			<referrer name="Prop_SettleSeller"/>
 			<referrer name="Prop_SettleSellerVehicle"/>
 			<referrer name="Auction_RefundBidder"/>
@@ -21513,6 +22088,7 @@
 			<referrer name="OnATMsLoaded"/>
 			<referrer name="OnShopsLoaded"/>
 			<referrer name="OnClothStoresLoaded"/>
+			<referrer name="OnAmmoLoaded"/>
 			<referrer name="OnBusinessesLoaded"/>
 			<referrer name="OnTurfsLoaded"/>
 			<referrer name="OnLocationsLoaded"/>
@@ -21597,6 +22173,7 @@
 			<referrer name="Locations_FindByName"/>
 			<referrer name="OnRacesLoaded"/>
 			<referrer name="Job_FindByName"/>
+			<referrer name="OnPayDayLoaded"/>
 			<referrer name="Player_FindByName"/>
 			<referrer name="Player_Login"/>
 			<referrer name="OnPlayerCommandText"/>
@@ -21637,6 +22214,7 @@
 			<referrer name="Casino_ParseBet"/>
 			<referrer name="IsNumeric"/>
 			<referrer name="ClothStore_Create"/>
+			<referrer name="Ammo_Create"/>
 			<referrer name="DateStrToUnix"/>
 			<referrer name="IsValidDateStr"/>
 			<referrer name="BuildDateSqlValue"/>
@@ -21646,6 +22224,7 @@
 			<referrer name="Player_HasValidAirLicense"/>
 			<referrer name="Farm_ModelFromType"/>
 			<referrer name="OnPlayerEnterRaceCheckpoint"/>
+			<referrer name="Shop_Create"/>
 			<referrer name="Smuggle_Cancel"/>
 			<referrer name="Fires_Create"/>
 			<referrer name="OnPresidentWinnerComputed"/>
@@ -21701,6 +22280,7 @@
 			<referrer name="IsValidDateStr"/>
 			<referrer name="DateTimeStrToUnix"/>
 			<referrer name="Weapon_FindByName"/>
+			<referrer name="OnPayDayLoaded"/>
 			<referrer name="OnPlayerCommandText"/>
 			<param name="string">
 				<paraminfo> [] </paraminfo>

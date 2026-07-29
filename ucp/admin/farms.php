@@ -8,6 +8,13 @@ $flashErr = false;
 $farmEquipModels = [
     'add_tractor' => 531, 'add_combine' => 532, 'add_dozer' => 486, 'add_truck' => 403, 'add_trailer' => 450,
 ];
+$farmEquipTypes = [
+    531 => ['Tractor', 16],
+    486 => ['Bulldozer', 6],
+    532 => ['Combine', 11],
+    403 => ['Truck', 12],
+    450 => ['Trailer', 15],
+];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
@@ -30,10 +37,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $stmt->close();
             $flash = "Equipment #$equipId removed from farm #$id.";
         }
+    } elseif ($id > 0 && $rowAction === 'update_equip_uses') {
+        $equipId = (int)($_POST['equip_id'] ?? 0);
+        $model = (int)($_POST['equip_model'] ?? 0);
+        $max = $farmEquipTypes[$model][1] ?? 1;
+        $uses = max(0, min($max, (int)($_POST['uses'] ?? 0)));
+        if ($equipId > 0) {
+            $stmt = $mysqli->prepare("UPDATE `farm_equipment` SET `uses`=? WHERE `id`=? AND `farm_id`=?");
+            $stmt->bind_param('iii', $uses, $equipId, $id);
+            $stmt->execute();
+            $stmt->close();
+            $flash = "Equipment #$equipId updated ($uses/$max uses).";
+        }
     } elseif ($id > 0) {
         $name  = trim($_POST['name'] ?? '');
         $price = max(0, (int)($_POST['price'] ?? 0));
         $bank  = (int)($_POST['bank'] ?? 0);
+        $recolta = max(0, (int)($_POST['recolta'] ?? 0));
         $forSale = isset($_POST['is_for_sale']) ? 1 : 0;
         $ownerRaw = trim($_POST['owner_id'] ?? '');
 
@@ -49,8 +69,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
 
         if (!$flashErr) {
-            $stmt = $mysqli->prepare("UPDATE `farms` SET `name`=?, `price`=?, `farmBank`=?, `is_for_sale`=?, `owner_id`=?, `owner`=?, `isOwned`=? WHERE `id`=?");
-            $stmt->bind_param('siiiisii', $name, $price, $bank, $forSale, $ownerId, $ownerName, $isOwned, $id);
+            $stmt = $mysqli->prepare("UPDATE `farms` SET `name`=?, `price`=?, `farmBank`=?, `farmRecolta`=?, `is_for_sale`=?, `owner_id`=?, `owner`=?, `isOwned`=? WHERE `id`=?");
+            $stmt->bind_param('siiiiisii', $name, $price, $bank, $recolta, $forSale, $ownerId, $ownerName, $isOwned, $id);
             $stmt->execute();
             $stmt->close();
             $flash = "Farm #$id updated.";
@@ -68,14 +88,6 @@ try {
 } catch (mysqli_sql_exception $e) {
     $farmEquipByFarm = null; // table doesn't exist yet
 }
-
-$farmEquipTypes = [
-    531 => ['Tractor', 16],
-    486 => ['Bulldozer', 6],
-    532 => ['Combine', 11],
-    403 => ['Truck', 12],
-    450 => ['Trailer', 15],
-];
 
 $adminActive = 'farms';
 ?>
@@ -104,23 +116,25 @@ $adminActive = 'farms';
   <div class="card">
     <div style="overflow-x:auto">
     <table class="edittable">
-      <tr><th>ID</th><th>Name</th><th>Price</th><th>Bank</th><th class="chk">For sale</th><th>Owner (player ID / none)</th><th></th></tr>
+      <tr><th>ID</th><th>Name</th><th>Price</th><th>Bank</th><th>Recolta</th><th class="chk">For sale</th><th>Owner (player ID / none)</th><th></th></tr>
       <?php foreach ($farms as $f): $fid = 'farm-' . (int)$f['id']; ?>
       <tr>
           <td>#<?= (int)$f['id'] ?></td>
           <td><input form="<?= $fid ?>" type="text" name="name" value="<?= ucp_escape($f['name']) ?>"></td>
           <td><input form="<?= $fid ?>" type="number" name="price" value="<?= (int)$f['price'] ?>"></td>
           <td><input form="<?= $fid ?>" type="number" name="bank" value="<?= (int)$f['farmBank'] ?>"></td>
+          <td><input form="<?= $fid ?>" type="number" name="recolta" value="<?= (int)$f['farmRecolta'] ?>"></td>
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="is_for_sale" <?= $f['is_for_sale'] ? 'checked' : '' ?>></td>
           <td><input form="<?= $fid ?>" type="text" name="owner_id" value="<?= $f['isOwned'] ? (int)$f['owner_id'] : 'none' ?>" placeholder="none"></td>
           <td>
-            <form id="<?= $fid ?>" method="post"></form>
-            <input form="<?= $fid ?>" type="hidden" name="id" value="<?= (int)$f['id'] ?>">
-            <button form="<?= $fid ?>" type="submit" class="save-btn">Save</button>
+            <form id="<?= $fid ?>" method="post">
+              <input type="hidden" name="id" value="<?= (int)$f['id'] ?>">
+              <button type="submit" class="save-btn">Save</button>
+            </form>
           </td>
       </tr>
       <tr>
-        <td colspan="7" style="background:var(--panel-2)">
+        <td colspan="8" style="background:var(--panel-2)">
           <?php $equip = $farmEquipByFarm[(int)$f['id']] ?? []; ?>
           <?php if ($farmEquipByFarm === null): ?>
             <span style="color:var(--muted)">Equipment: <?= (int)$f['tractors'] ?> tractor(s), <?= (int)$f['combines'] ?> combine(s), <?= (int)$f['dozers'] ?> dozer(s), <?= (int)$f['trucks'] ?> truck(s), <?= (int)$f['trailers'] ?> trailer(s)</span>
@@ -129,7 +143,7 @@ $adminActive = 'farms';
               <p style="color:var(--muted); margin:4px 0">No equipment.</p>
             <?php else: ?>
               <table class="edittable" style="width:100%">
-                <tr><th>Equipment</th><th>Health</th><th>Status</th><th></th></tr>
+                <tr><th>Equipment</th><th>Health (current/max)</th><th>Status</th><th></th></tr>
                 <?php foreach ($equip as $eq):
                     $eqInfo = $farmEquipTypes[(int)$eq['model']] ?? ['Unknown', 1];
                     [$eqLabel, $eqMax] = $eqInfo;
@@ -145,13 +159,16 @@ $adminActive = 'farms';
                   <td><?= ucp_escape($eqLabel) ?> (#<?= (int)$eq['id'] ?>)</td>
                   <td>
                     <span class="meter"><span class="meter-fill <?= $eqTier ?>" style="width:<?= $eqHealth ?>%"></span></span>
-                    <span class="meter-label"><?= $eqHealth ?>%</span>
+                    <span class="meter-label"><?= (int)$eq['uses'] ?> / <?= $eqMax ?></span>
                   </td>
                   <td><span class="pill pill-<?= $eqTier ?>"><?= $eqWord ?></span></td>
                   <td>
-                    <form id="<?= $eqFid ?>" method="post">
+                    <form id="<?= $eqFid ?>" method="post" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
                       <input type="hidden" name="id" value="<?= (int)$f['id'] ?>">
                       <input type="hidden" name="equip_id" value="<?= (int)$eq['id'] ?>">
+                      <input type="hidden" name="equip_model" value="<?= (int)$eq['model'] ?>">
+                      <input type="number" name="uses" min="0" value="<?= (int)$eq['uses'] ?>" style="width:60px">
+                      <button type="submit" name="row_action" value="update_equip_uses" class="save-btn">Save</button>
                       <button type="submit" name="row_action" value="delete_equip" class="save-btn" style="background:var(--red)">Remove</button>
                     </form>
                   </td>

@@ -67,9 +67,10 @@ $adminActive = 'vehicles';
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="is_confiscated" <?= $v['is_confiscated'] ? 'checked' : '' ?>></td>
           <td><input form="<?= $fid ?>" type="text" name="owner_id" value="<?= (int)$v['owner_id'] > 0 ? (int)$v['owner_id'] : 'none' ?>" placeholder="none"></td>
           <td>
-            <form id="<?= $fid ?>" method="post"></form>
-            <input form="<?= $fid ?>" type="hidden" name="id" value="<?= (int)$v['id'] ?>">
-            <button form="<?= $fid ?>" type="submit" class="save-btn">Save</button>
+            <form id="<?= $fid ?>" method="post">
+              <input type="hidden" name="id" value="<?= (int)$v['id'] ?>">
+              <button type="submit" class="save-btn">Save</button>
+            </form>
           </td>
       </tr>
       <?php endforeach; ?>

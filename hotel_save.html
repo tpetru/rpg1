@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nostalgia: Los Santos UCP — Hotels</title>
+<link rel="stylesheet" href="/ucp/assets/css/style.css?v=1785263316">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="/ucp/index.php" class="brand"><img src="/ucp/assets/img/logo.jpg" alt="" class="brand-logo"> Nostalgia: Los Santos UCP</a>
+  <nav>
+    <a href="/ucp/dashboard.php">Dashboard</a>
+    <a href="/ucp/maps.php">Map</a>
+    <a href="/ucp/howto.php">How To</a>
+
+          <div class="nav-dd">
+        <a href="/ucp/factions.php" class="dd-toggle">Factions ▾</a>
+        <div class="nav-dd-menu">
+          <a href="/ucp/factions.php">All factions</a>
+                      <a href="/ucp/faction1.php">Romanian Police</a>
+                      <a href="/ucp/faction2.php">Romanian Vehicle Registry</a>
+                      <a href="/ucp/faction3.php">SMURD</a>
+                      <a href="/ucp/faction4.php">European Mafia</a>
+                      <a href="/ucp/faction5.php">American Mafia</a>
+                      <a href="/ucp/faction6.php">African Mafia</a>
+                      <a href="/ucp/faction7.php">Asian Mafia</a>
+                      <a href="/ucp/faction8.php">News Reporters</a>
+                  </div>
+      </div>
+    
+          <div class="nav-dd">
+        <a href="/ucp/admin/houses.php" class="dd-toggle">Admin ▾</a>
+        <div class="nav-dd-menu">
+          <a href="/ucp/admin/houses.php">Houses</a>
+          <a href="/ucp/admin/businesses.php">Businesses</a>
+          <a href="/ucp/admin/vehicles.php">Vehicles</a>
+          <a href="/ucp/admin/farms.php">Farms</a>
+          <a href="/ucp/admin/hotels.php">Hotels</a>
+          <a href="/ucp/admin/shops.php">Shops</a>
+          <a href="/ucp/admin/fastfood.php">Fast-food</a>
+          <a href="/ucp/admincmds.php">Admin Cmds</a>
+        </div>
+      </div>
+        <a href="/ucp/logout.php">Logout</a>
+  </nav>
+  <div class="userbox">
+    UCPTestAdmin · admin lvl 5  </div>
+</header>
+
+<main>
+  <h1>🏨 Hotels</h1>
+  <p style="color:var(--muted)">Edit hotels directly. Changes are saved immediately to the database.</p>
+
+  <nav class="subtabs">
+      <a href="houses.php" class="">🏠 Houses</a>
+      <a href="businesses.php" class="">🏢 Businesses</a>
+      <a href="vehicles.php" class="">🚗 Vehicles</a>
+      <a href="farms.php" class="">🌾 Farms</a>
+      <a href="hotels.php" class="active">🏨 Hotels</a>
+      <a href="shops.php" class="">🛒 Shops</a>
+      <a href="fastfood.php" class="">🍔 Fast-food</a>
+  </nav>
+
+      <div class="flash ok">Hotel #11 updated.</div>
+  
+  <div class="card">
+    <div style="overflow-x:auto">
+    <table class="edittable">
+      <tr><th>ID</th><th>Name</th><th>Price</th><th>Bank</th><th>Rent price</th><th>Max capacity</th><th>Owner (player ID / none)</th><th class="chk">For sale</th><th class="chk">Rentable</th><th></th></tr>
+            <tr>
+          <td>#1</td>
+          <td><input form="hotel-1" type="text" name="name" value="Hotel 1"></td>
+          <td><input form="hotel-1" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-1" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-1" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-1" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-1" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-1" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-1" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-1" method="post"></form>
+            <input form="hotel-1" type="hidden" name="id" value="1">
+            <button form="hotel-1" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#2</td>
+          <td><input form="hotel-2" type="text" name="name" value="Hotel 2"></td>
+          <td><input form="hotel-2" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-2" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-2" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-2" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-2" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-2" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-2" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-2" method="post"></form>
+            <input form="hotel-2" type="hidden" name="id" value="2">
+            <button form="hotel-2" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#3</td>
+          <td><input form="hotel-3" type="text" name="name" value="Hotel 3"></td>
+          <td><input form="hotel-3" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-3" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-3" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-3" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-3" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-3" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-3" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-3" method="post"></form>
+            <input form="hotel-3" type="hidden" name="id" value="3">
+            <button form="hotel-3" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#4</td>
+          <td><input form="hotel-4" type="text" name="name" value="Hotel 4"></td>
+          <td><input form="hotel-4" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-4" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-4" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-4" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-4" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-4" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-4" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-4" method="post"></form>
+            <input form="hotel-4" type="hidden" name="id" value="4">
+            <button form="hotel-4" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#5</td>
+          <td><input form="hotel-5" type="text" name="name" value="Hotel 5"></td>
+          <td><input form="hotel-5" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-5" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-5" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-5" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-5" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-5" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-5" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-5" method="post"></form>
+            <input form="hotel-5" type="hidden" name="id" value="5">
+            <button form="hotel-5" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#6</td>
+          <td><input form="hotel-6" type="text" name="name" value="Hotel 6"></td>
+          <td><input form="hotel-6" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-6" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-6" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-6" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-6" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-6" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-6" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-6" method="post"></form>
+            <input form="hotel-6" type="hidden" name="id" value="6">
+            <button form="hotel-6" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#7</td>
+          <td><input form="hotel-7" type="text" name="name" value="Hotel 7"></td>
+          <td><input form="hotel-7" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-7" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-7" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-7" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-7" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-7" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-7" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-7" method="post"></form>
+            <input form="hotel-7" type="hidden" name="id" value="7">
+            <button form="hotel-7" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#8</td>
+          <td><input form="hotel-8" type="text" name="name" value="Hotel 8"></td>
+          <td><input form="hotel-8" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-8" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-8" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-8" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-8" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-8" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-8" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-8" method="post"></form>
+            <input form="hotel-8" type="hidden" name="id" value="8">
+            <button form="hotel-8" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#9</td>
+          <td><input form="hotel-9" type="text" name="name" value="Hotel 9"></td>
+          <td><input form="hotel-9" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-9" type="number" name="bank" value="0"></td>
+          <td><input form="hotel-9" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-9" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-9" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-9" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-9" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-9" method="post"></form>
+            <input form="hotel-9" type="hidden" name="id" value="9">
+            <button form="hotel-9" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#10</td>
+          <td><input form="hotel-10" type="text" name="name" value="Hotel 10"></td>
+          <td><input form="hotel-10" type="number" name="price" value="50000"></td>
+          <td><input form="hotel-10" type="number" name="bank" value="75"></td>
+          <td><input form="hotel-10" type="number" name="rent_price" value="0"></td>
+          <td><input form="hotel-10" type="number" name="capacity" min="1" value="5"></td>
+          <td><input form="hotel-10" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-10" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-10" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-10" method="post"></form>
+            <input form="hotel-10" type="hidden" name="id" value="10">
+            <button form="hotel-10" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+            <tr>
+          <td>#11</td>
+          <td><input form="hotel-11" type="text" name="name" value="TestHotelXYZ"></td>
+          <td><input form="hotel-11" type="number" name="price" value="5000"></td>
+          <td><input form="hotel-11" type="number" name="bank" value="100"></td>
+          <td><input form="hotel-11" type="number" name="rent_price" value="200"></td>
+          <td><input form="hotel-11" type="number" name="capacity" min="1" value="25"></td>
+          <td><input form="hotel-11" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td class="chk"><input form="hotel-11" type="checkbox" name="is_for_sale" ></td>
+          <td class="chk"><input form="hotel-11" type="checkbox" name="is_rentable" ></td>
+          <td>
+            <form id="hotel-11" method="post"></form>
+            <input form="hotel-11" type="hidden" name="id" value="11">
+            <button form="hotel-11" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+          </table>
+    </div>
+  </div>
+</main>
+
+<footer>Nostalgia: Los Santos UCP</footer>
+
+</body>
+</html>

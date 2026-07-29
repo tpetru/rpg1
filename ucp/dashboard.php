@@ -17,6 +17,16 @@ if (!$player) {
     exit;
 }
 
+// Ban status - `bans` is keyed by username/IP, not player id (see Ban_Check in the gamemode)
+$stmt = $mysqli->prepare("SELECT * FROM `bans` WHERE `username` = ? LIMIT 1");
+$stmt->bind_param('s', $player['username']);
+$stmt->execute();
+$activeBan = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+if ($activeBan && (int)$activeBan['expire'] !== 0 && time() >= (int)$activeBan['expire']) {
+    $activeBan = null; // expired temp ban - gamemode deletes it lazily on next login attempt
+}
+
 // Owned personal vehicles
 $stmt = $mysqli->prepare("SELECT * FROM `vehicles_personal` WHERE `owner_id` = ? ORDER BY `id` ASC");
 $stmt->bind_param('i', $pid);
@@ -57,20 +67,20 @@ $myHouse = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 $houseTypeName = [1 => 'Villa', 2 => 'City House', 3 => 'Apartment', 4 => 'Countryside House'];
 
-// House tree (if one is planted, see tree_id / `trees` table)
+// House tree (if one is planted, see tree_id / `houses_tree` table)
 $houseTree = null;
 if ($myHouse && (int)$myHouse['tree_id'] > 0) {
-    $stmt = $mysqli->prepare("SELECT * FROM `trees` WHERE `treeId` = ? LIMIT 1");
+    $stmt = $mysqli->prepare("SELECT * FROM `houses_tree` WHERE `treeId` = ? LIMIT 1");
     $stmt->bind_param('i', $myHouse['tree_id']);
     $stmt->execute();
     $houseTree = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 }
 
-// House animals (see `animals` table, aHouseID)
+// House animals (see `houses_animals` table, aHouseID)
 $houseAnimals = [];
 if ($myHouse) {
-    $stmt = $mysqli->prepare("SELECT * FROM `animals` WHERE `aHouseID` = ? ORDER BY `aID` ASC");
+    $stmt = $mysqli->prepare("SELECT * FROM `houses_animals` WHERE `aHouseID` = ? ORDER BY `aID` ASC");
     $stmt->bind_param('i', $myHouse['id']);
     $stmt->execute();
     $houseAnimals = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -134,6 +144,26 @@ if ($myHotel) {
 
 // The player's skin is now persisted per player in the `players`.`skin` column (implemented: /skins, /wardrobe).
 $skinId = (int)$player['skin'];
+
+// Owned skins (the player's "collection", bought via /skins) - see `player_skins` table.
+// A skin can be bought more than once (`qty`), so it gets one column per copy owned.
+$stmt = $mysqli->prepare("SELECT `skin_id`, `qty` FROM `player_skins` WHERE `player_id` = ? ORDER BY `skin_id` ASC");
+$stmt->bind_param('i', $pid);
+$stmt->execute();
+$ownedSkins = [];
+foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+    for ($n = 0; $n < max(1, (int)$row['qty']); $n++) {
+        $ownedSkins[] = (int)$row['skin_id'];
+    }
+}
+$stmt->close();
+$ownedSkinCount = count($ownedSkins);
+if ($ownedSkinCount > 15 && $ownedSkinCount <= 30) {
+    // split evenly across 2 rows instead of a full 15 + a short remainder
+    $ownedSkinChunks = array_chunk($ownedSkins, (int)ceil($ownedSkinCount / 2));
+} else {
+    $ownedSkinChunks = array_chunk($ownedSkins, 15);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -147,11 +177,31 @@ $skinId = (int)$player['skin'];
 
 <?php include __DIR__ . '/includes/header.php'; ?>
 
+<?php
+$sectionNav = [
+    ['card-account',     '👤', 'Account'],
+    ['card-licenses',    '🪪', 'Licenses'],
+    ['card-skin',        '🧍', 'Skin'],
+    ['card-collections', '👕', 'Skin collections'],
+    ['card-cars',        '🚗', 'Cars'],
+];
+if ($myHouse)   $sectionNav[] = ['card-house',    '🏠', 'House'];
+if ($myBusiness) $sectionNav[] = ['card-business', '🏢', 'Business'];
+if ($farm)      $sectionNav[] = ['card-farm',     '🌾', 'Farm'];
+if ($myHotel)   $sectionNav[] = ['card-hotel',    '🏨', 'Hotel'];
+if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
+?>
+<nav class="section-nav" aria-label="Jump to section">
+  <?php foreach ($sectionNav as [$anchorId, $icon, $label]): ?>
+  <a href="#<?= $anchorId ?>" title="<?= ucp_escape($label) ?>"><span><?= $icon ?></span></a>
+  <?php endforeach; ?>
+</nav>
+
 <main>
   <h1>Welcome, <?= ucp_escape($player['username']) ?></h1>
 
   <div class="grid-3">
-    <div class="card">
+    <div class="card" id="card-account">
       <h2>👤 Your account</h2>
       <table>
         <tr><th>Level</th><td><?= (int)$player['level'] ?></td></tr>
@@ -160,12 +210,21 @@ $skinId = (int)$player['skin'];
         <tr><th>Bank</th><td>$<?= ucp_money($player['bank']) ?></td></tr>
         <tr><th>Faction</th><td><?= ucp_escape(ucp_faction_name($player['faction'])) ?><?= $player['faction'] > 0 ? ' (rank ' . (int)$player['faction_rank'] . ')' : '' ?></td></tr>
         <tr><th>Admin level</th><td><?= (int)$player['admin_level'] ?></td></tr>
+        <tr><th>Warns</th><td><?= (int)$player['warns'] ?>/3</td></tr>
+        <tr><th>Ban</th><td>
+          <?php if ($activeBan): ?>
+            <span class="pill pill-bad">Yes</span>
+            <?= (int)$activeBan['expire'] !== 0 ? ', expires on ' . date('d.m.Y H:i', (int)$activeBan['expire']) : ' (permanent)' ?>
+          <?php else: ?>
+            <span class="pill pill-ok">No</span>
+          <?php endif; ?>
+        </td></tr>
         <tr><th>Rent</th><td><?= $rentLabel ? ucp_escape($rentLabel) : 'No active rent' ?></td></tr>
       </table>
     </div>
 
-    <div class="card">
-      <h2>🪪 Driving licenses</h2>
+    <div class="card" id="card-licenses">
+      <h2>🪪 Licenses</h2>
       <table>
         <?php
         $licenses = [
@@ -175,6 +234,7 @@ $skinId = (int)$player['skin'];
             'D (buses)' => $player['driving_lic_d_exp'],
             'P (plane)' => $player['airplane_lic_a_exp'],
             'H (helicopter)' => $player['airplane_lic_h_exp'],
+            'W (weapons)' => $player['weapon_lic_w_exp'],
         ];
         foreach ($licenses as $cat => $exp):
             $st = ucp_license_status($exp);
@@ -196,7 +256,7 @@ $skinId = (int)$player['skin'];
       </table>
     </div>
 
-    <div class="card skin-card">
+    <div class="card skin-card" id="card-skin">
       <h2>🧍 Your skin</h2>
       <div class="skin-box">
         <img src="assets/img/skins/skin_<?= (int)$skinId ?>.png" alt="Skin <?= (int)$skinId ?>"
@@ -207,7 +267,34 @@ $skinId = (int)$player['skin'];
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="card-collections">
+    <h2>👕 Skin collections (<?= count($ownedSkins) ?>)</h2>
+    <?php if (!$ownedSkins): ?>
+      <p style="color:var(--muted)">You don't own any outfits yet. Buy some in-game with <code>/skins</code>.</p>
+    <?php else: ?>
+      <?php foreach ($ownedSkinChunks as $chunk): ?>
+      <table class="skin-collection">
+        <tr>
+          <?php foreach ($chunk as $sid): ?>
+          <th>#<?= (int)$sid ?></th>
+          <?php endforeach; ?>
+        </tr>
+        <tr>
+          <?php foreach ($chunk as $sid): ?>
+          <td>
+            <div class="skin-thumb-box">
+              <img src="assets/img/skins/skin_<?= (int)$sid ?>.png" alt="Skin <?= (int)$sid ?>"
+                   onerror="this.parentElement.textContent='#<?= (int)$sid ?>';">
+            </div>
+          </td>
+          <?php endforeach; ?>
+        </tr>
+      </table>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+
+  <div class="card" id="card-cars">
     <h2>🚗 Your cars (<?= count($vehicles) ?>)</h2>
     <?php if (!$vehicles): ?>
       <p style="color:var(--muted)">You don't own any personal vehicles.</p>
@@ -250,7 +337,7 @@ $skinId = (int)$player['skin'];
   </div>
 
     <?php if ($myHouse): ?>
-    <div class="card">
+    <div class="card" id="card-house">
       <h2>🏠 Your house</h2>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($myHouse['name']) ?> (ID #<?= (int)$myHouse['id'] ?>)</td></tr>
@@ -352,7 +439,7 @@ $skinId = (int)$player['skin'];
     <?php endif; ?>
 
     <?php if ($myBusiness): ?>
-    <div class="card">
+    <div class="card" id="card-business">
       <h2>🏢 Your business</h2>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($myBusiness['name']) ?> (ID #<?= (int)$myBusiness['id'] ?>)</td></tr>
@@ -365,7 +452,7 @@ $skinId = (int)$player['skin'];
     <?php endif; ?>
 
     <?php if ($farm): ?>
-    <div class="card">
+    <div class="card" id="card-farm">
       <h2>🌾 Your farm</h2>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($farm['name']) ?> (ID #<?= (int)$farm['id'] ?>)</td></tr>
@@ -416,7 +503,7 @@ $skinId = (int)$player['skin'];
     <?php endif; ?>
 
     <?php if ($myHotel): ?>
-    <div class="card">
+    <div class="card" id="card-hotel">
       <h2>🏨 Your hotel</h2>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($myHotel['name']) ?> (ID #<?= (int)$myHotel['id'] ?>)</td></tr>
@@ -439,7 +526,7 @@ $skinId = (int)$player['skin'];
     ];
     ?>
     <?php if ($caravan): ?>
-    <div class="card">
+    <div class="card" id="card-caravan">
       <h2>🚐 Your caravan</h2>
       <table>
         <tr>

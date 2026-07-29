@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nostalgia: Los Santos UCP — Farms</title>
+<link rel="stylesheet" href="/ucp/assets/css/style.css?v=1785263316">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="/ucp/index.php" class="brand"><img src="/ucp/assets/img/logo.jpg" alt="" class="brand-logo"> Nostalgia: Los Santos UCP</a>
+  <nav>
+    <a href="/ucp/dashboard.php">Dashboard</a>
+    <a href="/ucp/maps.php">Map</a>
+    <a href="/ucp/howto.php">How To</a>
+
+          <div class="nav-dd">
+        <a href="/ucp/factions.php" class="dd-toggle">Factions ▾</a>
+        <div class="nav-dd-menu">
+          <a href="/ucp/factions.php">All factions</a>
+                      <a href="/ucp/faction1.php">Romanian Police</a>
+                      <a href="/ucp/faction2.php">Romanian Vehicle Registry</a>
+                      <a href="/ucp/faction3.php">SMURD</a>
+                      <a href="/ucp/faction4.php">European Mafia</a>
+                      <a href="/ucp/faction5.php">American Mafia</a>
+                      <a href="/ucp/faction6.php">African Mafia</a>
+                      <a href="/ucp/faction7.php">Asian Mafia</a>
+                      <a href="/ucp/faction8.php">News Reporters</a>
+                  </div>
+      </div>
+    
+          <div class="nav-dd">
+        <a href="/ucp/admin/houses.php" class="dd-toggle">Admin ▾</a>
+        <div class="nav-dd-menu">
+          <a href="/ucp/admin/houses.php">Houses</a>
+          <a href="/ucp/admin/businesses.php">Businesses</a>
+          <a href="/ucp/admin/vehicles.php">Vehicles</a>
+          <a href="/ucp/admin/farms.php">Farms</a>
+          <a href="/ucp/admin/hotels.php">Hotels</a>
+          <a href="/ucp/admin/shops.php">Shops</a>
+          <a href="/ucp/admin/fastfood.php">Fast-food</a>
+          <a href="/ucp/admincmds.php">Admin Cmds</a>
+        </div>
+      </div>
+        <a href="/ucp/logout.php">Logout</a>
+  </nav>
+  <div class="userbox">
+    UCPTestAdmin · admin lvl 5  </div>
+</header>
+
+<main>
+  <h1>🌾 Farms</h1>
+  <p style="color:var(--muted)">Edit farms directly. Changes are saved immediately to the database.</p>
+
+  <nav class="subtabs">
+      <a href="houses.php" class="">🏠 Houses</a>
+      <a href="businesses.php" class="">🏢 Businesses</a>
+      <a href="vehicles.php" class="">🚗 Vehicles</a>
+      <a href="farms.php" class="active">🌾 Farms</a>
+      <a href="hotels.php" class="">🏨 Hotels</a>
+      <a href="shops.php" class="">🛒 Shops</a>
+      <a href="fastfood.php" class="">🍔 Fast-food</a>
+  </nav>
+
+      <div class="flash ok">Farm #6 updated.</div>
+  
+  <div class="card">
+    <div style="overflow-x:auto">
+    <table class="edittable">
+      <tr><th>ID</th><th>Name</th><th>Price</th><th>Bank</th><th>Recolta</th><th class="chk">For sale</th><th>Owner (player ID / none)</th><th></th></tr>
+            <tr>
+          <td>#1</td>
+          <td><input form="farm-1" type="text" name="name" value="Farm"></td>
+          <td><input form="farm-1" type="number" name="price" value="10000000"></td>
+          <td><input form="farm-1" type="number" name="bank" value="42500"></td>
+          <td><input form="farm-1" type="number" name="recolta" value="0"></td>
+          <td class="chk"><input form="farm-1" type="checkbox" name="is_for_sale" ></td>
+          <td><input form="farm-1" type="text" name="owner_id" value="1" placeholder="none"></td>
+          <td>
+            <form id="farm-1" method="post"></form>
+            <input form="farm-1" type="hidden" name="id" value="1">
+            <button form="farm-1" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+      <tr>
+        <td colspan="8" style="background:var(--panel-2)">
+                                              <table class="edittable" style="width:100%">
+                <tr><th>Equipment</th><th>Health (current/max)</th><th>Status</th><th></th></tr>
+                                <tr>
+                  <td>Bulldozer (#2)</td>
+                  <td>
+                    <span class="meter"><span class="meter-fill warn" style="width:83%"></span></span>
+                    <input form="farm-1-eq-2" type="number" name="uses" min="0" max="6" value="5" style="width:60px; display:inline-block">
+                    <span class="meter-label">/ 6</span>
+                  </td>
+                  <td><span class="pill pill-warn">Poor</span></td>
+                  <td>
+                    <form id="farm-1-eq-2" method="post">
+                      <input type="hidden" name="id" value="1">
+                      <input type="hidden" name="equip_id" value="2">
+                      <input type="hidden" name="equip_model" value="486">
+                    </form>
+                    <button form="farm-1-eq-2" type="submit" name="row_action" value="update_equip_uses" class="save-btn">Save</button>
+                    <button form="farm-1-eq-2" type="submit" name="row_action" value="delete_equip" class="save-btn" style="background:var(--red)">Remove</button>
+                  </td>
+                </tr>
+                                <tr>
+                  <td>Bulldozer (#3)</td>
+                  <td>
+                    <span class="meter"><span class="meter-fill good" style="width:50%"></span></span>
+                    <input form="farm-1-eq-3" type="number" name="uses" min="0" max="6" value="3" style="width:60px; display:inline-block">
+                    <span class="meter-label">/ 6</span>
+                  </td>
+                  <td><span class="pill pill-good">Good</span></td>
+                  <td>
+                    <form id="farm-1-eq-3" method="post">
+                      <input type="hidden" name="id" value="1">
+                      <input type="hidden" name="equip_id" value="3">
+                      <input type="hidden" name="equip_model" value="486">
+                    </form>
+                    <button form="farm-1-eq-3" type="submit" name="row_action" value="update_equip_uses" class="save-btn">Save</button>
+                    <button form="farm-1-eq-3" type="submit" name="row_action" value="delete_equip" class="save-btn" style="background:var(--red)">Remove</button>
+                  </td>
+                </tr>
+                                <tr>
+                  <td>Bulldozer (#4)</td>
+                  <td>
+                    <span class="meter"><span class="meter-fill ok" style="width:17%"></span></span>
+                    <input form="farm-1-eq-4" type="number" name="uses" min="0" max="6" value="1" style="width:60px; display:inline-block">
+                    <span class="meter-label">/ 6</span>
+                  </td>
+                  <td><span class="pill pill-ok">Excellent</span></td>
+                  <td>
+                    <form id="farm-1-eq-4" method="post">
+                      <input type="hidden" name="id" value="1">
+                      <input type="hidden" name="equip_id" value="4">
+                      <input type="hidden" name="equip_model" value="486">
+                    </form>
+                    <button form="farm-1-eq-4" type="submit" name="row_action" value="update_equip_uses" class="save-btn">Save</button>
+                    <button form="farm-1-eq-4" type="submit" name="row_action" value="delete_equip" class="save-btn" style="background:var(--red)">Remove</button>
+                  </td>
+                </tr>
+                                <tr>
+                  <td>Tractor (#1)</td>
+                  <td>
+                    <span class="meter"><span class="meter-fill bad" style="width:100%"></span></span>
+                    <input form="farm-1-eq-1" type="number" name="uses" min="0" max="16" value="16" style="width:60px; display:inline-block">
+                    <span class="meter-label">/ 16</span>
+                  </td>
+                  <td><span class="pill pill-bad">Broken</span></td>
+                  <td>
+                    <form id="farm-1-eq-1" method="post">
+                      <input type="hidden" name="id" value="1">
+                      <input type="hidden" name="equip_id" value="1">
+                      <input type="hidden" name="equip_model" value="531">
+                    </form>
+                    <button form="farm-1-eq-1" type="submit" name="row_action" value="update_equip_uses" class="save-btn">Save</button>
+                    <button form="farm-1-eq-1" type="submit" name="row_action" value="delete_equip" class="save-btn" style="background:var(--red)">Remove</button>
+                  </td>
+                </tr>
+                                <tr>
+                  <td>Combine (#5)</td>
+                  <td>
+                    <span class="meter"><span class="meter-fill ok" style="width:0%"></span></span>
+                    <input form="farm-1-eq-5" type="number" name="uses" min="0" max="11" value="0" style="width:60px; display:inline-block">
+                    <span class="meter-label">/ 11</span>
+                  </td>
+                  <td><span class="pill pill-ok">Excellent</span></td>
+                  <td>
+                    <form id="farm-1-eq-5" method="post">
+                      <input type="hidden" name="id" value="1">
+                      <input type="hidden" name="equip_id" value="5">
+                      <input type="hidden" name="equip_model" value="532">
+                    </form>
+                    <button form="farm-1-eq-5" type="submit" name="row_action" value="update_equip_uses" class="save-btn">Save</button>
+                    <button form="farm-1-eq-5" type="submit" name="row_action" value="delete_equip" class="save-btn" style="background:var(--red)">Remove</button>
+                  </td>
+                </tr>
+                              </table>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+                              <form id="farm-1-add_tractor" method="post">
+                  <input type="hidden" name="id" value="1">
+                  <button type="submit" name="row_action" value="add_tractor" class="save-btn">+ Tractor</button>
+                </form>
+                              <form id="farm-1-add_combine" method="post">
+                  <input type="hidden" name="id" value="1">
+                  <button type="submit" name="row_action" value="add_combine" class="save-btn">+ Combine</button>
+                </form>
+                              <form id="farm-1-add_dozer" method="post">
+                  <input type="hidden" name="id" value="1">
+                  <button type="submit" name="row_action" value="add_dozer" class="save-btn">+ Bulldozer</button>
+                </form>
+                              <form id="farm-1-add_truck" method="post">
+                  <input type="hidden" name="id" value="1">
+                  <button type="submit" name="row_action" value="add_truck" class="save-btn">+ Truck</button>
+                </form>
+                              <form id="farm-1-add_trailer" method="post">
+                  <input type="hidden" name="id" value="1">
+                  <button type="submit" name="row_action" value="add_trailer" class="save-btn">+ Trailer</button>
+                </form>
+                          </div>
+                  </td>
+      </tr>
+            <tr>
+          <td>#2</td>
+          <td><input form="farm-2" type="text" name="name" value="Farm"></td>
+          <td><input form="farm-2" type="number" name="price" value="10000000"></td>
+          <td><input form="farm-2" type="number" name="bank" value="0"></td>
+          <td><input form="farm-2" type="number" name="recolta" value="0"></td>
+          <td class="chk"><input form="farm-2" type="checkbox" name="is_for_sale" ></td>
+          <td><input form="farm-2" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td>
+            <form id="farm-2" method="post"></form>
+            <input form="farm-2" type="hidden" name="id" value="2">
+            <button form="farm-2" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+      <tr>
+        <td colspan="8" style="background:var(--panel-2)">
+                                              <p style="color:var(--muted); margin:4px 0">No equipment.</p>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+                              <form id="farm-2-add_tractor" method="post">
+                  <input type="hidden" name="id" value="2">
+                  <button type="submit" name="row_action" value="add_tractor" class="save-btn">+ Tractor</button>
+                </form>
+                              <form id="farm-2-add_combine" method="post">
+                  <input type="hidden" name="id" value="2">
+                  <button type="submit" name="row_action" value="add_combine" class="save-btn">+ Combine</button>
+                </form>
+                              <form id="farm-2-add_dozer" method="post">
+                  <input type="hidden" name="id" value="2">
+                  <button type="submit" name="row_action" value="add_dozer" class="save-btn">+ Bulldozer</button>
+                </form>
+                              <form id="farm-2-add_truck" method="post">
+                  <input type="hidden" name="id" value="2">
+                  <button type="submit" name="row_action" value="add_truck" class="save-btn">+ Truck</button>
+                </form>
+                              <form id="farm-2-add_trailer" method="post">
+                  <input type="hidden" name="id" value="2">
+                  <button type="submit" name="row_action" value="add_trailer" class="save-btn">+ Trailer</button>
+                </form>
+                          </div>
+                  </td>
+      </tr>
+            <tr>
+          <td>#3</td>
+          <td><input form="farm-3" type="text" name="name" value="Farm"></td>
+          <td><input form="farm-3" type="number" name="price" value="10000000"></td>
+          <td><input form="farm-3" type="number" name="bank" value="0"></td>
+          <td><input form="farm-3" type="number" name="recolta" value="0"></td>
+          <td class="chk"><input form="farm-3" type="checkbox" name="is_for_sale" ></td>
+          <td><input form="farm-3" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td>
+            <form id="farm-3" method="post"></form>
+            <input form="farm-3" type="hidden" name="id" value="3">
+            <button form="farm-3" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+      <tr>
+        <td colspan="8" style="background:var(--panel-2)">
+                                              <p style="color:var(--muted); margin:4px 0">No equipment.</p>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+                              <form id="farm-3-add_tractor" method="post">
+                  <input type="hidden" name="id" value="3">
+                  <button type="submit" name="row_action" value="add_tractor" class="save-btn">+ Tractor</button>
+                </form>
+                              <form id="farm-3-add_combine" method="post">
+                  <input type="hidden" name="id" value="3">
+                  <button type="submit" name="row_action" value="add_combine" class="save-btn">+ Combine</button>
+                </form>
+                              <form id="farm-3-add_dozer" method="post">
+                  <input type="hidden" name="id" value="3">
+                  <button type="submit" name="row_action" value="add_dozer" class="save-btn">+ Bulldozer</button>
+                </form>
+                              <form id="farm-3-add_truck" method="post">
+                  <input type="hidden" name="id" value="3">
+                  <button type="submit" name="row_action" value="add_truck" class="save-btn">+ Truck</button>
+                </form>
+                              <form id="farm-3-add_trailer" method="post">
+                  <input type="hidden" name="id" value="3">
+                  <button type="submit" name="row_action" value="add_trailer" class="save-btn">+ Trailer</button>
+                </form>
+                          </div>
+                  </td>
+      </tr>
+            <tr>
+          <td>#4</td>
+          <td><input form="farm-4" type="text" name="name" value="Farm"></td>
+          <td><input form="farm-4" type="number" name="price" value="10000000"></td>
+          <td><input form="farm-4" type="number" name="bank" value="0"></td>
+          <td><input form="farm-4" type="number" name="recolta" value="0"></td>
+          <td class="chk"><input form="farm-4" type="checkbox" name="is_for_sale" ></td>
+          <td><input form="farm-4" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td>
+            <form id="farm-4" method="post"></form>
+            <input form="farm-4" type="hidden" name="id" value="4">
+            <button form="farm-4" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+      <tr>
+        <td colspan="8" style="background:var(--panel-2)">
+                                              <p style="color:var(--muted); margin:4px 0">No equipment.</p>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+                              <form id="farm-4-add_tractor" method="post">
+                  <input type="hidden" name="id" value="4">
+                  <button type="submit" name="row_action" value="add_tractor" class="save-btn">+ Tractor</button>
+                </form>
+                              <form id="farm-4-add_combine" method="post">
+                  <input type="hidden" name="id" value="4">
+                  <button type="submit" name="row_action" value="add_combine" class="save-btn">+ Combine</button>
+                </form>
+                              <form id="farm-4-add_dozer" method="post">
+                  <input type="hidden" name="id" value="4">
+                  <button type="submit" name="row_action" value="add_dozer" class="save-btn">+ Bulldozer</button>
+                </form>
+                              <form id="farm-4-add_truck" method="post">
+                  <input type="hidden" name="id" value="4">
+                  <button type="submit" name="row_action" value="add_truck" class="save-btn">+ Truck</button>
+                </form>
+                              <form id="farm-4-add_trailer" method="post">
+                  <input type="hidden" name="id" value="4">
+                  <button type="submit" name="row_action" value="add_trailer" class="save-btn">+ Trailer</button>
+                </form>
+                          </div>
+                  </td>
+      </tr>
+            <tr>
+          <td>#6</td>
+          <td><input form="farm-6" type="text" name="name" value="TestFarmXYZ"></td>
+          <td><input form="farm-6" type="number" name="price" value="1000"></td>
+          <td><input form="farm-6" type="number" name="bank" value="500"></td>
+          <td><input form="farm-6" type="number" name="recolta" value="777"></td>
+          <td class="chk"><input form="farm-6" type="checkbox" name="is_for_sale" ></td>
+          <td><input form="farm-6" type="text" name="owner_id" value="none" placeholder="none"></td>
+          <td>
+            <form id="farm-6" method="post"></form>
+            <input form="farm-6" type="hidden" name="id" value="6">
+            <button form="farm-6" type="submit" class="save-btn">Save</button>
+          </td>
+      </tr>
+      <tr>
+        <td colspan="8" style="background:var(--panel-2)">
+                                              <table class="edittable" style="width:100%">
+                <tr><th>Equipment</th><th>Health (current/max)</th><th>Status</th><th></th></tr>
+                                <tr>
+                  <td>Tractor (#7)</td>
+                  <td>
+                    <span class="meter"><span class="meter-fill good" style="width:63%"></span></span>
+                    <input form="farm-6-eq-7" type="number" name="uses" min="0" max="16" value="10" style="width:60px; display:inline-block">
+                    <span class="meter-label">/ 16</span>
+                  </td>
+                  <td><span class="pill pill-good">Good</span></td>
+                  <td>
+                    <form id="farm-6-eq-7" method="post">
+                      <input type="hidden" name="id" value="6">
+                      <input type="hidden" name="equip_id" value="7">
+                      <input type="hidden" name="equip_model" value="531">
+                    </form>
+                    <button form="farm-6-eq-7" type="submit" name="row_action" value="update_equip_uses" class="save-btn">Save</button>
+                    <button form="farm-6-eq-7" type="submit" name="row_action" value="delete_equip" class="save-btn" style="background:var(--red)">Remove</button>
+                  </td>
+                </tr>
+                              </table>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+                              <form id="farm-6-add_tractor" method="post">
+                  <input type="hidden" name="id" value="6">
+                  <button type="submit" name="row_action" value="add_tractor" class="save-btn">+ Tractor</button>
+                </form>
+                              <form id="farm-6-add_combine" method="post">
+                  <input type="hidden" name="id" value="6">
+                  <button type="submit" name="row_action" value="add_combine" class="save-btn">+ Combine</button>
+                </form>
+                              <form id="farm-6-add_dozer" method="post">
+                  <input type="hidden" name="id" value="6">
+                  <button type="submit" name="row_action" value="add_dozer" class="save-btn">+ Bulldozer</button>
+                </form>
+                              <form id="farm-6-add_truck" method="post">
+                  <input type="hidden" name="id" value="6">
+                  <button type="submit" name="row_action" value="add_truck" class="save-btn">+ Truck</button>
+                </form>
+                              <form id="farm-6-add_trailer" method="post">
+                  <input type="hidden" name="id" value="6">
+                  <button type="submit" name="row_action" value="add_trailer" class="save-btn">+ Trailer</button>
+                </form>
+                          </div>
+                  </td>
+      </tr>
+          </table>
+    </div>
+  </div>
+</main>
+
+<footer>Nostalgia: Los Santos UCP</footer>
+
+</body>
+</html>

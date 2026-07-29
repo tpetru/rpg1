@@ -75,9 +75,10 @@ $adminActive = 'businesses';
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="anaf" <?= $b['anaf'] ? 'checked' : '' ?>></td>
           <td><input form="<?= $fid ?>" type="text" name="owner_id" value="<?= $b['owned'] ? (int)$b['owner_id'] : 'none' ?>" placeholder="none"></td>
           <td>
-            <form id="<?= $fid ?>" method="post"></form>
-            <input form="<?= $fid ?>" type="hidden" name="id" value="<?= (int)$b['id'] ?>">
-            <button form="<?= $fid ?>" type="submit" class="save-btn">Save</button>
+            <form id="<?= $fid ?>" method="post">
+              <input type="hidden" name="id" value="<?= (int)$b['id'] ?>">
+              <button type="submit" class="save-btn">Save</button>
+            </form>
           </td>
       </tr>
       <?php endforeach; ?>
