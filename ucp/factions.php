@@ -5,8 +5,16 @@ ucp_require_login();
 
 // Live member counts (see `factions`.`members`, synced from `players` whenever someone joins/leaves)
 $memberCounts = [];
-$rows = $mysqli->query("SELECT `id`, `members` FROM `factions`")->fetch_all(MYSQLI_ASSOC);
-foreach ($rows as $r) { $memberCounts[(int)$r['id']] = (int)$r['members']; }
+$maxMembers = [];
+$applicationsOn = [];
+$rows = $mysqli->query("SELECT `id`, `members`, `max_members`, `application_on` FROM `factions`")->fetch_all(MYSQLI_ASSOC);
+foreach ($rows as $r) {
+    $memberCounts[(int)$r['id']]   = (int)$r['members'];
+    $maxMembers[(int)$r['id']]     = (int)$r['max_members'];
+    $applicationsOn[(int)$r['id']] = (int)$r['application_on'] === 1;
+}
+
+$myFaction = ucp_current_faction();
 
 // Short descriptions distilled from the actual /howto faction text in bare.pwn
 $factionDescriptions = [
@@ -30,7 +38,12 @@ $factionDescriptions = [
 <style>
   .faction-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
   .faction-card .fmembers { color: var(--muted); font-size: 0.82rem; margin: 0 0 10px; }
-  .faction-card p.fdesc { margin: 0; color: var(--text); font-size: 0.92rem; line-height: 1.55; }
+  .faction-card p.fdesc { margin: 0 0 12px; color: var(--text); font-size: 0.92rem; line-height: 1.55; }
+  .faction-card .btn-apply {
+    display: inline-block; background: var(--accent); color: #0f1115; font-weight: 600;
+    font-size: 0.82rem; padding: 6px 14px; border-radius: 6px;
+  }
+  .faction-card .btn-apply:hover { opacity: 0.9; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -45,8 +58,11 @@ $factionDescriptions = [
     <?php for ($fid = 1; $fid <= 8; $fid++): ?>
     <div class="card faction-card">
       <h2 style="color:<?= ucp_faction_color($fid) ?>"><?= ucp_escape(ucp_faction_name($fid)) ?></h2>
-      <p class="fmembers"><?= $memberCounts[$fid] ?? 0 ?> member<?= ($memberCounts[$fid] ?? 0) === 1 ? '' : 's' ?></p>
+      <p class="fmembers"><?= $memberCounts[$fid] ?? 0 ?> / <?= $maxMembers[$fid] ?? 6 ?> member<?= ($memberCounts[$fid] ?? 0) === 1 ? '' : 's' ?></p>
       <p class="fdesc"><?= ucp_escape($factionDescriptions[$fid]) ?></p>
+      <?php if (!empty($applicationsOn[$fid]) && $myFaction !== $fid): ?>
+        <a class="btn-apply" href="apply_faction.php?faction=<?= $fid ?>">Apply to join</a>
+      <?php endif; ?>
     </div>
     <?php endfor; ?>
   </div>

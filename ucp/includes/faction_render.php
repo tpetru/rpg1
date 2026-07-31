@@ -115,6 +115,63 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $stmt->close();
         $flash = "Faction bank set to $" . ucp_money($amount) . ".";
     }
+
+    // ---- Leader/admin: update a faction application's status ----
+    if ($action === 'app_status') {
+        $appId = (int)($_POST['app_id'] ?? 0);
+        $newStatus = $_POST['new_status'] ?? '';
+        $rejectReason = trim($_POST['reject_reason'] ?? '');
+
+        $stmt = $mysqli->prepare("SELECT * FROM `ucp_FactApplications` WHERE `id` = ? AND `factionsId` = ? LIMIT 1");
+        $stmt->bind_param('ii', $appId, $factionId);
+        $stmt->execute();
+        $app = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$app) {
+            $flash = "Application not found."; $flashErr = true;
+        } elseif (!in_array($newStatus, ['Review', 'Accepted', 'Rejected'], true)) {
+            $flash = "Invalid status."; $flashErr = true;
+        } elseif ($newStatus === 'Rejected' && $rejectReason === '') {
+            $flash = "Please provide a reason for rejecting this application."; $flashErr = true;
+        } elseif ($newStatus === 'Accepted') {
+            $stmt = $mysqli->prepare("SELECT `username`, `faction` FROM `players` WHERE `id` = ? LIMIT 1");
+            $stmt->bind_param('i', $app['playerId']);
+            $stmt->execute();
+            $applicant = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            $currentMembers = (int)$mysqli->query("SELECT COUNT(*) c FROM `players` WHERE `faction` = " . (int)$factionId)->fetch_assoc()['c'];
+            $maxMembers = (int)$mysqli->query("SELECT `max_members` m FROM `factions` WHERE `id` = " . (int)$factionId)->fetch_assoc()['m'];
+
+            if (!$applicant) {
+                $flash = "Applicant no longer exists."; $flashErr = true;
+            } elseif ($currentMembers >= $maxMembers) {
+                $flash = "This faction is full (" . $currentMembers . "/" . $maxMembers . " members)."; $flashErr = true;
+            } else {
+                $stmt = $mysqli->prepare("UPDATE `players` SET `faction`=?, `faction_rank`=1 WHERE `id`=?");
+                $stmt->bind_param('ii', $factionId, $app['playerId']);
+                $stmt->execute();
+                $stmt->close();
+
+                faction_sync_members($mysqli, $factionId);
+
+                $stmt = $mysqli->prepare("UPDATE `ucp_FactApplications` SET `status`='Accepted' WHERE `id`=?");
+                $stmt->bind_param('i', $appId);
+                $stmt->execute();
+                $stmt->close();
+
+                $flash = ucp_escape($applicant['username']) . "'s application was accepted and they joined the faction.";
+            }
+        } else {
+            $stmt = $mysqli->prepare("UPDATE `ucp_FactApplications` SET `status`=?, `reject_reason`=? WHERE `id`=?");
+            $rr = $newStatus === 'Rejected' ? $rejectReason : null;
+            $stmt->bind_param('ssi', $newStatus, $rr, $appId);
+            $stmt->execute();
+            $stmt->close();
+            $flash = "Application status updated to $newStatus.";
+        }
+    }
 }
 
 $stmt = $mysqli->prepare("SELECT * FROM `factions` WHERE `id` = ? LIMIT 1");
@@ -133,6 +190,20 @@ $stmt->bind_param('i', $factionId);
 $stmt->execute();
 $members = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
+
+// Applications to this faction, with the applicant's current username (leader/admin only see these)
+$applications = [];
+if ($isLeader || $isAdmin) {
+    $stmt = $mysqli->prepare(
+        "SELECT a.*, p.username FROM `ucp_FactApplications` a
+         LEFT JOIN `players` p ON p.id = a.playerId
+         WHERE a.factionsId = ? ORDER BY FIELD(a.status,'Open','Review','Accepted','Rejected'), a.data_aplicarii DESC"
+    );
+    $stmt->bind_param('i', $factionId);
+    $stmt->execute();
+    $applications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+}
 
 $vehicles = [];
 try {
@@ -232,7 +303,7 @@ include __DIR__ . '/header.php';
   </div>
 
   <div class="card">
-    <h2>👥 Members (<?= count($members) ?>)</h2>
+    <h2>👥 Members (<?= count($members) ?> / <?= (int)$faction['max_members'] ?>)</h2>
     <?php if (!$members): ?>
       <p style="color:var(--muted)">No members in this faction.</p>
     <?php else: ?>
@@ -280,6 +351,63 @@ include __DIR__ . '/header.php';
       </div>
     <?php endif; ?>
   </div>
+
+  <?php if ($isLeader || $isAdmin): ?>
+  <div class="card">
+    <h2>📝 Applications (<?= count($applications) ?>)</h2>
+    <?php if (!$applications): ?>
+      <p style="color:var(--muted)">No applications for this faction.</p>
+    <?php else: ?>
+      <div style="overflow-x:auto">
+      <table>
+        <tr><th>Applicant</th><th>Applied on</th><th>Current faction</th><th>Reason</th><th>Status</th><th></th></tr>
+        <?php foreach ($applications as $a): ?>
+        <tr>
+          <td><?= $a['username'] ? ucp_escape($a['username']) : '#' . (int)$a['playerId'] ?></td>
+          <td><?= ucp_escape(date('Y-m-d H:i', strtotime($a['data_aplicarii']))) ?></td>
+          <td><?= $a['lastFaction'] ? ucp_escape(ucp_faction_name($a['lastFaction'])) : 'Civil' ?></td>
+          <td style="max-width:260px; white-space:pre-wrap"><?= ucp_escape($a['motiv']) ?><?php if ($a['status'] === 'Rejected' && $a['reject_reason']): ?>
+              <br><span style="color:var(--red); font-size:0.82rem">Rejected: <?= ucp_escape($a['reject_reason']) ?></span>
+            <?php endif; ?></td>
+          <td>
+            <span class="pill <?= $a['status'] === 'Accepted' ? 'pill-ok' : ($a['status'] === 'Rejected' ? 'pill-bad' : 'pill-lvl') ?>"><?= ucp_escape($a['status']) ?></span>
+          </td>
+          <td>
+            <?php if ($a['status'] === 'Open' || $a['status'] === 'Review'): ?>
+            <div class="row-actions">
+              <?php if ($a['status'] === 'Open'): ?>
+              <form method="post">
+                <input type="hidden" name="action" value="app_status">
+                <input type="hidden" name="app_id" value="<?= (int)$a['id'] ?>">
+                <input type="hidden" name="new_status" value="Review">
+                <button type="submit">Mark reviewing</button>
+              </form>
+              <?php endif; ?>
+              <form method="post" onsubmit="return confirm('Accept this application and add <?= ucp_escape(addslashes($a['username'] ?? ('#' . $a['playerId']))) ?> to the faction?');">
+                <input type="hidden" name="action" value="app_status">
+                <input type="hidden" name="app_id" value="<?= (int)$a['id'] ?>">
+                <input type="hidden" name="new_status" value="Accepted">
+                <button type="submit">Accept</button>
+              </form>
+              <form method="post" onsubmit="var r=prompt('Reason for rejecting this application:'); if(!r){return false;} this.reject_reason.value=r; return true;">
+                <input type="hidden" name="action" value="app_status">
+                <input type="hidden" name="app_id" value="<?= (int)$a['id'] ?>">
+                <input type="hidden" name="new_status" value="Rejected">
+                <input type="hidden" name="reject_reason" value="">
+                <button type="submit" class="danger">Reject</button>
+              </form>
+            </div>
+            <?php else: ?>
+              <span style="color:var(--muted); font-size:0.85rem">—</span>
+            <?php endif; ?>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+      </div>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 
   <div class="card">
     <h2>🚗 Faction vehicles (<?= count($vehicles) ?>)</h2>

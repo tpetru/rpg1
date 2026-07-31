@@ -19,6 +19,8 @@ $benefits = [
     ['🏧', 'Bank from anywhere',          '/mybank works from anywhere for VIP members - no need to be near a bank or ATM.'],
     ['💬', 'VIP chat & gold tag',         'Use /vipc to talk to every VIP member online regardless of distance, and stand out with a gold [VIP] tag in local chat.'],
     ['🚘', 'Special plate color',          'VIP-owned vehicles are shown with a distinct red license plate.'],
+    ['📄', '+3 days on licenses',          'Any license or permit earned at an exam (A, B, C, D, A, H, W) is valid 3 extra days for VIP members.'],
+    ['🎩', 'Exclusive VIP hats',          'Use /viphat [black/red/green/farmer/witch/off] to wear an exclusive hat only VIP members can put on.'],
 ];
 ?>
 <!DOCTYPE html>

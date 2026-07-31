@@ -9,60 +9,10 @@ ucp_require_login();
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nostalgia: Los Santos UCP — How To</title>
+<link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
-  :root {
-    --bg: #0f1115;
-    --panel: #161922;
-    --panel-2: #1d212c;
-    --border: #2a2f3d;
-    --text: #d8dce5;
-    --muted: #8b93a7;
-    --accent: #5b9dff;
-    --accent-2: #ffcc00;
-    --green: #3ecf8e;
-    --red: #ff5d5d;
-    --topbar-h: 90px;
-  }
-  * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.65;
-  }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-
-  header.topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; row-gap: 8px;
-    padding: 14px 24px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 100;
-    min-height: var(--topbar-h);
-  }
-  header.topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 1.1rem; color: #fff; text-decoration: none; }
-  header.topbar .brand:hover { text-decoration: none; opacity: 0.9; }
-  header.topbar .brand-logo { height: 34px; width: auto; border-radius: 6px; }
-  header.topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
-  header.topbar nav a { color: var(--text); font-size: 0.92rem; }
-  header.topbar nav a:hover { color: var(--accent); }
-  header.topbar .userbox { color: var(--muted); font-size: 0.88rem; }
-
-  .nav-dd { position: relative; }
-  .nav-dd-menu {
-    display: none;
-    position: absolute; top: 100%; left: 0; margin-top: 0;
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
-    min-width: 200px; padding: 6px; z-index: 200;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
-  }
-  .nav-dd-menu a { display: block; padding: 7px 10px; border-radius: 6px; font-size: 0.88rem; white-space: nowrap; }
-  .nav-dd-menu a:hover { background: var(--panel); }
-  .nav-dd:hover .nav-dd-menu, .nav-dd:focus-within .nav-dd-menu { display: block; }
+  body { line-height: 1.65; }
 
   header.hero {
     padding: 40px 24px 30px;
@@ -169,6 +119,7 @@ ucp_require_login();
   <a href="#licence">Licence</a>
   <a href="#farm">Farm</a>
   <a href="#rob">Rob</a>
+  <a href="#smuggle">Smuggle</a>
   <a href="#skins">Skins</a>
   <a href="#casino">Casino</a>
 </nav>
@@ -195,42 +146,49 @@ ucp_require_login();
       <h3>1 — Glovo Delivery</h3>
       <p>Food courier. Take it with <code>/getjob 1</code>. Get in your job bike/car (see <code>/joblist</code>), then <code>/job</code> to start.</p>
       <p>Drive to the marked restaurant to load, deliver to 2 houses, then return to load.</p>
+      <p><strong>Pay:</strong> <span class="num">$100</span> + <span class="num">$2</span> per distance unit to the house, per delivery.</p>
       <p><code>/getjob 1</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
     </div>
     <div class="card">
       <h3>2 — Cement Truck Driver</h3>
       <p>Haul cement. Take it with <code>/getjob 2</code>. Get in a cement truck, then <code>/job</code>.</p>
       <p>Load at the marked plant, unload at 2 sites, then return to load.</p>
+      <p><strong>Pay:</strong> <span class="num">$2.000</span> + <span class="num">$1</span> per distance unit to the site, per delivery.</p>
       <p><code>/getjob 2</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
     </div>
     <div class="card">
       <h3>3 — Gun Delivery</h3>
       <p>Deliver weapons. Take it with <code>/getjob 3</code>. Get in the job vehicle, then <code>/job</code>.</p>
       <p>Load weapons at the marked spot, deliver to 2 drop-offs (fixed points or mafia HQs), then return to load.</p>
+      <p><strong>Pay:</strong> <span class="num">$500</span> + <span class="num">$1</span> per distance unit to the drop-off, per delivery.</p>
       <p><code>/getjob 3</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
     </div>
     <div class="card">
       <h3>4 — Car Transportator</h3>
       <p>Transport vehicles. Take it with <code>/getjob 4</code>. Get in the transporter, then <code>/job</code>.</p>
       <p>Load at the marked spot, unload at 2 businesses, then return to load.</p>
+      <p><strong>Pay:</strong> <span class="num">$1.500</span> + <span class="num">$1</span> per distance unit to the business, per delivery.</p>
       <p><code>/getjob 4</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
     </div>
     <div class="card">
       <h3>5 — Uber</h3>
       <p>Drive players around for money. Take it with <code>/getjob 5</code>. Use <code>/fare [amount]</code> in your PERSONAL vehicle to go on duty.</p>
       <p>When a player uses <code>/service uber</code>, use <code>/accept uber</code> to take the ride. The passenger is charged over time until they get out.</p>
+      <p><strong>Pay:</strong> you set the price with <code>/fare [amount]</code> - the passenger is charged that amount every <span class="num">20 seconds</span> for as long as the ride lasts.</p>
       <p><code>/getjob 5</code>, <code>/fare</code>, <code>/service</code>, <code>/accept</code></p>
     </div>
     <div class="card">
       <h3>6 — Emergency Logistics Driver</h3>
       <p>Deliver medical supplies. Take it with <code>/getjob 6</code>. Get in a depot vehicle (Bobcat / Burrito), then <code>/job</code>.</p>
       <p>Load at the marked depot, deliver to 2 shops, then return to load.</p>
+      <p><strong>Pay:</strong> <span class="num">$700</span> + <span class="num">$1</span> per distance unit to the shop, per delivery.</p>
       <p><code>/getjob 6</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
     </div>
     <div class="card">
       <h3>7 — Bus Driver</h3>
       <p>Drive fixed routes. Take it with <code>/getjob 7</code>. Get in a depot bus and use <code>/bus [1-3]</code> to start a route.</p>
       <p>You earn at each checkpoint, plus $100 for every passenger that boards.</p>
+      <p><strong>Pay:</strong> <span class="num">$300</span> + <span class="num">$1</span> per distance unit since the last checkpoint, at every checkpoint; <span class="num">$1.000</span> bonus for finishing the route; <span class="num">$100</span> per boarding passenger.</p>
       <p><code>/getjob 7</code>, <code>/bus [1-3]</code>, <code>/stopwork</code></p>
     </div>
     <div class="card">
@@ -242,6 +200,13 @@ ucp_require_login();
         <li><code>/fixapartament</code> — fix an active apartment issue (flood/sewage/electrical), paid from the house's bank ($3.000)</li>
         <li><code>/fixphone [playerid] [amount]</code> / <code>/fixwatch [playerid] [amount]</code> — offer to fix a nearby player's broken phone/watch; they confirm with <code>/accept fixphone</code> or <code>/accept fixwatch</code></li>
       </ul>
+    </div>
+    <div class="card">
+      <h3>9 — Crop Duster Pilot</h3>
+      <p>Treat farmland from the air. Take it with <code>/getjob 9</code>. Get in one of the 2 job planes (Beagle, see <code>/joblist</code>), then <code>/job</code> to start.</p>
+      <p>Fly to the marked load point and hold still for 3 seconds while it loads fertilizer, then fly to the randomly chosen farm within <span class="num">120 seconds</span>, between altitude <span class="num">100</span> and <span class="num">200</span>, and hit its checkpoint to spray it.</p>
+      <p>Pays <span class="num">$2.000-$3.000</span> per run. Too slow or too low/high over the farm and the fertilizer goes to waste - use <code>/job</code> again to retry.</p>
+      <p><code>/getjob 9</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
     </div>
   </div>
 </section>
@@ -299,11 +264,10 @@ ucp_require_login();
         <li><code>/drugs get</code> / <code>use</code> — take &amp; use drugs during a war</li>
         <li><code>/seif</code> — the faction vault (rank 4+)</li>
         <li><code>/equip</code> — get weapons inside the HQ</li>
-        <li><code>/smuggle</code> — run contraband by boat: drive a designated boat (plate SMG) to the loading point (10s freeze), then to 2 random collection points (5s freeze each). At loading, Police are alerted and everyone aboard gets wanted 6. Finally, switch to your faction's Sultan (driver or passenger) and deliver it to a random hotel: wanted drops to 5, the vault gets $25.000 + 500g weed, and each living crew member earns $2.000-3.000. The Police get a bounty for every smuggler they catch. One successful run per faction per day.</li>
         <li><code>/war</code> — start a turf war</li>
         <li><code>/warsurrender</code> — surrender an ongoing war (rank 4+)</li>
       </ul>
-      <p>Each mafia controls its own territories.</p>
+      <p>Each mafia controls its own territories. See <a href="#smuggle">Smuggling</a> for the <code>/smuggle</code> contraband run (mafias only).</p>
     </div>
     <div class="card">
       <h3>8 — News Reporters</h3>
@@ -691,6 +655,31 @@ ucp_require_login();
 
     <h4>Payout</h4>
     <p>After the 2nd business every crew member who is still alive and connected earns <span class="num">$12.000 + $2.000 per crew member + a random bonus up to $5.000</span> each. Die or disconnect and you get nothing.</p>
+  </div>
+</section>
+
+<section id="smuggle">
+  <h2>🚤 Smuggling — <code>/smuggle</code></h2>
+  <p class="subtitle">Mafias only (factions 4-7) - run contraband by boat with your crew.</p>
+  <div class="card">
+    <p class="note">This is a mafia-exclusive mechanic - only members of factions 4-7 can use <code>/smuggle</code>. One successful run per faction, per calendar day (shared cooldown for the whole mafia).</p>
+
+    <h4>Requirements</h4>
+    <ul>
+      <li>You need to be the <strong>driver</strong> of one of your faction's designated boats (plate <code>SMG</code>).</li>
+    </ul>
+
+    <h4>Doing it</h4>
+    <p>Use <code>/smuggle</code> while driving. Everyone else riding in the boat at that moment is auto-added as crew (up to <span class="num">6</span> people).</p>
+    <ul>
+      <li><strong>1. Loading:</strong> drive the boat to the fixed loading point. Reaching it freezes the driver for <span class="num">10 seconds</span> ("Loading cargo..."), then every crew member gets <span class="num">wanted level 6</span> and Police + News are alerted with your leader's name.</li>
+      <li><strong>2. Collection x2:</strong> two random collection points (out of 6 possible) are chosen. Drive the boat to each one; every stop freezes the driver for <span class="num">5 seconds</span> ("Collecting cargo...").</li>
+      <li><strong>3. Delivery:</strong> a random hotel on the server is chosen as the drop-off. Get into your faction's <strong>Sultan</strong> (as driver OR passenger) and reach the hotel to complete the run.</li>
+    </ul>
+
+    <h4>Payout</h4>
+    <p>On delivery, the faction vault gets <span class="num">$25.000</span> + <span class="num">500g</span> weed (capped by the vault's herb space), each crew member who is still alive, connected and was part of the run earns <span class="num">$2.000-$3.000</span>, and everyone's wanted level drops from 6 to <span class="num">5</span>.</p>
+    <p class="warn">If the leader (boat driver) is arrested or killed before delivery, the whole run is cancelled - nobody gets paid. Police earn a <span class="num">$5.000</span> bounty (to their faction bank) for every smuggler they catch mid-run.</p>
   </div>
 </section>
 
