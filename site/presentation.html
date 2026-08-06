@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NostalgiaRP — Bine ai venit!</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1d212c;
+    --border: #2a2f3d;
+    --text: #d8dce5;
+    --muted: #8b93a7;
+    --accent: #5b9dff;
+    --accent-2: #ffcc00;
+    --green: #3ecf8e;
+    --red: #ff5d5d;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.hero {
+    padding: 70px 24px 50px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, #1b2030 0%, #0f1115 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero h1 {
+    margin: 0 0 12px;
+    font-size: 2.8rem;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header.hero p { margin: 0 auto; max-width: 640px; color: var(--muted); font-size: 1.1rem; }
+  .badges { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+  }
+
+  nav.toc {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    justify-content: center;
+    padding: 14px 16px;
+    background: rgba(15,17,21,0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.toc a {
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+  }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+
+  main { max-width: 980px; margin: 0 auto; padding: 40px 24px 100px; }
+
+  section { margin-bottom: 60px; scroll-margin-top: 70px; }
+  section h2 {
+    font-size: 1.7rem;
+    margin: 0 0 6px;
+    color: #fff;
+  }
+  section .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 1rem; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin: 14px 0;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 8px; font-size: 0.94rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { background: var(--panel-2); color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  code, .cmd {
+    background: #11141b;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 0.9em;
+    color: var(--green);
+    white-space: nowrap;
+  }
+
+  .feature-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .faction-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 10px;
+    background: var(--panel-2); margin-bottom: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+  .note {
+    border-left: 3px solid var(--accent-2);
+    background: rgba(255,204,0,0.06);
+    padding: 12px 18px;
+    border-radius: 0 10px 10px 0;
+    margin: 16px 0;
+    font-size: 0.94rem;
+  }
+  .note.danger { border-left-color: var(--red); background: rgba(255,93,93,0.07); }
+
+  footer { text-align: center; padding: 40px 20px 60px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>🏙️ NostalgiaRP</h1>
+  <p>Un server de roleplay construit de la zero, cu o economie reală, facțiuni active, examene auto cu adevărat funcționale și un sistem de viață care nu te lasă să stai degeaba.</p>
+  <div class="badges">
+    <span class="badge">8 Facțiuni</span>
+    <span class="badge">Presă &amp; Ziare</span>
+    <span class="badge">Frigider casă</span>
+    <span class="badge">Economie reală</span>
+    <span class="badge">Președinte ales</span>
+    <span class="badge">Joburi</span>
+    <span class="badge">Farming 🚜</span>
+    <span class="badge">Războaie de teritoriu</span>
+    <span class="badge">Droguri &amp; Seif</span>
+    <span class="badge">Permise auto A/B/C/D + zbor</span>
+    <span class="badge">GPS &amp; Radar</span>
+    <span class="badge">Turneu de Golf</span>
+    <span class="badge">Baschet</span>
+    <span class="badge">Curse, CS &amp; Hunt The Mayor</span>
+    <span class="badge">Contrabandă pe mare</span>
+    <span class="badge">Rulote &amp; Camping</span>
+    <span class="badge">Petreceri</span>
+    <span class="badge">Telefonie</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#start">Primii pași</a>
+  <a href="#factions">Facțiuni</a>
+  <a href="#news">Presă &amp; Ziare</a>
+  <a href="#economy">Economie</a>
+  <a href="#president">Președinte</a>
+  <a href="#jobs">Joburi</a>
+  <a href="#wars">Războaie</a>
+  <a href="#drugs">Droguri</a>
+  <a href="#houses-biz">Case &amp; Afaceri</a>
+  <a href="#vehicles">Vehicule</a>
+  <a href="#exams">Permise auto</a>
+  <a href="#health">Sănătate</a>
+  <a href="#food">Mâncare</a>
+  <a href="#skins">Haine &amp; Skinuri</a>
+  <a href="#robbery">Jafuri</a>
+  <a href="#golf">Turneu Golf</a>
+  <a href="#basketball">Baschet</a>
+  <a href="#events">Evenimente</a>
+  <a href="#caravans">Rulote</a>
+  <a href="#camping">Camping</a>
+  <a href="#party">Petreceri</a>
+  <a href="#gps">GPS &amp; Radar</a>
+  <a href="#phone">Telefonie</a>
+  <a href="#police">Lege &amp; Ordine</a>
+  <a href="#commands">Comenzi</a>
+</nav>
+
+<main>
+
+<section id="start">
+  <h2>🚪 Primii pași</h2>
+  <p class="subtitle">Tot ce trebuie să știi înainte să intri în lume</p>
+  <div class="grid-3">
+    <div class="card">
+      <div class="feature-icon">📝</div>
+      <h4>Creează-ți contul</h4>
+      <p style="color:var(--muted); margin:0">La conectare îți apare automat un <strong>dialog</strong> unde îți pui parola: <em>Register</em> dacă e prima dată, sau <em>Login</em> dacă ai deja cont. Nu mai trebuie să scrii nicio comandă.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">📊</div>
+      <h4>Vezi-ți progresul</h4>
+      <p style="color:var(--muted); margin:0"><code>/stats</code> îți arată nivelul, RP-ul, banii, facțiunea și casa ta, oricând.
+      Pentru detalii despre mașinile tale (acte, stare), folosește <code>/vstats</code>.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">🆘</div>
+      <h4>Ai nevoie de ajutor?</h4>
+      <p style="color:var(--muted); margin:0"><code>/help</code> îți arată comenzile disponibile pentru jucători, oricând ai nevoie.</p>
+    </div>
+  </div>
+</section>
+
+<section id="factions">
+  <h2>🪪 Facțiuni</h2>
+  <p class="subtitle">Alege-ți tabăra — ordine publică sau viață de cartier</p>
+
+  <div class="faction-row"><span class="dot" style="background:#4488ff"></span><strong>Politia Romana</strong><span style="color:var(--muted); margin-left:auto">Menține ordinea, oprește șoferii periculoși</span></div>
+  <div class="faction-row"><span class="dot" style="background:#36d1c2"></span><strong>Registrul Auto Roman (RAR)</strong><span style="color:var(--muted); margin-left:auto">Inspecții tehnice, plăcuțe, amenzi auto</span></div>
+  <div class="faction-row"><span class="dot" style="background:#ff5500"></span><strong>SMURD</strong><span style="color:var(--muted); margin-left:auto">Salvează vieți, vindecă răniții și bolnavii</span></div>
+  <div class="faction-row"><span class="dot" style="background:#3366cc"></span><strong>Mafia Europeana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#aa44aa"></span><strong>Mafia Americana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#44aa44"></span><strong>Mafia Africana</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#ffcc00"></span><strong>Mafia Asiatica</strong><span style="color:var(--muted); margin-left:auto">Civilă</span></div>
+  <div class="faction-row"><span class="dot" style="background:#85648c"></span><strong>News Reporters</strong><span style="color:var(--muted); margin-left:auto">Presa orașului — știri, ziare și interviuri live</span></div>
+
+  <div class="card" style="margin-top:20px">
+    <h4 style="margin-top:0">Cum funcționează</h4>
+    <p>Fiecare facțiune are un sediu (HQ), o bancă proprie și un sistem de ranguri (1 până la 5, unde 5 e liderul).
+    Membri mai vechi cu rang ridicat pot invita jucători noi (<code>/finvite</code>), gestiona banca facțiunii și avansa pe alți membri.
+    Pentru Poliție, RAR și SMURD există și un sistem de <strong>tură</strong> — folosești <code>/duty</code> lângă sediu ca să intri "la muncă" și să ai acces la comenzile speciale ale facțiunii tale.</p>
+  </div>
+</section>
+
+<section id="news">
+  <h2>📰 Presă &amp; Ziare</h2>
+  <p class="subtitle">Facțiunea News Reporters ține orașul la curent</p>
+  <div class="grid-3">
+    <div class="card">
+      <div class="feature-icon">📢</div>
+      <h4>Știri live</h4>
+      <p style="color:var(--muted); margin:0">Reporterii (rang 1+) difuzează știri tuturor jucătorilor cu <code>/news [text]</code>.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">🗞️</div>
+      <h4>Ziare</h4>
+      <p style="color:var(--muted); margin:0">Rang 2+: <code>/newspaper create</code>, adaugă până la 5 știri cu <code>/newspaper edit [1-5] [text]</code> și vinde ziarul cu <code>/newspaper sell [id] [sumă]</code>. Cumperi cu <code>/accept newspaper [id]</code> și citești cu <code>/newspaper open</code>. Ziarele se resetează în fiecare zi la miezul nopții.</p>
+    </div>
+    <div class="card">
+      <div class="feature-icon">🎤</div>
+      <h4>Interviuri live (Q&amp;A)</h4>
+      <p style="color:var(--muted); margin:0">Rang 3+: <code>/qa [id]</code> invită un jucător la un interviu live (acceptă cu <code>/accept qa [id]</code>). Ceilalți trimit întrebări cu <code>/question [text]</code>, reporterul le alege din <code>/qa list</code>, iar invitatul răspunde cu <code>/answer [text]</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section id="economy">
+  <h2>💰 Economie</h2>
+  <p class="subtitle">Banii nu cad din cer — dar nici nu trebuie să muncești prea mult ca să-i ai</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">💵 PayDay — salariul tău orar</h4>
+    <p>O dată pe oră, toți jucătorii conectați primesc automat un salariu, calculat în funcție de nivelul personajului tău
+    (cu cât ești mai experimentat, cu atât câștigi mai mult). Din salariu se scad impozit și CASS (procente stabilite de
+    Președintele ales — vezi mai jos), iar banii din contul tău bancar produc dobândă — chiar și fără să faci nimic.</p>
+  </div>
+
+  <div class="card">
+    <h4 style="margin-top:0">🏘️ Taxe pe proprietăți</h4>
+    <p>Dacă deții mașini, o casă sau afaceri, la fiecare PayDay se scade și o mică taxă pe proprietate, proporțională cu
+    valoarea fiecărui bun. Apare defalcat în chitanța de PayDay (mașini / casă / afaceri), așa că vezi mereu exact cât plătești.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🏦 Cont bancar &amp; ATM</h4>
+      <p style="color:var(--muted); margin:0">Banii pot fi ținuți în numerar sau în bancă. Banca produce dobândă la fiecare
+      PayDay. La orice <strong>bancomat (ATM)</strong> din oraș poți muta bani între numerar și cont cu
+      <code>/deposit [sumă]</code> și <code>/withdraw [sumă]</code> (min. $100, max. $100.000 pe tranzacție, cu un mic comision).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📈 Nivel &amp; RP</h4>
+      <p style="color:var(--muted); margin:0">Fiecare PayDay îți crește și RP-ul (Role-Play Points) — un semn al experienței tale pe server.</p>
+    </div>
+  </div>
+</section>
+
+<section id="president">
+  <h2>🗳️ Președinte</h2>
+  <p class="subtitle">În fiecare săptămână, jucătorii își aleg prin vot un Președinte care controlează taxele orașului</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🗳️ Votul</h4>
+      <p>În fiecare <strong>duminică, între 08:00 și 19:30</strong>, poți vota cu <code>/vote [nume jucător]</code>.
+      Ținta trebuie să fie online, iar fiecare jucător are <strong>un singur vot</strong> pe săptămână.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏛️ Rezultatul</h4>
+      <p>Duminică la <strong>20:00</strong> se anunță câștigătorul — jucătorul cu cele mai multe voturi devine noul
+      Președinte. Președintele în funcție nu poate câștiga două mandate la rând, ca să se rotească rolul.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">💼 Puterea Președintelui</h4>
+      <p>Președintele poate stabili din joc <strong>impozitul</strong> (<code>/settax [0-100]</code>) și
+      <strong>CASS</strong> (<code>/setcass [0-100]</code>) care se aplică tuturor la PayDay. Orice schimbare e
+      anunțată întregului server.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Oricine poate vedea oricând cine e Președintele curent și ce procente de impozit/CASS sunt active, cu
+    <code>/president</code>.
+  </div>
+</section>
+
+<section id="jobs">
+  <h2>💼 Joburi</h2>
+  <p class="subtitle">Câștigă-ți pâinea cinstit — sau aproape</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">📋 Cum îți iei un job</h4>
+    <p>Mergi la <strong>Job Center</strong>-ul din City Hall și folosește <code>/getjob [id sau nume]</code> ca să te
+    angajezi (<code>/jobs</code> îți arată lista completă). Poți avea un singur job o dată; renunți cu <code>/quitjob</code>.
+    Odată angajat, începi munca cu <code>/job</code> și o oprești oricând cu <code>/stopwork</code>.</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🛵 Glovo</h4>
+      <p>Livrări: mergi cu vehiculul de lucru la restaurant, apoi duci comanda la o casă. Ești plătit în funcție de
+      distanța parcursă, iar o mică parte din fiecare livrare alimentează afacerea care găzduiește jobul.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚧 Cement Truck Driver</h4>
+      <p>Încarci ciment de la fabrică și îl duci la unul dintre șantierele din oraș. Curse bine plătite, cu bonus pe distanță.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔫 Gun Delivery</h4>
+      <p>Iei marfa dintr-un punct fix de încărcare și o livrezi la HQ-ul unei mafii. Plată de bază plus bonus pe distanță.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚚 Car Transportator</h4>
+      <p>Transporți mașini de la punctele de încărcare către afaceri din oraș, cu plată proporțională cu drumul făcut.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚕 Uber</h4>
+      <p>Devii șofer cu mașina ta personală: <code>/fare [sumă]</code> te pune „în serviciu" la prețul cerut la fiecare
+      20 de secunde. Cine are nevoie de o cursă dă <code>/service uber</code>, iar tu accepți cu <code>/accept uber</code>.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚑 Emergency Logistics Driver</h4>
+      <p>Pleci de la depou (ai la dispoziție Bobcat-uri și Burrito-uri), încarci marfă de la punctele de încărcare și o
+      duci la magazine. Plată de bază bună, plus bonus pe distanța parcursă.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚌 Bus Driver</h4>
+      <p>Iei un autobuz de la depou și conduci rute fixe cu <code>/bus [1-3]</code>. Câștigi la fiecare punct de control,
+      un bonus la finalul rutei și încă $100 pentru fiecare pasager care se urcă.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🆕 Mai multe pe drum</h4>
+      <p>Din cele 10 sloturi de job, 7 sunt deja active. Restul (8-10) urmează să fie deschise treptat.</p>
+    </div>
+  </div>
+</section>
+
+<section id="farming">
+  <h2>🚜 Farming (Agricultură)</h2>
+  <p class="subtitle">Lucrează pământul, o etapă pe zi, și recoltează la final</p>
+
+  <div class="card">
+    <p>Intri pe un teren agricol și îl lucrezi într-o secvență de <strong>5 etape</strong>, câte
+    <strong>una pe zi reală</strong>, folosind de fiecare dată utilajul corect: <strong>Plow</strong> (arat, tractor) →
+    <strong>Level</strong> (îndreptat, dozer) → <strong>Seed</strong> (semănat, tractor) →
+    <strong>Fertilize</strong> (îngrășământ, tractor) → <strong>Harvest</strong> (recoltat, combină). Când termini ciclul,
+    recolta îți aduce <strong>$15.000</strong>, apoi terenul se resetează.</p>
+    <p><code>/farm stats</code> îți arată etapa curentă, dacă mai poți lucra azi și utilajele deținute — merge
+    <strong>de oriunde</strong> (pe teren arată terenul respectiv, altfel ferma ta).
+    <code>/farm plow/level/seed/fertilize/harvest</code> pornesc etapa.</p>
+    <p>Cumperi un teren cu <code>/buyfarm</code>. Pe terenul tău îți cumperi utilaje cu
+    <code>/farm buy [tractor/dozer/combina/truck/trailer]</code> — banii ies din <strong>contul fermei</strong>
+    (<code>/farm deposit</code> / <code>/farm withdraw</code>), nu din cash. Recolta o vinzi cu
+    <code>/farm deliver</code>.</p>
+  </div>
+</section>
+
+<section id="wars">
+  <h2>⚔️ Războaie de teritoriu</h2>
+  <p class="subtitle">Doar pentru mafii — cucerește teritoriile rivalilor cu forța</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🔫 Pregătirea</h4>
+      <p>În interiorul HQ-ului mafiei tale, <code>/equip</code> îți reface viața și îți dă armament de luptă
+      (rangurile înalte primesc și pușcă cu lunetă). De aici pleci la atac.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📣 Declararea războiului</h4>
+      <p>Stai în interiorul unui teritoriu inamic (al altei mafii, marcat pe hartă) și dă <code>/war</code>. Ambele
+      facțiuni au nevoie de cel puțin 2 membri online. După o scurtă fază de pregătire, începe lupta propriu-zisă de
+      <strong>15 minute</strong>.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏆 Cucerirea</h4>
+      <p>Câștigă facțiunea cu cele mai multe ucideri în zonă la finalul celor 15 minute. La egalitate se intră în
+      <strong>moarte subită</strong> (prima la 3 ucideri câștigă). Dacă atacatorii înving, teritoriul își schimbă proprietarul.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Urmărești scorul în timp real cu <code>/warscore</code>. Liderii (rang 4-5) pot capitula cu <code>/warsurrender</code>,
+    dar abia după primele 5 minute de luptă.
+  </div>
+</section>
+
+<section id="drugs">
+  <h2>🌿 Droguri &amp; Seif (doar mafii)</h2>
+  <p class="subtitle">Economia subterană a mafiilor — alimentează lupta de teritoriu</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🔒 Seiful mafiei</h4>
+      <p>Fiecare mafie are un <strong>seif</strong> propriu unde se strâng iarba și drogurile. Verifici stocul cu
+      <code>/seif</code> (rang 4+).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚚 Transport &amp; Producție</h4>
+      <p>Rangurile 1, 2 și 5 aduc marfă cu <code>/drugs transport</code> (doar seara, 19:00–23:59, cu Huntley-ul facțiunii
+      și un al doilea membru la bord). Rangurile 3-5 transformă iarba în droguri la mașina de craft cu
+      <code>/drugs craft</code>.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">💉 În luptă</h4>
+      <p>Cât timp facțiunea ta e într-un război, scoți droguri din seif cu <code>/drugs get</code> și le folosești pe
+      teritoriul în conflict cu <code>/drugs use</code> pentru un plus rapid de viață (+30 HP).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚤 Contrabandă pe mare (/smuggle)</h4>
+      <p>Cu o barcă a facțiunii, mergi la punctul de încărcare (freeze 10s - Poliția e anunțată, toți primiți wanted 6),
+      apoi la 2 puncte de colectare alese random (freeze 5s fiecare). În final, treci în <strong>Sultanul facțiunii</strong>
+      (șofer sau pasager) și livrezi marfa la un hotel random: wanted-ul scade la 5, seiful primește $25.000 + 500g iarbă,
+      iar fiecare membru al echipajului încasează $2.000-3.000. O singură cursă reușită pe zi per facțiune.</p>
+    </div>
+  </div>
+</section>
+
+<section id="houses-biz">
+  <h2>🏠 Case &amp; Afaceri</h2>
+  <p class="subtitle">Investește în viața ta din joc</p>
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🏠 Case</h4>
+      <p><code>/buyhouse</code> lângă o casă de vânzare o cumperi pe loc — fie e liberă (de la stat), fie e pusă la vânzare
+      de alt jucător. Poți deține o singură casă. <code>/findhouse [id]</code> îți pune un checkpoint pe hartă spre orice casă.
+      Dacă are interior, apasă <strong>ENTER</strong> la pickup ca să intri/ieși.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🐾 Animale la casă</h4>
+      <p>Dacă deții o casă cu curte, îți poți cumpăra animale pentru ea cu <code>/house upgrade animal [nume]</code> —
+      alegi dintre Turtle, Cow, Deer. Eligibilitatea depinde de tipul casei: <strong>Turtle</strong> și <strong>Deer</strong>
+      doar la <strong>Villa</strong>, <strong>Cow</strong> doar la <strong>Countryside House</strong>. Animalul cumpărat
+      apare și stă în <strong>curtea casei tale</strong>. O <strong>Vacă</strong> îți dă, la fiecare PayDay cât ești
+      online, 50% șansă la 2-5L de lapte direct în frigider. La casele de tip <strong>City House</strong> sau
+      <strong>Countryside House</strong> poți planta și un copac cu <code>/house upgrade tree</code>
+      (vezi <code>/tree plant/collect/status</code>).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🧊 Frigider</h4>
+      <p>Cumpără-ți un frigider pentru casă cu <code>/house upgrade frigde</code> ($10.000, unul singur per casă, se strică
+      după <strong>32 de zile</strong>). Îl umpli prin <code>/frigde buy [item] [cantitate]</code>, doar între orele
+      <strong>15:00 și 20:00</strong>, iar când ți-e foame consumi câte unul cu <code>/frigde use [item]</code> ca să-ți
+      recuperezi viața. <code>/frigde</code> (fără parametri) îți arată stocul curent.</p>
+      <table style="margin-top:10px">
+        <tr><th>Produs</th><th>Capacitate</th><th>Preț/unitate</th><th>Viață</th></tr>
+        <tr><td>Lapte</td><td>20 L</td><td>$100</td><td>+20</td></tr>
+        <tr><td>Banane</td><td>30 buc</td><td>$50</td><td>+10</td></tr>
+        <tr><td>Apă</td><td>25 L</td><td>$150</td><td>+25</td></tr>
+        <tr><td>Suc</td><td>20 L</td><td>$200</td><td>+15</td></tr>
+        <tr><td>Bere</td><td>50 L</td><td>$250</td><td>+10</td></tr>
+      </table>
+      <p style="margin:8px 0 0; color:var(--red)">Un frigider stricat își pierde tot conținutul și devine inutilizabil
+      până e înlocuit (aceeași comandă <code>/house upgrade frigde</code>).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔧 Probleme de apartament</h4>
+      <p>La fiecare PayDay, la ora <strong>22:00</strong>, un apartament deținut ales random primește o problemă
+      (vecin te-a inundat / canalizare infundată / circuit ars). Cât timp e activă, <strong>nu te mai poți spawna
+      la el</strong> — ești anunțat la fiecare respawn. Se rezolvă doar de un jucător cu jobul <strong>Electrician</strong>,
+      cu <code>/fixapartament</code> ($3.000 din banca apartamentului).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚰 SGR (sticle goale returnabile)</h4>
+      <p>Consumul de apă/suc/bere din frigider lasă în urmă <strong>ambalaje goale</strong> (max 100; ești avertizat la
+      80, blocat la 100 — trebuie golite înainte să mai poți bea). Le duci la reciclat cu o dubă SGR (plăcuțe
+      <strong>SGR1-SGR5</strong>):</p>
+      <ul style="margin:8px 0 0; padding-left:20px">
+        <li><code>/sgrload</code> — la propria casă, în duba SGR, încarci ambalajele acumulate</li>
+        <li><code>/sgrunload</code> — la punctul de descărcare SGR de pe hartă; banca casei primește <strong>$50 per ambalaj</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🗑️ Gunoi (trash)</h4>
+      <p>Consumul de lapte/banane lasă în urmă <strong>gunoi</strong> (aceleași reguli: max 100, avertizare la 80,
+      blocaj la 100). Îl ridici cu o mașină de gunoi:</p>
+      <ul style="margin:8px 0 0; padding-left:20px">
+        <li><code>/trashload</code> — la propria casă, în mașina de gunoi, încarci deșeurile acumulate</li>
+        <li><code>/trashunload</code> — la punctul de descărcare a gunoiului; banca casei primește <strong>$30 per gunoi</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏢 Afaceri</h4>
+      <p><code>/buybiz</code> îți cumpără o afacere lângă tine — poți deține mai multe simultan. Fiecare afacere are propria
+      bancă (<code>/bbank</code>, <code>/biz withdraw [sumă]</code>), alimentată automat de serviciile orașului (școli de
+      șoferi, închirieri, etc.) care funcționează prin ea.</p>
+      <p style="margin:8px 0 0"><strong>ANAF:</strong> la fiecare PayDay, la ora <strong>12:00</strong>, o afacere random
+      este blocată de ANAF — cât e blocată, <strong>niciun venit</strong> nu mai intră în ea. Deblochezi cu un vehicul
+      <strong>model 428</strong>, la afacerea ta: <code>/biz getdocs</code>, apoi mergi la checkpoint-ul de la ANAF și dai
+      <code>/biz givedocs</code>. La următorul PayDay, afacerea se deblochează.</p>
+    </div>
+  </div>
+
+  <h3>🏷️ Vinde-ți proprietatea altor jucători</h3>
+  <p>Casele, afacerile, vehiculele și fermele pot fi <strong>puse la vânzare</strong> la prețul tău. Alt jucător
+  o cumpără cu comanda normală de cumpărare, iar <strong>banii îți intră în bancă</strong> — chiar dacă ești offline
+  în acel moment. Poți vinde și direct unui jucător anume, cu o ofertă pe care acesta o confirmă.</p>
+  <table>
+    <tr><th>Ce vinzi</th><th>Pui la vânzare (public)</th><th>Ofertă directă</th><th>Cumpărătorul folosește</th></tr>
+    <tr><td>Casă</td><td><code>/house sell [preț]</code></td><td><code>/house sellto [playerid] [preț]</code> → <code>/accept house [sellerid]</code></td><td><code>/buyhouse</code></td></tr>
+    <tr><td>Afacere</td><td><code>/biz sell [preț]</code></td><td><code>/biz sellto [playerid] [preț]</code> → <code>/accept biz [sellerid]</code></td><td><code>/buybiz</code></td></tr>
+    <tr><td>Vehicul</td><td><code>/sellveh [preț]</code></td><td>—</td><td><code>/vbuy</code></td></tr>
+    <tr><td>Fermă</td><td><code>/sellfarm [preț]</code></td><td>—</td><td><code>/buyfarm</code></td></tr>
+  </table>
+  <p>Folosește <strong>prețul 0</strong> ca să anulezi listarea. Cât timp e listată, proprietatea o folosești în
+  continuare normal — până o cumpără cineva.</p>
+
+  <div class="note">
+    <strong>Nu vrei să aștepți un cumpărător?</strong> Poți vinde instant <strong>la stat</strong>, pe
+    <strong>60%</strong> din valoare, direct în cash: <code>/house selltostate</code>, <code>/biz selltostate</code>,
+    <code>/sellvehtostate</code>, <code>/sellfarmtostate</code>.
+  </div>
+  <div class="note warn">
+    Contul afacerii / fermei <strong>trece la noul proprietar</strong> odată cu ea — retrage banii
+    (<code>/biz withdraw</code>, <code>/farm withdraw</code>) <strong>înainte</strong> să o vinzi.
+  </div>
+</section>
+
+<section id="vehicles">
+  <h2>🚗 Vehicule personale</h2>
+  <p class="subtitle">Mașina ta, regulile tale</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🔑 Cumpărare</h4>
+      <p><code>/vbuy</code> — cumperi mașina în care te afli, dacă e disponibilă spre vânzare. Vine cu toate actele
+      (asigurare, kit medical, extinctor, ITP) valabile <strong>7 zile</strong> de la achiziție.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📋 Acte la zi</h4>
+      <p><code>/vinsurance</code> o reînnoiești oriunde, dar <code>/vmedicalkit</code> și <code>/vextinctor</code>
+      necesită să fii lângă unul dintre punctele <strong>[ Shop ]</strong> de pe hartă. <code>/vitp</code>
+      (la sediul RAR) verifică toate actele odată și starea mașinii — trebuie să ai <strong>motorul oprit,
+      capota deschisă și farurile pornite</strong> ca la o inspecție reală.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔧 Motor &amp; Încuiere</h4>
+      <p>Mașina ta are stare reală de <strong>motor pornit/oprit</strong> și <strong>încuiat/descuiat</strong>:
+      <code>/engine</code> (sau tasta de submisie, implicit <strong>2</strong>) pornește/oprește motorul, <code>/lock</code> încuie/descuie ușile —
+      poți folosi <code>/lock</code> fie din interiorul mașinii, fie de afară, dacă ești la maxim 5m de ea.
+      Totul vizibil live pe bordul tău.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🎨 Personalizare</h4>
+      <p><code>/vcolor</code> schimbă culorile, <code>/vplate</code> îți pune un număr de înmatriculare personalizat
+      la sediul RAR. <code>/vpark</code> salvează locul unde îți parchezi mașina.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:8px">
+    <h4 style="margin-top:0">🚲 🚙 Închirieri</h4>
+    <p><code>/rentbike</code> și <code>/rentcar</code> îți pun la dispoziție biciclete și mașini de închiriat în mai multe
+    locații din oraș — ideal când nu ai (încă) propriul vehicul.</p>
+  </div>
+
+  <div class="card" style="margin-top:8px">
+    <h4 style="margin-top:0">🚚 Tractări RAR</h4>
+    <p>Membrii RAR cu rang mare pot tracta cu un <strong>Towtruck</strong> mașinile personale cu ITP-ul expirat și le pot
+    reparca în altă locație cu <code>/towpark</code>. Ține-ți actele la zi ca să nu-ți găsești mașina mutată!</p>
+  </div>
+</section>
+
+<section id="exams">
+  <h2>🪪 Permise auto</h2>
+  <p class="subtitle">Patru categorii, patru provocări reale</p>
+
+  <table>
+    <tr><th>Categorie</th><th>Vehicul</th><th>Provocare</th></tr>
+    <tr><td><code>/examA</code></td><td>Motocicletă</td><td>10 puncte de control, cronometrat</td></tr>
+    <tr><td><code>/examB</code></td><td>Mașină</td><td>7 puncte de control, cronometrat</td></tr>
+    <tr><td><code>/examC</code></td><td>Camion + remorcă</td><td>Atașezi remorca, apoi 6 puncte de control</td></tr>
+    <tr><td><code>/examD</code></td><td>Autobuz</td><td>9 puncte de control, cronometrat</td></tr>
+    <tr><td><code>/examP</code></td><td>Avion ✈️</td><td>Examen de zbor — permis de pilot ($1.000)</td></tr>
+    <tr><td><code>/examH</code></td><td>Elicopter 🚁</td><td>Examen de zbor — permis de elicopter ($1.000)</td></tr>
+  </table>
+
+  <div class="note">
+    Fiecare etapă a traseului are un timp limită — dacă întârzii prea mult la un punct de control, pici examenul.
+    La final, starea vehiculului contează: termini cu mașina în stare bună și permisul ține mult mai mult timp!
+    Pe lângă cele 4 permise auto, poți da acum și examene de <strong>zbor</strong> (avion / elicopter).
+  </div>
+
+  <p><code>/licenses</code> îți arată oricând starea celor 4 categorii de permis pe care le deții.</p>
+</section>
+
+<section id="health">
+  <h2>❤️ Sănătate &amp; Boli</h2>
+  <p class="subtitle">Viața de RP nu e mereu ușoară</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">⏳ Viața scade în timp</h4>
+      <p style="color:var(--muted); margin:0">Viața fiecărui personaj scade ușor cu trecerea timpului — un motiv în plus
+      să rămâi atent la sănătatea ta și să apelezi la SMURD când ai nevoie.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚑 Tratament SMURD</h4>
+      <p style="color:var(--muted); margin:0">Urcă ca pasager într-o ambulanță SMURD și un medic te poate vindeca complet
+      cu <code>/heal</code>, contra unei taxe mici.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4 style="margin-top:0">🦠 Te poți îmbolnăvi</h4>
+    <p>Din când în când, pot apărea focare de boală în oraș. Dacă te îmbolnăvești, vei simți efectul imediat
+    (mers instabil, viața scade mai repede) și vei primi un mesaj clar. Boala dispare singură în timp, dar cel mai
+    rapid mod de vindecare este să mergi la <strong>spitalul SMURD</strong> și să folosești <code>/curedisease</code>
+    — câteva secunde de tratament și ești din nou sănătos.</p>
+  </div>
+</section>
+
+<section id="food">
+  <h2>🍕 Mâncare</h2>
+  <p class="subtitle">Foamea nu te omoară, dar puțină viață în plus nu strică niciodată</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🍕 Pizza</h4>
+      <p><code>/pizza</code>, lângă o locație de tip pizza — îți reface <strong>20 HP</strong>
+      contra unei sume mici. Plafonat la 100 HP.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍔 Burger</h4>
+      <p><code>/burger</code>, lângă o locație de tip burger — îți reface <strong>25 HP</strong>,
+      la un preț puțin mai mare decât pizza. Plafonat la 100 HP.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍗 Cluckin Bell</h4>
+      <p><code>/meal</code>, lângă o locație Cluckin Bell — îți reface <strong>22 HP</strong>.
+      Plafonat la 100 HP.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Toate cele trei comenzi funcționează <strong>doar</strong> dacă ești aproape de locația corectă — punctele de mâncare
+    sunt marcate pe hartă cu propriile lor iconițe, vizibile tot timpul. Eticheta de deasupra fiecărei locații îți arată
+    numele, prețul și cât HP îți reface.
+  </div>
+</section>
+
+<section id="skins">
+  <h2>👕 Haine &amp; Skinuri</h2>
+  <p class="subtitle">Cumpără-ți garderoba și schimbă-ți look-ul oricând</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🛍️ Magazinul de haine</h4>
+      <p>Caută iconița de <strong>haine</strong> pe hartă. Acolo poți folosi:</p>
+      <ul>
+        <li><code>/skins</code> — catalogul de outfituri. Un outfit costă <strong>$10.000</strong>, iar când îl cumperi îl și îmbraci.</li>
+        <li><code>/wardrobe</code> — garderoba ta: comuți <strong>gratis</strong> între outfiturile pe care le deții deja.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">♾️ Sunt ale tale pe veci</h4>
+      <p>Outfiturile cumpărate <strong>rămân ale tale permanent</strong>. Poți schimba între ele oricând, gratuit, la orice
+      magazin de haine. Skin-ul tău se păstrează și după deconectare.</p>
+    </div>
+  </div>
+
+  <h3>🪪 Uniforma de facțiune</h3>
+  <p>Dacă ești într-o facțiune, ai o <strong>uniformă în funcție de rangul tău</strong>:</p>
+  <table>
+    <tr><th>Rang</th><th>Uniformă</th></tr>
+    <tr><td>1 - 2</td><td>Uniforma de bază</td></tr>
+    <tr><td>3 - 4</td><td>Uniforma intermediară</td></tr>
+    <tr><td>5</td><td>Uniforma de lider</td></tr>
+  </table>
+  <p>Când te spawnezi <strong>pe tură</strong> (spawn de facțiune) porți automat uniforma potrivită rangului tău.
+  Când te spawnezi ca civil, porți outfitul tău personal.</p>
+
+  <div class="note">
+    În <strong>interiorul HQ-ului facțiunii</strong> poți folosi <code>/changeskin</code> ca să comuți între uniformă și
+    hainele civile.
+  </div>
+</section>
+
+<section id="robbery">
+  <h2>💰 Jafuri</h2>
+  <p class="subtitle">Sparge un magazin cu echipa ta — dar scapă de poliție înainte să livrezi banii</p>
+
+  <div class="note warn">
+    Ai nevoie de <strong>10/10 rob points</strong> ca să dai un jaf. Primești <strong>+1 rob point la fiecare payday</strong>
+    (maxim 10), iar un jaf te costă <strong>toate cele 10</strong>. Îți vezi punctele în <code>/stats</code>, la linia <strong>[Crime]</strong>.
+  </div>
+
+  <h3>Cum se face</h3>
+  <ol>
+    <li>Adună-ți echipa <strong>într-o mașină</strong> — tu trebuie să fii <strong>șoferul</strong>.</li>
+    <li>Oprește lângă un <strong>shop</strong> sau un <strong>fast-food</strong> și dă <code>/rob</code>.</li>
+    <li>Toți cei din mașină în acel moment devin echipa: fiecare pierde 10 rob points și primește <strong>wanted 6</strong>.</li>
+    <li><strong>Poliția e anunțată imediat</strong> — primesc numele tău și magazinul jefuit.</li>
+    <li>Îți apare un checkpoint la un <strong>business aleatoriu</strong>. Ajungi acolo → apare al <strong>doilea</strong>.
+      Trebuie să ajungi la <strong>amândouă</strong> ca să livrezi banii.</li>
+  </ol>
+
+  <h3>Câștigul</h3>
+  <p>După al doilea business, fiecare membru primește:</p>
+  <p style="text-align:center"><code>$12.000 + $2.000 × (numărul de participanți) + bonus aleatoriu până la $5.000</code></p>
+  <p>Cu cât sunteți mai mulți în mașină, cu atât câștigă <strong>fiecare</strong> mai mult. După livrare, wanted-ul scade de la 6 la <strong>5</strong>.</p>
+
+  <div class="note warn">
+    <strong>Dacă mori sau te deconectezi, nu primești nimic.</strong> Jaful continuă pentru restul echipei, dar tu ieși din
+    împărțeală. Doar cei rămași <strong>în viață și conectați</strong> la momentul livrării sunt plătiți.
+  </div>
+</section>
+
+<section id="golf">
+  <h2>⛳ Turneu de Golf</h2>
+  <p class="subtitle">Un mini-joc eliminatoriu, organizat periodic de administrație</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">📝 Înscrierea</h4>
+      <p>Când un admin deschide înscrierile, vei vedea un anunț pe server. Folosește <code>/joingolf</code> ca să intri
+      în turneu — poți renunța oricând cu <code>/leavegolf</code>, înainte sau chiar în timpul unei runde
+      (dar dacă pleci în timpul unei runde active, ești automat eliminat).</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏌️ Cum se joacă</h4>
+      <p>Fiecare jucător primește propria minge, marcată deasupra cu propriul ID. Te apropii de ea și folosești
+      <code>/hitball [putere]</code> (0-200) — puterea loviturii determină cât de departe zboară mingea, iar direcția
+      e dată de unde te uiți tu în acel moment. Mingea se mișcă lin, în linie dreaptă, nu se teleportează, iar după
+      fiecare lovitură primești un mesaj cu numărul loviturii și câți metri ai mai rămas până la groapă.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏆 Structura turneului</h4>
+      <p>Un turneu are <strong>5 găuri</strong>, jucate pe rând într-o ordine amestecată la fiecare deschidere de
+      turneu — așa că ordinea nu e niciodată aceeași de două ori. Turneul se termină când rămâne <strong>un singur
+      câștigător</strong> sau s-au jucat toate cele 5 găuri.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Scopul fiecărei runde e să bagi mingea în groapă din cât mai puține lovituri. După ce toți jucătorii termină
+    groapa, doar cei cu cele mai puține lovituri trec mai departe — restul sunt eliminați. Turneul continuă pe runde
+    până rămâne un singur câștigător.
+  </div>
+</section>
+
+<section id="basketball">
+  <h2>🏀 Baschet</h2>
+  <p class="subtitle">Un mini-joc rapid, pe care îl pornești chiar tu, fără să aștepți un admin</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">📝 Cum intri în joc</h4>
+      <p>Mergi la terenul de baschet de pe hartă (marcat cu o iconiță pe minimap) și folosește <code>/joinbasket</code>.
+      Imediat ce sunt destui jucători înscriși, pornește un scurt countdown pe ecran — apoi runda începe automat.
+      Te poți răzgândi oricând cu <code>/leavebasket</code>; dacă pleci în timpul unei runde active, ești eliminat,
+      dar jocul continuă normal pentru ceilalți.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏀 Cum se joacă</h4>
+      <p>Treci, pe rând, prin cele 8 coșuri ale terenului, în ordine amestecată la fiecare rundă. La fiecare coș ești
+      teleportat automat lângă el, orientat spre el și ținut pe loc câteva clipe cât mingea îți apare în mână — apoi
+      folosești <code>/throwball [putere]</code> (0-20) ca să arunci. Puterea și direcția în care te uiți determină
+      cât de departe zboară mingea, nu se teleportează.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🎯 Feedback la fiecare aruncare</h4>
+      <p>Imediat după ce mingea ajunge la coș, afli dacă ai înscris (<strong>GOAL</strong>) sau ai ratat
+      (<strong>MISS</strong>), plus distanța exactă parcursă de minge. Dacă ai ratat clar din cauza puterii, primești
+      și un indiciu — "prea multă putere" sau "prea puțină putere" — ca să corectezi din mers la coșul următor.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Fiecare coș se joacă o singură dată per rundă — fără încercări multiple. La final, scorurile tuturor jucătorilor
+    care au terminat toate cele 8 coșuri sunt comparate și e anunțat câștigătorul (cel cu cele mai multe GOAL-uri),
+    sau, dacă scorurile sunt egale, se anunță explicit o egalitate.
+  </div>
+</section>
+
+<section id="events">
+  <h2>🎮 Evenimente organizate de admini</h2>
+  <p class="subtitle">Curse, lupte în echipă și vânătoare — pornite de administrație, spre deosebire de Golf/Baschet pe care le pornești chiar tu</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🏁 Curse (BestLap)</h4>
+      <p>Un admin deschide o cursă pe un traseu (<strong>Lap1</strong> = 8 checkpoint-uri, <strong>Lap2/Lap3</strong> = 20
+      fiecare), cu o mașină fixă sau <em>random</em> — la random, toți primesc <strong>același</strong> model, ales o
+      singură dată. Vehiculele posibile: Bullet, Infernus, Elegy, Stratum, NRG-500, Sabre.</p>
+      <p>Te înscrii cu <code>/event join</code> cât înscrierile sunt deschise. La start, toți sunt teleportați la linia
+      de start și urmează un countdown de 5 secunde (<em>5..4..3..2..1..GO!</em>) — cronometrul pornește exact la GO,
+      nu la teleportare. Alergi checkpoint cu checkpoint până la ultimul.</p>
+      <p style="margin:0">Evenimentul se termină când toți au terminat sau după <strong>5 minute</strong> (oprire
+      forțată de admin). Primele 3 locuri sunt anunțate pe tot serverul, iar fiecare participant își vede locul propriu.
+      Dacă bați cel mai bun timp cunoscut pentru <strong>acel traseu + acel model de mașină</strong>, stabilești un
+      <strong>RECORD</strong> nou, anunțat pe server.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🔫 Counter Strike</h4>
+      <p><strong>5 vs 5</strong>, cu bombă, mai multe meciuri pot rula simultan (fiecare cu propriul ID). Înscrierile se
+      închid automat la <strong>10 jucători</strong> sau când adminul pornește manual — echipele se formează
+      <strong>alternativ</strong> pe măsură ce te înscrii: T, CT, T, CT...</p>
+      <p>Meciul ține <strong>10 runde</strong>; cine câștigă mai multe ia meciul (5-5 = egalitate). După runda 5,
+      echipele <strong>schimbă taberele</strong>. În fiecare rundă primești armă (<strong>AK-47</strong> pentru T,
+      <strong>M4</strong> pentru CT), un Desert Eagle și armură completă; dacă mori, urmărești restul rundei ca
+      spectator la echipa ta.</p>
+      <p style="margin:0"><strong>T</strong> câștigă plantând bomba la un site (<code>/plant</code>, freeze 3s) și
+      lăsând-o să explodeze, sau eliminând tot CT. <strong>CT</strong> câștigă eliminând tot T (doar dacă bomba nu e
+      plantată) sau dezamorsând-o (<code>/defuse</code>, freeze 3s). După plantare, chiar dacă tot T moare, CT
+      <strong>trebuie</strong> să dezamorseze — nu mai câștigă automat.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🏛️ Hunt The Mayor</h4>
+      <p>Un admin deschide înscrierile (<code>/event htm join</code>), apoi alege random un jucător care devine
+      <strong>"Primarul"</strong>. Restul devin vânători. Primarul apare la una din <strong>5 locații secrete</strong>
+      predefinite, cu <strong>100 HP + 100 armură</strong> și un <strong>MP5</strong>; vânătorii apar toți împreună
+      în altă parte, cu <strong>50 HP</strong> și <strong>M4</strong> fiecare.</p>
+      <p>Aveți la dispoziție <strong>15 minute</strong>. Recompensele:</p>
+      <ul style="margin:8px 0 0; padding-left:20px">
+        <li>Orice lovitură reușită pe Primar (o singură dată per vânător) → <strong>$5.000</strong></li>
+        <li>Kill-ul propriu-zis pe Primar → încă <strong>$10.000</strong>, pe lângă premiul de lovitură</li>
+        <li>Dacă Primarul supraviețuiește toate cele 15 minute → el câștigă <strong>$15.000</strong></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="caravans">
+  <h2>🚐 Rulote personale</h2>
+  <p class="subtitle">O casă pe roți, pe care o tractezi cu mașina ta</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🔑 Cum obții o rulotă</h4>
+      <p>Rulotele sunt momentan oferite de echipa de administrare a serverului — există 3 tipuri diferite, fiecare cu
+      propriul model. Odată ce ai primit una, e legată permanent de contul tău.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🚙 Tractarea</h4>
+      <p><code>/attach</code> agață rulota chiar în spatele mașinii tale personale, cât timp ești la volan — de acolo
+      încolo, rulota te urmează oriunde mergi, atașată de mașină. <code>/detach</code> o desprinde și o parchează exact
+      acolo unde te oprești, cu mașina respawnată lângă ea.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Poziția rulotei se salvează automat la fiecare <code>/detach</code>, deci o vei regăsi parcată exact acolo
+    unde ai lăsat-o, chiar și după ce te deconectezi și revii pe server.
+  </div>
+</section>
+
+<section id="camping">
+  <h2>🏕️ Camping</h2>
+  <p class="subtitle">Setează-ți temporar punctul de spawn chiar lângă rulota ta</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">⛺ Cum faci camping</h4>
+      <p>Cu rulota atașată și tu la volanul mașinii, oprește-te pe teren drept și folosește <code>/camp</code>.
+      Locul devine noul tău punct de respawn — de fiecare dată când te conectezi sau mori, vei apărea chiar lângă
+      rulota ta, nu la spawn-ul obișnuit.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">⏳ Cât ține</h4>
+      <p>Spawn-ul de camping rămâne activ pentru <strong>3 PayDay-uri</strong> (aproximativ 3 ore de joc), apoi
+      expiră automat și punctul tău de spawn revine la normal. Poți oricând să faci din nou <code>/camp</code>
+      în altă locație, ca să-l reînnoiești.</p>
+    </div>
+  </div>
+</section>
+
+<section id="party">
+  <h2>🎉 Petreceri</h2>
+  <p class="subtitle">O locație dedicată unde te distrezi, asculți muzică și socializezi</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">🎟️ Intrarea</h4>
+    <p>Pe hartă există o <strong>locație de party</strong> cu o intrare proprie. Vino la intrare și folosește
+    <code>/joinparty</code> — plătești un bilet simbolic și intri în petrecere, într-o lume privată în care se află doar
+    ceilalți participanți. Muzica pornește automat pentru tine la intrare. Poți pleca oricând cu <code>/leaveparty</code>.</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4 style="margin-top:0">🎵 DJ-ul ești tu</h4>
+      <p>La standul de muzică din party, <code>/changemusic [url]</code> schimbă piesa care se aude pentru
+      <strong>toți</strong> participanții la petrecere, contra unei mici taxe. Tu pui atmosfera.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍺 Barul</h4>
+      <p>La bar, <code>/buydrink</code> îți pune o bere în mână. Apoi dai <strong>click</strong> ca s-o bei — îți reface
+      puțină viață, dar ai grijă, te face și un pic amețit.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">🍖 Grătarul</h4>
+      <p>La grătar, <code>/buygrill</code> îți ia ceva de mâncare pentru câteva puncte de viață în plus — perfect ca să
+      te ții pe picioare în mijlocul distracției.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Fiecare comandă din party (bilet, muzică, băutură, grătar) funcționează doar dacă ești la standul potrivit, iar
+    banii cheltuiți alimentează automat banca afacerii care găzduiește petrecerea.
+  </div>
+</section>
+
+<section id="gps">
+  <h2>🗺️ GPS &amp; Radar</h2>
+  <p class="subtitle">Nu te mai rătăci, dar nici nu mai depăși viteza</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">🧭 Navigație GPS</h4>
+      <p><code>/gps</code> îți deschide o listă de categorii (Facțiuni, Afaceri, Bancă / ATM, Magazine,
+      Fast-food 🍕🍔🍗, <strong>Ferme</strong>, plus categorii precum DMV / Joburi / Altele) — alegi categoria, apoi
+      locația, și primești un punct de control direct pe hartă. Categoriile sunt actualizate automat (orice facțiune cu
+      sediu, afacere, ATM, magazin, locație de mâncare sau fermă existentă apare acolo). Fiecare intrare îți arată
+      <strong>numele și id-ul</strong> (ex. <code>Pizza Stack #5</code>, <code>Farm #2</code>) și
+      <strong>distanța</strong> până la ea, în metri. <code>/killcp</code> anulează oricând checkpoint-ul activ.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📡 Radar de viteză</h4>
+      <p>Polițiștii pot instala camere radar prin oraș. Dacă treci cu viteză peste limita afișată, vei fi avertizat
+      pe loc — așa că ține un ochi pe vitezometrul din bordul mașinii tale.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4 style="margin-top:0">🚦 Bord digital (HUD)</h4>
+    <p>De fiecare dată când urci într-un vehicul, primești automat un mic afișaj cu viteza curentă, starea mașinii (HP),
+    dacă motorul e pornit și dacă ușile sunt încuiate — toate actualizate live.</p>
+  </div>
+</section>
+
+<section id="phone">
+  <h2>📱 Telefonie</h2>
+  <p class="subtitle">Sună-ți prietenii și trimite mesaje, oriunde ai fi pe hartă</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">📲 Cumpără-ți un telefon</h4>
+      <p><code>/buyphone</code> îți deschide magazinul de telefoane. Alege dintre 5 mărci:</p>
+      <table>
+        <tr><th>Model</th><th>Preț</th></tr>
+        <tr><td>Motorola 67</td><td>$500</td></tr>
+        <tr><td>Samsung A70</td><td>$1.000</td></tr>
+        <tr><td>iPhone 16</td><td>$1.600</td></tr>
+        <tr><td>Samsung S27</td><td>$2.000</td></tr>
+        <tr><td>iPhone 17</td><td>$2.200</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">📇 Ia-ți un număr (SIM)</h4>
+      <p>După ce ai un telefon, folosește <code>/buysim</code> ca să primești un <strong>număr unic de 7 cifre</strong>,
+      generat aleatoriu. Acesta e numărul la care te pot suna sau trimite SMS ceilalți jucători.</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0">📞 Apeluri</h4>
+      <p><code>/call [număr]</code> sună jucătorul care deține acel număr (și e online). Cel apelat răspunde cu
+      <code>/pickup</code> — apoi puteți vorbi: tot ce scrii pe durata convorbirii ajunge direct la interlocutor.
+      Închizi oricând cu <code>/hangup</code>. Dacă nimeni nu răspunde în <strong>30 de secunde</strong>, apelul se
+      încheie singur. Apelul costă <strong>$3 la fiecare 10 secunde</strong>, plătit de cel care a sunat.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">✉️ SMS</h4>
+      <p><code>/sms [număr] [mesaj]</code> trimite un mesaj scris unui jucator online după numărul lui de telefon.
+      Costă <strong>$5</strong> per mesaj. Atât tu cât și destinatarul vedeți mesajul în chat, marcat cu marca telefonului.</p>
+    </div>
+  </div>
+</section>
+
+<section id="police">
+  <h2>🚓 Lege &amp; Ordine</h2>
+  <p class="subtitle">Ce te așteaptă dacă încalci regulile</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">Amenzi</h4>
+    <p>Un ofițer RAR sau Poliție te poate amenda pentru încălcarea regulilor de circulație. Amenda nu se scade automat —
+    primești o notificare și trebuie să o accepți cu <code>/accept fine [id]</code> pentru ca plata să se proceseze.</p>
+  </div>
+  <div class="card">
+    <h4 style="margin-top:0">Verificări &amp; permise</h4>
+    <p>Poliția și RAR pot opri și inspecta vehiculul tău (acte, stare tehnică) și îți pot verifica permisele auto direct
+    din teren. Dacă încalci grav regulile, un permis poate fi suspendat.</p>
+  </div>
+</section>
+
+<section id="commands">
+  <h2>📜 Toate comenzile</h2>
+  <p class="subtitle">Lista completă a comenzilor disponibile jucătorilor</p>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">👤 Cont</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td>Dialog la conectare</td><td>Îți pui parola într-un dialog (Register / Login) care apare automat</td></tr>
+    <tr><td><code>/register [parolă]</code> / <code>/login [parolă]</code></td><td>Alternativă prin comandă (dialogul e calea principală)</td></tr>
+    <tr><td><code>/stats</code></td><td>Informații despre contul tău</td></tr>
+    <tr><td><code>/deposit [sumă]</code></td><td>Depui bani în bancă, la un ATM (min $100, max $100.000)</td></tr>
+    <tr><td><code>/withdraw [sumă]</code></td><td>Retragi bani din bancă, la un ATM (min $100, max $100.000)</td></tr>
+    <tr><td><code>/cspawn</code></td><td>Schimbă punctul de spawn (civil / HQ facțiune / casă proprie)</td></tr>
+    <tr><td><code>/report [text]</code></td><td>Trimite un report către admini (max 2 deschise o dată); primești răspuns în joc</td></tr>
+    <tr><td><code>/help</code></td><td>Listă de comenzi pentru jucători</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🪪 Facțiune</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/f [mesaj]</code></td><td>Chat intern de facțiune</td></tr>
+    <tr><td><code>/finvite [playerid]</code></td><td>Invită un jucător neafiliat în facțiunea ta (rang 4+)</td></tr>
+    <tr><td><code>/accept finvite [playerid]</code></td><td>Acceptă o invitație de facțiune</td></tr>
+    <tr><td><code>/fmembers</code></td><td>Membri online, grupați pe rang</td></tr>
+    <tr><td><code>/fbank</code></td><td>Sold bancă facțiune (rang 4+)</td></tr>
+    <tr><td><code>/fbankwithdraw [sumă]</code></td><td>Retrage bani din banca facțiunii (rang 5)</td></tr>
+    <tr><td><code>/fsetrank [playerid] [1-5]</code></td><td>Schimbă rangul unui membru (rang 5)</td></tr>
+    <tr><td><code>/fhelp</code></td><td>Comenzi de facțiune disponibile pentru tine</td></tr>
+    <tr><td><code>/duty</code></td><td>Intri/ieși din tură, din interiorul sediului facțiunii (Poliție/RAR/SMURD)</td></tr>
+    <tr><td><code>/factions</code></td><td>Listă cu toate cele 8 facțiuni</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">📰 News Reporters <span style="color:var(--muted); font-size:0.8em">(facțiune 8)</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/news [text]</code></td><td>Difuzează o știre tuturor jucătorilor (rang 1+)</td></tr>
+    <tr><td><code>/newspaper create</code></td><td>Creează un ziar nou (rang 2+)</td></tr>
+    <tr><td><code>/newspaper edit [1-5] [text]</code></td><td>Adaugă/schimbă o știre în ziar (max 5)</td></tr>
+    <tr><td><code>/newspaper sell [id] [sumă]</code></td><td>Oferă ziarul spre vânzare unui jucător</td></tr>
+    <tr><td><code>/accept newspaper [id]</code></td><td>Cumperi ziarul oferit</td></tr>
+    <tr><td><code>/newspaper open</code></td><td>Citești ziarul (cumpărat sau propriu)</td></tr>
+    <tr><td><code>/qa [id]</code></td><td>Pornești un interviu live cu un jucător (rang 3+)</td></tr>
+    <tr><td><code>/accept qa [id]</code></td><td>Accepți să fii invitatul unui interviu</td></tr>
+    <tr><td><code>/qa list / ask [nr] / del [nr] / end</code></td><td>Reporterul gestionează întrebările și interviul</td></tr>
+    <tr><td><code>/question [text]</code></td><td>Trimiți o întrebare în timpul unui interviu live</td></tr>
+    <tr><td><code>/answer [text]</code></td><td>Invitatul răspunde la întrebări (difuzat tuturor)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🗳️ Președinte</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/vote [nume]</code></td><td>Votezi un jucător ca Președinte (Duminică 08:00–19:30, un vot/săptămână)</td></tr>
+    <tr><td><code>/president</code></td><td>Vezi Președintele curent + impozitul și CASS active</td></tr>
+    <tr><td><code>/settax [0-100]</code></td><td>Setează impozitul la PayDay (doar Președintele)</td></tr>
+    <tr><td><code>/setcass [0-100]</code></td><td>Setează CASS la PayDay (doar Președintele)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">💼 Joburi</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/jobs</code></td><td>Lista celor 10 joburi</td></tr>
+    <tr><td><code>/getjob [id/nume]</code></td><td>Te angajezi, la Job Center-ul din City Hall</td></tr>
+    <tr><td><code>/quitjob</code></td><td>Renunți la job, la Job Center</td></tr>
+    <tr><td><code>/job</code></td><td>Începi munca la jobul tău</td></tr>
+    <tr><td><code>/stopwork</code></td><td>Oprești munca / ieși din serviciul de Uber</td></tr>
+    <tr><td><code>/fare [sumă]</code></td><td>Uber: intri în serviciu cu mașina personală (preț per 20s)</td></tr>
+    <tr><td><code>/service uber</code></td><td>Ceri o cursă de Uber</td></tr>
+    <tr><td><code>/accept uber</code></td><td>Uber: accepți o cerere de cursă</td></tr>
+    <tr><td><code>/bus [1-3]</code></td><td>Bus Driver: pornești o rută fixă cu autobuzul de depou</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚜 Farming</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/farm stats</code></td><td>Etapa curentă, dacă mai poți lucra azi și utilajele deținute (merge de oriunde)</td></tr>
+    <tr><td><code>/farm plow/level/seed/fertilize/harvest</code></td><td>Pornești etapa curentă (în utilajul corect, o etapă/zi)</td></tr>
+    <tr><td><code>/farm buy|sell [tractor/dozer/combina/truck/trailer]</code></td><td>Cumperi / vinzi utilaje din contul fermei (doar pe terenul propriu)</td></tr>
+    <tr><td><code>/farm deposit|withdraw [sumă]</code></td><td>Contul fermei</td></tr>
+    <tr><td><code>/farm deliver</code></td><td>Vinzi recolta strânsă</td></tr>
+    <tr><td><code>/farm rent [utilaj]</code></td><td>Închiriezi un utilaj (25% din preț)</td></tr>
+    <tr><td><code>/farmstats</code></td><td>Informații despre ferma deținută</td></tr>
+    <tr><td><code>/buyfarm</code></td><td>Cumperi terenul pe care stai (de la stat sau de la alt jucător)</td></tr>
+    <tr><td><code>/sellfarm [preț]</code> / <code>/sellfarmtostate</code></td><td>Pui ferma la vânzare / o vinzi la stat (60%)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">⚔️ Războaie de teritoriu <span style="color:var(--muted); font-size:0.8em">(doar mafii)</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/equip</code></td><td>Te echipezi cu arme, în interiorul HQ-ului mafiei tale</td></tr>
+    <tr><td><code>/war</code></td><td>Declari război pe teritoriul inamic în care te afli</td></tr>
+    <tr><td><code>/warscore</code></td><td>Scorul războaielor în care e implicată facțiunea ta</td></tr>
+    <tr><td><code>/warsurrender</code></td><td>Capitulezi într-un război activ (rang 4-5, după primele 5 min)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🌿 Droguri &amp; Seif <span style="color:var(--muted); font-size:0.8em">(doar mafii)</span></h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/seif</code></td><td>Vezi stocul de iarbă și droguri din seiful mafiei (rang 4+)</td></tr>
+    <tr><td><code>/drugs transport</code></td><td>Aduci marfă cu Huntley-ul facțiunii (rang 1/2/5, 19:00–23:59, cu un al doilea membru)</td></tr>
+    <tr><td><code>/drugs craft</code></td><td>Transformi iarba în droguri la mașina de craft (rang 3-5)</td></tr>
+    <tr><td><code>/drugs get</code></td><td>Scoți droguri din seif (rang oricare, doar în timpul unui război)</td></tr>
+    <tr><td><code>/drugs use</code></td><td>Folosești droguri pe teritoriul unui război activ (+30 HP)</td></tr>
+    <tr><td><code>/smuggle</code></td><td>Pornești o cursă de contrabandă cu barca facțiunii (o cursă reușită/zi per facțiune)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🎮 Evenimente</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/event join</code></td><td>Te înscrii la o cursă (Race Event) deschisă de admin</td></tr>
+    <tr><td><code>/event cs join [nr]</code></td><td>Te înscrii la un meci Counter Strike deschis</td></tr>
+    <tr><td><code>/plant</code> / <code>/defuse</code></td><td>Counter Strike: plantezi / dezamorsezi bomba (freeze 3s)</td></tr>
+    <tr><td><code>/event htm join</code></td><td>Te înscrii la Hunt The Mayor</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🏠 Case &amp; Afaceri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/buyhouse</code></td><td>Cumpără casa de vânzare din apropiere (de la stat sau de la alt jucător)</td></tr>
+    <tr><td><code>/house sell [preț]</code></td><td>Pune casa la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/house sellto [playerid] [preț]</code></td><td>Ofertă directă de vânzare; cumpărătorul confirmă cu <code>/accept house [sellerid]</code></td></tr>
+    <tr><td><code>/house selltostate</code></td><td>Vinde casa la stat, instant, 60% din valoare</td></tr>
+    <tr><td><code>/findhouse [id]</code></td><td>Pune un checkpoint pe hartă spre casa cu id-ul dat</td></tr>
+    <tr><td><code>/hstats</code></td><td>Statisticile casei tale (nume, ID, preț, tip)</td></tr>
+    <tr><td><code>/house upgrade animal [nume]</code></td><td>Cumperi un animal (Turtle/Deer — Villa; Cow — Countryside) pentru curtea casei tale</td></tr>
+    <tr><td><code>/house upgrade tree</code></td><td>Plantezi un copac (doar City House / Countryside House)</td></tr>
+    <tr><td><code>/house upgrade frigde</code></td><td>Cumperi un frigider pentru casă ($10.000)</td></tr>
+    <tr><td><code>/frigde buy [item] [qty]</code></td><td>Umpli frigiderul (lapte/banane/apă/suc/bere), doar 15:00–20:00</td></tr>
+    <tr><td><code>/frigde use [item]</code></td><td>Consumi 1 bucată → +HP</td></tr>
+    <tr><td><code>/sgrload</code> / <code>/sgrunload</code></td><td>Duci ambalajele goale la reciclat cu duba SGR (max 100); descărcarea dă $50/ambalaj în banca casei</td></tr>
+    <tr><td><code>/trashload</code> / <code>/trashunload</code></td><td>Ridici gunoiul acumulat cu mașina de gunoi (max 100); descărcarea dă $30/gunoi în banca casei</td></tr>
+    <tr><td><code>/fixapartament</code></td><td>Electrician: rezolvă o problemă activă de apartament ($3.000 din banca apartamentului)</td></tr>
+    <tr><td><code>/buybiz</code></td><td>Cumpără afacerea de vânzare din apropiere (de la stat sau de la alt jucător)</td></tr>
+    <tr><td><code>/biz sell [preț]</code></td><td>Pune afacerea la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/biz sellto [playerid] [preț]</code></td><td>Ofertă directă de vânzare; cumpărătorul confirmă cu <code>/accept biz [sellerid]</code></td></tr>
+    <tr><td><code>/biz selltostate</code></td><td>Vinde afacerea la stat, instant, 60% din valoare</td></tr>
+    <tr><td><code>/bbank</code></td><td>Sold bancă afacere, lângă ea</td></tr>
+    <tr><td><code>/biz withdraw [sumă]</code></td><td>Retrage bani din banca afacerii tale</td></tr>
+    <tr><td><code>/biz getdocs</code> / <code>/biz givedocs</code></td><td>Deblochezi afacerea dacă a fost blocată de ANAF (necesită vehicul model 428)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚗 Vehicule personale</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/vbuy</code></td><td>Cumpără vehiculul în care te afli (de la showroom sau de la alt jucător)</td></tr>
+    <tr><td><code>/sellveh [preț]</code></td><td>Pune vehiculul la vânzare pentru alți jucători (0 = anulează)</td></tr>
+    <tr><td><code>/sellvehtostate</code></td><td>Vinde vehiculul la stat, instant, 60% din valoare</td></tr>
+    <tr><td><code>/vsellto [playerid]</code></td><td>Transferă gratuit proprietatea unui jucător apropiat</td></tr>
+    <tr><td><code>/vcolor [1/2] [colorID]</code></td><td>Schimbă culoarea 1 sau 2</td></tr>
+    <tr><td><code>/vplate [text]</code></td><td>Plăcuță personalizată (max 10 caractere), la sediul RAR</td></tr>
+    <tr><td><code>/vinsurance</code></td><td>Reînnoiește asigurarea</td></tr>
+    <tr><td><code>/vmedicalkit</code></td><td>Reînnoiește kitul medical</td></tr>
+    <tr><td><code>/vextinctor</code></td><td>Reînnoiește extinctorul</td></tr>
+    <tr><td><code>/vitp</code></td><td>Verificare tehnică (ITP), la sediul RAR — motor oprit, capotă deschisă, faruri pornite</td></tr>
+    <tr><td><code>/towpark</code></td><td>RAR rang 3+: parchează o mașină cu ITP expirat, tractată cu Towtruck</td></tr>
+    <tr><td><code>/vpark</code></td><td>Salvează poziția curentă ca punct de respawn al mașinii</td></tr>
+    <tr><td><code>/vstats</code></td><td>Listă vehicule deținute + starea documentelor</td></tr>
+    <tr><td><code>/engine</code> <span style="color:var(--muted)">(sau tasta de submisie, implicit 2)</span></td><td>Pornește/oprește motorul</td></tr>
+    <tr><td><code>/lock</code></td><td>Încuie/descuie ușile (doar proprietar) — din interior sau din apropiere, max 5m</td></tr>
+    <tr><td><code>/rentbike</code></td><td>Închiriază o bicicletă din apropiere</td></tr>
+    <tr><td><code>/rentcar</code></td><td>Închiriază o mașină din apropiere</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🪪 Examene &amp; permise</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/examA</code></td><td>Examen categoria A (motocicletă)</td></tr>
+    <tr><td><code>/examB</code></td><td>Examen categoria B (mașină)</td></tr>
+    <tr><td><code>/examC</code></td><td>Examen categoria C (camion + remorcă)</td></tr>
+    <tr><td><code>/examD</code></td><td>Examen categoria D (autobuz)</td></tr>
+    <tr><td><code>/licenses</code></td><td>Starea celor 4 permise ale tale</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🗺️ GPS &amp; Sănătate</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/gps [nume]</code></td><td>Setează un checkpoint (fără argument = meniu pe categorii)</td></tr>
+    <tr><td><code>/killcp</code></td><td>Anulează checkpoint-ul GPS activ</td></tr>
+    <tr><td><code>/curedisease</code></td><td>Te vindecă, la spitalul SMURD (dacă ești bolnav)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">📱 Telefonie</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/buyphone</code></td><td>Deschide magazinul de telefoane (5 mărci)</td></tr>
+    <tr><td><code>/buysim</code></td><td>Primești un număr de telefon unic, de 7 cifre</td></tr>
+    <tr><td><code>/call [număr]</code></td><td>Suni un jucător online după numărul lui ($3 / 10s)</td></tr>
+    <tr><td><code>/pickup</code></td><td>Răspunzi la un apel primit</td></tr>
+    <tr><td><code>/hangup</code></td><td>Închizi apelul curent</td></tr>
+    <tr><td><code>/sms [număr] [mesaj]</code></td><td>Trimiți un SMS unui jucător online ($5)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🍔 Mâncare</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/pizza</code></td><td>Cumpără o pizza la o locație de tip pizza (+20 HP)</td></tr>
+    <tr><td><code>/burger</code></td><td>Cumpără un burger la o locație de tip burger (+25 HP)</td></tr>
+    <tr><td><code>/meal</code></td><td>Cumpără un meniu la o locație Cluckin Bell (+22 HP)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">👕 Haine &amp; Skinuri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/skins</code></td><td>Catalogul de outfituri, la magazinul de haine ($10.000/outfit)</td></tr>
+    <tr><td><code>/wardrobe</code></td><td>Garderoba ta — comuți gratis între outfiturile deținute</td></tr>
+    <tr><td><code>/changeskin</code></td><td>În HQ-ul facțiunii: comută între uniformă și haine civile</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">💰 Jafuri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/rob</code></td><td>Jefuiești un shop/fast-food (șofer, 10/10 rob points), apoi livrezi la 2 business-uri</td></tr>
+    <tr><td><code>/stats</code></td><td>Îți arată rob points-urile la linia [Crime]</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">⛳ Turneu de Golf</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/joingolf</code></td><td>Te înscrii la turneu, cât timp înscrierile sunt deschise</td></tr>
+    <tr><td><code>/leavegolf</code></td><td>Părăsești turneul (te elimină dacă o runda e activă)</td></tr>
+    <tr><td><code>/hitball [putere]</code></td><td>Lovești mingea cu puterea aleasă (0-200), în direcția în care privești</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🏀 Baschet</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/joinbasket</code></td><td>Te înscrii la joc, lângă terenul de baschet</td></tr>
+    <tr><td><code>/leavebasket</code></td><td>Părăsești jocul (te elimină dacă o rundă e activă)</td></tr>
+    <tr><td><code>/throwball [putere]</code></td><td>Arunci mingea spre coșul curent, cu puterea aleasă (0-20)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚐 Rulote &amp; Camping</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/attach</code></td><td>Atașează rulota în spatele mașinii personale în care te afli</td></tr>
+    <tr><td><code>/detach</code></td><td>Desprinde și parchează rulota la poziția curentă</td></tr>
+    <tr><td><code>/findmycaravan</code></td><td>Îți arată unde e parcată rulota ta</td></tr>
+    <tr><td><code>/camp</code></td><td>Setează spawn-ul temporar lângă rulotă, pentru 3 PayDay-uri</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🎉 Petreceri</h3>
+  <table>
+    <tr><th>Comandă</th><th>Descriere</th></tr>
+    <tr><td><code>/joinparty</code></td><td>Intri în petrecere, la intrarea locației de party (cost: bilet)</td></tr>
+    <tr><td><code>/leaveparty</code></td><td>Părăsești petrecerea și te întorci în oraș</td></tr>
+    <tr><td><code>/changemusic [url]</code></td><td>Schimbi muzica pentru toți participanții, la standul de muzică</td></tr>
+    <tr><td><code>/buydrink</code></td><td>Cumperi o bere la bar — apoi click ca s-o bei</td></tr>
+    <tr><td><code>/buygrill</code></td><td>Cumperi mâncare de la grătar (+ puțină viață)</td></tr>
+  </table>
+
+  <h3 style="color:var(--accent); font-size:1.1rem; margin:24px 0 8px">🚓 Poliție / RAR / SMURD</h3>
+  <p style="color:var(--muted); margin-top:-4px">Disponibile doar membrilor facțiunilor respective, de regulă aflați în tură.</p>
+  <table>
+    <tr><th>Comandă</th><th>Facțiune</th><th>Descriere</th></tr>
+    <tr><td><code>/fine [playerid] [sumă] [motiv]</code></td><td>RAR / Poliție</td><td>Emite o amendă în așteptare</td></tr>
+    <tr><td><code>/accept fine [playerid]</code></td><td>—</td><td>Acceptă și plătește amenda primită</td></tr>
+    <tr><td><code>/inspectcar [playerid]</code></td><td>RAR / Poliție</td><td>Inspectează vehiculul unui jucător</td></tr>
+    <tr><td><code>/confiscate [extinctor/medkit/itp] [playerid]</code></td><td>RAR (rang 3+)</td><td>Confiscă (expiră) actul ales al vehiculului unui jucător</td></tr>
+    <tr><td><code>/confiscate insurance [playerid]</code></td><td>Poliție (rang 2+)</td><td>Confiscă (expiră) asigurarea vehiculului unui jucător</td></tr>
+    <tr><td><code>/confiscate licence [A/B/C/D/all] [playerid]</code></td><td>Poliție (rang 2+)</td><td>Confiscă (anulează) un permis auto al unui jucător</td></tr>
+    <tr><td><code>/m [playerid]</code></td><td>RAR / Poliție</td><td>Ordonă unui șofer să tragă pe dreapta</td></tr>
+    <tr><td><code>/checklicenses [playerid]</code></td><td>Poliție</td><td>Verifică permisele unui jucător</td></tr>
+    <tr><td><code>/suspendlic [playerid] [cat/all]</code></td><td>Poliție</td><td>Suspendă unul sau toate permisele unui jucător</td></tr>
+    <tr><td><code>/radar install/remove [viteza]</code></td><td>Poliție (rang 2+)</td><td>Instalează/scoate o cameră radar</td></tr>
+    <tr><td><code>/garage</code> / <code>/entrace</code></td><td>Poliție</td><td>Teleportare dus-întors garaj ↔ intrare (sau click dreapta)</td></tr>
+    <tr><td><code>/heal [playerid]</code></td><td>SMURD</td><td>Vindecă un pasager din ambulanță</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  NostalgiaRP — vino, joacă, construiește-ți povestea.
+</footer>
+
+</body>
+</html>

@@ -21595,3 +21595,682 @@ v0.3.7-R2, (C)2005-2015 SA-MP Team
 [19:56:08] [connection] incoming connection: 127.0.0.1:51103 id: 0
 [19:56:08] [join] Punctulet has joined the server (0:127.0.0.1)
 [19:59:10] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[20:08:16] filterscripts = ""  (string)
+[20:08:16] 
+[20:08:16] Server Plugins
+[20:08:16] --------------
+[20:08:16]  Loading plugin: mysql
+[20:08:16]  >> plugin.mysql: R41-4 successfully loaded.
+[20:08:16]   Loaded.
+[20:08:16]  Loading plugin: streamer
+[20:08:16] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[20:08:16]   Loaded.
+[20:08:16]  Loaded 2 plugins.
+
+[20:08:16] 
+[20:08:16] Filterscripts
+[20:08:16] ---------------
+[20:08:16]   Loaded 0 filterscripts.
+
+[20:08:16] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[20:08:16]  
+[20:08:16] ==================================================
+[20:08:16]   N-RP  |  incarcare date din baza de date
+[20:08:16] ==================================================
+[20:08:16] [DB] Conectat la MySQL cu succes!
+[20:08:16] 
+----------------------------------
+[20:08:16]   NostalgiaRP by Nikolas Maduro  
+
+[20:08:16] ----------------------------------
+
+[20:08:16] Number of vehicle models: 0
+[20:08:17] [Load] Factiuni: 8
+[20:08:17] [Load] Case: 42
+[20:08:17] [Load] Hoteluri: 11
+[20:08:17] [Load] Interioare GTA: 138
+[20:08:17] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[20:08:17] [Load] Animale: 2
+[20:08:17] [Load] Copaci: 1
+[20:08:17] [Load] Business-uri: 22
+[20:08:17] [Load] Turf-uri: 8
+[20:08:17] [Load] ATM-uri: 10
+[20:08:17] [Load] Shop-uri: 10
+[20:08:17] [Load] Magazine de haine (create in-game): 2
+[20:08:17] [Load] Ammu-Nation-uri (create in-game): 3
+[20:08:17] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[20:08:17] [Load] Locatii: 44
+[20:08:17] [Load] Cosuri baschet: 4
+[20:08:17] [Load] Spawn-uri baschet: 32
+[20:08:17] [Load] Vehicule factiune: 102
+[20:08:17] [Load] Vehicule personale: 36
+[20:08:17] [Load] Rulote: 1
+[20:08:17] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[20:08:17] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[20:08:17] [Load] Recorduri curse: 18
+[20:08:17] [Load] Ferme: 7
+[20:08:17] [Load] Utilaje ferma: 5
+[20:08:17] ==================================================
+[20:08:17]   N-RP  |  gamemode incarcat cu succes.
+[20:08:17] ==================================================
+[20:08:17]  
+[20:08:36] [connection] 127.0.0.1:50084 requests connection cookie.
+[20:08:37] [connection] incoming connection: 127.0.0.1:50084 id: 0
+[20:08:37] [join] Punctulet has joined the server (0:127.0.0.1)
+[20:12:30] [PayDay] Distribuit la 20:00.
+[20:12:30] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[20:12:30] [Load] Animale: 2
+[21:00:53] [PayDay] Distribuit la 21:00.
+[21:00:53] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[21:00:53] [Load] Animale: 2
+[21:08:35] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[23:53:02] filterscripts = ""  (string)
+[23:53:02] 
+[23:53:02] Server Plugins
+[23:53:02] --------------
+[23:53:02]  Loading plugin: mysql
+[23:53:02]  >> plugin.mysql: R41-4 successfully loaded.
+[23:53:02]   Loaded.
+[23:53:02]  Loading plugin: streamer
+[23:53:02] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[23:53:02]   Loaded.
+[23:53:02]  Loaded 2 plugins.
+
+[23:53:02] 
+[23:53:02] Filterscripts
+[23:53:02] ---------------
+[23:53:02]   Loaded 0 filterscripts.
+
+[23:53:02] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[23:53:02]  
+[23:53:02] ==================================================
+[23:53:02]   N-RP  |  incarcare date din baza de date
+[23:53:02] ==================================================
+[23:53:02] [DB] Conectat la MySQL cu succes!
+[23:53:02] 
+----------------------------------
+[23:53:02]   NostalgiaRP by Nikolas Maduro  
+
+[23:53:02] ----------------------------------
+
+[23:53:02] Number of vehicle models: 0
+[23:53:02] [Load] Factiuni: 8
+[23:53:02] [Load] Case: 42
+[23:53:02] [Load] Hoteluri: 11
+[23:53:02] [Load] Interioare GTA: 138
+[23:53:02] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[23:53:02] [Load] Animale: 2
+[23:53:02] [Load] Copaci: 1
+[23:53:02] [Load] Business-uri: 22
+[23:53:02] [Load] Turf-uri: 8
+[23:53:02] [Load] ATM-uri: 10
+[23:53:02] [Load] Tomberoane: 3
+[23:53:02] [Load] Shop-uri: 10
+[23:53:02] [Load] Magazine de haine (create in-game): 2
+[23:53:02] [Load] Ammu-Nation-uri (create in-game): 4
+[23:53:02] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[23:53:02] [Load] Locatii: 45
+[23:53:02] [Load] Cosuri baschet: 4
+[23:53:02] [Load] Spawn-uri baschet: 32
+[23:53:02] [Load] Vehicule factiune: 102
+[23:53:02] [Load] Vehicule personale: 36
+[23:53:02] [Load] Rulote: 1
+[23:53:02] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[23:53:02] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[23:53:02] [Load] Recorduri curse: 18
+[23:53:02] [Load] Ferme: 7
+[23:53:02] [Load] Utilaje ferma: 5
+[23:53:02] ==================================================
+[23:53:02]   N-RP  |  gamemode incarcat cu succes.
+[23:53:02] ==================================================
+[23:53:02]  
+[23:53:34] [connection] 127.0.0.1:62427 requests connection cookie.
+[23:53:35] [connection] incoming connection: 127.0.0.1:62427 id: 0
+[23:53:36] [join] Punctulet has joined the server (0:127.0.0.1)
+[00:00:13] [PayDay] Distribuit la 00:00.
+[00:00:13] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[00:00:13] [Load] Animale: 2
+[00:06:06] [PayDay] Distribuit la 00:00.
+[00:06:06] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[00:06:06] [Load] Animale: 2
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[00:23:38] filterscripts = ""  (string)
+[00:23:38] 
+[00:23:38] Server Plugins
+[00:23:38] --------------
+[00:23:38]  Loading plugin: mysql
+[00:23:38]  >> plugin.mysql: R41-4 successfully loaded.
+[00:23:38]   Loaded.
+[00:23:38]  Loading plugin: streamer
+[00:23:38] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[00:23:38]   Loaded.
+[00:23:38]  Loaded 2 plugins.
+
+[00:23:38] 
+[00:23:38] Filterscripts
+[00:23:38] ---------------
+[00:23:38]   Loaded 0 filterscripts.
+
+[00:23:38] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[00:23:38]  
+[00:23:38] ==================================================
+[00:23:38]   N-RP  |  incarcare date din baza de date
+[00:23:38] ==================================================
+[00:23:38] [DB] Conectat la MySQL cu succes!
+[00:23:38] 
+----------------------------------
+[00:23:38]   NostalgiaRP by Nikolas Maduro  
+
+[00:23:38] ----------------------------------
+
+[00:23:38] Number of vehicle models: 0
+[00:23:38] [Load] Factiuni: 8
+[00:23:38] [Load] Case: 42
+[00:23:38] [Load] Hoteluri: 11
+[00:23:38] [Load] Interioare GTA: 138
+[00:23:38] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[00:23:38] [Load] Animale: 2
+[00:23:38] [Load] Copaci: 1
+[00:23:38] [Load] Business-uri: 22
+[00:23:38] [Load] Turf-uri: 8
+[00:23:38] [Load] ATM-uri: 10
+[00:23:38] [Load] Tomberoane: 6
+[00:23:38] [Load] Shop-uri: 10
+[00:23:38] [Load] Magazine de haine (create in-game): 2
+[00:23:38] [Load] Ammu-Nation-uri (create in-game): 4
+[00:23:38] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[00:23:38] [Load] Locatii: 45
+[00:23:38] [Load] Cosuri baschet: 4
+[00:23:38] [Load] Spawn-uri baschet: 32
+[00:23:38] [Load] Vehicule factiune: 102
+[00:23:38] [Load] Vehicule personale: 36
+[00:23:38] [Load] Rulote: 1
+[00:23:38] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[00:23:38] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[00:23:38] [Load] Recorduri curse: 18
+[00:23:38] [Load] Ferme: 7
+[00:23:38] [Load] Utilaje ferma: 5
+[00:23:38] ==================================================
+[00:23:38]   N-RP  |  gamemode incarcat cu succes.
+[00:23:38] ==================================================
+[00:23:38]  
+[00:24:53] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[10:27:22] filterscripts = ""  (string)
+[10:27:22] 
+[10:27:22] Server Plugins
+[10:27:22] --------------
+[10:27:22]  Loading plugin: mysql
+[10:27:23]  >> plugin.mysql: R41-4 successfully loaded.
+[10:27:23]   Loaded.
+[10:27:23]  Loading plugin: streamer
+[10:27:23] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[10:27:23]   Loaded.
+[10:27:23]  Loaded 2 plugins.
+
+[10:27:23] 
+[10:27:23] Filterscripts
+[10:27:23] ---------------
+[10:27:23]   Loaded 0 filterscripts.
+
+[10:27:23] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[10:27:23]  
+[10:27:23] ==================================================
+[10:27:23]   N-RP  |  incarcare date din baza de date
+[10:27:23] ==================================================
+[10:27:23] [DB] Conectat la MySQL cu succes!
+[10:27:23] 
+----------------------------------
+[10:27:23]   NostalgiaRP by Nikolas Maduro  
+
+[10:27:23] ----------------------------------
+
+[10:27:23] Number of vehicle models: 0
+[10:27:23] [Load] Factiuni: 8
+[10:27:23] [Load] Case: 42
+[10:27:23] [Load] Hoteluri: 11
+[10:27:23] [Load] Interioare GTA: 138
+[10:27:23] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[10:27:23] [Load] Animale: 2
+[10:27:23] [Load] Copaci: 1
+[10:27:23] [Load] Business-uri: 22
+[10:27:23] [Load] Turf-uri: 8
+[10:27:23] [Load] ATM-uri: 10
+[10:27:23] [Load] Tomberoane: 6
+[10:27:23] [Load] Shop-uri: 10
+[10:27:23] [Load] Magazine de haine (create in-game): 2
+[10:27:23] [Load] Ammu-Nation-uri (create in-game): 4
+[10:27:23] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[10:27:23] [Load] Locatii: 45
+[10:27:23] [Load] Cosuri baschet: 4
+[10:27:23] [Load] Spawn-uri baschet: 32
+[10:27:23] [Load] Vehicule factiune: 102
+[10:27:23] [Load] Vehicule personale: 36
+[10:27:23] [Load] Rulote: 1
+[10:27:23] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[10:27:23] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[10:27:23] [Load] Recorduri curse: 18
+[10:27:23] [Load] Ferme: 7
+[10:27:23] [Load] Utilaje ferma: 5
+[10:27:23] ==================================================
+[10:27:23]   N-RP  |  gamemode incarcat cu succes.
+[10:27:23] ==================================================
+[10:27:23]  
+[10:27:43] [connection] 127.0.0.1:53984 requests connection cookie.
+[10:27:44] [connection] incoming connection: 127.0.0.1:53984 id: 0
+[10:27:44] [join] Punctulet has joined the server (0:127.0.0.1)
+[10:29:50] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:29:04] filterscripts = ""  (string)
+[15:29:04] 
+[15:29:04] Server Plugins
+[15:29:04] --------------
+[15:29:04]  Loading plugin: mysql
+[15:29:05]  >> plugin.mysql: R41-4 successfully loaded.
+[15:29:05]   Loaded.
+[15:29:05]  Loading plugin: streamer
+[15:29:05] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:29:05]   Loaded.
+[15:29:05]  Loaded 2 plugins.
+
+[15:29:05] 
+[15:29:05] Filterscripts
+[15:29:05] ---------------
+[15:29:05]   Loaded 0 filterscripts.
+
+[15:29:05] Script[gamemodes/bare.amx]: Run time error 18: "File is for a newer version of the AMX"
+[15:29:05] Failed to load 'gamemodes/bare.amx' script.
+[15:29:05] Number of vehicle models: 0
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:29:09] filterscripts = ""  (string)
+[15:29:09] 
+[15:29:09] Server Plugins
+[15:29:09] --------------
+[15:29:09]  Loading plugin: mysql
+[15:29:09]  >> plugin.mysql: R41-4 successfully loaded.
+[15:29:09]   Loaded.
+[15:29:09]  Loading plugin: streamer
+[15:29:09] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:29:09]   Loaded.
+[15:29:09]  Loaded 2 plugins.
+
+[15:29:09] 
+[15:29:09] Filterscripts
+[15:29:09] ---------------
+[15:29:09]   Loaded 0 filterscripts.
+
+[15:29:09] Script[gamemodes/bare.amx]: Run time error 18: "File is for a newer version of the AMX"
+[15:29:09] Failed to load 'gamemodes/bare.amx' script.
+[15:29:09] Number of vehicle models: 0
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[15:56:54] filterscripts = ""  (string)
+[15:56:54] 
+[15:56:54] Server Plugins
+[15:56:54] --------------
+[15:56:54]  Loading plugin: mysql
+[15:56:54]  >> plugin.mysql: R41-4 successfully loaded.
+[15:56:54]   Loaded.
+[15:56:54]  Loading plugin: streamer
+[15:56:54] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[15:56:54]   Loaded.
+[15:56:54]  Loaded 2 plugins.
+
+[15:56:54] 
+[15:56:54] Filterscripts
+[15:56:54] ---------------
+[15:56:54]   Loaded 0 filterscripts.
+
+[15:56:55] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[15:56:55]  
+[15:56:55] ==================================================
+[15:56:55]   N-RP  |  incarcare date din baza de date
+[15:56:55] ==================================================
+[15:56:55] [DB] Conectat la MySQL cu succes!
+[15:56:55] 
+----------------------------------
+[15:56:55]   NostalgiaRP by Nikolas Maduro  
+
+[15:56:55] ----------------------------------
+
+[15:56:55] Number of vehicle models: 0
+[15:56:55] [Load] Factiuni: 8
+[15:56:55] [Load] Case: 42
+[15:56:55] [Load] Hoteluri: 11
+[15:56:55] [Load] Interioare GTA: 138
+[15:56:55] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[15:56:55] [Load] Animale: 2
+[15:56:55] [Load] Copaci: 1
+[15:56:55] [Load] Business-uri: 22
+[15:56:55] [Load] Turf-uri: 8
+[15:56:55] [Load] ATM-uri: 10
+[15:56:55] [Load] Shop-uri: 10
+[15:56:55] [Load] Magazine de haine (create in-game): 2
+[15:56:55] [Load] Ammu-Nation-uri (create in-game): 4
+[15:56:55] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[15:56:55] [Load] Locatii: 46
+[15:56:55] [Load] Cosuri baschet: 4
+[15:56:55] [Load] Spawn-uri baschet: 32
+[15:56:55] [Load] Vehicule factiune: 102
+[15:56:55] [Load] Vehicule personale: 36
+[15:56:55] [Load] Rulote: 1
+[15:56:55] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[15:56:55] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[15:56:55] [Load] Recorduri curse: 18
+[15:56:55] [Load] Ferme: 7
+[15:56:55] [Load] Utilaje ferma: 5
+[15:56:55] ==================================================
+[15:56:55]   N-RP  |  gamemode incarcat cu succes.
+[15:56:55] ==================================================
+[15:56:55]  
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[16:00:18] filterscripts = ""  (string)
+[16:00:18] 
+[16:00:18] Server Plugins
+[16:00:18] --------------
+[16:00:18]  Loading plugin: mysql
+[16:00:18]  >> plugin.mysql: R41-4 successfully loaded.
+[16:00:18]   Loaded.
+[16:00:18]  Loading plugin: streamer
+[16:00:18] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:00:18]   Loaded.
+[16:00:18]  Loaded 2 plugins.
+
+[16:00:18] 
+[16:00:18] Filterscripts
+[16:00:18] ---------------
+[16:00:18]   Loaded 0 filterscripts.
+
+[16:00:18] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[16:00:18]  
+[16:00:18] ==================================================
+[16:00:18]   N-RP  |  incarcare date din baza de date
+[16:00:18] ==================================================
+[16:00:18] [DB] Conectat la MySQL cu succes!
+[16:00:18] 
+----------------------------------
+[16:00:18]   NostalgiaRP by Nikolas Maduro  
+
+[16:00:18] ----------------------------------
+
+[16:00:18] Number of vehicle models: 0
+[16:00:18] [Load] Factiuni: 8
+[16:00:18] [Load] Case: 42
+[16:00:18] [Load] Hoteluri: 11
+[16:00:18] [Load] Interioare GTA: 138
+[16:00:18] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:00:18] [Load] Animale: 2
+[16:00:18] [Load] Copaci: 1
+[16:00:18] [Load] Business-uri: 22
+[16:00:18] [Load] Turf-uri: 8
+[16:00:18] [Load] ATM-uri: 10
+[16:00:18] [Load] Shop-uri: 10
+[16:00:18] [Load] Magazine de haine (create in-game): 2
+[16:00:18] [Load] Ammu-Nation-uri (create in-game): 4
+[16:00:18] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:00:18] [Load] Locatii: 46
+[16:00:18] [Load] Cosuri baschet: 4
+[16:00:18] [Load] Spawn-uri baschet: 32
+[16:00:18] [Load] Vehicule factiune: 102
+[16:00:18] [Load] Vehicule personale: 36
+[16:00:18] [Load] Rulote: 1
+[16:00:18] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:00:18] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:00:18] [Load] Recorduri curse: 18
+[16:00:18] [Load] Ferme: 7
+[16:00:18] [Load] Utilaje ferma: 5
+[16:00:18] ==================================================
+[16:00:18]   N-RP  |  gamemode incarcat cu succes.
+[16:00:18] ==================================================
+[16:00:18]  
+[16:08:21] [connection] 127.0.0.1:51446 requests connection cookie.
+[16:08:22] [connection] incoming connection: 127.0.0.1:51446 id: 0
+[16:08:23] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:09:22] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[16:16:13] filterscripts = ""  (string)
+[16:16:13] 
+[16:16:13] Server Plugins
+[16:16:13] --------------
+[16:16:13]  Loading plugin: mysql
+[16:16:13]  >> plugin.mysql: R41-4 successfully loaded.
+[16:16:13]   Loaded.
+[16:16:13]  Loading plugin: streamer
+[16:16:13] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:16:13]   Loaded.
+[16:16:13]  Loaded 2 plugins.
+
+[16:16:13] 
+[16:16:13] Filterscripts
+[16:16:13] ---------------
+[16:16:13]   Loaded 0 filterscripts.
+
+[16:16:13] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[16:16:13]  
+[16:16:13] ==================================================
+[16:16:13]   N-RP  |  incarcare date din baza de date
+[16:16:13] ==================================================
+[16:16:13] [DB] Conectat la MySQL cu succes!
+[16:16:13] 
+----------------------------------
+[16:16:13]   NostalgiaRP by Nikolas Maduro  
+
+[16:16:13] ----------------------------------
+
+[16:16:13] Number of vehicle models: 0
+[16:16:13] [Load] Factiuni: 8
+[16:16:13] [Load] Case: 42
+[16:16:13] [Load] Hoteluri: 11
+[16:16:13] [Load] Interioare GTA: 138
+[16:16:13] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:16:13] [Load] Animale: 2
+[16:16:13] [Load] Copaci: 1
+[16:16:13] [Load] Business-uri: 22
+[16:16:13] [Load] Turf-uri: 8
+[16:16:13] [Load] ATM-uri: 10
+[16:16:13] [Load] Tomberoane: 6
+[16:16:13] [Load] Shop-uri: 10
+[16:16:13] [Load] Magazine de haine (create in-game): 2
+[16:16:13] [Load] Ammu-Nation-uri (create in-game): 4
+[16:16:13] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:16:13] [Load] Locatii: 46
+[16:16:13] [Load] Cosuri baschet: 4
+[16:16:13] [Load] Spawn-uri baschet: 32
+[16:16:13] [Load] Vehicule factiune: 102
+[16:16:13] [Load] Vehicule personale: 36
+[16:16:13] [Load] Rulote: 1
+[16:16:13] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:16:13] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:16:13] [Load] Recorduri curse: 18
+[16:16:13] [Load] Ferme: 7
+[16:16:13] [Load] Utilaje ferma: 5
+[16:16:13] ==================================================
+[16:16:13]   N-RP  |  gamemode incarcat cu succes.
+[16:16:13] ==================================================
+[16:16:13]  
+[16:16:37] [connection] 127.0.0.1:56917 requests connection cookie.
+[16:16:39] [connection] incoming connection: 127.0.0.1:56917 id: 0
+[16:16:39] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:18:57] [PayDay] Distribuit la 16:00.
+[16:18:57] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[16:18:57] [Load] Animale: 2
+[16:18:57] [PayDay] Distribuit la 16:00.
+[16:18:57] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[16:18:57] [Load] Animale: 2
+[16:19:02] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[16:32:09] filterscripts = ""  (string)
+[16:32:09] 
+[16:32:09] Server Plugins
+[16:32:09] --------------
+[16:32:09]  Loading plugin: mysql
+[16:32:09]  >> plugin.mysql: R41-4 successfully loaded.
+[16:32:09]   Loaded.
+[16:32:09]  Loading plugin: streamer
+[16:32:09] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:32:09]   Loaded.
+[16:32:09]  Loaded 2 plugins.
+
+[16:32:09] 
+[16:32:09] Filterscripts
+[16:32:09] ---------------
+[16:32:09]   Loaded 0 filterscripts.
+
+[16:32:10] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[16:32:10]  
+[16:32:10] ==================================================
+[16:32:10]   N-RP  |  incarcare date din baza de date
+[16:32:10] ==================================================
+[16:32:10] [DB] Conectat la MySQL cu succes!
+[16:32:10] 
+----------------------------------
+[16:32:10]   NostalgiaRP by Nikolas Maduro  
+
+[16:32:10] ----------------------------------
+
+[16:32:10] Number of vehicle models: 0
+[16:32:10] [Load] Factiuni: 8
+[16:32:10] [Load] Case: 42
+[16:32:10] [Load] Hoteluri: 11
+[16:32:10] [Load] Interioare GTA: 138
+[16:32:10] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:32:10] [Load] Animale: 2
+[16:32:10] [Load] Copaci: 1
+[16:32:10] [Load] Business-uri: 22
+[16:32:10] [Load] Turf-uri: 8
+[16:32:10] [Load] ATM-uri: 10
+[16:32:10] [Load] Tomberoane: 6
+[16:32:10] [Load] Shop-uri: 10
+[16:32:10] [Load] Magazine de haine (create in-game): 2
+[16:32:10] [Load] Ammu-Nation-uri (create in-game): 4
+[16:32:10] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:32:10] [Load] Locatii: 46
+[16:32:10] [Load] Cosuri baschet: 4
+[16:32:10] [Load] Spawn-uri baschet: 32
+[16:32:10] [Load] Vehicule factiune: 102
+[16:32:10] [Load] Vehicule personale: 36
+[16:32:10] [Load] Rulote: 1
+[16:32:10] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:32:10] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:32:10] [Load] Recorduri curse: 18
+[16:32:10] [Load] Ferme: 7
+[16:32:10] [Load] Utilaje ferma: 5
+[16:32:10] ==================================================
+[16:32:10]   N-RP  |  gamemode incarcat cu succes.
+[16:32:10] ==================================================
+[16:32:10]  
+[16:32:27] [connection] 127.0.0.1:58928 requests connection cookie.
+[16:32:28] [connection] incoming connection: 127.0.0.1:58928 id: 0
+[16:32:28] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:33:21] [part] Punctulet has left the server (0:1)
