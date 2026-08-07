@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
 $factionId = (int)($_GET['faction'] ?? $_POST['faction'] ?? 0);
@@ -54,7 +54,8 @@ $factionName = ucp_faction_name($factionId);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Apply to <?= ucp_escape($factionName) ?></title>
+<title>Nostalgia LosSantos | RPG — Apply to <?= ucp_escape($factionName) ?></title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   .apply-form label { display: block; font-size: 0.85rem; color: var(--muted); margin: 14px 0 4px; }
@@ -81,7 +82,7 @@ $factionName = ucp_faction_name($factionId);
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <main style="max-width:600px">
   <h1>Apply to join <span style="color:<?= ucp_faction_color($factionId) ?>"><?= ucp_escape($factionName) ?></span></h1>

@@ -1,8 +1,13 @@
 <?php
-require_once __DIR__ . '/../includes/admin_common.php';
+require_once __DIR__ . '/../../includes/admin_common.php';
 ucp_admin_require_level5();
 
 $houseTypeName = [1 => 'Villa', 2 => 'City House', 3 => 'Apartment', 4 => 'Countryside House'];
+$sectionNav = [
+  ['list', '🏠', 'Houses'],
+  ['prices', '💲', 'Prices'],
+  ['player', '🧍', 'Player'],
+];
 
 $flash = null;
 $flashErr = false;
@@ -135,18 +140,25 @@ $adminActive = 'houses';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Houses</title>
+<title>Nostalgia LosSantos | RPG — Houses</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="<?= UCP_BASE ?>/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
 </head>
 <body>
 
-<?php include __DIR__ . '/../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
+
+<nav class="section-nav" aria-label="Jump to section">
+  <?php foreach ($sectionNav as [$anchorId, $icon, $label]): ?>
+  <a href="/ucp/admin/<?= $anchorId ?>.php" title="<?= htmlspecialchars($label) ?>"><span><?= $icon ?></span></a>
+  <?php endforeach; ?>
+</nav>
 
 <main>
   <h1>🏠 Houses</h1>
   <p style="color:var(--muted)">Edit houses directly. Changes are saved immediately to the database.</p>
 
-  <?php include __DIR__ . '/../includes/admin_nav.php'; ?>
+  <?php include __DIR__ . '/../../includes/admin_nav.php'; ?>
 
   <?php if ($flash): ?>
     <div class="flash <?= $flashErr ? 'err' : 'ok' ?>"><?= ucp_escape($flash) ?></div>

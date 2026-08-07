@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
 // Weapon ID 0-46 reference (see https://sampwiki.blast.hk/wiki/Weapons and https://open.mp/docs/scripting/resources/weaponids).
@@ -74,7 +74,8 @@ unset($w);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Weapons</title>
+<title>Nostalgia LosSantos | RPG — Weapons</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   .wicon-box { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
@@ -83,7 +84,7 @@ unset($w);
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <main>
   <h1>🔫 Weapons</h1>

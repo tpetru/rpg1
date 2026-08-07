@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/admin_common.php';
+require_once __DIR__ . '/../../includes/admin_common.php';
 ucp_admin_require_level5();
 
 $flash = null;
@@ -69,18 +69,19 @@ $adminActive = 'prices';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Prices</title>
+<title>Nostalgia LosSantos | RPG — Prices</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="<?= UCP_BASE ?>/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
 </head>
 <body>
 
-<?php include __DIR__ . '/../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <main>
   <h1>💲 Prices</h1>
   <p style="color:var(--muted)">Server-wide economy settings (server_setup). Changes are saved immediately to the database.</p>
 
-  <?php include __DIR__ . '/../includes/admin_nav.php'; ?>
+  <?php include __DIR__ . '/../../includes/admin_nav.php'; ?>
 
   <?php if ($flash): ?>
     <div class="flash <?= $flashErr ? 'err' : 'ok' ?>"><?= ucp_escape($flash) ?></div>

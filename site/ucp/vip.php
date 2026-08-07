@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
 $pid = ucp_current_player_id();
@@ -28,7 +28,8 @@ $benefits = [
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — VIP</title>
+<title>Nostalgia LosSantos | RPG — VIP</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   .vip-hero { text-align: center; padding: 36px 20px; }
@@ -47,12 +48,12 @@ $benefits = [
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <main>
   <div class="vip-hero">
     <h1>⭐ VIP Membership</h1>
-    <p>Support the server and unlock exclusive perks across the whole roleplay experience.</p>
+    <p>Support the server and unlock exclusive perks across the whole RPG experience.</p>
     <?php if ($isVip): ?>
       <div class="vip-status on">✅ You are a VIP member</div>
     <?php else: ?>

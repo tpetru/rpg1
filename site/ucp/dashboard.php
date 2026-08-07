@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
 $pid = ucp_current_player_id();
@@ -170,12 +170,13 @@ if ($ownedSkinCount > 15 && $ownedSkinCount <= 30) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Dashboard</title>
+<title>Nostalgia LosSantos | RPG — Dashboard</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <?php
 $sectionNav = [
@@ -185,11 +186,12 @@ $sectionNav = [
     ['card-collections', '👕', 'Skin collections'],
     ['card-cars',        '🚗', 'Cars'],
 ];
-if ($myHouse)   $sectionNav[] = ['card-house',    '🏠', 'House'];
-if ($myBusiness) $sectionNav[] = ['card-business', '🏢', 'Business'];
-if ($farm)      $sectionNav[] = ['card-farm',     '🌾', 'Farm'];
-if ($myHotel)   $sectionNav[] = ['card-hotel',    '🏨', 'Hotel'];
-if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
+$sectionNav[] = ['card-house',    '🏠', 'House'];
+$sectionNav[] = ['card-business', '🏢', 'Business'];
+$sectionNav[] = ['card-farm',     '🌾', 'Farm'];
+$sectionNav[] = ['card-forest',   '🌲', 'Forest'];
+$sectionNav[] = ['card-hotel',    '🏨', 'Hotel'];
+$sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
 ?>
 <nav class="section-nav" aria-label="Jump to section">
   <?php foreach ($sectionNav as [$anchorId, $icon, $label]): ?>
@@ -336,9 +338,11 @@ if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
     <?php endif; ?>
   </div>
 
-    <?php if ($myHouse): ?>
     <div class="card" id="card-house">
-      <h2>🏠 Your house</h2>
+      <h2>🏠 Your house (<?= $myHouse ? 1 : 0 ?>)</h2>
+      <?php if (!$myHouse): ?>
+      <p style="color:var(--muted)">You don't have any house. Buy one in-game with <code>/buyhouse</code>.</p>
+      <?php else: ?>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($myHouse['name']) ?> (ID #<?= (int)$myHouse['id'] ?>)</td></tr>
         <tr><th>Type</th><td><?= ucp_escape($houseTypeName[(int)$myHouse['type']] ?? 'Unknown') ?></td></tr>
@@ -435,12 +439,14 @@ if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
           <?php endforeach; ?>
         </table>
       <?php endif; ?>
+      <?php endif; ?>
     </div>
-    <?php endif; ?>
 
-    <?php if ($myBusiness): ?>
     <div class="card" id="card-business">
-      <h2>🏢 Your business</h2>
+      <h2>🏢 Your business (<?= $myBusiness ? 1 : 0 ?>)</h2>
+      <?php if (!$myBusiness): ?>
+      <p style="color:var(--muted)">You don't have any business. Buy one in-game with <code>/buybiz</code>.</p>
+      <?php else: ?>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($myBusiness['name']) ?> (ID #<?= (int)$myBusiness['id'] ?>)</td></tr>
         <tr><th>Price</th><td>$<?= ucp_money($myBusiness['price']) ?></td></tr>
@@ -448,12 +454,14 @@ if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         <tr><th>For sale</th><td><span class="pill <?= $myBusiness['is_for_sale'] ? 'pill-bad' : 'pill-ok' ?>"><?= $myBusiness['is_for_sale'] ? 'Yes' : 'No' ?></span></td></tr>
         <tr><th>ANAF</th><td><span class="pill <?= $myBusiness['anaf'] ? 'pill-bad' : 'pill-ok' ?>"><?= $myBusiness['anaf'] ? 'Blocked' : 'OK' ?></span></td></tr>
       </table>
+      <?php endif; ?>
     </div>
-    <?php endif; ?>
 
-    <?php if ($farm): ?>
     <div class="card" id="card-farm">
-      <h2>🌾 Your farm</h2>
+      <h2>🌾 Your farm (<?= $farm ? 1 : 0 ?>)</h2>
+      <?php if (!$farm): ?>
+      <p style="color:var(--muted)">You don't have any farm. Buy one in-game with <code>/buyfarm</code>.</p>
+      <?php else: ?>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($farm['name']) ?> (ID #<?= (int)$farm['id'] ?>)</td></tr>
         <tr><th>Price</th><td>$<?= ucp_money($farm['price']) ?></td></tr>
@@ -499,12 +507,32 @@ if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
           <?php endforeach; ?>
         </table>
       <?php endif; ?>
+      <?php endif; ?>
     </div>
-    <?php endif; ?>
 
-    <?php if ($myHotel): ?>
+    <div class="card" id="card-forest">
+      <h2>🌲 Your forest (<?= $forest ? 1 : 0 ?>)</h2>
+      <?php if (!$forest): ?>
+      <p style="color:var(--muted)">You don't have any forest. Buy one in-game with <code>/buyforest</code>.</p>
+      <?php else: ?>
+      <table>
+        <tr><th>Name</th><td><?= ucp_escape($forest['owner'] ?? 'N/A') ?> (ID #<?= (int)$forest['id'] ?>)</td></tr>
+        <tr><th>Price</th><td>$<?= ucp_money($forest['price']) ?></td></tr>
+        <tr><th>Size</th><td><?= number_format((float)$forest['size'], 2) ?> units</td></tr>
+        <tr><th>Max Trees</th><td><?= (int)$forest['maxTree'] ?></td></tr>
+        <tr><th>Current Trees</th><td><?= (int)$forest['currentTree'] ?></td></tr>
+        <tr><th>Saplings in storage</th><td><?= (int)$forest['saplings'] ?></td></tr>
+        <tr><th>Saplings planted</th><td><?= (int)$forest['plantedSaplings'] ?></td></tr>
+        <tr><th>For sale</th><td><span class="pill <?= $forest['isForSale'] ? 'pill-bad' : 'pill-ok' ?>"><?= $forest['isForSale'] ? 'Yes' : 'No' ?></span></td></tr>
+      </table>
+      <?php endif; ?>
+    </div>
+
     <div class="card" id="card-hotel">
-      <h2>🏨 Your hotel</h2>
+      <h2>🏨 Your hotel (<?= $myHotel ? 1 : 0 ?>)</h2>
+      <?php if (!$myHotel): ?>
+      <p style="color:var(--muted)">You don't have any hotel. Buy one in-game with <code>/buyhotel</code>.</p>
+      <?php else: ?>
       <table>
         <tr><th>Name</th><td><?= ucp_escape($myHotel['name']) ?> (ID #<?= (int)$myHotel['id'] ?>)</td></tr>
         <tr><th>Price</th><td>$<?= ucp_money($myHotel['price']) ?></td></tr>
@@ -515,8 +543,8 @@ if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         <tr><th>Rooms taken</th><td><?= $myHotelRenterCount ?>/<?= (int)($myHotel['capacity'] ?? 5) ?></td></tr>
         <?php endif; ?>
       </table>
+      <?php endif; ?>
     </div>
-    <?php endif; ?>
 
     <?php
     $caravanImg = [
@@ -525,9 +553,11 @@ if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         3 => 'https://files.prineside.com/gtasa_samp_model_id/white/3172_w.jpg',
     ];
     ?>
-    <?php if ($caravan): ?>
     <div class="card" id="card-caravan">
-      <h2>🚐 Your caravan</h2>
+      <h2>🚐 Your caravan (<?= $caravan ? 1 : 0 ?>)</h2>
+      <?php if (!$caravan): ?>
+      <p style="color:var(--muted)">You don't have any caravan. These are currently handed out by server staff.</p>
+      <?php else: ?>
       <table>
         <tr>
           <td rowspan="4" class="caravan-box">
@@ -540,8 +570,8 @@ if ($caravan)   $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         <tr><th>Weight</th><td><?= (int)$caravan['rWeight'] ?>kg</td></tr>
         <tr><th>Status</th><td><?= $caravan['rCamping'] ? 'Camping' : 'Parked' ?></td></tr>
       </table>
+      <?php endif; ?>
     </div>
-    <?php endif; ?>
 </main>
 
 <footer>Nostalgia: Los Santos UCP</footer>

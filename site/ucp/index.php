@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 if (isset($_SESSION['ucp_player_id'])) {
     header('Location: dashboard.php');
@@ -7,11 +7,12 @@ if (isset($_SESSION['ucp_player_id'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP</title>
+<title>Nostalgia LosSantos | RPG — UCP</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   .home-wrap {

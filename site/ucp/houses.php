@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
 $houseTypeName = [1 => 'Villa', 2 => 'City House', 3 => 'Apartment', 4 => 'Countryside House'];
@@ -13,13 +13,14 @@ $listingsActive = 'houses';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Houses</title>
+<title>Nostalgia LosSantos | RPG — Houses</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
-<?php include __DIR__ . '/includes/listings_nav.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/listings_nav.php'; ?>
 
 <main>
   <h1>🏠 Houses</h1>

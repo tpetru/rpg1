@@ -22274,3 +22274,52 @@ v0.3.7-R2, (C)2005-2015 SA-MP Team
 [16:32:28] [connection] incoming connection: 127.0.0.1:58928 id: 0
 [16:32:28] [join] Punctulet has joined the server (0:127.0.0.1)
 [16:33:21] [part] Punctulet has left the server (0:1)
+
+----------
+Loaded log file: "server_log.txt".
+----------
+
+SA-MP Dedicated Server
+----------------------
+v0.3.7-R2, (C)2005-2015 SA-MP Team
+
+[12:33:46] filterscripts = ""  (string)
+[12:33:46] 
+[12:33:46] Server Plugins
+[12:33:46] --------------
+[12:33:46]  Loading plugin: mysql
+[12:33:46]  >> plugin.mysql: R41-4 successfully loaded.
+[12:33:46]   Loaded.
+[12:33:46]  Loading plugin: streamer
+[12:33:46] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[12:33:46]   Loaded.
+[12:33:46]  Loaded 2 plugins.
+
+[12:33:46] 
+[12:33:46] Filterscripts
+[12:33:46] ---------------
+[12:33:46]   Loaded 0 filterscripts.
+
+[12:33:46] AllowAdminTeleport() : function is deprecated. Please see OnPlayerClickMap()
+[12:33:46]  
+[12:33:46] ==================================================
+[12:33:46]   N-RP  |  incarcare date din baza de date
+[12:33:46] ==================================================
+[12:33:46] [DB] EROARE: Nu s-a putut conecta la MySQL!
+[12:33:46] 
+----------------------------------
+[12:33:46]   NostalgiaRP by Nikolas Maduro  
+
+[12:33:46] ----------------------------------
+
+[12:33:46] Number of vehicle models: 0
+[12:33:46] --- Server Shutting Down.
+[12:33:46] plugin.mysql: Unloading plugin...
+[12:33:46] plugin.mysql: Plugin unloaded.
+[12:33:46] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+

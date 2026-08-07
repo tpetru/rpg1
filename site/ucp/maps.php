@@ -1,8 +1,8 @@
 <?php
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
 // Los Santos city bounds in game coordinates (approximate) - the map shows ONLY this area
@@ -43,15 +43,19 @@ $cropY0Frac = (WORLD_MAX - LS_MAX_Y) / $worldSpan; // Y flipped (north = up in t
 $mapImgLeft = round((100 - $mapImgSizeX) * $cropX0Frac / (1 - $cropWFrac), 2);
 $mapImgTop  = round((100 - $mapImgSizeY) * $cropY0Frac / (1 - $cropHFrac), 2);
 
-$allBusinesses = $mysqli->query("SELECT `id`,`name`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `businesses` WHERE `loc_x` != 0 OR `loc_y` != 0")->fetch_all(MYSQLI_ASSOC);
-$allShops      = $mysqli->query("SELECT `shopID`,`shopLocX`,`shopLocY` FROM `shops` WHERE `shopLocX` != 0 OR `shopLocY` != 0")->fetch_all(MYSQLI_ASSOC);
-$allFastfood   = $mysqli->query("SELECT `ffID`,`ffName`,`ffType`,`ffLocX`,`ffLocY` FROM `fastfood` WHERE `ffLocX` != 0 OR `ffLocY` != 0")->fetch_all(MYSQLI_ASSOC);
-$allFactions   = $mysqli->query("SELECT `id`,`name`,`lead`,`hq_x`,`hq_y` FROM `factions` WHERE `hq_x` != 0 OR `hq_y` != 0")->fetch_all(MYSQLI_ASSOC);
-$allHouses     = $mysqli->query("SELECT `id`,`type`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `houses` WHERE `loc_x` != 0 OR `loc_y` != 0")->fetch_all(MYSQLI_ASSOC);
-$allHotels     = $mysqli->query("SELECT `id`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `hotels` WHERE `loc_x` != 0 OR `loc_y` != 0")->fetch_all(MYSQLI_ASSOC);
-$allAtms       = $mysqli->query("SELECT `atmID`,`atmLocX`,`atmLocY`,`atmBankOwner` FROM `atms` WHERE `atmLocX` != 0 OR `atmLocY` != 0")->fetch_all(MYSQLI_ASSOC);
-$allFarms      = $mysqli->query("SELECT `id`,`name`,`x`,`y`,`isOwned`,`owner`,`is_for_sale` FROM `farms` WHERE `x` != 0 OR `y` != 0")->fetch_all(MYSQLI_ASSOC);
-$allLocations  = $mysqli->query("SELECT `locID`,`locName`,`locX`,`locY`,`locCategory` FROM `locations_admin` WHERE `locForGPS` = 1")->fetch_all(MYSQLI_ASSOC);
+$allBusinesses = ($res = $mysqli->query("SELECT `id`,`name`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `businesses` WHERE `loc_x` != 0 OR `loc_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allShops      = ($res = $mysqli->query("SELECT `shopID`,`shopName`,`shopLocX`,`shopLocY` FROM `shops` WHERE `shopLocX` != 0 OR `shopLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFastfood   = ($res = $mysqli->query("SELECT `ffID`,`ffName`,`ffType`,`ffLocX`,`ffLocY` FROM `fastfood` WHERE `ffLocX` != 0 OR `ffLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFactions   = ($res = $mysqli->query("SELECT `id`,`name`,`lead`,`hq_x`,`hq_y` FROM `factions` WHERE `hq_x` != 0 OR `hq_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allHouses     = ($res = $mysqli->query("SELECT `id`,`type`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `houses` WHERE `loc_x` != 0 OR `loc_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allHotels     = ($res = $mysqli->query("SELECT `id`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `hotels` WHERE `loc_x` != 0 OR `loc_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allAtms       = ($res = $mysqli->query("SELECT `atmID`,`atmLocX`,`atmLocY`,`atmBankOwner` FROM `atms` WHERE `atmLocX` != 0 OR `atmLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFarms      = ($res = $mysqli->query("SELECT `id`,`name`,`x`,`y`,`isOwned`,`owner`,`is_for_sale` FROM `farms` WHERE `x` != 0 OR `y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allForests    = ($res = $mysqli->query("SELECT `id`,`owner`,`locX`,`locY`,`ownerId`,`isForSale` FROM `forests` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allGasStations = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `gasStations` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allClothStores = ($res = $mysqli->query("SELECT `clstID`,`clstName`,`clstX`,`clstY` FROM `clothstores` WHERE `clstX` != 0 OR `clstY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allAmmuNations = ($res = $mysqli->query("SELECT `amoID`,`amoName`,`amoLocX`,`amoLocY` FROM `ammunations` WHERE `amoLocX` != 0 OR `amoLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allLocations  = ($res = $mysqli->query("SELECT `locID`,`locName`,`locX`,`locY`,`locCategory` FROM `locations_admin` WHERE `locForGPS` = 1")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 
 $businesses = array_values(array_filter($allBusinesses, function($b) { return ucp_in_los_santos($b['loc_x'], $b['loc_y']); }));
 $shops      = array_values(array_filter($allShops, function($s) { return ucp_in_los_santos($s['shopLocX'], $s['shopLocY']); }));
@@ -61,6 +65,10 @@ $houses     = array_values(array_filter($allHouses, function($h) { return ucp_in
 $hotels     = array_values(array_filter($allHotels, function($h) { return ucp_in_los_santos($h['loc_x'], $h['loc_y']); }));
 $atms       = array_values(array_filter($allAtms, function($a) { return ucp_in_los_santos($a['atmLocX'], $a['atmLocY']); }));
 $farms      = array_values(array_filter($allFarms, function($f) { return ucp_in_los_santos($f['x'], $f['y']); }));
+$forests    = array_values(array_filter($allForests, function($f) { return ucp_in_los_santos($f['locX'], $f['locY']); }));
+$gasStations = array_values(array_filter($allGasStations, function($g) { return ucp_in_los_santos($g['locX'], $g['locY']); }));
+$clothStores = array_values(array_filter($allClothStores, function($c) { return ucp_in_los_santos($c['clstX'], $c['clstY']); }));
+$ammuNations = array_values(array_filter($allAmmuNations, function($a) { return ucp_in_los_santos($a['amoLocX'], $a['amoLocY']); }));
 $locationsInLS = array_values(array_filter($allLocations, function($l) { return ucp_in_los_santos($l['locX'], $l['locY']); }));
 $jobLocations  = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') === 0; }));
 $locations     = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') !== 0; }));
@@ -84,7 +92,8 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Los Santos Map</title>
+<title>Nostalgia LosSantos | RPG — Los Santos Map</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   main { max-width: 1400px; }
@@ -107,6 +116,10 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
   .dot-hotel { background: #b46eff; }
   .dot-atm { background: #14b8a6; }
   .dot-farm { background: #a3e635; }
+  .dot-forest { background: #22c55e; }
+  .dot-gas { background: #ff6ec7; }
+  .dot-cloth { background: #fbbf24; }
+  .dot-ammo { background: #ef4444; }
   .dot-loc { background: #f472b6; }
   .dot-job { background: #000000; }
 
@@ -150,6 +163,10 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
   .pin-hotel { background: #b46eff; }
   .pin-atm { background: #14b8a6; }
   .pin-farm { background: #a3e635; }
+  .pin-forest { background: #22c55e; }
+  .pin-gas { background: #ff6ec7; }
+  .pin-cloth { background: #fbbf24; }
+  .pin-ammo { background: #ef4444; }
   .pin-loc { background: #f472b6; }
   .pin-job { background: #000000; border-color: rgba(255,255,255,0.5); }
 
@@ -167,7 +184,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <main>
   <h1>🗺️ Los Santos Map</h1>
@@ -187,6 +204,10 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
         <label><input type="checkbox" checked data-cat="hotel"><span class="legend-dot dot-hotel"></span>Hotels (<?= count($hotels) ?>)</label>
         <label><input type="checkbox" checked data-cat="atm"><span class="legend-dot dot-atm"></span>ATMs (<?= count($atms) ?>)</label>
         <label><input type="checkbox" checked data-cat="farm"><span class="legend-dot dot-farm"></span>Farms (<?= count($farms) ?>)</label>
+        <label><input type="checkbox" checked data-cat="forest"><span class="legend-dot dot-forest"></span>Forests (<?= count($forests) ?>)</label>
+        <label><input type="checkbox" checked data-cat="gas"><span class="legend-dot dot-gas"></span>Gas Stations (<?= count($gasStations) ?>)</label>
+        <label><input type="checkbox" checked data-cat="cloth"><span class="legend-dot dot-cloth"></span>Cloth Stores (<?= count($clothStores) ?>)</label>
+        <label><input type="checkbox" checked data-cat="ammo"><span class="legend-dot dot-ammo"></span>AmmuNations (<?= count($ammuNations) ?>)</label>
         <label><input type="checkbox" checked data-cat="loc"><span class="legend-dot dot-loc"></span>Locations (<?= count($locations) ?>)</label>
         <label><input type="checkbox" checked data-cat="job"><span class="legend-dot dot-job"></span>Jobs (<?= count($jobLocations) ?>)</label>
       </div>
@@ -204,7 +225,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
 
         <?php foreach ($shops as $s): [$px, $py] = ucp_world_to_pct($s['shopLocX'], $s['shopLocY']); ?>
           <div class="pin pin-shop" data-cat="shop" style="left:<?= $px ?>%; top:<?= $py ?>%">
-            <div class="pin-tooltip">[ Shop #<?= (int)$s['shopID'] ?> ]</div>
+            <div class="pin-tooltip">[ Shop #<?= (int)$s['shopID'] ?> ]<br>[ <?= ucp_escape($s['shopName']) ?> ]</div>
           </div>
         <?php endforeach; ?>
 
@@ -244,6 +265,12 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
           </div>
         <?php endforeach; ?>
 
+        <?php foreach ($forests as $f): [$px, $py] = ucp_world_to_pct($f['locX'], $f['locY']); ?>
+          <div class="pin pin-forest" data-cat="forest" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ Forest #<?= (int)$f['id'] ?> ]<br>[ <?= ucp_escape($f['owner']) ?> ]<br><?= ucp_owner_line((int)$f['ownerId'] !== 0, $f['owner'], $f['isForSale']) ?></div>
+          </div>
+        <?php endforeach; ?>
+
         <?php foreach ($locations as $l): [$px, $py] = ucp_world_to_pct($l['locX'], $l['locY']); ?>
           <div class="pin pin-loc" data-cat="loc" style="left:<?= $px ?>%; top:<?= $py ?>%">
             <div class="pin-tooltip">[ Location ]<br>[ <?= ucp_escape($l['locName']) ?> ]</div>
@@ -253,6 +280,24 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
         <?php foreach ($jobLocations as $l): [$px, $py] = ucp_world_to_pct($l['locX'], $l['locY']); ?>
           <div class="pin pin-job" data-cat="job" style="left:<?= $px ?>%; top:<?= $py ?>%">
             <div class="pin-tooltip">[ Job ]<br>[ <?= ucp_escape($l['locName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($gasStations as $g): [$px, $py] = ucp_world_to_pct($g['locX'], $g['locY']); ?>
+          <div class="pin pin-gas" data-cat="gas" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ GasStation #<?= (int)$g['id'] ?> ]<br>[ <?= ucp_escape($g['name']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($clothStores as $c): [$px, $py] = ucp_world_to_pct($c['clstX'], $c['clstY']); ?>
+          <div class="pin pin-cloth" data-cat="cloth" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ Cloth Store #<?= (int)$c['clstID'] ?> ]<br>[ <?= ucp_escape($c['clsName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($ammuNations as $a): [$px, $py] = ucp_world_to_pct($a['amoLocX'], $a['amoLocY']); ?>
+          <div class="pin pin-ammo" data-cat="ammo" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ AmmuNations #<?= (int)$a['amoID'] ?> ]<br>[ <?= ucp_escape($a['amoName']) ?> ]</div>
           </div>
         <?php endforeach; ?>
       </div>

@@ -1,14 +1,15 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 ?>
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — How To</title>
+<title>Nostalgia LosSantos | RPG — How To</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   html { scroll-behavior: smooth; }
@@ -100,7 +101,7 @@ ucp_require_login();
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <header class="hero">
   <h1>📖 Ghid How To</h1>
@@ -128,7 +129,7 @@ ucp_require_login();
 
 <section id="jobs">
   <h2>💼 Jobs — <code>/howto job</code></h2>
-  <p class="subtitle">Comanda de bază: <code>/howto job [1-8]</code> pentru un job anume</p>
+  <p class="subtitle">Comanda de bază: <code>/howto job [1-12]</code> pentru un job anume</p>
   <div class="card">
     <p>Jobs let you earn money doing deliveries.</p>
     <ul>
@@ -207,6 +208,20 @@ ucp_require_login();
       <p>Fly to the marked load point and hold still for 3 seconds while it loads fertilizer, then fly to the randomly chosen farm within <span class="num">120 seconds</span>, between altitude <span class="num">100</span> and <span class="num">200</span>, and hit its checkpoint to spray it.</p>
       <p>Pays <span class="num">$2.000-$3.000</span> per run. Too slow or too low/high over the farm and the fertilizer goes to waste - use <code>/job</code> again to retry.</p>
       <p><code>/getjob 9</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
+    </div>
+    <div class="card">
+      <h3>10 — Water Hauler</h3>
+      <p>Transport water. Take it with <code>/getjob 10</code>. Get in the water tanker, then <code>/job</code> to start.</p>
+      <p>Load at the water depot, deliver to 2 locations (farms or businesses), then return to load.</p>
+      <p><strong>Pay:</strong> <span class="num">$1.200</span> + <span class="num">$1</span> per distance unit to the delivery point, per delivery.</p>
+      <p><code>/getjob 10</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
+    </div>
+    <div class="card">
+      <h3>12 — Lumberjack</h3>
+      <p>Log timber from forests. Take it with <code>/getjob 12</code>. Get in a job vehicle (Dozer, Dune, see <code>/joblist</code>), then <code>/job</code> to start.</p>
+      <p>Drive to the marked forest, load logs at the logging point, then transport them to the lumber mill for unload. Repeat up to 5 loads.</p>
+      <p><strong>Pay:</strong> <span class="num">$3.000</span> base + <span class="num">$2</span> per distance unit to the mill per load. Bonus: <span class="num">$10.000</span> for completing all 5 loads in one session.</p>
+      <p><code>/getjob 12</code>, <code>/job</code>, <code>/stopwork</code>, <code>/joblist</code></p>
     </div>
   </div>
 </section>
@@ -724,7 +739,7 @@ ucp_require_login();
 
 </main>
 
-<footer>Nostalgia: Los Santos UCP — generat din comanda <code>/howto</code> a gamemode-ului</footer>
+<footer>Nostalgia LosSantos | RPG — generat din comanda <code>/howto</code> a gamemode-ului</footer>
 
 </body>
 </html>

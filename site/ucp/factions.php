@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
 // Live member counts (see `factions`.`members`, synced from `players` whenever someone joins/leaves)
@@ -29,11 +29,12 @@ $factionDescriptions = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Factions</title>
+<title>Nostalgia LosSantos | RPG — Factions</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 <style>
   .faction-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
@@ -48,7 +49,7 @@ $factionDescriptions = [
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <main>
   <h1>🏛️ Factions</h1>

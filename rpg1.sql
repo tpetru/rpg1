@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Aug 06, 2026 at 10:02 AM
+-- Generation Time: Aug 07, 2026 at 08:28 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -214,7 +214,7 @@ INSERT INTO `bin` (`id`, `type`, `status_current`, `status_max`, `locX`, `locY`,
 (2, 1, 10, 10, 1919.76, -2088.33, 13.5),
 (3, 1, 10, 10, 2382.3, -1940.17, 13.5),
 (4, 1, 10, 10, 1420.46, -1846.38, 13.5469),
-(5, 1, 9, 10, 1516.62, -1849.3, 13.5469),
+(5, 1, 10, 10, 1516.62, -1849.3, 13.5469),
 (6, 1, 10, 10, 1461.48, -1488.45, 13.5469);
 
 -- --------------------------------------------------------
@@ -257,7 +257,7 @@ INSERT INTO `businesses` (`id`, `owned`, `owner`, `owner_id`, `price`, `bank`, `
 (10, 0, '', 0, 3000000, 500, 2851.76, -1532.58, 11.0938, 'Extinctor Seller', 1, 0, 0, 3000000),
 (11, 0, '', 0, 3000000, 0, 1676.3, -1634.62, 14.2266, 'Insurance Company', 1, 0, 0, 3000000),
 (12, 0, '', 0, 3000000, 0, 1032.16, -946.005, 42.6399, 'FastFood Restaurant', 1, 0, 0, 3000000),
-(13, 0, '', 0, 3000000, 255, 2350.67, -1412.17, 23.9924, 'Home Furnitures', 1, 0, 0, 3000000),
+(13, 0, '', 0, 3000000, 505, 2350.67, -1412.17, 23.9924, 'Home Furnitures', 1, 0, 0, 3000000),
 (14, 0, '', 0, 3000000, 360, 1095.79, -1437.42, 22.7631, 'Supermarket Carifura', 1, 0, 0, 3000000),
 (15, 0, '', 0, 3000000, 30, 1045.71, -324.804, 73.9922, 'Hidden Harbor Lodge', 1, 0, 0, 3000000),
 (16, 0, '', 0, 3000000, 0, 988.774, -1366.03, 13.5488, 'Glovo Co.', 1, 0, 0, 3000000),
@@ -349,13 +349,13 @@ CREATE TABLE `factions` (
 --
 
 INSERT INTO `factions` (`id`, `name`, `members`, `lead`, `bank`, `pickup_id`, `mapicon_id`, `hq_x`, `hq_y`, `hq_z`, `interior_x`, `interior_y`, `interior_z`, `interior`, `vw`, `seif_herbs`, `seif_drugs`, `skin`, `skin1`, `skin2`, `skin3`, `smuggle_cooldown_day`, `max_members`, `application_on`, `interior_a`) VALUES
-(1, 'Politia Romana', 0, '', 12000, 1247, 30, 1554.2, -1675.9, 16.25, 247.2, 63.4, 1003.7, 6, 0, 0, 0, 0, 266, 281, 265, 0, 6, 1, 0),
-(2, 'Registrul Auto Roman', 0, 'Punctulet', 2850, 1581, 55, 918.405, -1252.19, 16.2109, 246.06, 108.97, 1003.3, 10, 2, 0, 0, 0, 268, 304, 302, 0, 6, 1, 0),
-(3, 'SMURD', 1, '', 250, 11738, 22, 1172.71, -1323.21, 15.4017, 2267.75, 1647.55, 1084.23, 1, 3, 0, 0, 0, 276, 277, 274, 0, 6, 1, 270.473),
-(4, 'Mafia Europeana', 0, '', 318600, 1314, 58, 1872.64, -2020.46, 13.5469, 2569.41, -1301.77, 1044.12, 2, 4, 684, 5, 0, 114, 115, 116, 0, 6, 1, 0),
-(5, 'Mafia Americana', 1, '', 35700, 1314, 59, 1905.89, -1115.16, 25.9538, 2569.41, -1301.77, 1044.12, 2, 5, 0, 0, 0, 102, 103, 104, 0, 6, 1, 0),
-(6, 'Mafia Africana', 1, '', 36000, 1314, 62, 2495.4, -1688.71, 13.9735, 2569.41, -1301.77, 1044.12, 2, 6, 0, 0, 0, 105, 106, 107, 0, 6, 1, 0),
-(7, 'Mafia Asiatica', 0, '', 38100, 1314, 60, 2231.89, -1159.81, 25.8906, 2569.41, -1301.77, 1044.12, 2, 7, 0, 0, 0, 108, 109, 110, 0, 6, 1, 0),
+(1, 'Police Department', 0, '', 12000, 1247, 30, 1554.2, -1675.9, 16.25, 247.2, 63.4, 1003.7, 6, 0, 0, 0, 0, 266, 281, 265, 0, 6, 1, 0),
+(2, 'Department of Motor Vehicles', 1, 'Punctulet', 2850, 1581, 55, 918.405, -1252.19, 16.2109, 246.06, 108.97, 1003.3, 10, 2, 0, 0, 0, 268, 304, 302, 0, 6, 1, 0),
+(3, 'SMURD', 0, '', 250, 11738, 22, 1172.71, -1323.21, 15.4017, 2267.75, 1647.55, 1084.23, 1, 3, 0, 0, 0, 276, 277, 274, 0, 6, 1, 270.473),
+(4, 'European Mafia', 0, '', 328400, 1314, 58, 1872.64, -2020.46, 13.5469, 2569.41, -1301.77, 1044.12, 2, 4, 684, 5, 0, 114, 115, 116, 0, 6, 1, 0),
+(5, 'American Mafia', 0, '', 45500, 1314, 59, 1905.89, -1115.16, 25.9538, 2569.41, -1301.77, 1044.12, 2, 5, 0, 0, 0, 102, 103, 104, 0, 6, 1, 0),
+(6, 'African Mafia', 0, '', 45800, 1314, 62, 2495.4, -1688.71, 13.9735, 2569.41, -1301.77, 1044.12, 2, 6, 0, 0, 0, 105, 106, 107, 0, 6, 1, 0),
+(7, 'Asian Mafia', 0, '', 47900, 1314, 60, 2231.89, -1159.81, 25.8906, 2569.41, -1301.77, 1044.12, 2, 7, 0, 0, 0, 108, 109, 110, 0, 6, 1, 0),
 (8, 'News Reporters', 0, '', 750, 1318, 34, 733.452, -1350.27, 13.5, 322.5, 303.7, 999.2, 5, 8, 0, 0, 0, 273, 48, 46, 0, 6, 1, 0);
 
 -- --------------------------------------------------------
@@ -457,6 +457,36 @@ INSERT INTO `fastfood` (`ffID`, `ffName`, `ffType`, `ffLocX`, `ffLocY`, `ffLocZ`
 (5, 'Cluckin Bell', 3, 2409.52, -1487.22, 23.5552),
 (6, 'Eat my Donut', 4, 1038.07, -1338.63, 13.7266),
 (7, 'Cluck\'in', 3, 2397.76, -1897.59, 13.5469);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `forests`
+--
+
+CREATE TABLE `forests` (
+  `id` int(11) NOT NULL,
+  `ownerId` int(11) NOT NULL DEFAULT 0,
+  `owner` varchar(24) NOT NULL DEFAULT '',
+  `isForSale` tinyint(1) NOT NULL DEFAULT 0,
+  `defaultPrice` int(11) NOT NULL DEFAULT 100000,
+  `price` int(11) NOT NULL DEFAULT 100000,
+  `size` float NOT NULL DEFAULT 0,
+  `locX` float NOT NULL DEFAULT 0,
+  `locY` float NOT NULL DEFAULT 0,
+  `locZ` float NOT NULL DEFAULT 0,
+  `maxTree` int(11) NOT NULL DEFAULT 0,
+  `currentTree` int(11) NOT NULL DEFAULT 0,
+  `saplings` int(11) NOT NULL DEFAULT 0,
+  `plantedSaplings` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `forests`
+--
+
+INSERT INTO `forests` (`id`, `ownerId`, `owner`, `isForSale`, `defaultPrice`, `price`, `size`, `locX`, `locY`, `locZ`, `maxTree`, `currentTree`, `saplings`, `plantedSaplings`) VALUES
+(1, 0, '', 1, 100000, 100000, 0, -145.476, -1572.88, 7.9526, 0, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -773,8 +803,7 @@ CREATE TABLE `houses_animals` (
 --
 
 INSERT INTO `houses_animals` (`aID`, `aType`, `aPlayerID`, `aHouseID`, `aName`, `aDefaultName`, `aAge`, `aDeceased`) VALUES
-(1, 1609, 1, 1, 'Ronal', 'Turtle', 6, 0),
-(2, 19833, 1, 1, 'Dinio', 'Cow', 6, 0);
+(1, 1609, 1, 1, 'Ronal', 'Turtle', 52, 0);
 
 -- --------------------------------------------------------
 
@@ -799,7 +828,7 @@ CREATE TABLE `houses_tree` (
 --
 
 INSERT INTO `houses_tree` (`treeId`, `treeHouseId`, `treeType`, `treeName`, `treePlantedDate`, `treeFruitStatus`, `treeLocX`, `treeLocY`, `treeLocZ`) VALUES
-(4, 1, 0, 'Tree', 1785263901, 21, 0, 0, 0);
+(4, 1, 0, 'Tree', 1785263901, 30, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -835,7 +864,7 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (8, 'Basket', 2298.31, -1501.99, 25.3047, '', 0, 0, 1, 'Fun'),
 (9, 'lodge', -688.106, 949.078, 12.5, '', 0, 0, 1, 'Fun'),
 (11, 'PR/duty', 256.123, 65.5168, 1003.64, 'PR - /duty', 6, 0, 0, ''),
-(12, 'jail', 267.748, 77.754, 1001.1, 'Interior JAIL', 6, 0, 0, ''),
+(12, 'jail', 263.748, 77.754, 1001.04, 'Interior JAIL', 6, 0, 0, ''),
 (13, 'PR/arrest-int', 268.416, 77.7611, 1001.04, 'Comanda /arrest la interior', 6, 0, 0, ''),
 (14, 'PR/arrest-ext', 1568.48, -1691.7, 5.89, 'Comanda /arrest din exterior(garaj) JAIL', 0, 0, 0, ''),
 (15, 'Vehicle Plate', 867.269, -1205.11, 16.9766, 'Change Vehicle Plate', 0, 0, 1, 'Vehicle'),
@@ -847,7 +876,7 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (22, 'Hospital', 1173.34, -1361.26, 13.9678, 'Spital - internare (/curedisease)', 0, 0, 1, 'Others'),
 (23, 'Hospital2', 2033.96, -1403.3, 17.28, 'Spital 2 - internare (/curedisease)', 0, 0, 1, 'Others'),
 (24, 'Hunting', -418.372, -1759.68, 6.2188, 'Hunt deer with /hunt', 0, 0, 1, 'Fun'),
-(29, 'Church', 946.235, -1103.36, 24.2742, 'Biserica Los Santos', 0, 0, 1, 'Other'),
+(29, 'Church', 946.235, -1103.36, 24.2742, 'Biserica Los Santos', 0, 0, 1, 'Others'),
 (30, 'Casino', 1022.57, -1122.42, 23.8713, 'Casino - Entrace', 0, 0, 1, 'Fun'),
 (31, 'SGR', 2411.85, -1426.5, 23.7, 'Sell your SGR.', 0, 0, 1, 'Others'),
 (32, 'Trash unload', 2122.97, -2015.28, 13.6, 'Trash unload point', 0, 0, 1, 'Others'),
@@ -856,12 +885,18 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (50, 'ad W LS', 914.5, -1003.31, 38, 'Locatie pentru /ad West LS', 0, 0, 1, 'CNN'),
 (51, 'ad S LS', 1448.95, -2286.96, 13.54, 'Locatie pentru /ad South LS', 0, 0, 1, 'CNN'),
 (52, 'ad E LS', 1853.65, -1145.18, 23.85, 'Locatie /ad East LS', 0, 0, 0, 'CNN'),
-(55, 'Arrest Me', 1798.31, -1578.39, 14.08, '/arrestme if wanted 2+, and no cops on-duty', 0, 0, 1, 'Other'),
+(55, 'Arrest Me', 1798.31, -1578.39, 14.08, '/arrestme if wanted 2+, and no cops on-duty', 0, 0, 1, 'Others'),
+(60, 'W LosSantos Station', 824.527, -1361.05, -0.5078, 'West Los Santos Train Station', 0, 0, 1, 'Train Station'),
+(61, 'S LosSantos Station', 1738.98, -1950.01, 14.1172, 'South Los Santos Train Station', 0, 0, 1, 'Train Station'),
+(62, 'E LosSantos Station', 2261.17, -1507.29, 21.5038, 'East Los Santos Train Station', 0, 0, 1, 'Train Station'),
 (100, 'lspd_barrier', 1544.7, -1630.9, 13.24, 'Bariera LSPD (horn factiune 1)', 0, 0, 0, ''),
 (101, 'Job Glovo Delivery', 2390, 1667, 11, 'Starting point of job Glovo Delivery', 0, 0, 1, 'Job'),
 (102, 'Job Cement Truck Driver', 334.625, 871.524, 20.4063, 'Starting point of job Cement Truck Driver', 0, 0, 1, 'Job'),
 (103, 'Job Gun Delivery', 2501.69, -2618.84, 13.7147, 'Starting point of job Gun Delivery', 0, 0, 1, 'Job'),
 (104, 'Job Car Transportator', 1984.05, -2065.85, 14.0127, 'Starting point of job Car Transportator', 0, 0, 1, 'Job'),
+(105, 'Job Fish 1', 383.61, -2086.89, 7.83, 'Fish zone 1', 0, 0, 1, 'Job'),
+(106, 'Job Fish 2', 820.32, -1952.68, 12.86, '', 0, 0, 1, 'Job'),
+(107, 'Job Fish 3', 2938.01, -2051.49, 3.27, '', 0, 0, 1, 'Job'),
 (899, 'Cityhall', 1481.22, -1771.37, 18.7958, 'City Hall - exterior (intrare)', 0, 0, 1, 'Others'),
 (900, 'cityhall_int', 386.52, 173.63, 1008.38, 'City Hall - interior', 0, 0, 0, ''),
 (901, 'GetJob', 358.421, 182.193, 1008.38, 'Job Center - angajare (/getjob)', 0, 0, 0, ''),
@@ -929,18 +964,18 @@ CREATE TABLE `players` (
   `warns` int(11) DEFAULT 0,
   `watch_expire` date DEFAULT NULL,
   `weapon_lic_w_exp` date DEFAULT NULL,
-  `vip` tinyint(4) DEFAULT 0
+  `vip` tinyint(4) DEFAULT 0,
+  `gamble_wagered` int(11) DEFAULT 0,
+  `fishing_rod` tinyint(1) NOT NULL DEFAULT 0,
+  `forest_key` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `players`
 --
 
-INSERT INTO `players` (`id`, `username`, `password`, `email`, `level`, `money`, `bank`, `rp`, `admin_level`, `faction`, `house`, `spawn_type`, `faction_rank`, `key1`, `key2`, `key3`, `faction_join`, `business`, `driving_lic_a_exp`, `driving_lic_b_exp`, `driving_lic_c_exp`, `driving_lic_d_exp`, `diseased`, `disease_paydays`, `caravan_key`, `is_president`, `voted`, `was_president`, `job`, `phone_model`, `phone_number`, `medkits`, `extinguishers`, `mute_expire`, `airplane_lic_a_exp`, `airplane_lic_h_exp`, `wanted_level`, `jail_seconds`, `rob_points`, `skin`, `gas_can`, `watch_model`, `phone_expire`, `tired`, `hotel`, `rent_house`, `rent_hotel`, `warns`, `watch_expire`, `weapon_lic_w_exp`, `vip`) VALUES
-(1, 'Punctulet', '112', '', 2, 517597, 27167268, 60, 6, 3, 1, 2, 5, 1, 2, 4, NULL, 0, '2030-12-31', '2030-12-31', '2030-12-31', '2030-12-31', 0, 2, 1, 0, 0, 0, 7, 3, 79640, 0, 0, 0, '2030-12-31', '2030-12-31', 0, 1429, 10, 302, -1, 3, 0, 100, 1, 0, 0, 0, NULL, '0000-00-00', 1),
-(3, 'Punctulet2', '', '', 1, 3347738, 446669, 4, 6, 5, 0, 2, 5, 0, 0, 0, NULL, 0, '2026-06-30', '2026-06-30', '0000-00-00', '0000-00-00', 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, NULL, NULL, 0, 0, 10, 7, -1, -1, 0, 0, 0, 0, 0, 0, NULL, NULL, 0),
-(28, 'Punctulet3', '112', '', 3, 3333, 3333, 3, 3, 6, 0, 1, 2, 0, 0, 0, '0000-00-00', 0, '2030-12-31', '2030-12-31', '2030-12-31', '2030-12-31', 0, 0, 0, 0, 0, 0, 0, 3, 3333, 0, 0, 0, '2030-12-31', '2030-12-31', 0, 0, 0, 199, -1, 3, 0, 0, 0, 0, 0, 0, '2026-09-04', NULL, 0),
-(29, 'Punctulet4', '112', '', 4, 4444, 4444, 4, 4, 0, 0, 1, 1, 0, 0, 0, NULL, 0, '2030-12-31', '2030-12-31', '2030-12-31', '2030-12-31', 0, 0, 0, 0, 0, 0, 0, 2, 4444, 0, 0, 0, '2030-12-31', '2030-12-31', 0, 0, 0, 199, -1, 3, 0, 0, 0, 0, 0, 0, '2026-09-04', NULL, 0);
+INSERT INTO `players` (`id`, `username`, `password`, `email`, `level`, `money`, `bank`, `rp`, `admin_level`, `faction`, `house`, `spawn_type`, `faction_rank`, `key1`, `key2`, `key3`, `faction_join`, `business`, `driving_lic_a_exp`, `driving_lic_b_exp`, `driving_lic_c_exp`, `driving_lic_d_exp`, `diseased`, `disease_paydays`, `caravan_key`, `is_president`, `voted`, `was_president`, `job`, `phone_model`, `phone_number`, `medkits`, `extinguishers`, `mute_expire`, `airplane_lic_a_exp`, `airplane_lic_h_exp`, `wanted_level`, `jail_seconds`, `rob_points`, `skin`, `gas_can`, `watch_model`, `phone_expire`, `tired`, `hotel`, `rent_house`, `rent_hotel`, `warns`, `watch_expire`, `weapon_lic_w_exp`, `vip`, `gamble_wagered`, `fishing_rod`, `forest_key`) VALUES
+(1, 'Punctulet', '112', '', 2, 692187, 27927293, 150, 6, 2, 1, 2, 5, 1, 2, 4, NULL, 0, '2030-12-31', '2030-12-31', '2030-12-31', '2030-12-31', 0, 2, 1, 0, 0, 0, 0, 3, 79640, 0, 0, 0, '2030-12-31', '2030-12-31', 0, 0, 10, 302, 0, 3, 0, 100, 1, 0, 0, 0, NULL, '0000-00-00', 1, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -1144,24 +1179,26 @@ CREATE TABLE `shops` (
   `shopLocX` float DEFAULT 0,
   `shopLocY` float DEFAULT 0,
   `shopLocZ` float DEFAULT 0,
-  `shopName` varchar(32) NOT NULL DEFAULT '24/7 Shop'
+  `shopName` varchar(32) NOT NULL DEFAULT '24/7 Shop',
+  `type` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `shops`
 --
 
-INSERT INTO `shops` (`shopID`, `shopLocX`, `shopLocY`, `shopLocZ`, `shopName`) VALUES
-(1, 1142.99, -1520.15, 15.7969, '24/7 Shop'),
-(2, 822.054, -1758.33, 13.6484, '24/7 Shop'),
-(3, 1352.3, -1758.31, 13.5078, '24/7 Shop'),
-(4, 2163.22, -1744.15, 13.5469, '24/7 Shop'),
-(5, 2423.07, -1742.42, 13.5469, '24/7 Shop'),
-(6, 2362.68, -1339.17, 24.0078, '24/7 Shop'),
-(7, 1315.33, -899.083, 39.5781, '24/7 Shop'),
-(8, 2002.84, -1282.41, 23.9733, '24/7 Shop'),
-(9, 994.824, -1297.04, 13.5469, '24/7 Shop'),
-(10, 841.601, -2047.8, 12.8672, '24/7 Shop');
+INSERT INTO `shops` (`shopID`, `shopLocX`, `shopLocY`, `shopLocZ`, `shopName`, `type`) VALUES
+(1, 1142.99, -1520.15, 15.7969, '24/7 Shop', 1),
+(2, 822.054, -1758.33, 13.6484, '24/7 Shop', 1),
+(3, 1352.3, -1758.31, 13.5078, '24/7 Shop', 1),
+(4, 2163.22, -1744.15, 13.5469, '24/7 Shop', 1),
+(5, 2423.07, -1742.42, 13.5469, '24/7 Shop', 1),
+(6, 2362.68, -1339.17, 24.0078, '24/7 Shop', 1),
+(7, 1315.33, -899.083, 39.5781, '24/7 Shop', 1),
+(8, 2002.84, -1282.41, 23.9733, '24/7 Shop', 1),
+(9, 994.824, -1297.04, 13.5469, '24/7 Shop', 1),
+(10, 841.601, -2047.8, 12.8672, '24/7 Shop', 1),
+(11, 975.431, -1335.86, 13.5318, '24/7 Shop', 3);
 
 -- --------------------------------------------------------
 
@@ -1275,7 +1312,7 @@ INSERT INTO `vehicles_faction` (`id`, `faction_id`, `model_id`, `loc_x`, `loc_y`
 (29, 2, 552, 891.255, -1270.74, 14.411, 0, 155, 155, 100),
 (30, 2, 552, 896.771, -1270.4, 14.4154, 0, 155, 155, 100),
 (31, 2, 498, 905.663, -1237.73, 16.3328, 0, 155, 155, 100),
-(32, 2, 525, 904.499, -1254.15, 14.9391, 90, 155, 155, 100),
+(32, 2, 525, 904.499, -1254.15, 14.9391, 90, 155, 155, 99.52),
 (33, 2, 525, 904.514, -1247.1, 15.3917, 90, 155, 155, 96.22),
 (34, 2, 525, 904.181, -1260.35, 14.738, 90, 155, 155, 100),
 (35, 2, 443, 871.136, -1235.11, 15.9534, 270, 155, 155, 100),
@@ -1386,7 +1423,7 @@ CREATE TABLE `vehicles_personal` (
 INSERT INTO `vehicles_personal` (`id`, `owner_id`, `model_id`, `color1`, `color2`, `plate`, `price`, `loc_x`, `loc_y`, `loc_z`, `rotation`, `insurance_exp`, `medkit_exp`, `extinguisher_exp`, `itp_exp`, `locked`, `first_registration`, `from_biz`, `fuel`, `is_confiscated`, `is_for_sale`, `dirty`, `count_owners`) VALUES
 (1, 1, 411, 1, 1, 'f', 8, 976.309, 2140.76, 10.5474, 272.362, '2026-06-18', '2026-06-17', '2026-06-18', '2026-08-15', 0, '2026-07-01', 0, 99.86, 0, 0, 100, 1),
 (2, 1, 541, 1, 1, '123', 5000000, 968.921, 2158, 10.4452, 273.257, '2026-06-22', '2026-06-19', '2026-07-31', '2026-06-01', 0, '2026-06-01', 0, 100, 0, 0, 70, 1),
-(4, 1, 411, 1, 1, '{FF2700}LS 01 XXX', 1000000, 896.047, -1238.04, 16.0275, 141.843, '2026-08-05', '2026-08-05', '2026-08-05', '2026-08-05', 0, '2026-07-29', 8, 98.39, 0, 1, 59, 1),
+(4, 1, 411, 1, 1, '{FF2700}LS 01 XXX', 1000000, 887.893, -1211.42, 16.8526, 44.6099, '2026-08-05', '2026-08-05', '2026-08-05', '2026-08-06', 0, '2026-07-29', 8, 90.42, 0, 0, 59, 1),
 (5, 0, 411, 1, 1, 'LV 5', 1000000, 2147.41, -1143.31, 24.6911, 268.529, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.81, 0, 1, 43, 0),
 (6, 0, 411, 1, 1, 'LV 6', 1000000, 2147.05, -1148.32, 24.1413, 269.025, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.77, 0, 1, 52, 0),
 (7, 0, 541, 1, 1, 'LV 7', 900000, 2162.88, -1143.71, 24.4721, 91.1427, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.71, 0, 1, 56, 0),
@@ -1523,6 +1560,12 @@ ALTER TABLE `farm_equipment`
 --
 ALTER TABLE `fastfood`
   ADD PRIMARY KEY (`ffID`);
+
+--
+-- Indexes for table `forests`
+--
+ALTER TABLE `forests`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `gta_interiors`
@@ -1724,6 +1767,12 @@ ALTER TABLE `fastfood`
   MODIFY `ffID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
+-- AUTO_INCREMENT for table `forests`
+--
+ALTER TABLE `forests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `gta_interiors`
 --
 ALTER TABLE `gta_interiors`
@@ -1805,7 +1854,7 @@ ALTER TABLE `server_setup`
 -- AUTO_INCREMENT for table `shops`
 --
 ALTER TABLE `shops`
-  MODIFY `shopID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+  MODIFY `shopID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
 
 --
 -- AUTO_INCREMENT for table `turfs`

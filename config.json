@@ -63,7 +63,7 @@
     },
     "max_bots": 0,
     "max_players": 5,
-    "name": "Nostalgia Los Santos | Romania | 2026",
+    "name": "Nostalgia Los Santos | RPG | 2026",
     "network": {
         "acks_limit": 3000,
         "aiming_sync_rate": 40,
@@ -113,5 +113,5 @@
     },
     "sleep": 5.0,
     "use_dyn_ticks": true,
-    "website": "www.sa-mp.com"
+    "website": "http://84.234.99.136/"
 }

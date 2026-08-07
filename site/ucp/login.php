@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 if (isset($_SESSION['ucp_player_id'])) {
     header('Location: dashboard.php');
@@ -12,21 +12,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
 
     if ($username === '' || $password === '') {
-        $error = 'Completează username și parolă.';
+        $error = 'Fill in your username and password.';
     } elseif (ucp_login($username, $password)) {
         header('Location: dashboard.php');
         exit;
     } else {
-        $error = 'Username sau parolă incorectă.';
+        $error = 'Incorrect username or password.';
     }
 }
 ?>
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Login</title>
+<title>Nostalgia LosSantos | RPG — Login</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 </head>
 <body>
@@ -46,14 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <label>Username</label>
       <input type="text" name="username" autocomplete="username" required>
 
-      <label>Parolă</label>
+      <label>Password</label>
       <input type="password" name="password" autocomplete="current-password" required>
 
       <button type="submit">Login</button>
     </form>
 
     <p style="text-align:center; margin-top:16px; font-size:0.85rem; color:var(--muted)">
-      Nu ai cont? <a href="register.php">Înregistrează-te</a>
+      Don't have an account? <a href="register.php">Register</a>
     </p>
   </div>
 </div>

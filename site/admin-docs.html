@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NostalgiaRP — Documentație Tehnică (Admin)</title>
+<title>Nostalgia: Los Santos | RPG — Admin Documentation</title>
+<link rel="icon" type="image/png" href="ucp/assets/img/favicon.ico">
 <style>
+  .topbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 8px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; min-height: 60px; }
+  .topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 1.1rem; color: #fff; text-decoration: none; }
+  .topbar .brand:hover { text-decoration: none; opacity: 0.9; }
+  .topbar .brand-logo { height: 32px; width: 32px; border-radius: 6px; }
+  .topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+  .topbar nav a { color: var(--text); font-size: 0.92rem; text-decoration: none; }
+  .topbar nav a:hover { color: var(--accent); text-decoration: none; }
+</style>
   :root {
     --bg: #0f1115;
     --panel: #161922;
@@ -90,8 +99,18 @@
 </head>
 <body>
 
+<header class="topbar">
+  <a href="index.php" class="brand"><img src="ucp/assets/img/logo.jpg" alt="" class="brand-logo"> Nostalgia: Los Santos | RPG</a>
+  <nav>
+    <a href="index.php">🏠 Homepage</a>
+    <a href="presentation.php">🏙️ Presentation</a>
+    <a href="newspaper.php">📰 Newspaper</a>
+    <a href="ucp/index.php">🧭 UCP</a>
+  </nav>
+</header>
+
 <header class="hero">
-  <h1>🛠️ NostalgiaRP — Documentație Tehnică</h1>
+  <h1>🛠️ Nostalgia LosSantos | RPG — Documentație Tehnică</h1>
   <p>Uz intern. Tot ce ține de implementare: baza de date, comenzi admin, constante, formule, bug-uri cunoscute.</p>
   <div class="badges">
     <span class="badge">gamemodes/bare.pwn — ~27750 linii</span>

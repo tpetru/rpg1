@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/admin_common.php';
+require_once __DIR__ . '/../../includes/admin_common.php';
 ucp_admin_require_level5();
 
 $playerId = (int)($_GET['playerid'] ?? $_POST['playerid'] ?? 0);
@@ -131,18 +131,19 @@ $adminActive = 'player';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nostalgia: Los Santos UCP — Player editor</title>
+<title>Nostalgia LosSantos | RPG — Player editor</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
 <link rel="stylesheet" href="<?= UCP_BASE ?>/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
 </head>
 <body>
 
-<?php include __DIR__ . '/../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <main>
   <h1>🧍 Player editor</h1>
   <p style="color:var(--muted)">Look up a player by ID and edit every column directly. Changes are saved immediately to the database.</p>
 
-  <?php include __DIR__ . '/../includes/admin_nav.php'; ?>
+  <?php include __DIR__ . '/../../includes/admin_nav.php'; ?>
 
   <div class="card">
     <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
