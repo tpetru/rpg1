@@ -38,7 +38,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         } elseif ((int)$target['faction_rank'] >= 5) {
             $flash = "Use \"Remove leader\" to remove the faction leader."; $flashErr = true;
         } else {
-            $stmt = $mysqli->prepare("UPDATE `players` SET `faction`=0, `faction_rank`=1, `faction_join`=NULL WHERE `id`=?");
+            $stmt = $mysqli->prepare("UPDATE `players` SET `faction`=0, `faction_rank`=0, `faction_join`=NULL WHERE `id`=?");
             $stmt->bind_param('i', $targetId);
             $stmt->execute();
             $stmt->close();
@@ -92,7 +92,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if (!$leader) {
             $flash = "This faction has no leader."; $flashErr = true;
         } else {
-            $stmt = $mysqli->prepare("UPDATE `players` SET `faction`=0, `faction_rank`=1, `faction_join`=NULL WHERE `id`=?");
+            $stmt = $mysqli->prepare("UPDATE `players` SET `faction`=0, `faction_rank`=0, `faction_join`=NULL WHERE `id`=?");
             $stmt->bind_param('i', $leader['id']);
             $stmt->execute();
             $stmt->close();

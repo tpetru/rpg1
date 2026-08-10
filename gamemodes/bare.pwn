@@ -80,6 +80,7 @@ forward OnBusinessesLoaded();
 forward OnBusinessCreated(playerid, idx);
 forward OnTurfsLoaded();
 forward OnATMsLoaded();
+forward OnGasStationsLoaded();
 forward OnATMCreated(playerid, idx);
 forward OnShopsLoaded();
 forward OnShopCreated(playerid, idx);
@@ -2207,7 +2208,7 @@ new Float:g_WaterBarrelRotZ = 0.0;
 #define FISH_PAY_BASE            500
 #define FISH_WEIGHT_MIN          300
 #define FISH_WEIGHT_RAND         2201  // 300 + random(2201) => 300-2500 grame
-#define FISH_ROD_MODEL           321   // CJ_POOL_CUE, folosit ca undita (GTA SA nu are un model dedicat)
+#define FISH_ROD_MODEL           18632 // undita
 #define FISH_ROD_ATTACH_INDEX    3     // diferit de BBALL (0), PARTY (1), VIPHAT (2)
 #define FISH_ROD_ATTACH_BONE     6     // 6 = Right Hand (bone SA-MP)
 
@@ -2393,6 +2394,278 @@ public Train_Unfreeze(playerid)
     TogglePlayerControllable(playerid, 1);
     g_TrainTarget[playerid] = -1;
     return 1;
+}
+
+// ============================================================
+//  TAXI SERVICE - /taxi (teleport la orice locatie din GPS, $200, o data pe ora)
+// ============================================================
+#define TAXI_X            836.1307
+#define TAXI_Y            -2023.7986
+#define TAXI_Z            12.8672
+#define TAXI_RANGE        5.0
+#define TAXI_PRICE        200
+#define TAXI_COOLDOWN     3600 // secunde (1 ora)
+#define TAXI_TEXTDRAW_MS  3000 // cat sta ecranul de loading dupa teleport
+#define TAXI_FREEZE_MS    4000 // cat sta playerul inghetat (mai mult decat textdraw-ul, ca siguranta)
+
+new g_TaxiLastUse[MAX_PLAYERS] = {-9999999, ...}; // gettime() la ultima calatorie; -9999999 = niciodata
+new g_TaxiTDTimer[MAX_PLAYERS]    = {-1, ...};
+new g_TaxiFreezeTimer[MAX_PLAYERS] = {-1, ...};
+new g_TaxiTargetName[MAX_PLAYERS][48];
+
+// Creeaza pickup-ul + eticheta 3D a punctului de taxi
+stock Taxi_CreateStation()
+{
+    CreatePickup(1239, 1, TAXI_X, TAXI_Y, TAXI_Z, -1);
+
+    new label[96];
+    format(label, sizeof(label), "[ Service Taxi ]\n[ Use /taxi ]\n[ Price: %d$ ]", TAXI_PRICE);
+    Create3DTextLabel(label, COLOR_WHITE, TAXI_X, TAXI_Y, TAXI_Z - 0.5, 20.0, 0, 0);
+}
+
+// True daca playerul e in raza TAXI_RANGE fata de punctul de taxi
+stock bool:Taxi_IsPlayerAtStation(playerid)
+{
+    return bool:IsPlayerInRangeOfPoint(playerid, TAXI_RANGE, TAXI_X, TAXI_Y, TAXI_Z);
+}
+
+// Cate secunde mai are playerul de asteptat pana poate folosi din nou taxiul (0 = poate acum)
+stock Taxi_SecondsUntilReady(playerid)
+{
+    new elapsed = gettime() - g_TaxiLastUse[playerid];
+    if(elapsed >= TAXI_COOLDOWN) return 0;
+    return TAXI_COOLDOWN - elapsed;
+}
+
+// La 3s dupa teleport: ascunde ecranul de loading si anunta bun venit
+forward Taxi_TextdrawDone(playerid);
+public Taxi_TextdrawDone(playerid)
+{
+    g_TaxiTDTimer[playerid] = -1;
+    if(!IsPlayerConnected(playerid)) return 0;
+
+    LoginBG_Destroy(playerid);
+
+    new wmsg[192];
+    format(wmsg, sizeof(wmsg), C_SUCCESS"[Taxi] "C_WHITE"You have arrived at "C_INFO"%s"C_WHITE". Thank you for using our taxi service.",
+        g_TaxiTargetName[playerid]);
+    SendClientMessage(playerid, COLOR_SUCCESS, wmsg);
+    return 1;
+}
+
+// La 4s dupa teleport: dezgheata playerul
+forward Taxi_Unfreeze(playerid);
+public Taxi_Unfreeze(playerid)
+{
+    g_TaxiFreezeTimer[playerid] = -1;
+    if(!IsPlayerConnected(playerid)) return 0;
+
+    TogglePlayerControllable(playerid, 1);
+    return 1;
+}
+
+// ============================================================
+//  ANIMATII - /anim, /anim2, /animlibs, /animlist, /animstop
+// ============================================================
+// Lista curatata de librarii GTA SA cunoscute (extensibila - adauga in AnimLib_GetAnims + aici)
+new g_AnimAllLibs[] = "SWORD,KNIFE,GRENADE,BOMBER,BSKTBALL,DANCING,KISSING,SMOKING,SUNBATHE,FOOD,RIOT,MISC,MISC2,SHOP,CRACK,INT_HOUSE,INT_OFFICE,INT_SHOP,POLICE_AR,CRIB,BAR,ABSEIL,PARACHUTE,SKATE,PED,ON_LOOKER";
+
+// Returneaza (prin dest) lista de animatii (separate prin virgula) ale unei librarii; false daca libraria nu e cunoscuta
+stock bool:AnimLib_GetAnims(const lib[], dest[], destsize)
+{
+    if(strcmp(lib, "SWORD", true) == 0)
+    {
+        format(dest, destsize, "%s", "sword_block,sword_ready,sword_run,sword_strafe,sword_walk,sword_WO_block,sword_WO_ready,sword_WO_run,sword_WO_strafe,sword_WO_walk,WeaponExpert");
+        return true;
+    }
+    if(strcmp(lib, "KNIFE", true) == 0)
+    {
+        format(dest, destsize, "%s", "KILL_Knife_Ped_Damage,KILL_Knife_Ped_Die,KNIFE_ATTACK_A,KNIFE_ATTACK_B,KNIFE_ATTACK_C,KNIFE_ATTACK_D,KNIFE_IDLE,KNIFE_PARRY_A,KNIFE_PARRY_B,KNIFE_PARRY_C");
+        return true;
+    }
+    if(strcmp(lib, "GRENADE", true) == 0)
+    {
+        format(dest, destsize, "%s", "WEAPON_throwu,WEAPON_throw");
+        return true;
+    }
+    if(strcmp(lib, "BOMBER", true) == 0)
+    {
+        format(dest, destsize, "%s", "BOM_Plant,CHAT_A,CHAT_B");
+        return true;
+    }
+    if(strcmp(lib, "BSKTBALL", true) == 0)
+    {
+        format(dest, destsize, "%s", "BBALL_Block,BBALL_Def_loop,BBALL_Def_S2S,BBALL_Idle_01,BBALL_Idle_02,BBALL_Jog_Ball,BBALL_Pass,BBALL_Run_Ball,BBALL_Shot_Hoop,BBALL_Shoot,BBALL_Sprint_Ball");
+        return true;
+    }
+    if(strcmp(lib, "DANCING", true) == 0)
+    {
+        format(dest, destsize, "%s", "DAN_Loop_A,DAN_Loop_B,DAN_Loop_C,DAN_Loop_D,DAN_Loop_E,DAN_Loop_F,DAN_Loop_G,DNCE_M_a,DNCE_M_b,DNCE_M_c,DNCE_M_d,DNCE_M_e,club_dnce_M_a,club_dnce_M_b,club_dnce_M_c,club_dnce_M_d,club_dnce_M_e");
+        return true;
+    }
+    if(strcmp(lib, "KISSING", true) == 0)
+    {
+        format(dest, destsize, "%s", "Playa_Kiss_60_loop_A,Playa_Kiss_60_loop_B,GF_Kiss_loop_a,GF_Kiss_loop_b,GF_Kiss_loop_c,GF_Kiss_loop_d,GF_Kiss_loop_e");
+        return true;
+    }
+    if(strcmp(lib, "SMOKING", true) == 0)
+    {
+        format(dest, destsize, "%s", "F_smklean_loop,M_smk_in,M_smk_loop,M_smklean_loop,M_smkstand_loop,smk_drug_loop");
+        return true;
+    }
+    if(strcmp(lib, "SUNBATHE", true) == 0)
+    {
+        format(dest, destsize, "%s", "BATHE_Loop,BATHE_in,BATHE_out");
+        return true;
+    }
+    if(strcmp(lib, "FOOD", true) == 0)
+    {
+        format(dest, destsize, "%s", "EAT_Burger,EAT_Chicken,EAT_Cookie,EAT_Cook_loop_01,EAT_Cook_loop_02");
+        return true;
+    }
+    if(strcmp(lib, "RIOT", true) == 0)
+    {
+        format(dest, destsize, "%s", "RIOT_ANGRY,RIOT_CHANT,RIOT_FIST_L,RIOT_FIST_R,RIOT_PUNCHOUT_L,RIOT_PUNCHOUT_R,RIOT_SHOUT_01,RIOT_SHOUT_02");
+        return true;
+    }
+    if(strcmp(lib, "MISC", true) == 0)
+    {
+        format(dest, destsize, "%s", "BLOWJOBBING,CANDLEIN,CANDLEOUT,DRUG_TWITCH,FLASH,FLASH_out,PISSIN_LOOP,TERM_INJURED_A,USETRUNK_IN,USETRUNK_LOOP,USETRUNK_OUT");
+        return true;
+    }
+    if(strcmp(lib, "MISC2", true) == 0)
+    {
+        format(dest, destsize, "%s", "CHOKE_both,CHOKE_death,CHOKE_handsup,DAM_Hit_v2ARM,DAM_Hit_v2FACE,DAM_Hit_v2HEAD,DAM_Hit_v2SPINE,FALL_Cower,FALL_Direction,KO_skid_back,KO_skid_front,PUNCH_BIG");
+        return true;
+    }
+    if(strcmp(lib, "SHOP", true) == 0)
+    {
+        format(dest, destsize, "%s", "SHP_Bag,SHP_Buy");
+        return true;
+    }
+    if(strcmp(lib, "CRACK", true) == 0)
+    {
+        format(dest, destsize, "%s", "crckdeth1,crckidle1,cs_hndsup");
+        return true;
+    }
+    if(strcmp(lib, "INT_HOUSE", true) == 0)
+    {
+        format(dest, destsize, "%s", "BED_IN_L,BED_IN_R,BED_LOOP_IN,BED_LOOP_OUT,BED_OUT_L,BED_OUT_R,KITCHEN_LOOP,LOUNGE_LOOP,SHOWER_IN,SHOWER_LOOP,SHOWER_OUT");
+        return true;
+    }
+    if(strcmp(lib, "INT_OFFICE", true) == 0)
+    {
+        format(dest, destsize, "%s", "DESK_LOOK_LAP01,DESK_LOOK_PAPER,DESK_TYPE,LAPDANCE1,LAPDANCE2,LAPDANCE3,LAPDANCE_IDLE,MECH_FIXIN,MECH_FIXIN_LO");
+        return true;
+    }
+    if(strcmp(lib, "INT_SHOP", true) == 0)
+    {
+        format(dest, destsize, "%s", "SHOP_ASSISTANT,TATT_A,TATT_ARMBACK,TATT_ARMFRONT,TATT_CHEST,TATT_HEAD,TATT_LEGBACK,TATT_LEGFRONT");
+        return true;
+    }
+    if(strcmp(lib, "POLICE_AR", true) == 0)
+    {
+        format(dest, destsize, "%s", "ARRESTGUN,CAR_ARRESTED,COP_LOOKOUT01,CopArm2Idle,CopArm2One_Hs,CopArm2One_Ix,CopArm2Peace,CopArm2Talk,HANDSUP_63,POLICE_CAUTION,POLICE_STRAIGHT");
+        return true;
+    }
+    if(strcmp(lib, "CRIB", true) == 0)
+    {
+        format(dest, destsize, "%s", "BEACH_Sitting,BUTLERSTAND_loop,ChatFemale_loop_a,ChatFemale_loop_b,DEALER_DEAL_01,DEALER_DEAL_02,DEALER_IDLE_01,DEALER_IDLE_02,DRUGGED_Loop");
+        return true;
+    }
+    if(strcmp(lib, "BAR", true) == 0)
+    {
+        format(dest, destsize, "%s", "BARCUSTOM_LOOP,BARMAN_IDLE,BARSERVE_LOOP,DRUGS_DEAL_1M_A,DRUGS_DEAL_1M_B,LAUGH_01,LAUGH_02");
+        return true;
+    }
+    if(strcmp(lib, "ABSEIL", true) == 0)
+    {
+        format(dest, destsize, "%s", "ABSEIL_Cop_Idle,ABSEIL_Cop_Slide,ABSEIL_out_R,ABSEIL_out_window");
+        return true;
+    }
+    if(strcmp(lib, "PARACHUTE", true) == 0)
+    {
+        format(dest, destsize, "%s", "FALL_SKYDIVE,PARACHUTE,PARACHUTE_360,PARACHUTE_360_S,PARACHUTE_Fall,PARACHUTE_land_heavy,PARACHUTE_land_soft,PARACHUTE_open,PARACHUTE_wobble_LEFT,PARACHUTE_wobble_RIGHT");
+        return true;
+    }
+    if(strcmp(lib, "SKATE", true) == 0)
+    {
+        format(dest, destsize, "%s", "SKATE_ARMSOUT_SKATE,SKATE_BACK,SKATE_FORWARD,SKATE_forward_R,SKATE_LAND,SKATE_LAND_stand,SKATE_OLLIE_JUMP,SKATE_OLLIE_LAND");
+        return true;
+    }
+    if(strcmp(lib, "PED", true) == 0)
+    {
+        format(dest, destsize, "%s", "IDLE_stance,WALK_player,RUN_player,WALK_START,CROUCH_walkstart,CROUCH_walk,JOG_player,SPRINT_player,JUMP_launch,JUMP_glide,JUMP_land,FALL_fall,FALL_land,EVADE_step");
+        return true;
+    }
+    if(strcmp(lib, "ON_LOOKER", true) == 0)
+    {
+        format(dest, destsize, "%s", "LOOK_STANDING,LOOK_L_HAND_L,LOOK_L_HAND_R");
+        return true;
+    }
+    return false;
+}
+
+// Extrage al [index]-lea token dintr-o lista separata prin virgula; false daca indexul e in afara listei
+stock bool:AnimLib_GetTokenAt(const list[], index, dest[], destsize)
+{
+    new len = strlen(list);
+    new cur = 0, start = 0;
+    for(new pos = 0; pos <= len; pos++)
+    {
+        if(pos == len || list[pos] == ',')
+        {
+            if(cur == index)
+            {
+                new tlen = pos - start;
+                if(tlen >= destsize) tlen = destsize - 1;
+                strmid(dest, list, start, start + tlen, destsize);
+                return true;
+            }
+            cur++;
+            start = pos + 1;
+        }
+    }
+    return false;
+}
+
+// Converteste o lista separata prin virgula intr-una separata prin \n (pentru dialoguri DIALOG_STYLE_LIST)
+stock AnimLib_CommaToLines(const src[], dest[], destsize)
+{
+    new di = 0;
+    for(new i = 0; src[i] != EOS && di < destsize - 2; i++)
+        dest[di++] = (src[i] == ',') ? '\n' : src[i];
+    dest[di] = EOS;
+}
+
+// Trimite o lista separata prin virgula in chat, impachetata pe mai multe linii (max ~110 caractere/linie)
+stock AnimLib_SendChunked(playerid, color, const header[], const list[])
+{
+    SendClientMessage(playerid, color, header);
+
+    new line[128];
+    line[0] = EOS;
+    new tok[40];
+    new ti = 0;
+    new len = strlen(list);
+
+    for(new i = 0; i <= len; i++)
+    {
+        if(i == len || list[i] == ',')
+        {
+            tok[ti] = EOS;
+            if(strlen(line) + strlen(tok) + 2 > 110)
+            {
+                SendClientMessage(playerid, COLOR_WHITE, line);
+                line[0] = EOS;
+            }
+            if(strlen(line)) strcat(line, ", ", sizeof(line));
+            strcat(line, tok, sizeof(line));
+            ti = 0;
+        }
+        else if(ti < 39) tok[ti++] = list[i];
+    }
+    if(strlen(line)) SendClientMessage(playerid, COLOR_WHITE, line);
 }
 
 // ---- Probleme la apartamente (hIssue) ----
@@ -4162,6 +4435,8 @@ new const Float:g_JobTeleport[MAX_JOBS][3] = {
 #define DIALOG_TRAIN 9046
 #define DIALOG_FORESTLIST 9047
 #define DIALOG_SAPLING_QTY 9048
+#define DIALOG_ANIM2_LIB  9049
+#define DIALOG_ANIM2_ANIM 9050
 
 // ============================================================
 //  TELEFONIE
@@ -4223,9 +4498,11 @@ new const g_WatchCountryGMT[] = {
     0, 1, 1, 0, -6, -5, 5 // India = +5 (real +5:30, rotunjit - sistemul suporta doar ore intregi)
 };
 
-new g_GPSDialogCategory[MAX_PLAYERS];       // 0=Factions,1=Businesses,2=Banks&ATMs,3=Shops,4=FastFoods,5=Farms,6=dinamica (locations_admin)
+new g_GPSDialogCategory[MAX_PLAYERS];       // 0=Factions,1=Businesses,2=Banks&ATMs,3=Shops,4=FastFoods,5=Farms,6=Houses,7=Hotels,8=ClothStores,9=Forests,10=GasStations,11=dinamica (locations_admin)
 new g_GPSDynCat[MAX_PLAYERS][32];           // pentru categoriile dinamice: numele locCategory selectat
 new bool:g_GPSListAdminMode[MAX_PLAYERS];   // true cat timp categoria/locatia GPS e aleasa din /gpslist (admin) - teleport in loc de checkpoint
+new bool:g_TaxiMode[MAX_PLAYERS];           // true cat timp categoria/locatia GPS e aleasa din /taxi - teleport (cu plata) in loc de checkpoint
+new g_Anim2Lib[MAX_PLAYERS][32];            // libraria aleasa in /anim2 (pas 1), folosita cand se alege animatia (pas 2)
 #define GPS_MAX_DYNCATS 16
 
 // Lista GPS construita per-player la deschiderea unei categorii, sortata crescator dupa distanta.
@@ -4243,6 +4520,7 @@ new bool:g_GPSListAdminMode[MAX_PLAYERS];   // true cat timp categoria/locatia G
 #define GPSITEM_HOTEL    10
 #define GPSITEM_CLOTHSTORE 11
 #define GPSITEM_FOREST   12
+#define GPSITEM_GASSTATION 13
 new g_GPSItemType[MAX_PLAYERS][MAX_GPS_LISTITEMS];
 new g_GPSItemRef[MAX_PLAYERS][MAX_GPS_LISTITEMS];
 new Float:g_GPSItemDist[MAX_PLAYERS][MAX_GPS_LISTITEMS];
@@ -6005,6 +6283,33 @@ new g_AtmPickup[MAX_ATMS];
 new Text3D:g_AtmLabel[MAX_ATMS];
 new g_AtmCount = 0;
 
+// ---- Benzinarii (tabelul gasStations din DB) ----
+#define MAX_GAS_STATIONS 50
+enum E_GASSTATION_DATA
+{
+    gsID,
+    gsName[32],
+    Float:gsX, Float:gsY, Float:gsZ
+}
+new GasStationData[MAX_GAS_STATIONS][E_GASSTATION_DATA];
+new Text3D:g_GasStationLabel[MAX_GAS_STATIONS];
+new g_GasStationCount = 0;
+
+// Creeaza eticheta 3D a unei benzinarii (vizibila la range 5.0)
+stock GasStation_Create(idx)
+{
+    if(g_GasStationLabel[idx] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(g_GasStationLabel[idx]);
+        g_GasStationLabel[idx] = Text3D:INVALID_3DTEXT_ID;
+    }
+    new label[128];
+    format(label, sizeof(label), "[ GasStation #%d ]\n[ %s ]\n[ Use /fill or /fillgascan ]",
+        GasStationData[idx][gsID], GasStationData[idx][gsName]);
+    g_GasStationLabel[idx] = Create3DTextLabel(label, COLOR_WHITE,
+        GasStationData[idx][gsX], GasStationData[idx][gsY], GasStationData[idx][gsZ], 5.0, 0, 0);
+}
+
 // ---- BIN (tomberoane de gunoi public, colectate de sistemul SGR - vezi Bins_Load) ----
 #define MAX_BINS 50
 enum E_BIN_DATA
@@ -7057,13 +7362,14 @@ stock Shop_Create(idx)
 {
     if(g_ShopPickup[idx] != -1) { DestroyPickup(g_ShopPickup[idx]); g_ShopPickup[idx] = -1; }
     new pickupModel = SHOP_PICKUP_MODEL;
+    new Float:pickupZ = ShopData[idx][shopZ];
     switch(ShopData[idx][shopType])
     {
-        case 1: pickupModel = 1885;  // 24/7 Shop
-        case 2: pickupModel = 1887;  // Electronics Shop
+        case 1: { pickupModel = 1885; pickupZ -= 0.5; }  // 24/7 Shop
+        case 2: pickupModel = 11743; // Electronics Shop
         case 3: pickupModel = 2480;  // Tools Shop
     }
-    g_ShopPickup[idx] = CreatePickup(pickupModel, 1, ShopData[idx][shopX], ShopData[idx][shopY], ShopData[idx][shopZ], -1);
+    g_ShopPickup[idx] = CreatePickup(pickupModel, 1, ShopData[idx][shopX], ShopData[idx][shopY], pickupZ, -1);
 
     if(g_ShopLabel[idx] != Text3D:INVALID_3DTEXT_ID)
     {
@@ -11987,7 +12293,9 @@ stock Vehicle_SaveFuel(vehicleid)
 
 stock bool:Fuel_PlayerAtStation(playerid)
 {
-    // TODO: implementeaza din baza de date (gasStations table)
+    for(new i = 0; i < g_GasStationCount; i++)
+        if(IsPlayerInRangeOfPoint(playerid, FUEL_STATION_RANGE, GasStationData[i][gsX], GasStationData[i][gsY], GasStationData[i][gsZ]))
+            return true;
     return false;
 }
 
@@ -12504,7 +12812,7 @@ stock DB_CreateTables()
         `rp`          INT DEFAULT 0,\
         `admin_level` INT DEFAULT 0,\
         `faction`     INT DEFAULT 0,\
-        `faction_rank` INT DEFAULT 1,\
+        `faction_rank` INT DEFAULT 0,\
         `faction_join` DATE DEFAULT NULL,\
         `house`       INT DEFAULT 0,\
         `hotel`       INT DEFAULT 0,\
@@ -12704,7 +13012,7 @@ stock DB_CreateTables()
         `owner_id`    INT DEFAULT 0,\
         `owned`       TINYINT DEFAULT 0,\
         `is_for_sale` TINYINT DEFAULT 0,\
-        `price`       INT DEFAULT 50000,\
+        `price`       INT DEFAULT 7500000,\
         `loc_x`       FLOAT DEFAULT 0.0,\
         `loc_y`       FLOAT DEFAULT 0.0,\
         `loc_z`       FLOAT DEFAULT 0.0,\
@@ -13361,6 +13669,36 @@ public OnATMsLoaded()
         g_AtmCount++;
     }
     printf("[Load] ATM-uri: %d", g_AtmCount);
+    return 1;
+}
+
+// ============================================================
+//  INCARCARE BENZINARII
+// ============================================================
+stock GasStations_Load()
+{
+    mysql_tquery(g_SQL,
+        "SELECT `id`,`name`,`locX`,`locY`,`locZ` FROM `gasStations` ORDER BY `id` ASC",
+        "OnGasStationsLoaded");
+}
+
+public OnGasStationsLoaded()
+{
+    new rows = cache_num_rows();
+    g_GasStationCount = 0;
+    for(new i = 0; i < rows && g_GasStationCount < MAX_GAS_STATIONS; i++)
+    {
+        new idx = g_GasStationCount;
+        cache_get_value_name_int  (i, "id",   GasStationData[idx][gsID]);
+        cache_get_value_name     (i, "name", GasStationData[idx][gsName], 32);
+        cache_get_value_name_float(i, "locX", GasStationData[idx][gsX]);
+        cache_get_value_name_float(i, "locY", GasStationData[idx][gsY]);
+        cache_get_value_name_float(i, "locZ", GasStationData[idx][gsZ]);
+        g_GasStationLabel[idx] = Text3D:INVALID_3DTEXT_ID;
+        GasStation_Create(idx);
+        g_GasStationCount++;
+    }
+    printf("[Load] Benzinarii: %d", g_GasStationCount);
     return 1;
 }
 
@@ -15033,7 +15371,7 @@ public OnPlayerRegister(playerid)
     PlayerData[playerid][pRP]         = 0;
     PlayerData[playerid][pAdminLevel] = 0;
     PlayerData[playerid][pFaction]    = 0;
-    PlayerData[playerid][pFactionRank]= 1;
+    PlayerData[playerid][pFactionRank]= 0;
     PlayerData[playerid][pFactionJoin]= 0;
     PlayerData[playerid][pHouse]      = 0;
     PlayerData[playerid][pBusiness]   = 0;
@@ -16313,6 +16651,7 @@ public OnGameModeInit()
 
     Casino_Create();      // casino-ul Four Dragons (intrare/iesire + map icon)
     CarWash_Create();      // spalatoriile auto (pickup + eticheta 3D)
+    Taxi_CreateStation();   // punctul de taxi (pickup + eticheta 3D)
 
     // Vehiculele (statice, job, examene) se spawneaza la 1 secunda dupa pornire, prin Veh_SpawnAll.
     SetTimer("Veh_SpawnAll", 2000, false);
@@ -16556,6 +16895,7 @@ public OnGameModeInit()
     Turfs_Load();
     ATMs_Load();
     Bins_Load();
+    GasStations_Load();
     Shops_Load();
     ClothStores_Load(); // magazine de haine create in-game de admini (DB)
     Ammo_Load();         // magazine de arme create in-game de admini (DB)
@@ -16678,7 +17018,7 @@ public OnPlayerConnect(playerid)
     PlayerData[playerid][pRP]         = 0;
     PlayerData[playerid][pAdminLevel] = 0;
     PlayerData[playerid][pFaction]    = 0;
-    PlayerData[playerid][pFactionRank]= 1;
+    PlayerData[playerid][pFactionRank]= 0;
     PlayerData[playerid][pFactionJoin]= 0;
     PlayerData[playerid][pHouse]      = 0;
     PlayerData[playerid][pBusiness]   = 0;
@@ -19076,6 +19416,118 @@ public OnPlayerCommandText(playerid, cmdtext[])
         format(dlg, sizeof(dlg), ""C_INFO"Station\t"C_INFO"Price\n"C_WHITE"%s\t"C_SUCCESS"$%d\n"C_WHITE"%s\t"C_SUCCESS"$%d\n"C_WHITE"%s\t"C_SUCCESS"$%d",
             g_TrainStationName[0], TRAIN_PRICE, g_TrainStationName[1], TRAIN_PRICE, g_TrainStationName[2], TRAIN_PRICE);
         ShowPlayerDialog(playerid, DIALOG_TRAIN, DIALOG_STYLE_TABLIST_HEADERS, "Train Stations", dlg, "Select", "Close");
+        return 1;
+    }
+
+    // ---- /taxi (teleport la orice locatie din GPS, $200, o data pe ora) ----
+    if(strcmp(cmd, "/taxi", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pWanted] > 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't use the taxi while wanted."), 1;
+
+        if(!Taxi_IsPlayerAtStation(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at the taxi service to do this."), 1;
+
+        new taxiWait = Taxi_SecondsUntilReady(playerid);
+        if(taxiWait > 0)
+        {
+            new twmsg[128];
+            format(twmsg, sizeof(twmsg), C_ERROR"Error: "C_WHITE"You can only use the taxi once per hour. Try again in %d minute(s).", (taxiWait / 60) + 1);
+            return SendClientMessage(playerid, COLOR_ERROR, twmsg), 1;
+        }
+
+        if(PlayerData[playerid][pMoney] < TAXI_PRICE)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for a taxi ride."), 1;
+
+        g_TaxiMode[playerid] = true;
+        GPS_ShowCategoryDialog(playerid);
+        return 1;
+    }
+
+    // ---- /anim [library] [animation_name] (aplica direct o animatie GTA SA) ----
+    if(strcmp(cmd, "/anim", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new animLib[32], alPos = 0;
+        while(cmdtext[idx] > ' ' && alPos < 31) { animLib[alPos++] = cmdtext[idx]; idx++; }
+        animLib[alPos] = EOS;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new animName[32], anPos = 0;
+        while(cmdtext[idx] > ' ' && anPos < 31) { animName[anPos++] = cmdtext[idx]; idx++; }
+        animName[anPos] = EOS;
+
+        if(!strlen(animLib) || !strlen(animName))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/anim [library] [animation_name]"C_WHITE". See "C_INFO"/animlibs"C_WHITE" and "C_INFO"/animlist [library]"C_WHITE"."), 1;
+
+        ApplyAnimation(playerid, animLib, animName, 4.1, 1, 0, 0, 0, 0, 1);
+
+        new amsg[144];
+        format(amsg, sizeof(amsg), C_SUCCESS"Success: "C_WHITE"Playing "C_INFO"%s"C_WHITE"/"C_INFO"%s"C_WHITE". Use "C_INFO"/animstop"C_WHITE" to stop.", animLib, animName);
+        SendClientMessage(playerid, COLOR_SUCCESS, amsg);
+        return 1;
+    }
+
+    // ---- /animstop (opreste fortat animatia curenta) ----
+    if(strcmp(cmd, "/animstop", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        ClearAnimations(playerid, 1);
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Animation stopped.");
+        return 1;
+    }
+
+    // ---- /animlibs (lista cu toate librariile de animatii cunoscute) ----
+    if(strcmp(cmd, "/animlibs", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        AnimLib_SendChunked(playerid, COLOR_INFO, C_INFO"[Anim] "C_WHITE"Libraries (use /animlist [library] to see its animations):", g_AnimAllLibs);
+        return 1;
+    }
+
+    // ---- /animlist [library] (lista cu toate animatiile dintr-o librarie) ----
+    if(strcmp(cmd, "/animlist", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new alLib[32], allPos = 0;
+        while(cmdtext[idx] > ' ' && allPos < 31) { alLib[allPos++] = cmdtext[idx]; idx++; }
+        alLib[allPos] = EOS;
+
+        if(!strlen(alLib))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/animlist [library]"C_WHITE". See "C_INFO"/animlibs"C_WHITE" for the library names."), 1;
+
+        new alAnims[768];
+        if(!AnimLib_GetAnims(alLib, alAnims, sizeof(alAnims)))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown library. Use "C_INFO"/animlibs"C_WHITE" to see the list."), 1;
+
+        new alHeader[64];
+        format(alHeader, sizeof(alHeader), C_INFO"[Anim] "C_WHITE"Animations in "C_INFO"%s"C_WHITE":", alLib);
+        AnimLib_SendChunked(playerid, COLOR_INFO, alHeader, alAnims);
+        return 1;
+    }
+
+    // ---- /anim2 (dialog: alege libraria, apoi animatia, se aplica automat) ----
+    if(strcmp(cmd, "/anim2", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new a2list[512];
+        AnimLib_CommaToLines(g_AnimAllLibs, a2list, sizeof(a2list));
+        ShowPlayerDialog(playerid, DIALOG_ANIM2_LIB, DIALOG_STYLE_LIST, "Anim - Libraries", a2list, "Select", "Cancel");
         return 1;
     }
 
@@ -22746,7 +23198,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         // Reseteaza playerul scos
         PlayerData[targetid][pFaction]     = 0;
-        PlayerData[targetid][pFactionRank] = -1;
+        PlayerData[targetid][pFactionRank] = 0;
         PlayerData[targetid][pFactionJoin] = 0;
         SetPlayerColor(targetid, FactionColors[FACTION_NONE]);
         Factions_SetPlayerIcons(targetid);
@@ -22754,7 +23206,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         new q[160];
         mysql_format(g_SQL, q, sizeof(q),
-            "UPDATE `players` SET `faction`=0, `faction_rank`=-1, `faction_join`=NULL WHERE `id`=%d",
+            "UPDATE `players` SET `faction`=0, `faction_rank`=0, `faction_join`=NULL WHERE `id`=%d",
             PlayerData[targetid][pID]);
         mysql_tquery(g_SQL, q, "", "", 0);
 
@@ -30060,6 +30512,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             "INSERT INTO `gasStations` (`name`,`locX`,`locY`,`locZ`) VALUES ('Gas Station',%.4f,%.4f,%.4f)",
             x, y, z);
         mysql_tquery(g_SQL, q, "", "", 0);
+        GasStations_Load();
 
         new msg[128];
         format(msg, sizeof(msg), C_SUCCESS"[ADM] Success: "C_WHITE"Gas station created at your position.");
@@ -30100,6 +30553,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
                 "UPDATE `gasStations` SET `locX`=%.4f, `locY`=%.4f, `locZ`=%.4f WHERE `id`=%d",
                 x, y, z, gsId);
             mysql_tquery(g_SQL, q, "", "", 0);
+            GasStations_Load();
 
             new msg[128];
             format(msg, sizeof(msg), C_SUCCESS"[ADM] Success: "C_WHITE"Gas Station "C_INFO"#%d"C_WHITE" moved to your location.", gsId);
@@ -30120,6 +30574,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             mysql_format(g_SQL, q, sizeof(q), "UPDATE `gasStations` SET `name`='%e' WHERE `id`=%d",
                 gsNewName, gsId);
             mysql_tquery(g_SQL, q, "", "", 0);
+            GasStations_Load();
 
             new msg[160];
             format(msg, sizeof(msg), C_SUCCESS"[ADM] Success: "C_WHITE"Gas Station "C_INFO"#%d"C_WHITE" renamed to "C_INFO"%s"C_WHITE".", gsId, gsNewName);
@@ -34633,22 +35088,34 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             if(rlLeaderOnline != INVALID_PLAYER_ID)
             {
                 PlayerData[rlLeaderOnline][pFaction]     = 0;
-                PlayerData[rlLeaderOnline][pFactionRank] = 1;
+                PlayerData[rlLeaderOnline][pFactionRank] = 0;
                 SetPlayerColor(rlLeaderOnline, FactionColors[FACTION_NONE]);
                 Factions_SetPlayerIcons(rlLeaderOnline);
 
+                // Prioritate spawn: casa proprie > proprietate inchiriata (house/hotel) > civil (implicit)
+                new rlOldSpawn = PlayerData[rlLeaderOnline][pSpawn];
+                if(PlayerData[rlLeaderOnline][pHouse] != 0)
+                    PlayerData[rlLeaderOnline][pSpawn] = 3;
+                else if(PlayerData[rlLeaderOnline][pRentHouse] != 0 || PlayerData[rlLeaderOnline][pRentHotel] != 0)
+                    PlayerData[rlLeaderOnline][pSpawn] = RENT_SPAWN_TYPE;
+                else
+                    PlayerData[rlLeaderOnline][pSpawn] = 1;
+                Player_RecalcSpawn(rlLeaderOnline);
+                PlayerData[rlLeaderOnline][pSpawn] = rlOldSpawn; // pastreaza preferinta originala a playerului
+
                 new ql[128];
-                mysql_format(g_SQL, ql, sizeof(ql), "UPDATE `players` SET `faction`=0, `faction_rank`=1 WHERE `id`=%d",
+                mysql_format(g_SQL, ql, sizeof(ql), "UPDATE `players` SET `faction`=0, `faction_rank`=0 WHERE `id`=%d",
                     PlayerData[rlLeaderOnline][pID]);
                 mysql_tquery(g_SQL, ql, "", "", 0);
 
                 SendClientMessage(rlLeaderOnline, COLOR_ERROR,
                     C_ERROR"Info: "C_WHITE"You are no longer the faction leader. You have been removed from the faction.");
+                SetPlayerHealth(rlLeaderOnline, 0.0); // respawn la scoaterea din factiune
             }
             else
             {
                 new ql[160];
-                mysql_format(g_SQL, ql, sizeof(ql), "UPDATE `players` SET `faction`=0, `faction_rank`=1 WHERE `username`='%e'",
+                mysql_format(g_SQL, ql, sizeof(ql), "UPDATE `players` SET `faction`=0, `faction_rank`=0 WHERE `username`='%e'",
                     FactionData[fid][fLead]);
                 mysql_tquery(g_SQL, ql, "", "", 0);
             }
@@ -34697,7 +35164,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         // Reseteaza playerul
         PlayerData[targetid][pFaction]     = 0;
-        PlayerData[targetid][pFactionRank] = -1;
+        PlayerData[targetid][pFactionRank] = 0;
         PlayerData[targetid][pFactionJoin] = 0;
         SetPlayerColor(targetid, FactionColors[FACTION_NONE]);
         Factions_SetPlayerIcons(targetid);
@@ -34705,7 +35172,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
 
         new q[160];
         mysql_format(g_SQL, q, sizeof(q),
-            "UPDATE `players` SET `faction`=0, `faction_rank`=-1, `faction_join`=NULL WHERE `id`=%d",
+            "UPDATE `players` SET `faction`=0, `faction_rank`=0, `faction_join`=NULL WHERE `id`=%d",
             PlayerData[targetid][pID]);
         mysql_tquery(g_SQL, q, "", "", 0);
 
@@ -35263,6 +35730,10 @@ public OnPlayerDisconnect(playerid, reason)
     if(g_TrainFreezeTimer[playerid] != -1) { KillTimer(g_TrainFreezeTimer[playerid]); g_TrainFreezeTimer[playerid] = -1; }
     g_TrainTarget[playerid] = -1;
 
+    if(g_TaxiTDTimer[playerid] != -1)     { KillTimer(g_TaxiTDTimer[playerid]);     g_TaxiTDTimer[playerid]     = -1; }
+    if(g_TaxiFreezeTimer[playerid] != -1) { KillTimer(g_TaxiFreezeTimer[playerid]); g_TaxiFreezeTimer[playerid] = -1; }
+    g_TaxiMode[playerid] = false;
+
     // SGR: sacul si continutul lui se pierd la deconectare
     g_PlayerBagType[playerid] = BAG_TYPE_NONE;
     g_PlayerBagSGR[playerid]  = 0;
@@ -35406,6 +35877,7 @@ stock GPSItem_GetCoords(type, ref, &Float:x, &Float:y, &Float:z)
         case GPSITEM_HOTEL:   { x = HotelData[ref][htlLocX]; y = HotelData[ref][htlLocY]; z = HotelData[ref][htlLocZ]; }
         case GPSITEM_CLOTHSTORE: { x = ClothStoreData[ref][clstX]; y = ClothStoreData[ref][clstY]; z = ClothStoreData[ref][clstZ]; }
         case GPSITEM_FOREST:  { x = ForestData[ref][fstX]; y = ForestData[ref][fstY]; z = ForestData[ref][fstZ]; }
+        case GPSITEM_GASSTATION: { x = GasStationData[ref][gsX]; y = GasStationData[ref][gsY]; z = GasStationData[ref][gsZ]; }
     }
 }
 
@@ -35440,6 +35912,7 @@ stock GPSItem_GetName(type, ref, name[], len)
             if(strlen(ForestData[ref][fstOwnerName])) format(name, len, "%s (Forest)", ForestData[ref][fstOwnerName]);
             else format(name, len, "Forest #%d", ForestData[ref][fstID]);
         }
+        case GPSITEM_GASSTATION: format(name, len, "%s #%d", GasStationData[ref][gsName], GasStationData[ref][gsID]);
     }
 }
 
@@ -35529,6 +36002,9 @@ stock GPSList_Build(playerid, cat, const dynCat[])
         case 9: // pasiuni (tabelul forests)
             for(new i = 0; i < g_ForestCount; i++)
                 GPSList_AddItem(playerid, GPSITEM_FOREST, i);
+        case 10: // benzinarii (tabelul gasStations)
+            for(new i = 0; i < g_GasStationCount; i++)
+                GPSList_AddItem(playerid, GPSITEM_GASSTATION, i);
         default: // categorii dinamice din locations_admin (locForGPS=1, locCategory == dynCat)
             for(new i = 0; i < g_LocationCount; i++)
                 if(LocationData[i][locForGPS] && strcmp(LocationData[i][locCategory], dynCat, true) == 0)
@@ -35577,10 +36053,11 @@ stock GPS_ShowCategoryDialog(playerid)
     GPSList_Build(playerid, 7, ""); format(line, sizeof(line), "Hotels\t%d\n",       g_GPSListCount[playerid]); strcat(list, line);
     GPSList_Build(playerid, 8, ""); format(line, sizeof(line), "Clothing Stores\t%d\n", g_GPSListCount[playerid]); strcat(list, line);
     GPSList_Build(playerid, 9, ""); format(line, sizeof(line), "Forests\t%d\n",      g_GPSListCount[playerid]); strcat(list, line);
+    GPSList_Build(playerid, 10, ""); format(line, sizeof(line), "Gas Stations\t%d\n", g_GPSListCount[playerid]); strcat(list, line);
 
     for(new i = 0; i < dynCount; i++)
     {
-        GPSList_Build(playerid, 10 + i, dynCats[i]);
+        GPSList_Build(playerid, 11 + i, dynCats[i]);
         format(line, sizeof(line), "%s\t%d\n", dynCats[i], g_GPSListCount[playerid]);
         strcat(list, line);
     }
@@ -35611,9 +36088,9 @@ stock GPS_ShowLocationDialog(playerid)
         strcat(list, "Name\tType\tID\tDistance\n");
         for(new i = 0; i < n; i++)
         {
-            new shopType = ShopData[g_GPSItemRef[playerid][i]][shopType];
+            new stype = ShopData[g_GPSItemRef[playerid][i]][shopType];
             new shopTypeName[24];
-            switch(shopType)
+            switch(stype)
             {
                 case 1: shopTypeName = "24/7 Shop";
                 case 2: shopTypeName = "Electronics";
@@ -36361,6 +36838,52 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         return 1;
     }
 
+    if(dialogid == DIALOG_ANIM2_LIB)
+    {
+        if(!response) return 1; // Cancel
+
+        new a2lib[32];
+        if(!AnimLib_GetTokenAt(g_AnimAllLibs, listitem, a2lib, sizeof(a2lib)))
+            return 1;
+
+        format(g_Anim2Lib[playerid], 32, "%s", a2lib);
+
+        new a2anims[768];
+        AnimLib_GetAnims(a2lib, a2anims, sizeof(a2anims));
+
+        new a2list[768];
+        AnimLib_CommaToLines(a2anims, a2list, sizeof(a2list));
+
+        ShowPlayerDialog(playerid, DIALOG_ANIM2_ANIM, DIALOG_STYLE_LIST, a2lib, a2list, "Select", "Back");
+        return 1;
+    }
+
+    if(dialogid == DIALOG_ANIM2_ANIM)
+    {
+        if(!response)
+        {
+            new a2list[512];
+            AnimLib_CommaToLines(g_AnimAllLibs, a2list, sizeof(a2list));
+            ShowPlayerDialog(playerid, DIALOG_ANIM2_LIB, DIALOG_STYLE_LIST, "Anim - Libraries", a2list, "Select", "Cancel");
+            return 1;
+        }
+
+        new a2anims[768];
+        if(!AnimLib_GetAnims(g_Anim2Lib[playerid], a2anims, sizeof(a2anims)))
+            return 1;
+
+        new a2anim[32];
+        if(!AnimLib_GetTokenAt(a2anims, listitem, a2anim, sizeof(a2anim)))
+            return 1;
+
+        ApplyAnimation(playerid, g_Anim2Lib[playerid], a2anim, 4.1, 1, 0, 0, 0, 0, 1);
+
+        new a2msg[144];
+        format(a2msg, sizeof(a2msg), C_SUCCESS"Success: "C_WHITE"Playing "C_INFO"%s"C_WHITE"/"C_INFO"%s"C_WHITE". Use "C_INFO"/animstop"C_WHITE" to stop.", g_Anim2Lib[playerid], a2anim);
+        SendClientMessage(playerid, COLOR_SUCCESS, a2msg);
+        return 1;
+    }
+
     if(dialogid == DIALOG_HOTELLIST)
     {
         if(!response) return 1; // Close
@@ -36505,10 +37028,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 
     if(dialogid == DIALOG_GPS_CATEGORY)
     {
-        if(!response) { g_GPSListAdminMode[playerid] = false; return 1; } // Cancel
+        if(!response) { g_GPSListAdminMode[playerid] = false; g_TaxiMode[playerid] = false; return 1; } // Cancel
 
-        // Primele 9 randuri = categorii fixe; restul = categorii dinamice din locations_admin
-        if(listitem < 9)
+        // Primele 11 randuri = categorii fixe (0-10); restul = categorii dinamice din locations_admin
+        if(listitem < 11)
         {
             g_GPSDialogCategory[playerid] = listitem;
             g_GPSDynCat[playerid][0] = EOS;
@@ -36517,10 +37040,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         {
             new dynCats[GPS_MAX_DYNCATS][32];
             new dynCount = GPS_GetDynCategories(dynCats, GPS_MAX_DYNCATS);
-            new di = listitem - 9;
+            new di = listitem - 11;
             if(di < 0 || di >= dynCount) return 1;
 
-            g_GPSDialogCategory[playerid] = 9;
+            g_GPSDialogCategory[playerid] = 11; // valoare care nu se potriveste niciunui case fix -> hit "default" in GPSList_Build
             format(g_GPSDynCat[playerid], 32, "%s", dynCats[di]);
         }
 
@@ -36533,6 +37056,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         if(!response) { GPS_ShowCategoryDialog(playerid); return 1; } // Back -> inapoi la categorii
 
         new bool:glAdminMode = g_GPSListAdminMode[playerid];
+        new bool:taxiMode    = g_TaxiMode[playerid];
 
         if(!glAdminMode && (g_ExamAState[playerid] != EXAMA_STATE_NONE || g_ExamState[playerid] != EXAM_STATE_NONE ||
            g_ExamCState[playerid] != EXAMC_STATE_NONE || g_ExamDState[playerid] != EXAMD_STATE_NONE))
@@ -36561,6 +37085,39 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             new glmsg[144];
             format(glmsg, sizeof(glmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to "C_INFO"%s"C_WHITE".", nm);
             SendClientMessage(playerid, COLOR_SUCCESS, glmsg);
+            return 1;
+        }
+
+        // ---- /taxi: teleport platit ($200, cooldown 1 ora) ----
+        if(taxiMode)
+        {
+            g_TaxiMode[playerid] = false;
+
+            if(Taxi_SecondsUntilReady(playerid) > 0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can only use the taxi once per hour."), 1;
+
+            if(PlayerData[playerid][pMoney] < TAXI_PRICE)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for a taxi ride."), 1;
+
+            GivePlayerMoney(playerid, -TAXI_PRICE);
+            PlayerData[playerid][pMoney] -= TAXI_PRICE;
+            UpdatePlayer(playerid, pMoney);
+
+            g_TaxiLastUse[playerid] = gettime();
+            format(g_TaxiTargetName[playerid], 48, "%s", nm);
+
+            if(GetPlayerVehicleID(playerid) != 0)
+                SetVehiclePos(GetPlayerVehicleID(playerid), cx, cy, cz + 0.5);
+            else
+                AC_SetPos(playerid, cx, cy, cz + 0.5);
+
+            TogglePlayerControllable(playerid, 0);
+            LoginBG_Show(playerid);
+
+            if(g_TaxiTDTimer[playerid] != -1) KillTimer(g_TaxiTDTimer[playerid]);
+            if(g_TaxiFreezeTimer[playerid] != -1) KillTimer(g_TaxiFreezeTimer[playerid]);
+            g_TaxiTDTimer[playerid]     = SetTimerEx("Taxi_TextdrawDone", TAXI_TEXTDRAW_MS, false, "i", playerid);
+            g_TaxiFreezeTimer[playerid] = SetTimerEx("Taxi_Unfreeze", TAXI_FREEZE_MS, false, "i", playerid);
             return 1;
         }
 

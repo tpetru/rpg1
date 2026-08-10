@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Aug 07, 2026 at 08:28 AM
+-- Generation Time: Aug 10, 2026 at 03:21 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -352,10 +352,10 @@ INSERT INTO `factions` (`id`, `name`, `members`, `lead`, `bank`, `pickup_id`, `m
 (1, 'Police Department', 0, '', 12000, 1247, 30, 1554.2, -1675.9, 16.25, 247.2, 63.4, 1003.7, 6, 0, 0, 0, 0, 266, 281, 265, 0, 6, 1, 0),
 (2, 'Department of Motor Vehicles', 1, 'Punctulet', 2850, 1581, 55, 918.405, -1252.19, 16.2109, 246.06, 108.97, 1003.3, 10, 2, 0, 0, 0, 268, 304, 302, 0, 6, 1, 0),
 (3, 'SMURD', 0, '', 250, 11738, 22, 1172.71, -1323.21, 15.4017, 2267.75, 1647.55, 1084.23, 1, 3, 0, 0, 0, 276, 277, 274, 0, 6, 1, 270.473),
-(4, 'European Mafia', 0, '', 328400, 1314, 58, 1872.64, -2020.46, 13.5469, 2569.41, -1301.77, 1044.12, 2, 4, 684, 5, 0, 114, 115, 116, 0, 6, 1, 0),
-(5, 'American Mafia', 0, '', 45500, 1314, 59, 1905.89, -1115.16, 25.9538, 2569.41, -1301.77, 1044.12, 2, 5, 0, 0, 0, 102, 103, 104, 0, 6, 1, 0),
-(6, 'African Mafia', 0, '', 45800, 1314, 62, 2495.4, -1688.71, 13.9735, 2569.41, -1301.77, 1044.12, 2, 6, 0, 0, 0, 105, 106, 107, 0, 6, 1, 0),
-(7, 'Asian Mafia', 0, '', 47900, 1314, 60, 2231.89, -1159.81, 25.8906, 2569.41, -1301.77, 1044.12, 2, 7, 0, 0, 0, 108, 109, 110, 0, 6, 1, 0),
+(4, 'European Mafia', 0, '', 328800, 1314, 58, 1872.64, -2020.46, 13.5469, 2569.41, -1301.77, 1044.12, 2, 4, 684, 5, 0, 114, 115, 116, 0, 6, 1, 0),
+(5, 'American Mafia', 0, '', 45900, 1314, 59, 1905.89, -1115.16, 25.9538, 2569.41, -1301.77, 1044.12, 2, 5, 0, 0, 0, 102, 103, 104, 0, 6, 1, 0),
+(6, 'African Mafia', 0, '', 46200, 1314, 62, 2495.4, -1688.71, 13.9735, 2569.41, -1301.77, 1044.12, 2, 6, 0, 0, 0, 105, 106, 107, 0, 6, 1, 0),
+(7, 'Asian Mafia', 0, '', 48300, 1314, 60, 2231.89, -1159.81, 25.8906, 2569.41, -1301.77, 1044.12, 2, 7, 0, 0, 0, 108, 109, 110, 0, 6, 1, 0),
 (8, 'News Reporters', 0, '', 750, 1318, 34, 733.452, -1350.27, 13.5, 322.5, 303.7, 999.2, 5, 8, 0, 0, 0, 273, 48, 46, 0, 6, 1, 0);
 
 -- --------------------------------------------------------
@@ -487,6 +487,20 @@ CREATE TABLE `forests` (
 
 INSERT INTO `forests` (`id`, `ownerId`, `owner`, `isForSale`, `defaultPrice`, `price`, `size`, `locX`, `locY`, `locZ`, `maxTree`, `currentTree`, `saplings`, `plantedSaplings`) VALUES
 (1, 0, '', 1, 100000, 100000, 0, -145.476, -1572.88, 7.9526, 0, 0, 0, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `gasstations`
+--
+
+CREATE TABLE `gasstations` (
+  `id` int(11) NOT NULL,
+  `name` varchar(32) DEFAULT 'Gas Station',
+  `locX` float DEFAULT 0,
+  `locY` float DEFAULT 0,
+  `locZ` float DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1189,16 +1203,16 @@ CREATE TABLE `shops` (
 
 INSERT INTO `shops` (`shopID`, `shopLocX`, `shopLocY`, `shopLocZ`, `shopName`, `type`) VALUES
 (1, 1142.99, -1520.15, 15.7969, '24/7 Shop', 1),
-(2, 822.054, -1758.33, 13.6484, '24/7 Shop', 1),
+(2, 822.054, -1758.33, 13.6484, 'Electronics Shop', 2),
 (3, 1352.3, -1758.31, 13.5078, '24/7 Shop', 1),
-(4, 2163.22, -1744.15, 13.5469, '24/7 Shop', 1),
+(4, 2163.22, -1744.15, 13.5469, 'Electronics Shop', 2),
 (5, 2423.07, -1742.42, 13.5469, '24/7 Shop', 1),
 (6, 2362.68, -1339.17, 24.0078, '24/7 Shop', 1),
 (7, 1315.33, -899.083, 39.5781, '24/7 Shop', 1),
-(8, 2002.84, -1282.41, 23.9733, '24/7 Shop', 1),
+(8, 2002.84, -1282.41, 23.9733, 'Tools Shop', 3),
 (9, 994.824, -1297.04, 13.5469, '24/7 Shop', 1),
 (10, 841.601, -2047.8, 12.8672, '24/7 Shop', 1),
-(11, 975.431, -1335.86, 13.5318, '24/7 Shop', 3);
+(11, 975.431, -1335.86, 13.5318, 'Tools Shop', 3);
 
 -- --------------------------------------------------------
 
@@ -1568,6 +1582,12 @@ ALTER TABLE `forests`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `gasstations`
+--
+ALTER TABLE `gasstations`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `gta_interiors`
 --
 ALTER TABLE `gta_interiors`
@@ -1698,7 +1718,7 @@ ALTER TABLE `warns`
 -- AUTO_INCREMENT for table `ammunations`
 --
 ALTER TABLE `ammunations`
-  MODIFY `amoID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `amoID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `arm_equipment`
@@ -1710,37 +1730,37 @@ ALTER TABLE `arm_equipment`
 -- AUTO_INCREMENT for table `atms`
 --
 ALTER TABLE `atms`
-  MODIFY `atmID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `atmID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `bans`
 --
 ALTER TABLE `bans`
-  MODIFY `banID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `banID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `basket_spawns`
 --
 ALTER TABLE `basket_spawns`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `bin`
 --
 ALTER TABLE `bin`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `businesses`
 --
 ALTER TABLE `businesses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `clothstores`
 --
 ALTER TABLE `clothstores`
-  MODIFY `csID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `csID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `cs_locations`
@@ -1752,73 +1772,79 @@ ALTER TABLE `cs_locations`
 -- AUTO_INCREMENT for table `farms`
 --
 ALTER TABLE `farms`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `farm_equipment`
 --
 ALTER TABLE `farm_equipment`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `fastfood`
 --
 ALTER TABLE `fastfood`
-  MODIFY `ffID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `ffID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `forests`
 --
 ALTER TABLE `forests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `gasstations`
+--
+ALTER TABLE `gasstations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `gta_interiors`
 --
 ALTER TABLE `gta_interiors`
-  MODIFY `gtaIntID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=139;
+  MODIFY `gtaIntID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `hotels`
 --
 ALTER TABLE `hotels`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `houses`
 --
 ALTER TABLE `houses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `houses_animals`
 --
 ALTER TABLE `houses_animals`
-  MODIFY `aID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `aID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `houses_tree`
 --
 ALTER TABLE `houses_tree`
-  MODIFY `treeId` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `treeId` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `locations_admin`
 --
 ALTER TABLE `locations_admin`
-  MODIFY `locID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=914;
+  MODIFY `locID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `players`
 --
 ALTER TABLE `players`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `player_skins`
 --
 ALTER TABLE `player_skins`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `president_votes`
@@ -1830,55 +1856,55 @@ ALTER TABLE `president_votes`
 -- AUTO_INCREMENT for table `races`
 --
 ALTER TABLE `races`
-  MODIFY `rID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `rID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `repID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `repID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `rulote_personale`
 --
 ALTER TABLE `rulote_personale`
-  MODIFY `rID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `rID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `server_setup`
 --
 ALTER TABLE `server_setup`
-  MODIFY `ssId` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
+  MODIFY `ssId` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `shops`
 --
 ALTER TABLE `shops`
-  MODIFY `shopID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
+  MODIFY `shopID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `turfs`
 --
 ALTER TABLE `turfs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=155;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `ucp_factapplications`
 --
 ALTER TABLE `ucp_factapplications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `vehicles_faction`
 --
 ALTER TABLE `vehicles_faction`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=104;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `vehicles_personal`
 --
 ALTER TABLE `vehicles_personal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `warns`
