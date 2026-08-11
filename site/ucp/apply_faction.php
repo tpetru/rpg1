@@ -20,7 +20,9 @@ $playerId = ucp_current_player_id();
 $error = '';
 $success = false;
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
+    $error = "Security check failed (invalid or expired form). Please try again.";
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $motiv = trim($_POST['motiv'] ?? '');
     $lastFaction = (int)($_POST['last_faction'] ?? 0);
 
@@ -97,6 +99,7 @@ $factionName = ucp_faction_name($factionId);
       <?php endif; ?>
 
       <form method="post" class="apply-form">
+        <?= ucp_csrf_field() ?>
         <input type="hidden" name="faction" value="<?= $factionId ?>">
 
         <label for="last_faction">Current faction</label>

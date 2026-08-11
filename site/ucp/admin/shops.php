@@ -18,7 +18,10 @@ $shopTypeName = [
 $flash = null;
 $flashErr = false;
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
+  $flash = "Security check failed (invalid or expired form). Please try again.";
+  $flashErr = true;
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
   $shopID = (int)($_POST['shopID'] ?? 0);
   $shopName = trim($_POST['shopName'] ?? '');
   $shopType = (int)($_POST['shopType'] ?? 0);
@@ -92,6 +95,7 @@ $adminActive = 'shops';
         <td><?= number_format((float)$s['shopLocZ'], 2) ?></td>
         <td>
           <form id="<?= $sid ?>" method="POST">
+            <?= ucp_csrf_field() ?>
             <input type="hidden" name="shopID" value="<?= (int)$s['shopID'] ?>">
             <button type="submit" class="save-btn">Save</button>
           </form>

@@ -113,6 +113,31 @@ function ucp_current_faction_rank() {
     return isset($_SESSION['ucp_faction_rank']) ? (int)$_SESSION['ucp_faction_rank'] : 0;
 }
 
+// ============================================================
+//  CSRF PROTECTION
+// ============================================================
+// Un singur token persistent per sesiune (nu se regenereaza la fiecare request, ca formularele
+// deschise in mai multe tab-uri sa continue sa functioneze). Orice actiune POST care schimba
+// starea (kick, remove leader, editare admin, preturi, etc.) trebuie sa includa acest token si
+// sa fie verificata cu ucp_csrf_verify() inainte de a executa mutatia in DB.
+function ucp_csrf_token() {
+    if (empty($_SESSION['ucp_csrf_token'])) {
+        $_SESSION['ucp_csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['ucp_csrf_token'];
+}
+
+// Randeaza inputul hidden de pus in interiorul fiecarui <form method="post">
+function ucp_csrf_field() {
+    return '<input type="hidden" name="csrf_token" value="' . ucp_csrf_token() . '">';
+}
+
+// True daca token-ul trimis in POST se potriveste cu cel din sesiune
+function ucp_csrf_verify() {
+    $token = $_POST['csrf_token'] ?? '';
+    return $token !== '' && isset($_SESSION['ucp_csrf_token']) && hash_equals($_SESSION['ucp_csrf_token'], $token);
+}
+
 // Lider = faction_rank 5 (vezi pFactionRank == 5 => "Lead" in bare.pwn)
 function ucp_is_faction_leader($factionId) {
     return ucp_current_faction() === (int)$factionId && ucp_current_faction_rank() >= 5;

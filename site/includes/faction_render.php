@@ -21,7 +21,10 @@ function faction_sync_members($mysqli, $factionId) {
     $stmt->close();
 }
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
+    $flash = "Security check failed (invalid or expired form). Please try again.";
+    $flashErr = true;
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
     // ---- Uninvite/kick a member (leader or admin) - mirrors /fkick and /adminuninvite in bare.pwn ----
@@ -266,12 +269,14 @@ include __DIR__ . '/header.php';
       <?php if ($isAdmin): ?>
         <?php if ($faction['lead']): ?>
         <form method="post" style="margin-top:14px" onsubmit="return confirm('Remove the faction leader? They will become a civilian.');">
+          <?= ucp_csrf_field() ?>
           <input type="hidden" name="action" value="remove_lead">
           <button type="submit" class="btn danger">Remove leader</button>
         </form>
         <?php endif; ?>
 
         <form method="post" class="bank-form">
+          <?= ucp_csrf_field() ?>
           <input type="hidden" name="action" value="set_bank">
           <label for="bank-amount" style="color:var(--muted); font-size:0.85rem">Set bank:</label>
           <input id="bank-amount" type="number" name="amount" min="0" value="<?= (int)$faction['bank'] ?>">
@@ -327,6 +332,7 @@ include __DIR__ . '/header.php';
             <?php if ($mrank < 5): ?>
             <div class="row-actions">
               <form method="post" style="display:flex; gap:6px; align-items:center">
+                <?= ucp_csrf_field() ?>
                 <input type="hidden" name="action" value="setrank">
                 <input type="hidden" name="player_id" value="<?= (int)$m['id'] ?>">
                 <select name="new_rank">
@@ -337,6 +343,7 @@ include __DIR__ . '/header.php';
                 <button type="submit">Set</button>
               </form>
               <form method="post" onsubmit="return confirm('Remove <?= ucp_escape(addslashes($m['username'])) ?> from the faction?');">
+                <?= ucp_csrf_field() ?>
                 <input type="hidden" name="action" value="kick">
                 <input type="hidden" name="player_id" value="<?= (int)$m['id'] ?>">
                 <button type="submit" class="danger">Kick</button>
@@ -378,6 +385,7 @@ include __DIR__ . '/header.php';
             <div class="row-actions">
               <?php if ($a['status'] === 'Open'): ?>
               <form method="post">
+                <?= ucp_csrf_field() ?>
                 <input type="hidden" name="action" value="app_status">
                 <input type="hidden" name="app_id" value="<?= (int)$a['id'] ?>">
                 <input type="hidden" name="new_status" value="Review">
@@ -385,12 +393,14 @@ include __DIR__ . '/header.php';
               </form>
               <?php endif; ?>
               <form method="post" onsubmit="return confirm('Accept this application and add <?= ucp_escape(addslashes($a['username'] ?? ('#' . $a['playerId']))) ?> to the faction?');">
+                <?= ucp_csrf_field() ?>
                 <input type="hidden" name="action" value="app_status">
                 <input type="hidden" name="app_id" value="<?= (int)$a['id'] ?>">
                 <input type="hidden" name="new_status" value="Accepted">
                 <button type="submit">Accept</button>
               </form>
               <form method="post" onsubmit="var r=prompt('Reason for rejecting this application:'); if(!r){return false;} this.reject_reason.value=r; return true;">
+                <?= ucp_csrf_field() ?>
                 <input type="hidden" name="action" value="app_status">
                 <input type="hidden" name="app_id" value="<?= (int)$a['id'] ?>">
                 <input type="hidden" name="new_status" value="Rejected">
@@ -414,6 +424,7 @@ include __DIR__ . '/header.php';
     <h2>🚗 Faction vehicles (<?= count($vehicles) ?>)</h2>
 
     <form method="post" style="margin-bottom:14px" onsubmit="return confirm('Refill all faction vehicles to full fuel?');">
+      <?= ucp_csrf_field() ?>
       <input type="hidden" name="action" value="refill">
       <button type="submit" class="btn">⛽ Refill all vehicles</button>
     </form>

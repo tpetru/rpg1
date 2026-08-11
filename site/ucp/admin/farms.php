@@ -16,7 +16,10 @@ $farmEquipTypes = [
     450 => ['Trailer', 15],
 ];
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
+    $flash = "Security check failed (invalid or expired form). Please try again.";
+    $flashErr = true;
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     $rowAction = $_POST['row_action'] ?? '';
 
@@ -129,6 +132,7 @@ $adminActive = 'farms';
           <td><input form="<?= $fid ?>" type="text" name="owner_id" value="<?= $f['isOwned'] ? (int)$f['owner_id'] : 'none' ?>" placeholder="none"></td>
           <td>
             <form id="<?= $fid ?>" method="post">
+              <?= ucp_csrf_field() ?>
               <input type="hidden" name="id" value="<?= (int)$f['id'] ?>">
               <button type="submit" class="save-btn">Save</button>
             </form>
@@ -165,6 +169,7 @@ $adminActive = 'farms';
                   <td><span class="pill pill-<?= $eqTier ?>"><?= $eqWord ?></span></td>
                   <td>
                     <form id="<?= $eqFid ?>" method="post" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
+                      <?= ucp_csrf_field() ?>
                       <input type="hidden" name="id" value="<?= (int)$f['id'] ?>">
                       <input type="hidden" name="equip_id" value="<?= (int)$eq['id'] ?>">
                       <input type="hidden" name="equip_model" value="<?= (int)$eq['model'] ?>">
@@ -183,6 +188,7 @@ $adminActive = 'farms';
                   $addLabel = $farmEquipTypes[$model][0] ?? $action;
               ?>
                 <form id="<?= $addFid ?>" method="post">
+                  <?= ucp_csrf_field() ?>
                   <input type="hidden" name="id" value="<?= (int)$f['id'] ?>">
                   <button type="submit" name="row_action" value="<?= $action ?>" class="save-btn">+ <?= ucp_escape($addLabel) ?></button>
                 </form>

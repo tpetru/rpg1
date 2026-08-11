@@ -9,7 +9,6 @@ $flashErr = false;
 // Field metadata: column => [label, input type]. type: int, float, text, date, bool
 $playerFields = [
     'username'            => ['Username', 'text'],
-    'password'            => ['Password (plaintext)', 'text'],
     'email'               => ['Email', 'text'],
     'level'               => ['Level', 'int'],
     'rp'                  => ['RP', 'int'],
@@ -59,10 +58,16 @@ $playerFields = [
     'voted'               => ['Voted', 'bool'],
 ];
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $playerId > 0) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $playerId > 0 && !ucp_csrf_verify()) {
+    $flash = "Security check failed (invalid or expired form). Please try again.";
+    $flashErr = true;
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $playerId > 0) {
+    $actingAdminLevel = ucp_current_admin_level();
+
     $set = [];
     $types = '';
     $vals = [];
+    $adminLevelCapped = false;
     foreach ($playerFields as $col => [$label, $type]) {
         switch ($type) {
             case 'int':
@@ -82,6 +87,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $playerId > 0) {
                 $v = trim($_POST[$col] ?? '');
                 $types .= 's';
         }
+        // Un admin nu poate seta admin_level-ul (al sau sau al altcuiva) mai mare decat propriul nivel curent
+        if ($col === 'admin_level' && $v > $actingAdminLevel) {
+            $v = $actingAdminLevel;
+            $adminLevelCapped = true;
+        }
         $set[] = "`$col`=?";
         $vals[] = $v;
     }
@@ -92,7 +102,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $playerId > 0) {
     $stmt->bind_param($types, ...$vals);
     $stmt->execute();
     $stmt->close();
-    $flash = "Player #$playerId updated.";
+    $flash = "Player #$playerId updated." . ($adminLevelCapped ? " (Admin level capped at your own level: $actingAdminLevel.)" : "");
 }
 
 // Search by username -> redirect to ?playerid=X once found
@@ -166,6 +176,7 @@ $adminActive = 'player';
   <div class="card">
     <h2>#<?= (int)$player['id'] ?> — <?= ucp_escape($player['username']) ?></h2>
     <form method="post">
+      <?= ucp_csrf_field() ?>
       <input type="hidden" name="playerid" value="<?= (int)$player['id'] ?>">
       <table class="edittable">
         <tr><th>Field</th><th>Value</th></tr>

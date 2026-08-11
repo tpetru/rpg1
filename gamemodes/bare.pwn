@@ -2212,6 +2212,10 @@ new Float:g_WaterBarrelRotZ = 0.0;
 #define FISH_ROD_ATTACH_INDEX    3     // diferit de BBALL (0), PARTY (1), VIPHAT (2)
 #define FISH_ROD_ATTACH_BONE     6     // 6 = Right Hand (bone SA-MP)
 
+// Offset-uri reglabile live cu /undita [x/y/z/rx/ry/rz] [valoare] (cumulativ: vechea valoare + valoarea data)
+new Float:g_FishRodOffX = 0.0, Float:g_FishRodOffY = 0.0, Float:g_FishRodOffZ = 0.0;
+new Float:g_FishRodRotX = 0.0, Float:g_FishRodRotY = 0.0, Float:g_FishRodRotZ = 0.0;
+
 #define FISH_STATE_NONE     0
 #define FISH_STATE_FISHING  1  // in animatie, la punctul de pescuit
 #define FISH_STATE_DELIVER  2  // are peste, se indreapta spre fast-food
@@ -2666,6 +2670,106 @@ stock AnimLib_SendChunked(playerid, color, const header[], const list[])
         else if(ti < 39) tok[ti++] = list[i];
     }
     if(strlen(line)) SendClientMessage(playerid, COLOR_WHITE, line);
+}
+
+// ============================================================
+//  MESAJE INFORMATIVE (TIPS) - afisate periodic, aleatoriu, tuturor playerilor logati
+// ============================================================
+#define SERVERTIP_COUNT       42
+#define SERVERTIP_INTERVAL_MS 600000 // 10 minute
+
+new const g_ServerTips[SERVERTIP_COUNT][200] =
+{
+    "Lost? Use "C_INFO"/gps"C_WHITE" to open the GPS menu and set a checkpoint to almost any location on the server.",
+    "Need a quick ride anywhere on the map? Use "C_INFO"/taxi"C_WHITE" at the taxi point for "C_INFO"$200"C_WHITE" (once per hour).",
+    "Traveling between the LS train stations only costs "C_INFO"$150"C_WHITE" - use "C_INFO"/train"C_WHITE" at any station.",
+    "Own multiple outfits? Use "C_INFO"/wardrobe"C_WHITE" at a clothing store to switch between them for free.",
+    "Need to store your cash safely? Use "C_INFO"/deposit [amount]"C_WHITE" and "C_INFO"/withdraw [amount]"C_WHITE" at any ATM.",
+    "Vehicle looking dirty after a long drive? Use "C_INFO"/v wash"C_WHITE" at a car wash to clean it up.",
+    "New to the server? Check the "C_INFO"How To"C_WHITE" page on the UCP website for detailed guides on every system.",
+    "Not sure how a job works? The UCP website's "C_INFO"How To"C_WHITE" page covers all 12 jobs in detail.",
+    "Own houses, businesses, or hotels? Manage all of them from the "C_INFO"Listings"C_WHITE" menu on the UCP website.",
+    "Have the Fisherman job? Use "C_INFO"/fish"C_WHITE" at a fishing spot, then deliver your catch to the marked fast-food.",
+    "Need a fishing rod for the Fisherman job? Buy one at a "C_INFO"Tools Shop"C_WHITE" with "C_INFO"/shop"C_WHITE".",
+    "Ran out of fuel far from a gas station? Fill a gas can with "C_INFO"/fillgascan"C_WHITE", then use "C_INFO"/fill"C_WHITE" in your vehicle.",
+    "Don't have a job yet? Use "C_INFO"/getjob"C_WHITE" to browse and pick one.",
+    "Feeling sick? Go to the SMURD hospital and use "C_INFO"/curedisease"C_WHITE" to recover.",
+    "Being harassed by another player? Use "C_INFO"/report [reason]"C_WHITE" to alert the online admins.",
+    "Bought VIP? Unlock exclusive items with "C_INFO"/vipc"C_WHITE" and wear a special hat with "C_INFO"/viphat"C_WHITE".",
+    "In a faction with a uniform? Use "C_INFO"/changeskin"C_WHITE" while inside your faction's interior to switch to it.",
+    "Faction leaders can manage members, ranks, and applications directly from the UCP website - no admin needed.",
+    "Want to join a faction? Submit your application from the UCP website's Factions page - no need to track down the leader in-game.",
+    "Have the Lumberjack job? Use "C_INFO"/chopwood"C_WHITE" at your forest to gather wood, once per payday.",
+    "Own a forest? Buy tree saplings from a Benson at a Tools Shop, then plant them to keep your forest growing (max 100 per purchase).",
+    "Want to support the server? Check out the available VIP packages on the UCP website.",
+    "Check your driving license status and renew expired ones before you get pulled over.",
+    "Renting a bike or car is cheap and quick - look for the rental points marked around Los Santos.",
+    "You can view live server statistics - houses, businesses, hotels, farms, and more - right on the homepage.",
+    "Confused about a system? The UCP website's How To page covers almost everything - give it a look!",
+    "Keep some cash in your bank - it's safer there than carrying it all in cash.",
+    "Every job has its own dedicated section in the UCP's How To guide - find yours and read up before starting.",
+    "Admins can be reached in-game with "C_INFO"/report"C_WHITE" for any issue - don't hesitate to ask for help.",
+    "Hungry? Grab a bite with "C_INFO"/pizza"C_WHITE", "C_INFO"/burger"C_WHITE", or "C_INFO"/meal"C_WHITE" at any fast-food restaurant to restore health.",
+    "Want to become a farmer? Buy an available field with "C_INFO"/buyfarm"C_WHITE" and start growing your own crops.",
+    "Interested in the timber business? Buy an available forest with "C_INFO"/buyforest"C_WHITE" and put a Lumberjack to work.",
+    "Manage your personal vehicle with "C_INFO"/v [install/ITP/insurance/plate/color1/color2/sell/sellto/selltostate/park/wash]"C_WHITE".",
+    "Looking for a place to live? Buy an available house with "C_INFO"/buyhouse"C_WHITE".",
+    "Want to run a hotel business? Buy an available one with "C_INFO"/buyhotel"C_WHITE", or use "C_INFO"/findhotel"C_WHITE" to locate one on the map.",
+    "Getting tired hurts your health over time - use "C_INFO"/sleep"C_WHITE" in a bed before your tiredness gets too high.",
+    "Don't forget - income tax and property taxes are deducted automatically at every payday, so keep enough in your bank.",
+    "Feeling competitive? Head to the basketball court and use "C_INFO"/joinbasket"C_WHITE" to join the next round.",
+    "Want to advertise your business? Use "C_INFO"/ad [text]"C_WHITE" at a billboard (West/South/East LosSantos) - price is per character.",
+    "Own a house? Don't forget to buy an upgrade for it with "C_INFO"/house upgrade"C_WHITE" - fridge, bed, tree, or an animal.",
+    "Visit any "C_INFO"Shop"C_WHITE" ("C_INFO"/shop"C_WHITE") for essentials like medkits, extinguishers, phones, watches, tools, or a fishing rod, depending on the shop type.",
+    "Want to earn extra cash? Collect trash with "C_INFO"/bin"C_WHITE", load it into an SGR van, then unload and sell it with /sgrunload and /sellsgr."
+};
+
+#define SERVERJOKE_COUNT 20
+
+new const g_ServerJokes[SERVERJOKE_COUNT][160] =
+{
+    "Why did the CJ cross the road? To avoid the cops - he still doesn't have a license.",
+    "My driving instructor said I'd pass the exam eventually... he was very optimistic.",
+    "I asked the bank for a loan. They asked for collateral. I offered my dignity.",
+    "Why don't skeletons fight each other in Los Santos? They don't have the guts.",
+    "I tried to rob a bank once. Turns out you need more than good intentions.",
+    "My gas can is always empty when I need it and full when I don't.",
+    "The fastest way to make friends here? Crash into their car and say \"my bad.\"",
+    "I put on my VIP hat and suddenly everyone respects me. Funny how that works.",
+    "Being a taxi driver taught me one thing: nobody tips in this city.",
+    "I asked my forest for more trees. It said \"grow up.\"",
+    "My tiredness bar is basically my life story.",
+    "I once tried to pay my taxes on time. The server almost crashed from shock.",
+    "Why did the fisherman get kicked from the faction? He kept bringing up old catches.",
+    "I bought a house with no fridge. Living the minimalist lifestyle... involuntarily.",
+    "My admin said \"stop asking for /heal every five minutes.\" I said \"no.\"",
+    "The gas station clerk asked if I wanted a receipt. I said \"just my dignity back.\"",
+    "I tried the sapling business. Turns out money doesn't grow on trees. Who knew.",
+    "My basketball skills are like my bank account - mostly empty, occasionally lucky.",
+    "I asked the hotel for a wake-up call. They just sent the police instead.",
+    "Every time I say \"just one more delivery,\" it turns into five. Every. Time."
+};
+
+// Alege un tip sau o gluma aleatoriu si il trimite tuturor playerilor logati (apelat periodic din OnGameModeInit)
+forward ServerTip_Tick();
+public ServerTip_Tick()
+{
+    new msg[224];
+    if(random(2) == 0)
+    {
+        new tip = random(SERVERTIP_COUNT);
+        format(msg, sizeof(msg), C_INFO"[Tip] "C_WHITE"%s", g_ServerTips[tip]);
+    }
+    else
+    {
+        new joke = random(SERVERJOKE_COUNT);
+        format(msg, sizeof(msg), C_INFO"[Joke] "C_WHITE"%s", g_ServerJokes[joke]);
+    }
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged])
+            SendClientMessage(i, COLOR_INFO, msg);
+    return 1;
 }
 
 // ---- Probleme la apartamente (hIssue) ----
@@ -8827,32 +8931,37 @@ stock Water_Stop(playerid)
 // ---- Fisherman: /fish la un punct dedicat, apoi livrare la un fast-food random (pizza/burger/cluckin) ----
 
 // Alege random un fast-food (pizza/burger/cluckin) existent, ca punct de livrare pt peste
-stock bool:Fish_PickDeliveryPoint(&Float:fx, &Float:fy, &Float:fz)
+stock bool:Fish_PickDeliveryPoint(&Float:fx, &Float:fy, &Float:fz, name[], namesize)
 {
     new Float:list[MAX_FOOD_LOCATIONS * 3][3], count = 0;
+    new listName[MAX_FOOD_LOCATIONS * 3][32];
 
     for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
     {
         if(PizzaLocations[i][0] == 0.0 && PizzaLocations[i][1] == 0.0) continue;
         list[count][0] = PizzaLocations[i][0]; list[count][1] = PizzaLocations[i][1]; list[count][2] = PizzaLocations[i][2];
+        format(listName[count], 32, "%s", g_PizzaName[i]);
         count++;
     }
     for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
     {
         if(BurgerLocations[i][0] == 0.0 && BurgerLocations[i][1] == 0.0) continue;
         list[count][0] = BurgerLocations[i][0]; list[count][1] = BurgerLocations[i][1]; list[count][2] = BurgerLocations[i][2];
+        format(listName[count], 32, "%s", g_BurgerName[i]);
         count++;
     }
     for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
     {
         if(MealLocations[i][0] == 0.0 && MealLocations[i][1] == 0.0) continue;
         list[count][0] = MealLocations[i][0]; list[count][1] = MealLocations[i][1]; list[count][2] = MealLocations[i][2];
+        format(listName[count], 32, "%s", g_MealName[i]);
         count++;
     }
 
     if(count == 0) return false;
     new r = random(count);
     fx = list[r][0]; fy = list[r][1]; fz = list[r][2];
+    format(name, namesize, "%s", listName[r]);
     return true;
 }
 
@@ -8868,8 +8977,8 @@ public Fish_Finish(playerid)
 
     g_FishWeight[playerid] = FISH_WEIGHT_MIN + random(FISH_WEIGHT_RAND);
 
-    new Float:fdx, Float:fdy, Float:fdz;
-    if(!Fish_PickDeliveryPoint(fdx, fdy, fdz))
+    new Float:fdx, Float:fdy, Float:fdz, fdname[32];
+    if(!Fish_PickDeliveryPoint(fdx, fdy, fdz, fdname, sizeof(fdname)))
     {
         SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"No fast-food delivery point is available right now.");
         g_FishState[playerid] = FISH_STATE_NONE;
@@ -8879,8 +8988,8 @@ public Fish_Finish(playerid)
     g_FishState[playerid] = FISH_STATE_DELIVER;
     SetPlayerCheckpoint(playerid, fdx, fdy, fdz, FISH_DELIVER_CP_SIZE);
 
-    new fmsg[144];
-    format(fmsg, sizeof(fmsg), C_SUCCESS"[Fisherman] "C_WHITE"You caught a fish ("C_INFO"%dg"C_WHITE")! Deliver it to the marked fast-food.", g_FishWeight[playerid]);
+    new fmsg[176];
+    format(fmsg, sizeof(fmsg), C_SUCCESS"[Fisherman] "C_WHITE"You caught a fish ("C_INFO"%dg"C_WHITE")! Deliver it to the marked fast-food, "C_INFO"%s"C_WHITE".", g_FishWeight[playerid], fdname);
     SendClientMessage(playerid, COLOR_SUCCESS, fmsg);
     return 1;
 }
@@ -16925,6 +17034,7 @@ public OnGameModeInit()
     SetTimer("Radar_Tick", RADAR_TICK, true);
     SetTimer("Speedometer_Tick", SPEEDOMETER_TICK, true);
     SetTimer("ServerClock_Tick", SERVER_CLOCK_TICK, true);
+    SetTimer("ServerTip_Tick", SERVERTIP_INTERVAL_MS, true); // mesaje informative periodice
     SetTimer("ExamC_TrailerTick", 2000, true);
 
     ServerClock_Create();
@@ -19264,51 +19374,6 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
-    // ---- /change [x/y/z/rx/ry/rz] [value] (admin 1+: regleaza live offset-ul butoiului de apa pe DFT-30) ----
-    if(strcmp(cmd, "/change", true) == 0)
-    {
-        if(PlayerData[playerid][pAdminLevel] < 1)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
-
-        while(cmdtext[idx] == ' ') idx++;
-        new chp1[256];
-        chp1 = strtok(cmdtext, idx);
-        new chp2[256];
-        chp2 = strtok(cmdtext, idx);
-
-        if(!strlen(chp1) || !strlen(chp2))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/change [x/y/z/rx/ry/rz] [value]"C_WHITE"."), 1;
-
-        new Float:chVal = floatstr(chp2);
-
-        if(strcmp(chp1, "x", true) == 0)         g_WaterBarrelOffX = chVal;
-        else if(strcmp(chp1, "y", true) == 0)    g_WaterBarrelOffY = chVal;
-        else if(strcmp(chp1, "z", true) == 0)    g_WaterBarrelOffZ = chVal;
-        else if(strcmp(chp1, "rx", true) == 0)   g_WaterBarrelRotX = chVal;
-        else if(strcmp(chp1, "ry", true) == 0)   g_WaterBarrelRotY = chVal;
-        else if(strcmp(chp1, "rz", true) == 0)   g_WaterBarrelRotZ = chVal;
-        else
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Axis must be "C_INFO"x/y/z/rx/ry/rz"C_WHITE"."), 1;
-
-        // Daca esti chiar acum intr-un DFT-30 de job cu butoiul incarcat, il re-ataseaza live cu noile valori
-        new chVeh = GetPlayerVehicleID(playerid);
-        if(chVeh != 0 && g_WaterBarrelObj[chVeh] != INVALID_OBJECT_ID)
-        {
-            AttachObjectToVehicle(g_WaterBarrelObj[chVeh], chVeh,
-                g_WaterBarrelOffX, g_WaterBarrelOffY, g_WaterBarrelOffZ,
-                g_WaterBarrelRotX, g_WaterBarrelRotY, g_WaterBarrelRotZ);
-        }
-
-        printf("[Change] Water barrel offset: x=%.3f y=%.3f z=%.3f rx=%.3f ry=%.3f rz=%.3f",
-            g_WaterBarrelOffX, g_WaterBarrelOffY, g_WaterBarrelOffZ, g_WaterBarrelRotX, g_WaterBarrelRotY, g_WaterBarrelRotZ);
-
-        new chMsg[160];
-        format(chMsg, sizeof(chMsg), C_SUCCESS"[ADM] Success: "C_WHITE"Barrel offset: "C_INFO"x=%.3f y=%.3f z=%.3f rx=%.3f ry=%.3f rz=%.3f",
-            g_WaterBarrelOffX, g_WaterBarrelOffY, g_WaterBarrelOffZ, g_WaterBarrelRotX, g_WaterBarrelRotY, g_WaterBarrelRotZ);
-        SendClientMessage(playerid, COLOR_SUCCESS, chMsg);
-        return 1;
-    }
-
     // ---- /fish (Fisherman: prinde peste la un punct dedicat, apoi livreaza-l la un fast-food) ----
     if(strcmp(cmd, "/fish", true) == 0)
     {
@@ -19336,7 +19401,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         TogglePlayerControllable(playerid, 0);
         ApplyAnimation(playerid, "SWORD", "sword_block", 4.1, 1, 0, 0, 0, 0, 1);
         SetPlayerAttachedObject(playerid, FISH_ROD_ATTACH_INDEX, FISH_ROD_MODEL, FISH_ROD_ATTACH_BONE,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+            g_FishRodOffX, g_FishRodOffY, g_FishRodOffZ, g_FishRodRotX, g_FishRodRotY, g_FishRodRotZ, 1.0, 1.0, 1.0);
         GameTextForPlayer(playerid, "Fishing...", FISH_ANIM_TIME_MS, 3);
         SetTimerEx("Fish_Finish", FISH_ANIM_TIME_MS, false, "i", playerid);
 
@@ -25047,12 +25112,15 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         static list[4096];
         list[0] = EOS;
-        strcat(list, ""C_INFO"ID\t"C_INFO"Location\n");
+        strcat(list, ""C_INFO"ID\t"C_INFO"Type\t"C_INFO"Name\n");
         for(new i = 0; i < g_ShopCount; i++)
         {
-            new line[80];
-            format(line, sizeof(line), ""C_WHITE"#%d\t%.1f, %.1f, %.1f\n",
-                ShopData[i][shopID], ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ]);
+            new slType = ShopData[i][shopType];
+            if(slType < 1 || slType > 3) slType = 1;
+
+            new line[96];
+            format(line, sizeof(line), ""C_WHITE"#%d\t%s\t%s\n",
+                ShopData[i][shopID], g_ShopTypeName[slType], ShopData[i][shopName]);
             strcat(list, line);
         }
 
@@ -25075,6 +25143,39 @@ public OnPlayerCommandText(playerid, cmdtext[])
         }
 
         ShowPlayerDialog(playerid, DIALOG_JOBLIST, DIALOG_STYLE_LIST, "Job List", list, "Teleport", "Close");
+        return 1;
+    }
+
+    // ---- /resetfishing [playerid] (reseteaza starea de pescuit ca si cum nu are peste) ----
+    if(strcmp(cmd, "/resetfishing", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new rfp1[8];
+        strmid(rfp1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(rfp1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/resetfishing [playerid]"C_WHITE"."), 1;
+
+        new rftarget = strval(rfp1);
+
+        if(!IsPlayerConnected(rftarget) || !PlayerData[rftarget][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        if(g_FishState[rftarget] == FISH_STATE_DELIVER)
+            DisablePlayerCheckpoint(rftarget);
+
+        g_FishState[rftarget]  = FISH_STATE_NONE;
+        g_FishWeight[rftarget] = 0;
+
+        new rfmsg[128];
+        format(rfmsg, sizeof(rfmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Reset the fishing state of "C_INFO"%s"C_WHITE".",
+            PlayerData[rftarget][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, rfmsg);
+
+        SendClientMessage(rftarget, COLOR_INFO, C_INFO"Info: "C_WHITE"Your fishing state was reset by an admin.");
         return 1;
     }
 
@@ -25893,6 +25994,45 @@ public OnPlayerCommandText(playerid, cmdtext[])
         new gmsg[96];
         format(gmsg, sizeof(gmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to "C_INFO"%s"C_WHITE".", PlayerData[targetid][pName]);
         SendClientMessage(playerid, COLOR_SUCCESS, gmsg);
+        return 1;
+    }
+
+    // ---- /get [playerid] (aduce playerul la pozitia admin-ului, admin 1+) ----
+    if(strcmp(cmd, "/get", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new gtp1[8];
+        strmid(gtp1, cmdtext, idx, strlen(cmdtext), 8);
+
+        if(!strlen(gtp1))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/get [playerid]"C_WHITE"."), 1;
+
+        new gttarget = strval(gtp1);
+        if(!IsPlayerConnected(gttarget) || !PlayerData[gttarget][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The player is not connected."), 1;
+
+        if(gttarget == playerid)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't teleport yourself to yourself."), 1;
+
+        new Float:gtx, Float:gty, Float:gtz;
+        GetPlayerPos(playerid, gtx, gty, gtz);
+
+        if(GetPlayerVehicleID(gttarget) != 0)
+            SetVehiclePos(GetPlayerVehicleID(gttarget), gtx, gty, gtz + 0.1);
+        else
+            AC_SetPos(gttarget, gtx, gty, gtz + 0.1);
+
+        AC_SetVW(gttarget, GetPlayerVirtualWorld(playerid));
+        AC_SetInterior(gttarget, GetPlayerInterior(playerid));
+
+        new gtmsg[96];
+        format(gtmsg, sizeof(gtmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported "C_INFO"%s"C_WHITE" to you.", PlayerData[gttarget][pName]);
+        SendClientMessage(playerid, COLOR_SUCCESS, gtmsg);
+
+        SendClientMessage(gttarget, COLOR_INFO, C_INFO"Info: "C_WHITE"You were teleported to an admin.");
         return 1;
     }
 
@@ -35092,6 +35232,16 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
                 SetPlayerColor(rlLeaderOnline, FactionColors[FACTION_NONE]);
                 Factions_SetPlayerIcons(rlLeaderOnline);
 
+                // Reseteaza skinul (uniforma factiunii) cu primul skin disponibil din garderoba
+                for(new rlSkin = 0; rlSkin <= 311; rlSkin++)
+                {
+                    if(!Skin_Owns(rlLeaderOnline, rlSkin)) continue;
+                    PlayerData[rlLeaderOnline][pSkin] = rlSkin;
+                    SetPlayerSkin(rlLeaderOnline, rlSkin);
+                    UpdatePlayer(rlLeaderOnline, pSkin);
+                    break;
+                }
+
                 // Prioritate spawn: casa proprie > proprietate inchiriata (house/hotel) > civil (implicit)
                 new rlOldSpawn = PlayerData[rlLeaderOnline][pSpawn];
                 if(PlayerData[rlLeaderOnline][pHouse] != 0)
@@ -36430,6 +36580,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         new qty = strval(inputtext);
         if(qty <= 0)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Enter a valid quantity."), 1;
+
+        if(qty > 100)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can buy a maximum of "C_INFO"100"C_WHITE" saplings at once."), 1;
 
         if(GetVehicleModel(GetPlayerVehicleID(playerid)) != BENSON_MODEL)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be in a "C_INFO"Benson"C_WHITE" to buy tree saplings."), 1;

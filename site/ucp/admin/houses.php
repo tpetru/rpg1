@@ -12,7 +12,10 @@ $sectionNav = [
 $flash = null;
 $flashErr = false;
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
+    $flash = "Security check failed (invalid or expired form). Please try again.";
+    $flashErr = true;
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     $rowAction = $_POST['row_action'] ?? '';
 
@@ -187,6 +190,7 @@ $adminActive = 'houses';
           <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="is_rentable" <?= $h['is_rentable'] ? 'checked' : '' ?>></td>
           <td>
             <form id="<?= $fid ?>" method="post">
+              <?= ucp_csrf_field() ?>
               <input type="hidden" name="id" value="<?= (int)$h['id'] ?>">
               <button type="submit" class="save-btn">Save</button>
             </form>

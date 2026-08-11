@@ -47,16 +47,21 @@ $priceFields = [
 ];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    $stmt = $mysqli->prepare("UPDATE `server_setup` SET `ssValue`=? WHERE `ssSetare`=?");
-    foreach ($priceFields as $key => $info) {
-        $isFloat = $info[2] ?? false;
-        $raw = $_POST[$key] ?? 0;
-        $val = (string)($isFloat ? max(0, (float)$raw) : max(0, (int)$raw));
-        $stmt->bind_param('ss', $val, $key);
-        $stmt->execute();
+    if (!ucp_csrf_verify()) {
+        $flash = "Security check failed (invalid or expired form). Please try again.";
+        $flashErr = true;
+    } else {
+        $stmt = $mysqli->prepare("UPDATE `server_setup` SET `ssValue`=? WHERE `ssSetare`=?");
+        foreach ($priceFields as $key => $info) {
+            $isFloat = $info[2] ?? false;
+            $raw = $_POST[$key] ?? 0;
+            $val = (string)($isFloat ? max(0, (float)$raw) : max(0, (int)$raw));
+            $stmt->bind_param('ss', $val, $key);
+            $stmt->execute();
+        }
+        $stmt->close();
+        $flash = "Prices updated.";
     }
-    $stmt->close();
-    $flash = "Prices updated.";
 }
 
 $prices = [];
@@ -89,6 +94,7 @@ $adminActive = 'prices';
 
   <div class="card">
     <form method="post">
+      <?= ucp_csrf_field() ?>
       <table class="edittable">
         <tr><th>Setting</th><th>Value</th></tr>
         <?php foreach ($priceFields as $col => $info): [$label, $unit] = $info; $isFloat = $info[2] ?? false; ?>

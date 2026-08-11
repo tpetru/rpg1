@@ -11,7 +11,10 @@ ucp_admin_require_level5();
 $flash = null;
 $flashErr = false;
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
+    $flash = "Security check failed (invalid or expired form). Please try again.";
+    $flashErr = true;
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     if ($id > 0) {
         $name  = trim($_POST['name'] ?? '');
@@ -83,6 +86,7 @@ $adminActive = 'businesses';
           <td><input form="<?= $fid ?>" type="text" name="owner_id" value="<?= $b['owned'] ? (int)$b['owner_id'] : 'none' ?>" placeholder="none"></td>
           <td>
             <form id="<?= $fid ?>" method="post">
+              <?= ucp_csrf_field() ?>
               <input type="hidden" name="id" value="<?= (int)$b['id'] ?>">
               <button type="submit" class="save-btn">Save</button>
             </form>

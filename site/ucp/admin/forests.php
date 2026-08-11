@@ -12,7 +12,10 @@ $sectionNav = [
 $flash = null;
 $flashErr = false;
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
+  $flash = "Security check failed (invalid or expired form). Please try again.";
+  $flashErr = true;
+} elseif (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
   $fstID = (int)($_POST['fstID'] ?? 0);
   $fstOwnerId = (int)($_POST['fstOwnerId'] ?? 0);
   $fstOwnerName = trim($_POST['fstOwnerName'] ?? '');
@@ -97,6 +100,7 @@ $adminActive = 'forests';
       </tr>
       <?php foreach ($forests as $f): ?>
       <form method="POST" style="display:contents;">
+      <?= ucp_csrf_field() ?>
       <tr>
         <td>#<?= (int)$f['id'] ?></td>
         <td><input type="number" name="fstOwnerId" value="<?= (int)$f['ownerId'] ?>" min="0"></td>

@@ -7,12 +7,10 @@
 #if !defined _INC_mysql_config_linux
 #define _INC_mysql_config_linux
 
-// Credentiale conexiune (server local, port implicit 3306)
-#define MYSQL_HOST  "localhost"
-#define MYSQL_PORT  3306
-#define MYSQL_USER  "rpg_user"
-#define MYSQL_PASS  "parola123"
-#define MYSQL_DB    "rpg1"
+// Credentiale conexiune - definite in afara repo-ului git, ca parola sa nu fie comisa in istoric.
+// Fisierul defineste MYSQL_HOST/MYSQL_PORT/MYSQL_USER/MYSQL_PASS/MYSQL_DB. Daca schimbi masina de
+// dezvoltare, creeaza acelasi fisier la calea de mai jos (vezi continutul lui in notele proiectului).
+#include "C:/xampp/rpg1_secrets/mysql_credentials.inc"
 
 // Handle-ul global al conexiunii, folosit in tot gamemode-ul
 new MySQL:g_SQL;
