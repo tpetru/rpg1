@@ -36,6 +36,16 @@ function ucp_escape($str) {
     return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
 }
 
+// Label/pill-tier for a billboard's `bbClean` status: -1 while rented, 0 dirty, 1 cleaning in progress, 2 clean
+function ucp_bb_clean_label($clean) {
+    switch ((int)$clean) {
+        case 2: return ['Clean', 'ok'];
+        case 1: return ['Being cleaned', 'good'];
+        case -1: return ['Rented', 'ok'];
+        default: return ['Dirty', 'bad'];
+    }
+}
+
 // Faction name by ID (1-8), read from `factions` table in database
 function ucp_faction_name($id) {
     static $cache = [];

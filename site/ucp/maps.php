@@ -56,6 +56,12 @@ $allGasStations = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM 
 $allClothStores = ($res = $mysqli->query("SELECT `clstID`,`clstName`,`clstX`,`clstY` FROM `clothstores` WHERE `clstX` != 0 OR `clstY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allAmmuNations = ($res = $mysqli->query("SELECT `amoID`,`amoName`,`amoLocX`,`amoLocY` FROM `ammunations` WHERE `amoLocX` != 0 OR `amoLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allLocations  = ($res = $mysqli->query("SELECT `locID`,`locName`,`locX`,`locY`,`locCategory` FROM `locations_admin` WHERE `locForGPS` = 1")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+// `billboards` is created by the gamemode on startup (CREATE TABLE IF NOT EXISTS) - may not exist yet if it hasn't run since this feature was added
+try {
+    $allBillboards = ($res = $mysqli->query("SELECT `bbID`,`bbLocX`,`bbLocY`,`bbRented` FROM `billboards` WHERE `bbLocX` != 0 OR `bbLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+} catch (mysqli_sql_exception $e) {
+    $allBillboards = [];
+}
 
 $businesses = array_values(array_filter($allBusinesses, function($b) { return ucp_in_los_santos($b['loc_x'], $b['loc_y']); }));
 $shops      = array_values(array_filter($allShops, function($s) { return ucp_in_los_santos($s['shopLocX'], $s['shopLocY']); }));
@@ -72,6 +78,7 @@ $ammuNations = array_values(array_filter($allAmmuNations, function($a) { return 
 $locationsInLS = array_values(array_filter($allLocations, function($l) { return ucp_in_los_santos($l['locX'], $l['locY']); }));
 $jobLocations  = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') === 0; }));
 $locations     = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') !== 0; }));
+$billboards    = array_values(array_filter($allBillboards, function($bb) { return ucp_in_los_santos($bb['bbLocX'], $bb['bbLocY']); }));
 
 $ffTypeName   = [1 => 'Pizza', 2 => 'Burger', 3 => 'Cluckin Bell', 4 => 'Desert'];
 $houseTypeName = [1 => 'Villa', 2 => 'City House', 3 => 'Apartment', 4 => 'Countryside House'];
@@ -122,6 +129,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
   .dot-ammo { background: #ef4444; }
   .dot-loc { background: #f472b6; }
   .dot-job { background: #000000; }
+  .dot-billboard { background: #ffffff; }
 
   .map-frame {
     position: relative;
@@ -169,6 +177,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
   .pin-ammo { background: #ef4444; }
   .pin-loc { background: #f472b6; }
   .pin-job { background: #000000; border-color: rgba(255,255,255,0.5); }
+  .pin-billboard { background: #ffffff; border-color: rgba(0,0,0,0.5); }
 
   .pin-tooltip {
     position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
@@ -210,6 +219,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
         <label><input type="checkbox" checked data-cat="ammo"><span class="legend-dot dot-ammo"></span>AmmuNations (<?= count($ammuNations) ?>)</label>
         <label><input type="checkbox" checked data-cat="loc"><span class="legend-dot dot-loc"></span>Locations (<?= count($locations) ?>)</label>
         <label><input type="checkbox" checked data-cat="job"><span class="legend-dot dot-job"></span>Jobs (<?= count($jobLocations) ?>)</label>
+        <label><input type="checkbox" checked data-cat="billboard"><span class="legend-dot dot-billboard"></span>Billboards (<?= count($billboards) ?>)</label>
       </div>
 
       <div class="map-frame" id="mapFrame">
@@ -298,6 +308,12 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
         <?php foreach ($ammuNations as $a): [$px, $py] = ucp_world_to_pct($a['amoLocX'], $a['amoLocY']); ?>
           <div class="pin pin-ammo" data-cat="ammo" style="left:<?= $px ?>%; top:<?= $py ?>%">
             <div class="pin-tooltip">[ AmmuNations #<?= (int)$a['amoID'] ?> ]<br>[ <?= ucp_escape($a['amoName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($billboards as $bb): [$px, $py] = ucp_world_to_pct($bb['bbLocX'], $bb['bbLocY']); ?>
+          <div class="pin pin-billboard" data-cat="billboard" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ Billboard #<?= (int)$bb['bbID'] ?> ]<br>[ <?= $bb['bbRented'] ? 'Rented' : 'Unrented' ?> ]</div>
           </div>
         <?php endforeach; ?>
       </div>

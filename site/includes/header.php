@@ -30,6 +30,7 @@ $b = UCP_BASE;
         <a href="<?= $b ?>/businesses.php">🏢 Businesses</a>
         <a href="<?= $b ?>/farms.php">🌾 Farms</a>
         <a href="<?= $b ?>/vehicles.php">🚗 Vehicles</a>
+        <a href="<?= $b ?>/billboards.php">📢 Billboards</a>
       </div>
     </div>
 
@@ -60,6 +61,7 @@ $b = UCP_BASE;
         <a href="<?= $b ?>/admin/houses.php" class="dd-toggle">🛠️ Admin ▾</a>
         <div class="nav-dd-menu">
           <a href="<?= $b ?>/admincmds.php">🛡️ Admin Cmds</a>
+          <a href="<?= $b ?>/admin/billboards.php">📢 Billboards</a>
           <a href="<?= $b ?>/admin/businesses.php">🏢 Businesses</a>
           <a href="<?= $b ?>/admin/farms.php">🌾 Farms</a>
           <a href="<?= $b ?>/admin/fastfood.php">🍔 Fast-food</a>

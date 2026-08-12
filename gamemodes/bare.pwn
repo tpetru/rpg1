@@ -13,15 +13,15 @@
 // ============================================================
 //  CULORI - GENERAL
 // ============================================================
-#define COLOR_ERROR     0xC84630FF
-#define COLOR_SUCCESS   0x5DA271FF
-#define COLOR_INFO      0xD4A0A7FF
+#define COLOR_ERROR     0xEF6F6CFF
+#define COLOR_SUCCESS   0x93C572FF
+#define COLOR_INFO      0xA06A9AFF
 #define COLOR_WHITE     0xE3E3E3FF
 #define COLOR_YELLOW    0xFFFF00FF
 
-#define C_ERROR     "{C84630}"
-#define C_SUCCESS   "{5DA271}"
-#define C_INFO      "{D4A0A7}"
+#define C_ERROR     "{EF6F6C}"
+#define C_SUCCESS   "{93C572}"
+#define C_INFO      "{A06A9A}"
 #define C_WHITE     "{E3E3E3}"
 
 // ============================================================
@@ -184,6 +184,7 @@ enum E_PLAYER_DATA
     pCaravanKey,
     pFarmKey, // id-ul fermei detinute (0 = niciuna)
     pForestKey, // id-ul padurii detinute (0 = niciuna); coloana `forest_key`, resincronizata la login din forests.ownerId
+    pBBKey, // id-ul billboard-ului detinut (0 = niciunul); coloana `bb_key`, resincronizata la login din billboards.bbOwnerId
     bool:pIsPresident, bool:pVoted, bool:pWasPresident,
     pJob,
     pPhoneModel, pPhoneNumber, // telefon: index marca (0-4, -1 = fara telefon), numar (7 cifre, 0 = fara SIM)
@@ -1263,6 +1264,9 @@ new g_BizOfferAmount[MAX_PLAYERS];
 new g_HouseOfferSeller[MAX_PLAYERS];
 new g_HouseOfferHid[MAX_PLAYERS];
 new g_HouseOfferAmount[MAX_PLAYERS];
+new g_BBOfferSeller[MAX_PLAYERS];
+new g_BBOfferBbId[MAX_PLAYERS];
+new g_BBOfferAmount[MAX_PLAYERS];
 
 // Oferta de vanzare a unei paduri catre un player anume (/sellforestto), indexata dupa cumparator
 new g_ForestOfferSeller[MAX_PLAYERS];
@@ -1861,6 +1865,8 @@ public OnTrailerUpdate(playerid, vehicleid)
 #define AD_PRICE_PER_CHAR 50
 #define AD_FACTION_CUT_PCT 10     // % din pretul reclamei care merge in banca factiunii AD_BANK_FACTION_ID
 #define AD_BANK_FACTION_ID 8      // News
+#define AD_BILLBOARD_MODEL 19325  // panou/billboard decorativ - verifica vizual in joc, e usor de schimbat aici
+#define AD_BILLBOARD_Z_OFFSET 1.5 // cat de sus e ridicat panoul fata de punctul de /ad
 
 enum E_AD_ZONE
 {
@@ -1890,6 +1896,367 @@ stock AdZone_FindPlayerAtPoint(playerid)
         if(IsPlayerInRangeOfPoint(playerid, AD_POINT_RANGE, g_AdZoneX[z], g_AdZoneY[z], g_AdZoneZ[z]))
             return z;
     return -1;
+}
+
+// ============================================================
+//  BILLBOARD-URI (chirie 24/48/72h -> payday-uri, text propriu, curatare de catre News)
+// ============================================================
+#define MAX_BILLBOARDS         20
+#define BILLBOARD_RANGE        5.0
+#define BILLBOARD_TEXT_LEN     128
+#define BILLBOARD_NEWS_FID     8          // factiunea News (vezi AD_BANK_FACTION_ID)
+#define BILLBOARD_PICKUP_MODEL 2364
+#define BILLBOARD_DEFAULT_TEXT "=========="
+#define BILLBOARD_COLOR_WHITE  -1         // 0xFFFFFFFF ca int semnat pe 32 biti
+#define BILLBOARD_COLOR_BLACK  255        // 0x000000FF
+
+// bbClean: -1 = cat timp e rented, 0 = dirty, 1 = cleaning in curs (devine 2 la urmatorul payday), 2 = clean
+enum E_BILLBOARD_DATA
+{
+    bbID,
+    bbObjectId,
+    bool:bbRented,
+    bbText[BILLBOARD_TEXT_LEN],
+    bbTextColor,
+    bbTextBackground,
+    bbFontSize,
+    bbRentLeft,
+    bbRentPrice24H,
+    bbClean,
+    bbOwnerId, bbOwner[24], bool:bbIsForSale, bbDefaultPrice, bbPrice, bbBank, // proprietate: cumparabila/vandabila de playeri
+    Float:bbLocX, Float:bbLocY, Float:bbLocZ,             // punctul unde se foloseste /rentbb, /bbtext, /cleanbb
+    Float:bbObjectPosX, Float:bbObjectPosY, Float:bbObjectPosZ, // pozitia obiectului fizic (poate fi alta decat bbLoc, ex. ridicat pe un stalp)
+    Float:bbObjectPosRX, Float:bbObjectPosRY, Float:bbObjectPosRZ // rotatia obiectului fizic
+}
+new BillboardData[MAX_BILLBOARDS][E_BILLBOARD_DATA];
+new STREAMER_TAG_OBJECT:g_BillboardObject[MAX_BILLBOARDS];
+new Text3D:g_BillboardLabel[MAX_BILLBOARDS];
+new g_BillboardPickup[MAX_BILLBOARDS] = {-1, ...};
+new g_BillboardCount = 0;
+new g_RentBBIndex[MAX_PLAYERS] = {-1, ...}; // billboard-ul ales in dialogul /rentbb, pana la raspuns
+
+// Creeaza/recreeaza obiectul fizic al unui billboard (doar cand modelul/pozitia/rotatia se schimba -
+// distruge + recreeaza, deci clientul retransmite obiectul; evita sa o apelezi doar pentru schimbari de text)
+stock Billboard_Create(idx)
+{
+    if(IsValidDynamicObject(g_BillboardObject[idx]))
+        DestroyDynamicObject(g_BillboardObject[idx]);
+
+    g_BillboardObject[idx] = CreateDynamicObject(BillboardData[idx][bbObjectId],
+        BillboardData[idx][bbObjectPosX], BillboardData[idx][bbObjectPosY], BillboardData[idx][bbObjectPosZ],
+        BillboardData[idx][bbObjectPosRX], BillboardData[idx][bbObjectPosRY], BillboardData[idx][bbObjectPosRZ]);
+
+    Billboard_UpdateText(idx);
+}
+
+// Rescrie textul pe obiectul EXISTENT, fara sa il distruga/recreeze (instant, fara delay de streaming)
+stock Billboard_UpdateText(idx)
+{
+    if(!IsValidDynamicObject(g_BillboardObject[idx])) return;
+
+    SetDynamicObjectMaterialText(g_BillboardObject[idx], 0, BillboardData[idx][bbText],
+        OBJECT_MATERIAL_SIZE_256x128, "Arial", BillboardData[idx][bbFontSize], 1,
+        Billboard_ToARGB(BillboardData[idx][bbTextColor]), Billboard_ToARGB(BillboardData[idx][bbTextBackground]), OBJECT_MATERIAL_TEXT_ALIGN_CENTER);
+}
+
+// SetDynamicObjectMaterialText cere culorile in format 0xAARRGGBB (alpha primul), diferit de formatul
+// 0xRRGGBBAA folosit peste tot in rest (SendClientMessage, Create3DTextLabel). Convertim doar aici, la native.
+stock Billboard_ToARGB(rgba)
+{
+    new r = (rgba >> 24) & 0xFF;
+    new g = (rgba >> 16) & 0xFF;
+    new b = (rgba >> 8)  & 0xFF;
+    new a = rgba & 0xFF;
+    return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
+// Creeaza/recreeaza pickup-ul de la punctul de interactiune (bbLoc)
+stock Billboard_CreatePickup(idx)
+{
+    if(g_BillboardPickup[idx] != -1)
+    {
+        DestroyPickup(g_BillboardPickup[idx]);
+        g_BillboardPickup[idx] = -1;
+    }
+    g_BillboardPickup[idx] = CreatePickup(BILLBOARD_PICKUP_MODEL, 1,
+        BillboardData[idx][bbLocX], BillboardData[idx][bbLocY], BillboardData[idx][bbLocZ] - 0.5, -1);
+}
+
+// Creeaza/recreeaza eticheta 3D de la punctul de interactiune (bbLoc), cu statusul curent al billboard-ului
+stock Billboard_UpdateLabel(idx)
+{
+    if(g_BillboardLabel[idx] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(g_BillboardLabel[idx]);
+        g_BillboardLabel[idx] = Text3D:INVALID_3DTEXT_ID;
+    }
+
+    new label[256];
+    format(label, sizeof(label), "[ Billboard #%d ]", BillboardData[idx][bbID]);
+
+    // Sectiunea de proprietate: la vanzare (cu preț) sau detinuta (arata proprietarul)
+    new ownSection[96];
+    if(BillboardData[idx][bbIsForSale])
+        format(ownSection, sizeof(ownSection), "\n[ Type /buybillboard ]\n[ Buy price: $%s ]", MoneyStr(BillboardData[idx][bbPrice]));
+    else
+        format(ownSection, sizeof(ownSection), "\n[ Owner: %s ]", BillboardData[idx][bbOwner]);
+    strcat(label, ownSection);
+
+    // Sectiunea de chirie: rented (ore ramase), dirty/cleaning, sau disponibila (cu preț)
+    new rentSection[96];
+    if(BillboardData[idx][bbRented])
+        format(rentSection, sizeof(rentSection), "\n[ Rented - %d hours left ]", BillboardData[idx][bbRentLeft] * 24);
+    else if(BillboardData[idx][bbClean] == 0)
+        format(rentSection, sizeof(rentSection), "\n[ Dirty - waiting for a News Reporter ]");
+    else if(BillboardData[idx][bbClean] == 1)
+        format(rentSection, sizeof(rentSection), "\n[ Being cleaned - ready after next payday ]");
+    else
+        format(rentSection, sizeof(rentSection), "\n[ Type /rentbillboard ]\n[ Rent Price: $%s ]", MoneyStr(BillboardData[idx][bbRentPrice24H]));
+    strcat(label, rentSection);
+
+    g_BillboardLabel[idx] = Create3DTextLabel(label, COLOR_WHITE,
+        BillboardData[idx][bbLocX], BillboardData[idx][bbLocY], BillboardData[idx][bbLocZ], 20.0, 0, 0);
+}
+
+// Returneaza indexul billboard-ului al carui punct de interactiune (bbLoc) e in raza playerului, sau -1
+stock Billboard_FindNearby(playerid)
+{
+    for(new i = 0; i < g_BillboardCount; i++)
+        if(IsPlayerInRangeOfPoint(playerid, BILLBOARD_RANGE, BillboardData[i][bbLocX], BillboardData[i][bbLocY], BillboardData[i][bbLocZ]))
+            return i;
+    return -1;
+}
+
+// Converteste secventa literala \n (backslash + n, tastata in chat) in caracter real de linie noua,
+// ca textul lung sa poata fi impartit pe mai multe linii pe suprafata billboard-ului
+stock Billboard_ConvertNewlines(text[])
+{
+    new len = strlen(text);
+    new w = 0;
+    for(new r = 0; r < len; r++)
+    {
+        if(text[r] == '\\' && r + 1 < len && text[r + 1] == 'n')
+        {
+            text[w++] = '\n';
+            r++;
+        }
+        else
+        {
+            text[w++] = text[r];
+        }
+    }
+    text[w] = EOS;
+}
+
+#define BILLBOARD_MAX_NEWLINES 5
+#define BILLBOARD_MAX_CHARS    100
+
+// Numara secventele literale \n dintr-un text (inainte de conversia in linie noua reala)
+stock Billboard_CountNewlines(const text[])
+{
+    new len = strlen(text);
+    new count = 0;
+    for(new r = 0; r < len - 1; r++)
+        if(text[r] == '\\' && text[r + 1] == 'n') count++;
+    return count;
+}
+
+// True daca textul respecta limitele: maxim BILLBOARD_MAX_CHARS caractere si BILLBOARD_MAX_NEWLINES "\n"
+stock bool:Billboard_TextValid(const text[])
+{
+    if(strlen(text) > BILLBOARD_MAX_CHARS) return false;
+    if(Billboard_CountNewlines(text) > BILLBOARD_MAX_NEWLINES) return false;
+    return true;
+}
+
+// Salveaza in DB campurile mutabile (rent/text/culori/clean/pozitie+rotatie obiect) ale unui billboard
+stock Billboard_Save(idx)
+{
+    new bsTextColorHex[10], bsTextBkgHex[10];
+    Billboard_ColorToHex(BillboardData[idx][bbTextColor], bsTextColorHex, sizeof(bsTextColorHex));
+    Billboard_ColorToHex(BillboardData[idx][bbTextBackground], bsTextBkgHex, sizeof(bsTextBkgHex));
+
+    new q[820];
+    mysql_format(g_SQL, q, sizeof(q),
+        "UPDATE `billboards` SET `bbObjectId`=%d, `bbRented`=%d, `bbText`='%e', `bbTextColor`='%s', `bbTextBackground`='%s', `bbFontSize`=%d, `bbRentLeft`=%d, `bbRentPrice24H`=%d, `bbClean`=%d,\
+        `bbOwnerId`=%d, `bbOwner`='%e', `bbIsForSale`=%d, `bbDefaultPrice`=%d, `bbPrice`=%d, `bbBank`=%d,\
+        `bbObjectPosX`=%.4f, `bbObjectPosY`=%.4f, `bbObjectPosZ`=%.4f, `bbObjectPosRX`=%.4f, `bbObjectPosRY`=%.4f, `bbObjectPosRZ`=%.4f WHERE `bbID`=%d",
+        BillboardData[idx][bbObjectId], BillboardData[idx][bbRented], BillboardData[idx][bbText], bsTextColorHex, bsTextBkgHex, BillboardData[idx][bbFontSize],
+        BillboardData[idx][bbRentLeft], BillboardData[idx][bbRentPrice24H], BillboardData[idx][bbClean],
+        BillboardData[idx][bbOwnerId], BillboardData[idx][bbOwner], BillboardData[idx][bbIsForSale], BillboardData[idx][bbDefaultPrice], BillboardData[idx][bbPrice], BillboardData[idx][bbBank],
+        BillboardData[idx][bbObjectPosX], BillboardData[idx][bbObjectPosY], BillboardData[idx][bbObjectPosZ],
+        BillboardData[idx][bbObjectPosRX], BillboardData[idx][bbObjectPosRY], BillboardData[idx][bbObjectPosRZ],
+        BillboardData[idx][bbID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+}
+
+// Sterge definitiv un billboard: elibereaza proprietarul (daca are unul), distruge obiectul/eticheta/pickup-ul,
+// sterge randul din DB, si comprima array-urile in memorie (shift down) ca sa nu ramana un slot gol la mijloc
+stock Billboard_Delete(idx)
+{
+    // Daca billboard-ul e detinut, elibereaza-l pe proprietar (online sau offline)
+    if(BillboardData[idx][bbOwnerId] != 0)
+    {
+        new bbdOwnerOnline = INVALID_PLAYER_ID;
+        for(new p = 0; p < MAX_PLAYERS; p++)
+        {
+            if(IsPlayerConnected(p) && PlayerData[p][pLogged] && PlayerData[p][pID] == BillboardData[idx][bbOwnerId])
+            {
+                bbdOwnerOnline = p;
+                break;
+            }
+        }
+
+        if(bbdOwnerOnline != INVALID_PLAYER_ID)
+        {
+            PlayerData[bbdOwnerOnline][pBBKey] = 0;
+            UpdatePlayer(bbdOwnerOnline, pBBKey);
+        }
+        else
+        {
+            new bbdq[96];
+            mysql_format(g_SQL, bbdq, sizeof(bbdq), "UPDATE `players` SET `bb_key`=0 WHERE `id`=%d", BillboardData[idx][bbOwnerId]);
+            mysql_tquery(g_SQL, bbdq, "", "", 0);
+        }
+    }
+
+    if(IsValidDynamicObject(g_BillboardObject[idx])) DestroyDynamicObject(g_BillboardObject[idx]);
+    if(g_BillboardLabel[idx] != Text3D:INVALID_3DTEXT_ID) Delete3DTextLabel(g_BillboardLabel[idx]);
+    if(g_BillboardPickup[idx] != -1) DestroyPickup(g_BillboardPickup[idx]);
+
+    new bbdq2[64];
+    mysql_format(g_SQL, bbdq2, sizeof(bbdq2), "DELETE FROM `billboards` WHERE `bbID`=%d", BillboardData[idx][bbID]);
+    mysql_tquery(g_SQL, bbdq2, "", "", 0);
+
+    for(new i = idx; i < g_BillboardCount - 1; i++)
+    {
+        BillboardData[i]       = BillboardData[i + 1];
+        g_BillboardObject[i]   = g_BillboardObject[i + 1];
+        g_BillboardLabel[i]    = g_BillboardLabel[i + 1];
+        g_BillboardPickup[i]   = g_BillboardPickup[i + 1];
+    }
+    g_BillboardCount--;
+}
+
+// Accepta "#RRGGBB" (alpha FF implicit), "#RRGGBBAA" (control complet pe transparenta), sau un intreg zecimal
+stock Billboard_ParseColor(const str[])
+{
+    if(str[0] == '#')
+    {
+        new val = 0, digits = 0;
+        for(new i = 1; str[i] != EOS; i++)
+        {
+            new c = str[i];
+            val *= 16;
+            if(c >= '0' && c <= '9') val += c - '0';
+            else if(c >= 'a' && c <= 'f') val += 10 + (c - 'a');
+            else if(c >= 'A' && c <= 'F') val += 10 + (c - 'A');
+            digits++;
+        }
+        if(digits <= 6) return (val << 8) | 0xFF; // #RRGGBB -> RRGGBBFF (alpha opac implicit)
+        return val; // #RRGGBBAA -> folosit direct, exact formatul cerut de SetDynamicObjectMaterialText
+    }
+    return strval(str);
+}
+
+// Converteste o culoare in formatul hex complet "#RRGGBBAA" (exact ce cere SetDynamicObjectMaterialText)
+stock Billboard_ColorToHex(color, dest[], size)
+{
+    format(dest, size, "#%08x", color);
+}
+
+stock Billboards_Load()
+{
+    mysql_tquery(g_SQL, "SELECT * FROM `billboards` ORDER BY `bbID` ASC", "OnBillboardsLoaded");
+}
+
+forward OnBillboardsLoaded();
+public OnBillboardsLoaded()
+{
+    new rows = cache_num_rows();
+    g_BillboardCount = 0;
+    for(new i = 0; i < rows && g_BillboardCount < MAX_BILLBOARDS; i++)
+    {
+        new idx = g_BillboardCount;
+        cache_get_value_name_int(i, "bbID", BillboardData[idx][bbID]);
+        cache_get_value_name_int(i, "bbObjectId", BillboardData[idx][bbObjectId]);
+
+        new bbRentedInt;
+        cache_get_value_name_int(i, "bbRented", bbRentedInt);
+        BillboardData[idx][bbRented] = bool:bbRentedInt;
+
+        cache_get_value_name(i, "bbText", BillboardData[idx][bbText], BILLBOARD_TEXT_LEN);
+        new bbTextColorHex[10], bbTextBkgHex[10];
+        cache_get_value_name(i, "bbTextColor", bbTextColorHex, sizeof(bbTextColorHex));
+        cache_get_value_name(i, "bbTextBackground", bbTextBkgHex, sizeof(bbTextBkgHex));
+        BillboardData[idx][bbTextColor]      = Billboard_ParseColor(bbTextColorHex);
+        BillboardData[idx][bbTextBackground] = Billboard_ParseColor(bbTextBkgHex);
+        cache_get_value_name_int(i, "bbFontSize", BillboardData[idx][bbFontSize]);
+        cache_get_value_name_int(i, "bbRentLeft", BillboardData[idx][bbRentLeft]);
+        cache_get_value_name_int(i, "bbRentPrice24H", BillboardData[idx][bbRentPrice24H]);
+        cache_get_value_name_int(i, "bbClean", BillboardData[idx][bbClean]);
+
+        cache_get_value_name_int(i, "bbOwnerId", BillboardData[idx][bbOwnerId]);
+        cache_get_value_name(i, "bbOwner", BillboardData[idx][bbOwner], 24);
+        new bbForSaleInt;
+        cache_get_value_name_int(i, "bbIsForSale", bbForSaleInt);
+        BillboardData[idx][bbIsForSale] = bool:bbForSaleInt;
+        cache_get_value_name_int(i, "bbDefaultPrice", BillboardData[idx][bbDefaultPrice]);
+        cache_get_value_name_int(i, "bbPrice", BillboardData[idx][bbPrice]);
+        cache_get_value_name_int(i, "bbBank", BillboardData[idx][bbBank]);
+
+        cache_get_value_name_float(i, "bbLocX", BillboardData[idx][bbLocX]);
+        cache_get_value_name_float(i, "bbLocY", BillboardData[idx][bbLocY]);
+        cache_get_value_name_float(i, "bbLocZ", BillboardData[idx][bbLocZ]);
+        cache_get_value_name_float(i, "bbObjectPosX", BillboardData[idx][bbObjectPosX]);
+        cache_get_value_name_float(i, "bbObjectPosY", BillboardData[idx][bbObjectPosY]);
+        cache_get_value_name_float(i, "bbObjectPosZ", BillboardData[idx][bbObjectPosZ]);
+        cache_get_value_name_float(i, "bbObjectPosRX", BillboardData[idx][bbObjectPosRX]);
+        cache_get_value_name_float(i, "bbObjectPosRY", BillboardData[idx][bbObjectPosRY]);
+        cache_get_value_name_float(i, "bbObjectPosRZ", BillboardData[idx][bbObjectPosRZ]);
+
+        g_BillboardObject[idx] = STREAMER_TAG_OBJECT:-1;
+        g_BillboardLabel[idx]  = Text3D:INVALID_3DTEXT_ID;
+        g_BillboardPickup[idx] = -1;
+        Billboard_Create(idx);
+        Billboard_CreatePickup(idx);
+        Billboard_UpdateLabel(idx);
+        g_BillboardCount++;
+    }
+    printf("[Load] Billboard-uri: %d", g_BillboardCount);
+    return 1;
+}
+
+// La fiecare payday: scade bbRentLeft (doar cat e >0), expira chiria la 0, si termina curatarea in curs (1 -> 2)
+stock Billboard_PayDayTick()
+{
+    for(new i = 0; i < g_BillboardCount; i++)
+    {
+        new bool:textChanged = false, bool:labelChanged = false;
+
+        if(BillboardData[i][bbRentLeft] > 0)
+        {
+            BillboardData[i][bbRentLeft]--;
+            labelChanged = true; // "X payday(s) left" se schimba pe eticheta
+            if(BillboardData[i][bbRentLeft] == 0)
+            {
+                format(BillboardData[i][bbText], BILLBOARD_TEXT_LEN, "%s", BILLBOARD_DEFAULT_TEXT);
+                BillboardData[i][bbClean]  = 0;
+                BillboardData[i][bbRented] = false;
+                textChanged = true;
+            }
+        }
+
+        if(BillboardData[i][bbClean] == 1)
+        {
+            BillboardData[i][bbClean] = 2;
+            labelChanged = true;
+        }
+
+        Billboard_Save(i);
+        if(textChanged) Billboard_UpdateText(i); // rescrie textul pe obiectul existent, fara delay de streaming
+        if(textChanged || labelChanged) Billboard_UpdateLabel(i);
+    }
 }
 
 // ============================================================
@@ -3699,7 +4066,8 @@ enum E_FOREST_DATA
     fstDefaultPrice, fstPrice, Float:fstSize,
     Float:fstX, Float:fstY, Float:fstZ,
     fstMaxTree, fstCurrentTree, // MaxTree = size*10, CurrentTree default = size (recalculate cand se schimba size-ul)
-    fstSaplings, fstPlantedSaplings // Saplings depozitati (max 2*maxTree), Saplings plantati in asteptare la urmatorul PayDay (currentTree+planted <= maxTree)
+    fstSaplings, fstPlantedSaplings, // Saplings depozitati (max 2*maxTree), Saplings plantati in asteptare la urmatorul PayDay (currentTree+planted <= maxTree)
+    fstBank // banca padurii, accesibila prin /mybank forest [deposit/withdraw] [amount]
 }
 new ForestData[MAX_FORESTS][E_FOREST_DATA];
 new g_ForestCount = 0;
@@ -3756,13 +4124,16 @@ stock Forests_PayDayGrow()
 {
     for(new i = 0; i < g_ForestCount; i++)
     {
+        ForestData[i][fstBank] += ForestData[i][fstCurrentTree] * 15; // 15$ per copac plantat (existent), la fiecare payday
+
         ForestData[i][fstCurrentTree] += 10 + ForestData[i][fstPlantedSaplings];
         if(ForestData[i][fstCurrentTree] > ForestData[i][fstMaxTree])
             ForestData[i][fstCurrentTree] = ForestData[i][fstMaxTree];
         ForestData[i][fstPlantedSaplings] = 0;
 
-        new q[160];
-        mysql_format(g_SQL, q, sizeof(q), "UPDATE `forests` SET `currentTree`=%d, `plantedSaplings`=0 WHERE `id`=%d", ForestData[i][fstCurrentTree], ForestData[i][fstID]);
+        new q[192];
+        mysql_format(g_SQL, q, sizeof(q), "UPDATE `forests` SET `currentTree`=%d, `plantedSaplings`=0, `bank`=%d WHERE `id`=%d",
+            ForestData[i][fstCurrentTree], ForestData[i][fstBank], ForestData[i][fstID]);
         mysql_tquery(g_SQL, q, "", "", 0);
     }
 }
@@ -3793,6 +4164,7 @@ public OnForestsLoaded()
         cache_get_value_name_int  (i, "currentTree",   ForestData[idx][fstCurrentTree]);
         cache_get_value_name_int  (i, "saplings",         ForestData[idx][fstSaplings]);
         cache_get_value_name_int  (i, "plantedSaplings",  ForestData[idx][fstPlantedSaplings]);
+        cache_get_value_name_int  (i, "bank",           ForestData[idx][fstBank]);
         g_ForestPickup[idx] = -1;
         g_ForestLabel[idx]  = Text3D:INVALID_3DTEXT_ID;
         Forest_RecreatePickup(idx);
@@ -3810,6 +4182,18 @@ stock Forest_SyncPlayerKey(playerid)
         if(ForestData[i][fstOwnerId] != 0 && ForestData[i][fstOwnerId] == PlayerData[playerid][pID])
         {
             PlayerData[playerid][pForestKey] = ForestData[i][fstID];
+            break;
+        }
+}
+
+// Seteaza pBBKey al playerului dupa billboard-ul al carui bbOwnerId e id-ul lui (0 = niciunul)
+stock BB_SyncPlayerKey(playerid)
+{
+    PlayerData[playerid][pBBKey] = 0;
+    for(new i = 0; i < g_BillboardCount; i++)
+        if(BillboardData[i][bbOwnerId] != 0 && BillboardData[i][bbOwnerId] == PlayerData[playerid][pID])
+        {
+            PlayerData[playerid][pBBKey] = BillboardData[i][bbID];
             break;
         }
 }
@@ -4541,6 +4925,8 @@ new const Float:g_JobTeleport[MAX_JOBS][3] = {
 #define DIALOG_SAPLING_QTY 9048
 #define DIALOG_ANIM2_LIB  9049
 #define DIALOG_ANIM2_ANIM 9050
+#define DIALOG_BILLBOARD_RENT 9051
+#define DIALOG_BBLIST 9052
 
 // ============================================================
 //  TELEFONIE
@@ -12969,6 +13355,8 @@ stock DB_CreateTables()
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `weapon_lic_w_exp` DATE DEFAULT NULL", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `vip` TINYINT DEFAULT 0", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `gamble_wagered` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `forest_key` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `bb_key` INT DEFAULT 0", "", "", 0);
     print("[DB] Tabel `players` verificat/creat.");
 
     mysql_tquery(g_SQL,
@@ -13214,6 +13602,53 @@ stock DB_CreateTables()
         `locZ` FLOAT DEFAULT 0.0\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `billboards` (\
+        `bbID`              INT AUTO_INCREMENT PRIMARY KEY,\
+        `bbObjectId`        INT DEFAULT 19325,\
+        `bbRented`          TINYINT(1) DEFAULT 0,\
+        `bbText`            VARCHAR(128) DEFAULT '==========',\
+        `bbTextColor`       VARCHAR(9) DEFAULT '#FFFFFFFF',\
+        `bbTextBackground`  VARCHAR(9) DEFAULT '#000000FF',\
+        `bbFontSize`        INT DEFAULT 30,\
+        `bbRentLeft`        INT DEFAULT 0,\
+        `bbRentPrice24H`    INT DEFAULT 5000,\
+        `bbClean`           TINYINT DEFAULT 2,\
+        `bbOwnerId`         INT DEFAULT 0,\
+        `bbOwner`           VARCHAR(24) DEFAULT '',\
+        `bbIsForSale`       TINYINT(1) DEFAULT 1,\
+        `bbDefaultPrice`    INT DEFAULT 15000000,\
+        `bbPrice`           INT DEFAULT 15000000,\
+        `bbBank`            INT DEFAULT 0,\
+        `bbLocX`            FLOAT DEFAULT 0.0,\
+        `bbLocY`            FLOAT DEFAULT 0.0,\
+        `bbLocZ`            FLOAT DEFAULT 0.0,\
+        `bbObjectPosX`      FLOAT DEFAULT 0.0,\
+        `bbObjectPosY`      FLOAT DEFAULT 0.0,\
+        `bbObjectPosZ`      FLOAT DEFAULT 0.0,\
+        `bbObjectPosRX`     FLOAT DEFAULT 0.0,\
+        `bbObjectPosRY`     FLOAT DEFAULT 0.0,\
+        `bbObjectPosRZ`     FLOAT DEFAULT 0.0\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbObjectPosRX` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbObjectPosRY` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbObjectPosRZ` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbFontSize` INT DEFAULT 30", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` MODIFY COLUMN `bbText` VARCHAR(128) DEFAULT '=========='", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` MODIFY COLUMN `bbTextColor` VARCHAR(9) DEFAULT '#FFFFFFFF'", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` MODIFY COLUMN `bbTextBackground` VARCHAR(9) DEFAULT '#000000FF'", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `forests` ADD COLUMN IF NOT EXISTS `bank` INT DEFAULT 0", "", "", 0);
+    // Repara valorile vechi (numere intregi, sau hex pe 6 cifre fara alpha) ramase dintr-o instalare anterioara
+    mysql_tquery(g_SQL, "UPDATE `billboards` SET `bbTextColor`='#FFFFFFFF' WHERE `bbTextColor` IS NULL OR LENGTH(`bbTextColor`) != 9", "", "", 0);
+    mysql_tquery(g_SQL, "UPDATE `billboards` SET `bbTextBackground`='#000000FF' WHERE `bbTextBackground` IS NULL OR LENGTH(`bbTextBackground`) != 9", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbOwnerId` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbOwner` VARCHAR(24) DEFAULT ''", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbIsForSale` TINYINT(1) DEFAULT 1", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbDefaultPrice` INT DEFAULT 15000000", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbPrice` INT DEFAULT 15000000", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `billboards` ADD COLUMN IF NOT EXISTS `bbBank` INT DEFAULT 0", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `vehicles_faction` (\
@@ -14347,12 +14782,13 @@ Cmd_CreateMarkers()
     format(examLabel, sizeof(examLabel), "[ Weapons Exam ]\n[ /examW ]\n[ Price: $%s ]", MoneyStr(EXAMW_PRICE));
     Create3DTextLabel(examLabel, COLOR_WHITE, EXAMW_LOC_X, EXAMW_LOC_Y, EXAMW_LOC_Z - 0.5, 25.0, 0, 0);
 
-    // Punctele de /ad (pickup + eticheta 3D la fiecare din cele 3 zone)
+    // Punctele de /ad (panou decorativ + pickup + eticheta 3D pe panou, la fiecare din cele 3 zone)
     for(new adz = 0; adz < AD_ZONE_COUNT; adz++)
     {
+        CreateDynamicObject(AD_BILLBOARD_MODEL, g_AdZoneX[adz], g_AdZoneY[adz], g_AdZoneZ[adz] + AD_BILLBOARD_Z_OFFSET, 0.0, 0.0, 0.0);
         CreatePickup(1239, 1, g_AdZoneX[adz], g_AdZoneY[adz], g_AdZoneZ[adz], -1);
         format(examLabel, sizeof(examLabel), "[ AD: %s ]\n[ Type /ad [text] ]\n[ Price: %d$/character ]", AdZoneData[adz][adZoneName], AD_PRICE_PER_CHAR);
-        Create3DTextLabel(examLabel, COLOR_WHITE, g_AdZoneX[adz], g_AdZoneY[adz], g_AdZoneZ[adz] - 0.5, 25.0, 0, 0);
+        Create3DTextLabel(examLabel, COLOR_WHITE, g_AdZoneX[adz], g_AdZoneY[adz], g_AdZoneZ[adz] + AD_BILLBOARD_Z_OFFSET, 25.0, 0, 0);
     }
 
     // Tintele /examW (1238/1238/1512/1512/1512/19825) nu mai sunt create global aici -
@@ -14916,12 +15352,30 @@ stock PayDay_Apply()
             if(HotelData[ht][htlOwnerId] == PlayerData[i][pID])
                 htlTaxF += HotelData[ht][htlPrice] * 0.0001; // 100$ la 1.000.000 din pretul curent (htlPrice; nu exista default_price la hoteluri)
 
-        new carTax   = floatround(carTaxF);
-        new houseTax = floatround(houseTaxF);
-        new bizTax   = floatround(bizTaxF);
-        new farmTax  = floatround(farmTaxF);
-        new htlTax   = floatround(htlTaxF);
-        new propTax  = carTax + houseTax + bizTax + farmTax + htlTax;
+        new Float:forestTaxF = 0.0;
+        if(PlayerData[i][pForestKey] != 0)
+        {
+            new forestTaxIdx = Forest_IndexByID(PlayerData[i][pForestKey]);
+            if(forestTaxIdx != -1) forestTaxF = ForestData[forestTaxIdx][fstDefaultPrice] * 0.00015; // 150$ la 1.000.000 din fstDefaultPrice
+        }
+
+        new Float:bbTaxF = 0.0;
+        if(PlayerData[i][pBBKey] != 0)
+        {
+            new bbTaxIdx = -1;
+            for(new bb = 0; bb < g_BillboardCount; bb++)
+                if(BillboardData[bb][bbID] == PlayerData[i][pBBKey]) { bbTaxIdx = bb; break; }
+            if(bbTaxIdx != -1) bbTaxF = BillboardData[bbTaxIdx][bbDefaultPrice] * (100.0 / 15000000.0); // 100$ la 15.000.000 din bbDefaultPrice
+        }
+
+        new carTax    = floatround(carTaxF);
+        new houseTax  = floatround(houseTaxF);
+        new bizTax    = floatround(bizTaxF);
+        new farmTax   = floatround(farmTaxF);
+        new htlTax    = floatround(htlTaxF);
+        new forestTax = floatround(forestTaxF);
+        new bbTax     = floatround(bbTaxF);
+        new propTax   = carTax + houseTax + bizTax + farmTax + htlTax + forestTax + bbTax;
 
         new net      = salary - tax - cass - propTax;
 
@@ -14963,8 +15417,8 @@ stock PayDay_Apply()
             MoneyStr(cass), MoneyStr(tax));
         SendClientMessage(i, COLOR_WHITE, msg);
 
-        format(msg, sizeof(msg), C_ERROR"Outcome: "C_WHITE"Property tax: Veh: "C_ERROR"$%s"C_WHITE", House: "C_ERROR"$%s"C_WHITE", Biz: "C_ERROR"$%s"C_WHITE", Farm: "C_ERROR"$%s"C_WHITE", Hotel: "C_ERROR"$%s",
-            MoneyStr(carTax), MoneyStr(houseTax), MoneyStr(bizTax), MoneyStr(farmTax), MoneyStr(htlTax));
+        format(msg, sizeof(msg), C_ERROR"Outcome: "C_WHITE"Property tax: Veh: "C_ERROR"$%s"C_WHITE", House: "C_ERROR"$%s"C_WHITE", Biz: "C_ERROR"$%s"C_WHITE", Farm: "C_ERROR"$%s"C_WHITE", Hotel: "C_ERROR"$%s"C_WHITE", Forest: "C_ERROR"$%s"C_WHITE", Billboard: "C_ERROR"$%s",
+            MoneyStr(carTax), MoneyStr(houseTax), MoneyStr(bizTax), MoneyStr(farmTax), MoneyStr(htlTax), MoneyStr(forestTax), MoneyStr(bbTax));
         SendClientMessage(i, COLOR_WHITE, msg);
 
         if(total >= 0)
@@ -15105,6 +15559,7 @@ stock PayDay_Apply()
 
     RoadWork_PayDayTick(); // santier /roadworking: scade payday-urile ramase, inchide zona cand ajunge la 0
     Forests_PayDayGrow();  // paduri: currentTree += 10, plafonat la maxTree
+    Billboard_PayDayTick(); // billboard-uri: scade chiria ramasa, expira la 0, termina curatarea in curs
 
     // Venit din teritorii pentru mafii (factiunile 4-7): 100$ per teritoriu detinut, in banca factiunii
     for(new fid = MAFIA_FID_MIN; fid <= MAFIA_FID_MAX; fid++)
@@ -15588,6 +16043,7 @@ public OnPlayerLogin(playerid)
 
     Farm_SyncPlayerKey(playerid); // seteaza pFarmKey dupa numele proprietarului fermei
     Forest_SyncPlayerKey(playerid); // seteaza pForestKey dupa padurea detinuta
+    BB_SyncPlayerKey(playerid); // seteaza pBBKey dupa billboard-ul detinut
 
     new presInt, votedInt, wasPresInt;
     cache_get_value_name_int(0, "is_president",  presInt);
@@ -15640,6 +16096,7 @@ public OnPlayerLogin(playerid)
     cache_get_value_name_int(0, "fishing_rod", fishRodInt);
     PlayerData[playerid][pFishingRod] = bool:fishRodInt;
     cache_get_value_name_int(0, "forest_key", PlayerData[playerid][pForestKey]);
+    cache_get_value_name_int(0, "bb_key", PlayerData[playerid][pBBKey]);
     g_Sleeping[playerid] = false;
     g_FixReqType[playerid] = 0; // orice cerere de reparatie (Electrician) din sesiunea anterioara e invalidata
 
@@ -17005,6 +17462,7 @@ public OnGameModeInit()
     ATMs_Load();
     Bins_Load();
     GasStations_Load();
+    Billboards_Load();
     Shops_Load();
     ClothStores_Load(); // magazine de haine create in-game de admini (DB)
     Ammo_Load();         // magazine de arme create in-game de admini (DB)
@@ -17213,6 +17671,9 @@ public OnPlayerConnect(playerid)
     g_HouseOfferSeller[playerid] = INVALID_PLAYER_ID;
     g_HouseOfferHid[playerid]    = 0;
     g_HouseOfferAmount[playerid] = 0;
+    g_BBOfferSeller[playerid]    = INVALID_PLAYER_ID;
+    g_BBOfferBbId[playerid]      = 0;
+    g_BBOfferAmount[playerid]    = 0;
     g_PhoneCallPartner[playerid] = INVALID_PLAYER_ID;
     g_PhoneCallActive[playerid]  = false;
     g_PhoneCallCaller[playerid]  = false;
@@ -18071,7 +18532,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
-    // ---- /mybank [farm/house/hotel/biz] [deposit/withdraw] [amount] (conturile proprietatilor, la banca/ATM) ----
+    // ---- /mybank [farm/house/hotel/biz/forest] [deposit/withdraw] [amount] (conturile proprietatilor, la banca/ATM) ----
     if(strcmp(cmd, "/mybank", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
@@ -18109,7 +18570,12 @@ public OnPlayerCommandText(playerid, cmdtext[])
                 new bi = Businesses_FindByID(PlayerData[playerid][pBusiness]);
                 if(bi != -1) { format(mbl, sizeof(mbl), C_WHITE"Business (%s): "C_INFO"$%s", BusinessData[bi][bName], MoneyStr(BusinessData[bi][bBank])); SendClientMessage(playerid, COLOR_WHITE, mbl); }
             }
-            SendClientMessage(playerid, COLOR_INFO, C_INFO"Use "C_WHITE"/mybank [farm/house/hotel/biz] [deposit/withdraw] [amount]");
+            if(PlayerData[playerid][pForestKey] != 0)
+            {
+                new fsti = Forest_IndexByID(PlayerData[playerid][pForestKey]);
+                if(fsti != -1) { format(mbl, sizeof(mbl), C_WHITE"Forest #%d: "C_INFO"$%s", ForestData[fsti][fstID], MoneyStr(ForestData[fsti][fstBank])); SendClientMessage(playerid, COLOR_WHITE, mbl); }
+            }
+            SendClientMessage(playerid, COLOR_INFO, C_INFO"Use "C_WHITE"/mybank [farm/house/hotel/biz/forest] [deposit/withdraw] [amount]");
             return 1;
         }
 
@@ -18125,9 +18591,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         new bool:dep = (strcmp(mbact, "deposit", true) == 0);
         if(!dep && strcmp(mbact, "withdraw", true) != 0)
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/mybank [farm/house/hotel/biz] [deposit/withdraw] [amount]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/mybank [farm/house/hotel/biz/forest] [deposit/withdraw] [amount]"C_WHITE"."), 1;
         if(mbamt <= 0)
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/mybank [farm/house/hotel/biz] [deposit/withdraw] [amount]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/mybank [farm/house/hotel/biz/forest] [deposit/withdraw] [amount]"C_WHITE"."), 1;
 
         if(strcmp(mbtype, "farm", true) == 0)
         {
@@ -18181,7 +18647,21 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SendClientMessage(playerid, COLOR_SUCCESS, mbl);
             return 1;
         }
-        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/mybank [farm/house/hotel/biz] [deposit/withdraw] [amount]"C_WHITE"."), 1;
+        else if(strcmp(mbtype, "forest", true) == 0)
+        {
+            if(PlayerData[playerid][pForestKey] == 0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Bank] "C_WHITE"You don't own a forest."), 1;
+            new fsti = Forest_IndexByID(PlayerData[playerid][pForestKey]);
+            if(fsti == -1) return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"[Bank] "C_WHITE"Forest not found."), 1;
+            if(!Prop_BankTransfer(playerid, ForestData[fsti][fstBank], dep, mbamt)) return 1;
+            new q[96];
+            mysql_format(g_SQL, q, sizeof(q), "UPDATE `forests` SET `bank`=%d WHERE `id`=%d", ForestData[fsti][fstBank], ForestData[fsti][fstID]);
+            mysql_tquery(g_SQL, q, "", "", 0);
+            format(mbl, sizeof(mbl), C_SUCCESS"[Bank] "C_WHITE"Forest bank now: "C_INFO"$%s"C_WHITE".", MoneyStr(ForestData[fsti][fstBank]));
+            SendClientMessage(playerid, COLOR_SUCCESS, mbl);
+            return 1;
+        }
+        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/mybank [farm/house/hotel/biz/forest] [deposit/withdraw] [amount]"C_WHITE"."), 1;
     }
 
     // ---- /shop (Medical Kit / Extinctor / Phone) ----
@@ -20683,6 +21163,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
         format(fsl, sizeof(fsl), C_WHITE"Trees: "C_INFO"%d/%d"C_WHITE" | Saplings in stock: "C_INFO"%d"C_WHITE" | Planted (pending PayDay): "C_INFO"%d",
             ForestData[fsi][fstCurrentTree], ForestData[fsi][fstMaxTree], ForestData[fsi][fstSaplings], ForestData[fsi][fstPlantedSaplings]);
         SendClientMessage(playerid, COLOR_WHITE, fsl);
+
+        format(fsl, sizeof(fsl), C_WHITE"Bank: "C_INFO"$%s"C_WHITE" (use "C_INFO"/mybank forest"C_WHITE" to deposit/withdraw)", MoneyStr(ForestData[fsi][fstBank]));
+        SendClientMessage(playerid, COLOR_WHITE, fsl);
         return 1;
     }
 
@@ -21643,6 +22126,599 @@ public OnPlayerCommandText(playerid, cmdtext[])
         format(adConfirm, sizeof(adConfirm), C_SUCCESS"Success: "C_WHITE"Ad sent to "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE".",
             AdZoneData[adZone][adZoneName], MoneyStr(adCost));
         SendClientMessage(playerid, COLOR_SUCCESS, adConfirm);
+        return 1;
+    }
+
+    // ---- /rentbb sau /rentbillboard (chirie 24/48/72h, doar daca billboard-ul e liber si curat) ----
+    if(strcmp(cmd, "/rentbb", true) == 0 || strcmp(cmd, "/rentbillboard", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new rbbIdx = Billboard_FindNearby(playerid);
+        if(rbbIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a billboard to do this."), 1;
+
+        if(BillboardData[rbbIdx][bbRented])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This billboard is already rented."), 1;
+
+        if(BillboardData[rbbIdx][bbClean] != 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This billboard isn't clean yet."), 1;
+
+        g_RentBBIndex[playerid] = rbbIdx;
+
+        new rbbDlg[256];
+        format(rbbDlg, sizeof(rbbDlg), ""C_INFO"Option\t"C_INFO"Price\n"C_WHITE"Rent for 24 hours\t"C_SUCCESS"$%s\n"C_WHITE"Rent for 48 hours\t"C_SUCCESS"$%s\n"C_WHITE"Rent for 72 hours\t"C_SUCCESS"$%s",
+            MoneyStr(BillboardData[rbbIdx][bbRentPrice24H]), MoneyStr(BillboardData[rbbIdx][bbRentPrice24H] * 2), MoneyStr(BillboardData[rbbIdx][bbRentPrice24H] * 3));
+        ShowPlayerDialog(playerid, DIALOG_BILLBOARD_RENT, DIALOG_STYLE_TABLIST_HEADERS, "Rent Billboard", rbbDlg, "Rent", "Close");
+        return 1;
+    }
+
+    // ---- /bbtext [text] (seteaza textul unui billboard, doar daca e rented) ----
+    if(strcmp(cmd, "/bbtext", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new btIdx = Billboard_FindNearby(playerid);
+        if(btIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a billboard to do this."), 1;
+
+        if(!BillboardData[btIdx][bbRented])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This billboard is not rented."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new btText[BILLBOARD_TEXT_LEN];
+        strmid(btText, cmdtext, idx, strlen(cmdtext), BILLBOARD_TEXT_LEN);
+
+        if(!strlen(btText))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbtext [text]"C_WHITE"."), 1;
+
+        if(!Billboard_TextValid(btText))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Text must be at most "C_INFO#BILLBOARD_MAX_CHARS C_WHITE" characters and contain at most "C_INFO#BILLBOARD_MAX_NEWLINES C_WHITE" line break(s) (\\n)."), 1;
+
+        format(BillboardData[btIdx][bbText], BILLBOARD_TEXT_LEN, "%s", btText);
+        Billboard_ConvertNewlines(BillboardData[btIdx][bbText]); // \n tastat -> linie noua reala
+        Billboard_UpdateText(btIdx);
+        Billboard_Save(btIdx);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Billboard text updated.");
+        return 1;
+    }
+
+    // ---- /cleanbb (doar membri News: marcheaza un billboard dirty ca fiind in curs de curatare, si primeste recompensa) ----
+    if(strcmp(cmd, "/cleanbb", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pFaction] != BILLBOARD_NEWS_FID)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be a News Reporter to do this."), 1;
+
+        new cbIdx = Billboard_FindNearby(playerid);
+        if(cbIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a billboard to do this."), 1;
+
+        if(BillboardData[cbIdx][bbClean] != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This billboard doesn't need cleaning."), 1;
+
+        new cbBbId = BillboardData[cbIdx][bbID];
+
+        BillboardData[cbIdx][bbClean] = 1;
+        Billboard_Save(cbIdx);
+        Billboard_UpdateLabel(cbIdx);
+
+        PlayerData[playerid][pMoney] += 500;
+        GivePlayerMoney(playerid, 500);
+        UpdatePlayer(playerid, pMoney);
+
+        Faction_AddBank(BILLBOARD_NEWS_FID, 250);
+
+        new cbmsg[144];
+        format(cbmsg, sizeof(cbmsg), C_INFO"[N.R.] "C_WHITE"Reporter %s successfully cleaned billboard #%d.", PlayerData[playerid][pName], cbBbId);
+        for(new p = 0; p < MAX_PLAYERS; p++)
+            if(IsPlayerConnected(p) && PlayerData[p][pLogged] && PlayerData[p][pFaction] == BILLBOARD_NEWS_FID)
+                SendClientMessage(p, COLOR_INFO, cbmsg);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You cleaned up the billboard and earned "C_INFO"$500"C_WHITE".");
+        return 1;
+    }
+
+    // ---- /buybillboard sau /buybb (cumpara billboard-ul de la tine, daca e la vanzare) ----
+    if(strcmp(cmd, "/buybillboard", true) == 0 || strcmp(cmd, "/buybb", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pBBKey] != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already own a billboard. Sell it first with "C_INFO"/bb sell"C_WHITE"."), 1;
+
+        new bbbIdx = Billboard_FindNearby(playerid);
+        if(bbbIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be at a billboard to do this."), 1;
+
+        if(!BillboardData[bbbIdx][bbIsForSale])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This billboard is not for sale."), 1;
+
+        if(PlayerData[playerid][pMoney] < BillboardData[bbbIdx][bbPrice])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money."), 1;
+
+        new bbbSellerId = BillboardData[bbbIdx][bbOwnerId]; // 0 = de la server
+
+        PlayerData[playerid][pMoney] -= BillboardData[bbbIdx][bbPrice];
+        GivePlayerMoney(playerid, -BillboardData[bbbIdx][bbPrice]);
+        UpdatePlayer(playerid, pMoney);
+
+        if(bbbSellerId != 0)
+            Prop_SettleSeller(bbbSellerId, BillboardData[bbbIdx][bbPrice], "bb_key", pBBKey, "billboard");
+
+        BillboardData[bbbIdx][bbOwnerId]   = PlayerData[playerid][pID];
+        GetPlayerName(playerid, BillboardData[bbbIdx][bbOwner], 24);
+        BillboardData[bbbIdx][bbIsForSale] = false;
+
+        PlayerData[playerid][pBBKey] = BillboardData[bbbIdx][bbID];
+        UpdatePlayer(playerid, pBBKey);
+
+        Billboard_Save(bbbIdx);
+        Billboard_UpdateLabel(bbbIdx);
+
+        new bbbmsg[144];
+        format(bbbmsg, sizeof(bbbmsg), C_SUCCESS"Success: "C_WHITE"You bought billboard "C_INFO"#%d"C_WHITE" for "C_INFO"$%s"C_WHITE".",
+            BillboardData[bbbIdx][bbID], MoneyStr(BillboardData[bbbIdx][bbPrice]));
+        SendClientMessage(playerid, COLOR_SUCCESS, bbbmsg);
+        return 1;
+    }
+
+    // ---- /bb [sell/sellto/selltostate] (gestionarea vanzarii billboard-ului detinut) ----
+    if(strcmp(cmd, "/bb", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new bbsub[16], bbsubp = 0;
+        while(cmdtext[idx] > ' ' && bbsubp < 15) { bbsub[bbsubp++] = cmdtext[idx]; idx++; }
+        bbsub[bbsubp] = EOS;
+        if(!strlen(bbsub))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bb sell [price]"C_WHITE", "C_INFO"/bb sellto [playerid] [amount]"C_WHITE" or "C_INFO"/bb selltostate"C_WHITE"."), 1;
+
+        // ---- /bb sell [price] (pune billboard-ul la vanzare, sau 0 ca sa anulezi) ----
+        if(strcmp(bbsub, "sell", true) == 0)
+        {
+            if(PlayerData[playerid][pBBKey] == 0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a billboard."), 1;
+
+            new bbsIdx = -1;
+            for(new i = 0; i < g_BillboardCount; i++)
+                if(BillboardData[i][bbID] == PlayerData[playerid][pBBKey]) { bbsIdx = i; break; }
+            if(bbsIdx == -1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Billboard not found."), 1;
+
+            while(cmdtext[idx] == ' ') idx++;
+            new bbsPriceStr[16];
+            strmid(bbsPriceStr, cmdtext, idx, strlen(cmdtext), 16);
+            if(!strlen(bbsPriceStr))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bb sell [price]"C_WHITE" to list it for sale, or "C_INFO"/bb sell 0"C_WHITE" to cancel."), 1;
+
+            new bbsPrice = strval(bbsPriceStr);
+            if(bbsPrice <= 0)
+            {
+                BillboardData[bbsIdx][bbIsForSale] = false;
+                Billboard_Save(bbsIdx);
+                Billboard_UpdateLabel(bbsIdx);
+                return SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Your billboard is no longer for sale."), 1;
+            }
+
+            BillboardData[bbsIdx][bbIsForSale] = true;
+            BillboardData[bbsIdx][bbPrice]     = bbsPrice;
+            Billboard_Save(bbsIdx);
+            Billboard_UpdateLabel(bbsIdx);
+
+            new bbslmsg[160];
+            format(bbslmsg, sizeof(bbslmsg), C_SUCCESS"Success: "C_WHITE"Your billboard is now for sale for "C_INFO"$%s"C_WHITE". Another player can buy it with "C_INFO"/buybillboard"C_WHITE".",
+                MoneyStr(bbsPrice));
+            SendClientMessage(playerid, COLOR_SUCCESS, bbslmsg);
+            return 1;
+        }
+
+        // ---- /bb selltostate (vinde billboard-ul la stat, 60%) ----
+        if(strcmp(bbsub, "selltostate", true) == 0)
+        {
+            if(PlayerData[playerid][pBBKey] == 0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a billboard."), 1;
+
+            new bbstIdx = -1;
+            for(new i = 0; i < g_BillboardCount; i++)
+                if(BillboardData[i][bbID] == PlayerData[playerid][pBBKey]) { bbstIdx = i; break; }
+            if(bbstIdx == -1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Billboard not found."), 1;
+
+            new bbstPrice = BillboardData[bbstIdx][bbPrice] * 60 / 100; // vanzare la stat: 60% din valoare
+            PlayerData[playerid][pMoney] += bbstPrice;
+            GivePlayerMoney(playerid, bbstPrice);
+            UpdatePlayer(playerid, pMoney);
+            PlayerData[playerid][pBBKey] = 0;
+            UpdatePlayer(playerid, pBBKey);
+
+            BillboardData[bbstIdx][bbOwnerId]   = 0;
+            BillboardData[bbstIdx][bbOwner][0]  = EOS;
+            BillboardData[bbstIdx][bbIsForSale] = true; // inapoi la stat = cumparabila din nou
+
+            Billboard_Save(bbstIdx);
+            Billboard_UpdateLabel(bbstIdx);
+
+            new bbstmsg[144];
+            format(bbstmsg, sizeof(bbstmsg), C_SUCCESS"Success: "C_WHITE"You sold billboard "C_INFO"#%d"C_WHITE" to the state for "C_INFO"$%s"C_WHITE" (60%%).",
+                BillboardData[bbstIdx][bbID], MoneyStr(bbstPrice));
+            SendClientMessage(playerid, COLOR_SUCCESS, bbstmsg);
+            return 1;
+        }
+
+        // ---- /bb sellto [playerid] [amount] (oferta directa catre un player, confirmata cu /accept billboard) ----
+        if(strcmp(bbsub, "sellto", true) == 0)
+        {
+            if(PlayerData[playerid][pBBKey] == 0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a billboard."), 1;
+
+            new bbstoIdx = -1;
+            for(new i = 0; i < g_BillboardCount; i++)
+                if(BillboardData[i][bbID] == PlayerData[playerid][pBBKey]) { bbstoIdx = i; break; }
+            if(bbstoIdx == -1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Billboard not found."), 1;
+
+            while(cmdtext[idx] == ' ') idx++;
+            new bbstoPStr[8], bbstoPPos = 0;
+            while(cmdtext[idx] > ' ' && bbstoPPos < 7) { bbstoPStr[bbstoPPos++] = cmdtext[idx]; idx++; }
+            bbstoPStr[bbstoPPos] = EOS;
+            while(cmdtext[idx] == ' ') idx++;
+            new bbstoAStr[12];
+            strmid(bbstoAStr, cmdtext, idx, strlen(cmdtext), 12);
+            if(!strlen(bbstoPStr) || !strlen(bbstoAStr))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bb sellto [playerid] [amount]"C_WHITE"."), 1;
+
+            new bbstoTarget = strval(bbstoPStr), bbstoAmount = strval(bbstoAStr);
+            if(!IsPlayerConnected(bbstoTarget) || !PlayerData[bbstoTarget][pLogged])
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid player."), 1;
+            if(bbstoTarget == playerid)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You can't sell to yourself."), 1;
+            if(bbstoAmount <= 0)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid amount."), 1;
+
+            g_BBOfferSeller[bbstoTarget] = playerid;
+            g_BBOfferBbId[bbstoTarget]   = BillboardData[bbstoIdx][bbID];
+            g_BBOfferAmount[bbstoTarget] = bbstoAmount;
+
+            new bbstomsg[160];
+            format(bbstomsg, sizeof(bbstomsg), C_SUCCESS"Success: "C_WHITE"You offered your billboard (ID: "C_INFO"%d"C_WHITE") to "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE".",
+                BillboardData[bbstoIdx][bbID], PlayerData[bbstoTarget][pName], MoneyStr(bbstoAmount));
+            SendClientMessage(playerid, COLOR_SUCCESS, bbstomsg);
+            format(bbstomsg, sizeof(bbstomsg), C_INFO"[Billboard] "C_WHITE"%s"C_WHITE" wants to sell you their billboard (ID: "C_INFO"%d"C_WHITE") for "C_INFO"$%s"C_WHITE". Use "C_INFO"/accept billboard %d"C_WHITE" to buy it.",
+                PlayerData[playerid][pName], BillboardData[bbstoIdx][bbID], MoneyStr(bbstoAmount), playerid);
+            SendClientMessage(bbstoTarget, COLOR_INFO, bbstomsg);
+            return 1;
+        }
+
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bb sell [price]"C_WHITE", "C_INFO"/bb sellto [playerid] [amount]"C_WHITE" or "C_INFO"/bb selltostate"C_WHITE".");
+        return 1;
+    }
+
+    // ---- /setrentprice [new_value] (doar daca detii un billboard: seteaza direct bbRentPrice24H) ----
+    if(strcmp(cmd, "/setrentprice", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pBBKey] == 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't own a billboard."), 1;
+
+        new srpIdx = -1;
+        for(new i = 0; i < g_BillboardCount; i++)
+            if(BillboardData[i][bbID] == PlayerData[playerid][pBBKey]) { srpIdx = i; break; }
+        if(srpIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Billboard not found."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new srpStr[16];
+        strmid(srpStr, cmdtext, idx, strlen(cmdtext), 16);
+        if(!strlen(srpStr))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/setrentprice [new_value]"C_WHITE"."), 1;
+
+        new srpVal = strval(srpStr);
+        if(srpVal <= 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid price."), 1;
+
+        BillboardData[srpIdx][bbRentPrice24H] = srpVal;
+        Billboard_Save(srpIdx);
+        Billboard_UpdateLabel(srpIdx);
+
+        new srpmsg[144];
+        format(srpmsg, sizeof(srpmsg), C_SUCCESS"Success: "C_WHITE"Your billboard's 24h rent price is now "C_INFO"$%s"C_WHITE".", MoneyStr(srpVal));
+        SendClientMessage(playerid, COLOR_SUCCESS, srpmsg);
+        return 1;
+    }
+
+    // ---- /billboardcreate (admin 6+: creeaza un billboard nou la pozitia curenta) ----
+    if(strcmp(cmd, "/billboardcreate", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        if(g_BillboardCount >= MAX_BILLBOARDS)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Billboard limit reached."), 1;
+
+        new Float:bcx, Float:bcy, Float:bcz;
+        GetPlayerPos(playerid, bcx, bcy, bcz);
+
+        new bcq[320];
+        mysql_format(g_SQL, bcq, sizeof(bcq),
+            "INSERT INTO `billboards` (`bbLocX`,`bbLocY`,`bbLocZ`,`bbObjectPosX`,`bbObjectPosY`,`bbObjectPosZ`) VALUES (%.4f,%.4f,%.4f,%.4f,%.4f,%.4f)",
+            bcx, bcy, bcz, bcx, bcy, bcz);
+        mysql_tquery(g_SQL, bcq, "", "", 0);
+        Billboards_Load(); // reincarca (SELECT ruleaza dupa INSERT pe aceeasi conexiune)
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard created at your position.");
+        return 1;
+    }
+
+    // ---- /bbc [id] [loc/objloc] (admin 6+: repozitioneaza punctul de interactiune sau obiectul fizic) ----
+    if(strcmp(cmd, "/bbc", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 6)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 6."), 1;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new bccIdStr[8], bccIdPos = 0;
+        while(cmdtext[idx] > ' ' && bccIdPos < 7) { bccIdStr[bccIdPos++] = cmdtext[idx]; idx++; }
+        bccIdStr[bccIdPos] = EOS;
+
+        while(cmdtext[idx] == ' ') idx++;
+        new bccOpt[16], bccOptPos = 0;
+        while(cmdtext[idx] > ' ' && bccOptPos < 15) { bccOpt[bccOptPos++] = cmdtext[idx]; idx++; }
+        bccOpt[bccOptPos] = EOS;
+
+        if(!strlen(bccIdStr) || !strlen(bccOpt))
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] [loc/objloc/objid/objx/objy/objz/objrx/objry/objrz/text/rented/textcolor/bkgcolor/fontsize/rentleft/rentprice/clean]"C_WHITE"."), 1;
+
+        new bccId = strval(bccIdStr);
+        new bccIdx = -1;
+        for(new i = 0; i < g_BillboardCount; i++)
+            if(BillboardData[i][bbID] == bccId) { bccIdx = i; break; }
+
+        if(bccIdx == -1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown billboard ID."), 1;
+
+        // ---- /bbc [id] text [text] ----
+        if(strcmp(bccOpt, "text", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccText[BILLBOARD_TEXT_LEN];
+            strmid(bccText, cmdtext, idx, strlen(cmdtext), BILLBOARD_TEXT_LEN);
+
+            if(!strlen(bccText))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] text [text]"C_WHITE"."), 1;
+
+            if(!Billboard_TextValid(bccText))
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Text must be at most "C_INFO#BILLBOARD_MAX_CHARS C_WHITE" characters and contain at most "C_INFO#BILLBOARD_MAX_NEWLINES C_WHITE" line break(s) (\\n)."), 1;
+
+            format(BillboardData[bccIdx][bbText], BILLBOARD_TEXT_LEN, "%s", bccText);
+            Billboard_ConvertNewlines(BillboardData[bccIdx][bbText]); // \n tastat -> linie noua reala
+            Billboard_UpdateText(bccIdx);
+            Billboard_Save(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard text updated.");
+            return 1;
+        }
+
+        // ---- /bbc [id] rented [0/1] ----
+        if(strcmp(bccOpt, "rented", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccVal[8];
+            strmid(bccVal, cmdtext, idx, strlen(cmdtext), 8);
+            if(!strlen(bccVal))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] rented [0/1]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbRented] = bool:strval(bccVal);
+            Billboard_Save(bccIdx);
+            Billboard_UpdateLabel(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard rented flag updated.");
+            return 1;
+        }
+
+        // ---- /bbc [id] textcolor [#RRGGBB / decimal] ----
+        if(strcmp(bccOpt, "textcolor", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccVal[16];
+            strmid(bccVal, cmdtext, idx, strlen(cmdtext), 16);
+            if(!strlen(bccVal))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] textcolor [#RRGGBB or decimal]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbTextColor] = Billboard_ParseColor(bccVal);
+            Billboard_UpdateText(bccIdx);
+            Billboard_Save(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard text color updated.");
+            return 1;
+        }
+
+        // ---- /bbc [id] bkgcolor [#RRGGBB / decimal] ----
+        if(strcmp(bccOpt, "bkgcolor", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccVal[16];
+            strmid(bccVal, cmdtext, idx, strlen(cmdtext), 16);
+            if(!strlen(bccVal))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] bkgcolor [#RRGGBB or decimal]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbTextBackground] = Billboard_ParseColor(bccVal);
+            Billboard_UpdateText(bccIdx);
+            Billboard_Save(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard text background updated.");
+            return 1;
+        }
+
+        // ---- /bbc [id] fontsize [value] ----
+        if(strcmp(bccOpt, "fontsize", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccVal[8];
+            strmid(bccVal, cmdtext, idx, strlen(cmdtext), 8);
+            if(!strlen(bccVal))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] fontsize [value]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbFontSize] = max(1, strval(bccVal));
+            Billboard_UpdateText(bccIdx);
+            Billboard_Save(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard font size updated.");
+            return 1;
+        }
+
+        // ---- /bbc [id] rentleft [payday-uri] ----
+        if(strcmp(bccOpt, "rentleft", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccVal[8];
+            strmid(bccVal, cmdtext, idx, strlen(cmdtext), 8);
+            if(!strlen(bccVal))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] rentleft [paydays]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbRentLeft] = max(0, strval(bccVal));
+            Billboard_Save(bccIdx);
+            Billboard_UpdateLabel(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard rent-left updated.");
+            return 1;
+        }
+
+        // ---- /bbc [id] rentprice [price per 24h] ----
+        if(strcmp(bccOpt, "rentprice", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccVal[16];
+            strmid(bccVal, cmdtext, idx, strlen(cmdtext), 16);
+            if(!strlen(bccVal))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] rentprice [price]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbRentPrice24H] = max(0, strval(bccVal));
+            Billboard_Save(bccIdx);
+            Billboard_UpdateLabel(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard rent price updated.");
+            return 1;
+        }
+
+        // ---- /bbc [id] clean [-1/0/1/2] ----
+        if(strcmp(bccOpt, "clean", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccVal[8];
+            strmid(bccVal, cmdtext, idx, strlen(cmdtext), 8);
+            if(!strlen(bccVal))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] clean [-1/0/1/2]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbClean] = strval(bccVal);
+            Billboard_Save(bccIdx);
+            Billboard_UpdateLabel(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard clean status updated.");
+            return 1;
+        }
+
+        new Float:bccx, Float:bccy, Float:bccz;
+        GetPlayerPos(playerid, bccx, bccy, bccz);
+
+        if(strcmp(bccOpt, "loc", true) == 0)
+        {
+            BillboardData[bccIdx][bbLocX] = bccx;
+            BillboardData[bccIdx][bbLocY] = bccy;
+            BillboardData[bccIdx][bbLocZ] = bccz;
+
+            new bcq2[192];
+            mysql_format(g_SQL, bcq2, sizeof(bcq2),
+                "UPDATE `billboards` SET `bbLocX`=%.4f, `bbLocY`=%.4f, `bbLocZ`=%.4f WHERE `bbID`=%d",
+                bccx, bccy, bccz, bccId);
+            mysql_tquery(g_SQL, bcq2, "", "", 0);
+            Billboard_CreatePickup(bccIdx);
+            Billboard_UpdateLabel(bccIdx);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard interaction point moved to your location.");
+            return 1;
+        }
+
+        if(strcmp(bccOpt, "objloc", true) == 0)
+        {
+            BillboardData[bccIdx][bbObjectPosX] = bccx;
+            BillboardData[bccIdx][bbObjectPosY] = bccy;
+            BillboardData[bccIdx][bbObjectPosZ] = bccz;
+            Billboard_Create(bccIdx);
+
+            new bcq3[192];
+            mysql_format(g_SQL, bcq3, sizeof(bcq3),
+                "UPDATE `billboards` SET `bbObjectPosX`=%.4f, `bbObjectPosY`=%.4f, `bbObjectPosZ`=%.4f WHERE `bbID`=%d",
+                bccx, bccy, bccz, bccId);
+            mysql_tquery(g_SQL, bcq3, "", "", 0);
+
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[ADM] Success: "C_WHITE"Billboard object moved to your location.");
+            return 1;
+        }
+
+        // ---- /bbc [id] objid [model_id] (schimba modelul obiectului fizic) ----
+        if(strcmp(bccOpt, "objid", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccObjIdStr[8];
+            strmid(bccObjIdStr, cmdtext, idx, strlen(cmdtext), 8);
+
+            if(!strlen(bccObjIdStr))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] objid [model_id]"C_WHITE"."), 1;
+
+            BillboardData[bccIdx][bbObjectId] = strval(bccObjIdStr);
+            Billboard_Create(bccIdx); // modelul s-a schimbat -> obiectul trebuie recreat
+            Billboard_Save(bccIdx);
+
+            new bccOidMsg[128];
+            format(bccOidMsg, sizeof(bccOidMsg), C_SUCCESS"[ADM] Success: "C_WHITE"Billboard #%d object model set to "C_INFO"%d"C_WHITE".", bccId, BillboardData[bccIdx][bbObjectId]);
+            SendClientMessage(playerid, COLOR_SUCCESS, bccOidMsg);
+            return 1;
+        }
+
+        // ---- /bbc [id] [objx/objy/objz/objrx/objry/objrz] [value] (ajustare cumulativa: veche valoare + value) ----
+        if(strcmp(bccOpt, "objx", true) == 0 || strcmp(bccOpt, "objy", true) == 0 || strcmp(bccOpt, "objz", true) == 0 ||
+           strcmp(bccOpt, "objrx", true) == 0 || strcmp(bccOpt, "objry", true) == 0 || strcmp(bccOpt, "objrz", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new bccValStr[16];
+            strmid(bccValStr, cmdtext, idx, strlen(cmdtext), 16);
+
+            if(!strlen(bccValStr))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] [objx/objy/objz/objrx/objry/objrz] [value]"C_WHITE"."), 1;
+
+            new Float:bccAdjVal = floatstr(bccValStr);
+            new Float:bccOld, Float:bccNew;
+            new bccAxisName[8];
+
+            if(strcmp(bccOpt, "objx", true) == 0)         { bccOld = BillboardData[bccIdx][bbObjectPosX];  BillboardData[bccIdx][bbObjectPosX]  += bccAdjVal; bccNew = BillboardData[bccIdx][bbObjectPosX];  format(bccAxisName, sizeof(bccAxisName), "X"); }
+            else if(strcmp(bccOpt, "objy", true) == 0)    { bccOld = BillboardData[bccIdx][bbObjectPosY];  BillboardData[bccIdx][bbObjectPosY]  += bccAdjVal; bccNew = BillboardData[bccIdx][bbObjectPosY];  format(bccAxisName, sizeof(bccAxisName), "Y"); }
+            else if(strcmp(bccOpt, "objz", true) == 0)    { bccOld = BillboardData[bccIdx][bbObjectPosZ];  BillboardData[bccIdx][bbObjectPosZ]  += bccAdjVal; bccNew = BillboardData[bccIdx][bbObjectPosZ];  format(bccAxisName, sizeof(bccAxisName), "Z"); }
+            else if(strcmp(bccOpt, "objrx", true) == 0)   { bccOld = BillboardData[bccIdx][bbObjectPosRX]; BillboardData[bccIdx][bbObjectPosRX] += bccAdjVal; bccNew = BillboardData[bccIdx][bbObjectPosRX]; format(bccAxisName, sizeof(bccAxisName), "RX"); }
+            else if(strcmp(bccOpt, "objry", true) == 0)   { bccOld = BillboardData[bccIdx][bbObjectPosRY]; BillboardData[bccIdx][bbObjectPosRY] += bccAdjVal; bccNew = BillboardData[bccIdx][bbObjectPosRY]; format(bccAxisName, sizeof(bccAxisName), "RY"); }
+            else                                           { bccOld = BillboardData[bccIdx][bbObjectPosRZ]; BillboardData[bccIdx][bbObjectPosRZ] += bccAdjVal; bccNew = BillboardData[bccIdx][bbObjectPosRZ]; format(bccAxisName, sizeof(bccAxisName), "RZ"); }
+
+            Billboard_Create(bccIdx);
+            Billboard_Save(bccIdx);
+
+            new bccAdjMsg[160];
+            format(bccAdjMsg, sizeof(bccAdjMsg), C_SUCCESS"[ADM] Success: "C_WHITE"Billboard #%d %s: "C_INFO"%.4f "C_WHITE"-> "C_INFO"%.4f"C_WHITE".",
+                bccId, bccAxisName, bccOld, bccNew);
+            SendClientMessage(playerid, COLOR_SUCCESS, bccAdjMsg);
+            return 1;
+        }
+
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bbc [id] [loc/objloc/objid/objx/objy/objz/objrx/objry/objrz/text/rented/textcolor/bkgcolor/fontsize/rentleft/rentprice/clean]"C_WHITE".");
         return 1;
     }
 
@@ -22771,6 +23847,76 @@ public OnPlayerCommandText(playerid, cmdtext[])
             return 1;
         }
 
+        // ---- /accept billboard [sellerid] (cumpara billboard-ul oferit direct de un player, cu /bb sellto) ----
+        if(strcmp(sub, "billboard", true) == 0)
+        {
+            if(!strlen(p1))
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/accept billboard [playerid]"C_WHITE"."), 1;
+
+            new bbasellerid = strval(p1);
+            if(g_BBOfferSeller[playerid] == INVALID_PLAYER_ID || g_BBOfferSeller[playerid] != bbasellerid)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have a pending billboard offer from this player."), 1;
+
+            if(!IsPlayerConnected(bbasellerid) || !PlayerData[bbasellerid][pLogged])
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The seller is no longer connected."), 1;
+
+            if(PlayerData[playerid][pBBKey] != 0)
+            {
+                g_BBOfferSeller[playerid] = INVALID_PLAYER_ID;
+                g_BBOfferBbId[playerid]   = 0;
+                g_BBOfferAmount[playerid] = 0;
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already own a billboard. Sell it first."), 1;
+            }
+
+            new bbaidx = -1;
+            for(new i = 0; i < g_BillboardCount; i++)
+                if(BillboardData[i][bbID] == g_BBOfferBbId[playerid]) { bbaidx = i; break; }
+
+            if(bbaidx == -1 || BillboardData[bbaidx][bbOwnerId] != PlayerData[bbasellerid][pID])
+            {
+                g_BBOfferSeller[playerid] = INVALID_PLAYER_ID;
+                g_BBOfferBbId[playerid]   = 0;
+                g_BBOfferAmount[playerid] = 0;
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This offer is no longer valid (the billboard changed hands)."), 1;
+            }
+
+            new bbaamount = g_BBOfferAmount[playerid];
+            if(PlayerData[playerid][pMoney] < bbaamount)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough cash."), 1;
+
+            PlayerData[playerid][pMoney] -= bbaamount;
+            GivePlayerMoney(playerid, -bbaamount);
+            UpdatePlayer(playerid, pMoney);
+
+            PlayerData[bbasellerid][pBank] += bbaamount;
+            UpdatePlayer(bbasellerid, pBank);
+            PlayerData[bbasellerid][pBBKey] = 0;
+            UpdatePlayer(bbasellerid, pBBKey);
+
+            BillboardData[bbaidx][bbOwnerId]   = PlayerData[playerid][pID];
+            GetPlayerName(playerid, BillboardData[bbaidx][bbOwner], 24);
+            BillboardData[bbaidx][bbIsForSale] = false;
+
+            PlayerData[playerid][pBBKey] = BillboardData[bbaidx][bbID];
+            UpdatePlayer(playerid, pBBKey);
+
+            Billboard_Save(bbaidx);
+            Billboard_UpdateLabel(bbaidx);
+
+            g_BBOfferSeller[playerid] = INVALID_PLAYER_ID;
+            g_BBOfferBbId[playerid]   = 0;
+            g_BBOfferAmount[playerid] = 0;
+
+            new bbamsg[160];
+            format(bbamsg, sizeof(bbamsg), C_SUCCESS"Success: "C_WHITE"You bought the billboard (ID: "C_INFO"%d"C_WHITE") from "C_INFO"%s"C_WHITE" for "C_INFO"$%s"C_WHITE".",
+                BillboardData[bbaidx][bbID], PlayerData[bbasellerid][pName], MoneyStr(bbaamount));
+            SendClientMessage(playerid, COLOR_SUCCESS, bbamsg);
+            format(bbamsg, sizeof(bbamsg), C_SUCCESS"Success: "C_WHITE"%s"C_WHITE" bought your billboard (ID: "C_INFO"%d"C_WHITE") for "C_INFO"$%s"C_WHITE" (deposited to your bank).",
+                PlayerData[playerid][pName], BillboardData[bbaidx][bbID], MoneyStr(bbaamount));
+            SendClientMessage(bbasellerid, COLOR_SUCCESS, bbamsg);
+            return 1;
+        }
+
         // ---- /accept forest [sellerid] (cumparatorul confirma oferta de la /sellforestto) ----
         if(strcmp(sub, "forest", true) == 0)
         {
@@ -23292,55 +24438,81 @@ public OnPlayerCommandText(playerid, cmdtext[])
     }
 
     // ---- /fhelp ----
+    // ---- /fhelp (lista completa de comenzi, in functie de factiunea si rankul playerului) ----
     if(strcmp(cmd, "/fhelp", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
 
-        new fid = PlayerData[playerid][pFaction];
-        if(fid < 1 || fid > MAX_FACTIONS)
+        new fhFid = PlayerData[playerid][pFaction];
+        if(fhFid < 1 || fhFid > MAX_FACTIONS)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of a faction."), 1;
 
-        new rank = PlayerData[playerid][pFactionRank];
+        new fhRank = PlayerData[playerid][pFactionRank];
 
-        SendClientMessage(playerid, COLOR_INFO, C_INFO"_____ Faction Commands ____________________");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 1+] "C_WHITE"/f, /fmembers /fhelp");
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Your Faction Commands =================");
+        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Any rank] "C_WHITE"/f /fmembers /fhelp");
 
-        if(fid >= 1 && fid <= 3)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 1+] "C_WHITE"/duty");
+        if(fhFid >= 1 && fhFid <= 3)
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Any rank] "C_WHITE"/duty");
 
-        if(rank >= 4)
+        if(fhRank >= 4)
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 4+] "C_WHITE"/finvite /fbank");
 
-        if(rank >= 5)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 5] "C_WHITE"/fbankwithdraw /fsetrank /fkick");
+        if(fhRank >= 5)
+        {
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 5 (Lead)] "C_WHITE"/fbankwithdraw /fsetrank /fkick");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Rank 5+] "C_WHITE"/refillfactionveh /respawnfactionveh");
+        }
 
-        if(fid == FACTION_RAR || fid == FACTION_POLICE)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR/Police, On-Duty] "C_WHITE"/fine /m /inspectcar");
+        if(fhFid == FACTION_POLICE || fhFid == FACTION_RAR)
+        {
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police/RAR, On-Duty] "C_WHITE"/fine [playerid] [amount] [reason] /m [playerid] /inspectcar [playerid]");
+        }
 
-        if(fid == FACTION_RAR && rank >= 3)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+, On-Duty] "C_WHITE"/confiscate");
+        if(fhFid == FACTION_POLICE)
+        {
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police] "C_WHITE"/wanted /wantedlist /arrest /garage /entrace");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, On-Duty] "C_WHITE"/checklicenses /suspendlic /confiscate licence/insurance");
+            if(fhRank >= 2)
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+] "C_WHITE"/inspectplayer /radar install/remove");
+            if(fhRank >= 4)
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 4+] "C_WHITE"/showradars /removeradar");
+        }
 
-        if(fid == FACTION_RAR && rank >= 3)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+] "C_WHITE"/tow /towpark");
+        if(fhFid == FACTION_RAR)
+        {
+            if(fhRank >= 3)
+            {
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+] "C_WHITE"/tow /towpark");
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[RAR, Rank 3+, On-Duty] "C_WHITE"/confiscate extinctor/medkit/itp");
+            }
+        }
 
-        if(fid == FACTION_POLICE && rank >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+, On-Duty] "C_WHITE"/confiscate insurance /confiscate licence /inspectplayer");
+        if(fhFid == FACTION_SMURD)
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[SMURD, On-Duty] "C_WHITE"/heal [playerid]");
 
-        if(fid == FACTION_POLICE)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, On-Duty] "C_WHITE"/checkLicenses /suspendLic");
+        if(fhFid >= MAFIA_FID_MIN && fhFid <= MAFIA_FID_MAX)
+        {
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Mafia] "C_WHITE"/equip /smuggle /war /warscore");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Mafia] "C_WHITE"/drugs transport/craft/get/use");
+            if(fhRank >= 4)
+            {
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Mafia, Rank 4+] "C_WHITE"/seif /warsurrender");
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Mafia, Rank 4+] "C_WHITE"Weapon-W license also unlocks a Sniper Rifle with /equip");
+            }
+        }
 
-        if(fid == FACTION_POLICE)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police] "C_WHITE"/garage /entrace");
-
-        if(fid == FACTION_POLICE && rank >= 2)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 2+] "C_WHITE"/radar");
-
-        if(fid == FACTION_POLICE && rank >= 4)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Police, Rank 4+] "C_WHITE"/showradars /removeradar");
-
-        if(fid == FACTION_SMURD)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[SMURD, On-Duty] "C_WHITE"/heal");
+        if(fhFid == BILLBOARD_NEWS_FID)
+        {
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News] "C_WHITE"/cleanbb /newspaper open");
+            if(fhRank >= 1)
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News, Rank 1+] "C_WHITE"/news [text]");
+            if(fhRank >= 2)
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News, Rank 2+] "C_WHITE"/newspaper create/edit/sell");
+            if(fhRank >= 3)
+                SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News, Rank 3+] "C_WHITE"/qa [playerid]/list/ask/del/end");
+        }
 
         SendClientMessage(playerid, COLOR_INFO, C_INFO"____________________________________________");
         return 1;
@@ -24860,6 +26032,35 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /bblist (lista billboard-urilor cu teleport, admin 1+) ----
+    if(strcmp(cmd, "/bblist", true) == 0)
+    {
+        if(PlayerData[playerid][pAdminLevel] < 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 1."), 1;
+
+        if(g_BillboardCount == 0)
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There are no billboards on the server."), 1;
+
+        static list[4096];
+        list[0] = EOS;
+        strcat(list, ""C_INFO"ID\t"C_INFO"Owner / Status\t"C_INFO"RentLeft\n");
+        for(new i = 0; i < g_BillboardCount; i++)
+        {
+            new bblState[64];
+            if(BillboardData[i][bbOwnerId] != 0 && BillboardData[i][bbIsForSale]) format(bblState, sizeof(bblState), ""C_WHITE"%s "C_SUCCESS"(For Sale)", BillboardData[i][bbOwner]);
+            else if(BillboardData[i][bbOwnerId] != 0) format(bblState, sizeof(bblState), ""C_WHITE"%s", BillboardData[i][bbOwner]);
+            else format(bblState, sizeof(bblState), ""C_ERROR"For Sale");
+
+            new line[128];
+            format(line, sizeof(line), ""C_WHITE"#%d\t%s\t"C_INFO"%d\n",
+                BillboardData[i][bbID], bblState, BillboardData[i][bbRentLeft]);
+            strcat(list, line);
+        }
+
+        ShowPlayerDialog(playerid, DIALOG_BBLIST, DIALOG_STYLE_TABLIST_HEADERS, "Billboard List", list, "Teleport", "Close");
+        return 1;
+    }
+
     // ---- /houselist (lista caselor cu teleport, admin 2+) ----
     if(strcmp(cmd, "/houselist", true) == 0)
     {
@@ -26165,22 +27366,18 @@ public OnPlayerCommandText(playerid, cmdtext[])
     {
         SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Player Commands =================");
 
-        SendClientMessage(playerid, COLOR_WHITE,
-            C_INFO"[Account] "C_WHITE"/help /howto /buylevel  "C_INFO"[Casino] "C_WHITE"/leavecasino /slots /roulette /dice /gamblelimit");
-        SendClientMessage(playerid, COLOR_WHITE,
-            C_INFO"[SGR] "C_WHITE"/sgrload /sgrunload /trashload /trashunload  "C_INFO"[Licenses] "C_WHITE"/licenses /examA /examB /examC /examD /examP /examH /examW");
-        SendClientMessage(playerid, COLOR_WHITE,
-            C_INFO"[Caravan] "C_WHITE"/attach /detach /camp /findmycaravan  "C_INFO"[Phone] "C_WHITE"/buyphone /buysim /call /pickup /hangup /sms /time /watch");
-        SendClientMessage(playerid, COLOR_WHITE,
-            C_INFO"[Jobs] "C_WHITE"/jobs /getjob /quitjob /work /stopwork  "C_INFO"[Uber] "C_WHITE"/fare /service /accept ");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[Other] "C_WHITE"/cspawn /accept /fhelp /curedisease /rob /buyskin /wardrobe /changeskin /pay /buyweapon /vipc /viphat /ad /work /barbut /funeral /bin /sellsgr ");
-        SendClientMessage(playerid, COLOR_WHITE, C_INFO"[More] "C_WHITE"Use "C_INFO"/vhelp /househelp /hotelhelp /bizzhelp /farmhelp"C_WHITE" for vehicle, house, hotel, business and farm commands.");
-
-        if(PlayerData[playerid][pFaction] == NEWS_FACTION_ID)
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News] "C_WHITE"/news /newspaper /qa");
-        else
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[News] "C_WHITE"/newspaper /question /answer /accept");
-
+        SendClientMessage(playerid, COLOR_INFO,
+            "[HELP] "C_WHITE"/help /howto /buylevel /cspawn /leavecasino /slots /roulette /dice /gamblelimit /barbut /ad /work");
+        SendClientMessage(playerid, COLOR_INFO,
+            "[HELP] "C_WHITE"/sgrload /sgrunload /trashload /trashunload /bin /sellsgr /licenses /examA /examB /examC /examD /examP /examH /examW");
+        SendClientMessage(playerid, COLOR_INFO,
+            "[HELP] "C_WHITE"/attach /detach /camp /findmycaravan /buyphone /buysim /call /pickup /hangup /sms /time /watch");
+        SendClientMessage(playerid, COLOR_INFO,
+            "[HELP] "C_WHITE"/jobs /getjob /quitjob /work /stopwork /fare /service /accept /newspaper /question /answer");
+        SendClientMessage(playerid, COLOR_INFO,
+            "[HELP] "C_WHITE"/fhelp /curedisease /rob /buyskin /wardrobe /changeskin /pay /buyweapon /vipc /viphat /funeral");
+        SendClientMessage(playerid, COLOR_INFO,
+            "[MORE] "C_WHITE"/vhelp /househelp /hotelhelp /bizzhelp /farmhelp");
         return 1;
     }
 
@@ -26252,6 +27449,23 @@ public OnPlayerCommandText(playerid, cmdtext[])
             C_INFO"[Money] "C_WHITE"/farm deposit [amount] /farm withdraw [amount] /farm deliver");
         SendClientMessage(playerid, COLOR_WHITE,
             C_INFO"[Info] "C_WHITE"/farm stats /farmstats /fstats");
+        return 1;
+    }
+
+    // ---- /foresthelp (lista comenzilor pt paduri) ----
+    if(strcmp(cmd, "/foresthelp", true) == 0)
+    {
+        SendClientMessage(playerid, COLOR_INFO, C_INFO"===== Forest Commands =================");
+        SendClientMessage(playerid, COLOR_WHITE,
+            C_INFO"[Buy/Sell] "C_WHITE"/buyforest /sellforest [price] /sellforestto [playerid] [amount] /sellforesttostate");
+        SendClientMessage(playerid, COLOR_WHITE,
+            C_INFO"[Saplings] "C_WHITE"/forest saplings deposit [amount] /forest tree plant");
+        SendClientMessage(playerid, COLOR_WHITE,
+            C_INFO"[Lumberjack job] "C_WHITE"/chopwood (cuts wood at a forest, once per payday)");
+        SendClientMessage(playerid, COLOR_WHITE,
+            C_INFO"[Info] "C_WHITE"/foreststats");
+        SendClientMessage(playerid, COLOR_WHITE,
+            C_INFO"[Bank] "C_WHITE"/mybank forest [deposit/withdraw] [amount]");
         return 1;
     }
 
@@ -36702,6 +37916,23 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         return 1;
     }
 
+    if(dialogid == DIALOG_BBLIST)
+    {
+        if(!response) return 1; // Close
+
+        if(listitem < 0 || listitem >= g_BillboardCount) return 1;
+
+        if(GetPlayerVehicleID(playerid) != 0)
+            SetVehiclePos(GetPlayerVehicleID(playerid), BillboardData[listitem][bbLocX], BillboardData[listitem][bbLocY], BillboardData[listitem][bbLocZ] + 0.1);
+        else
+            AC_SetPos(playerid, BillboardData[listitem][bbLocX], BillboardData[listitem][bbLocY], BillboardData[listitem][bbLocZ] + 0.1);
+
+        new bblmsg[96];
+        format(bblmsg, sizeof(bblmsg), C_SUCCESS"[ADM] Success: "C_WHITE"Teleported to billboard "C_INFO"#%d"C_WHITE".", BillboardData[listitem][bbID]);
+        SendClientMessage(playerid, COLOR_SUCCESS, bblmsg);
+        return 1;
+    }
+
     if(dialogid == DIALOG_INTERIORLIST_CATEGORY)
     {
         if(!response) return 1; // Close
@@ -37034,6 +38265,49 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         new a2msg[144];
         format(a2msg, sizeof(a2msg), C_SUCCESS"Success: "C_WHITE"Playing "C_INFO"%s"C_WHITE"/"C_INFO"%s"C_WHITE". Use "C_INFO"/animstop"C_WHITE" to stop.", g_Anim2Lib[playerid], a2anim);
         SendClientMessage(playerid, COLOR_SUCCESS, a2msg);
+        return 1;
+    }
+
+    if(dialogid == DIALOG_BILLBOARD_RENT)
+    {
+        if(!response) { g_RentBBIndex[playerid] = -1; return 1; } // Close
+
+        new brIdx = g_RentBBIndex[playerid];
+        g_RentBBIndex[playerid] = -1;
+
+        if(brIdx < 0 || brIdx >= g_BillboardCount)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Unknown billboard."), 1;
+
+        if(BillboardData[brIdx][bbRented])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This billboard was just rented by someone else."), 1;
+
+        if(BillboardData[brIdx][bbClean] != 2)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This billboard isn't clean yet."), 1;
+
+        if(listitem < 0 || listitem > 2)
+            return 1;
+
+        new brDays = listitem + 1;
+        new brCost = BillboardData[brIdx][bbRentPrice24H] * brDays;
+
+        if(PlayerData[playerid][pMoney] < brCost)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have enough money for that."), 1;
+
+        PlayerData[playerid][pMoney] -= brCost;
+        GivePlayerMoney(playerid, -brCost);
+        UpdatePlayer(playerid, pMoney);
+
+        BillboardData[brIdx][bbRented]   = true;
+        BillboardData[brIdx][bbRentLeft] = brDays;
+        BillboardData[brIdx][bbClean]    = -1;
+        BillboardData[brIdx][bbBank]    += floatround(brCost * 0.5); // 50% din chirie merge in banca proprietarului billboard-ului
+        Billboard_Save(brIdx);
+        Billboard_UpdateLabel(brIdx);
+
+        new brmsg[176];
+        format(brmsg, sizeof(brmsg), C_SUCCESS"Success: "C_WHITE"You rented the billboard for "C_INFO"%d hour(s)"C_WHITE" ("C_INFO"%d payday(s)"C_WHITE") for "C_INFO"$%s"C_WHITE". Set your text with "C_INFO"/bbtext [text]"C_WHITE".",
+            brDays * 24, brDays, MoneyStr(brCost));
+        SendClientMessage(playerid, COLOR_SUCCESS, brmsg);
         return 1;
     }
 

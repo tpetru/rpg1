@@ -142,6 +142,19 @@ if ($myHotel) {
     $stmt->close();
 }
 
+// Owned billboard (full details for the dedicated card) - `bb_key` on `players` mirrors `billboards`.`bbOwnerId`
+// `billboards` is created by the gamemode on startup (CREATE TABLE IF NOT EXISTS) - may not exist yet if it hasn't run since this feature was added
+$myBillboard = null;
+try {
+    $stmt = $mysqli->prepare("SELECT * FROM `billboards` WHERE `bbOwnerId` = ? LIMIT 1");
+    $stmt->bind_param('i', $pid);
+    $stmt->execute();
+    $myBillboard = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+} catch (mysqli_sql_exception $e) {
+    $myBillboard = null; // table doesn't exist yet
+}
+
 // The player's skin is now persisted per player in the `players`.`skin` column (implemented: /skins, /wardrobe).
 $skinId = (int)$player['skin'];
 
@@ -191,6 +204,7 @@ $sectionNav[] = ['card-business', '🏢', 'Business'];
 $sectionNav[] = ['card-farm',     '🌾', 'Farm'];
 $sectionNav[] = ['card-forest',   '🌲', 'Forest'];
 $sectionNav[] = ['card-hotel',    '🏨', 'Hotel'];
+$sectionNav[] = ['card-billboard', '📢', 'Billboard'];
 $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
 ?>
 <nav class="section-nav" aria-label="Jump to section">
@@ -542,6 +556,30 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         <?php if ($myHotel['is_rentable']): ?>
         <tr><th>Rooms taken</th><td><?= $myHotelRenterCount ?>/<?= (int)($myHotel['capacity'] ?? 5) ?></td></tr>
         <?php endif; ?>
+      </table>
+      <?php endif; ?>
+    </div>
+
+    <div class="card" id="card-billboard">
+      <h2>📢 Your billboard (<?= $myBillboard ? 1 : 0 ?>)</h2>
+      <?php if (!$myBillboard): ?>
+      <p style="color:var(--muted)">You don't have any billboard. Buy one in-game with <code>/buybillboard</code>.</p>
+      <?php else: ?>
+      <?php
+      // bbClean: -1 while rented, 0 dirty, 1 cleaning in progress, 2 clean
+      [$myBBCleanLabel, $myBBCleanTier] = ucp_bb_clean_label($myBillboard['bbClean']);
+      ?>
+      <table>
+        <tr><th>ID</th><td>#<?= (int)$myBillboard['bbID'] ?></td></tr>
+        <tr><th>Bank</th><td>$<?= ucp_money($myBillboard['bbBank']) ?></td></tr>
+        <tr><th>Rented</th><td><span class="pill <?= $myBillboard['bbRented'] ? 'pill-ok' : 'pill-bad' ?>"><?= $myBillboard['bbRented'] ? (((int)$myBillboard['bbRentLeft'] * 24) . 'h left') : 'No' ?></span></td></tr>
+        <?php if ($myBillboard['bbRented']): ?>
+        <tr><th>Text</th><td><?= ucp_escape($myBillboard['bbText']) ?></td></tr>
+        <?php else: ?>
+        <tr><th>Status</th><td><span class="pill pill-<?= $myBBCleanTier ?>"><?= $myBBCleanLabel ?></span></td></tr>
+        <?php endif; ?>
+        <tr><th>24h rent price</th><td>$<?= ucp_money($myBillboard['bbRentPrice24H']) ?> <span style="color:var(--muted)">(change with <code>/setrentprice [amount]</code>)</span></td></tr>
+        <tr><th>For sale</th><td><span class="pill <?= $myBillboard['bbIsForSale'] ? 'pill-bad' : 'pill-ok' ?>"><?= $myBillboard['bbIsForSale'] ? ('Yes — $' . ucp_money($myBillboard['bbPrice'])) : 'No' ?></span></td></tr>
       </table>
       <?php endif; ?>
     </div>

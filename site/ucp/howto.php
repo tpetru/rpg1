@@ -115,6 +115,7 @@ ucp_require_login();
   <a href="#business">Business</a>
   <a href="#house">House</a>
   <a href="#hotel">Hotel</a>
+  <a href="#billboards">Billboards</a>
   <a href="#games">Games</a>
   <a href="#caravan">Caravan</a>
   <a href="#licence">Licence</a>
@@ -515,6 +516,43 @@ ucp_require_login();
     </ul>
 
     <div class="note">A hotel near a busy area earns more, because tiredness builds up on everyone (+2/minute) and players away from home need somewhere to sleep.</div>
+  </div>
+</section>
+
+<section id="billboards">
+  <h2>📢 Billboards — <code>/howto billboards</code></h2>
+  <div class="card">
+    <p>A billboard is an ownable property (like a hotel) that other players pay to rent for 24/48/72h and display their own text on. You can own only ONE billboard at a time. Stand at the billboard's pickup to interact.</p>
+
+    <h4>Buying &amp; selling</h4>
+    <ul>
+      <li><code>/buybillboard</code> (or <code>/buybb</code>) — buy the billboard you're standing at, if it's for sale</li>
+      <li><code>/bb sell [price]</code> — list your billboard for sale at that price; the money goes to your bank when someone buys it with <code>/buybillboard</code></li>
+      <li><code>/bb sell 0</code> — cancel the listing</li>
+      <li><code>/bb sellto [playerid] [amount]</code> — offer it directly to a nearby player; they buy it with cash via <code>/accept billboard [yourid]</code></li>
+      <li><code>/bb selltostate</code> — sell it back to the state instantly for <span class="num">60%</span> of its value</li>
+    </ul>
+
+    <h4>Renting a billboard (anyone)</h4>
+    <p>The billboard must be <span class="num">free</span> and <span class="num">clean</span>. Use <code>/rentbb</code> (or <code>/rentbillboard</code>) at its pickup and pick 24/48/72 hours (in payday cycles) from the dialog.</p>
+    <ul>
+      <li><code>/bbtext [text]</code> — set the text shown on the billboard, only while you're renting it (max <span class="num">100</span> characters, at most <span class="num">5</span> line breaks with <code>\n</code>)</li>
+    </ul>
+    <p>When your rent runs out, the text resets to the default and the billboard becomes <span class="warn">dirty</span> - it needs cleaning before it can be rented again.</p>
+
+    <h4>Cleaning — News Reporters only</h4>
+    <p>A dirty billboard can only be cleaned by a member of the News faction, at the billboard's pickup:</p>
+    <ul>
+      <li><code>/cleanbb</code> — starts the cleanup; earns the reporter <span class="num">$500</span> and the News faction bank <span class="num">$250</span>. It finishes automatically at the next PayDay, after which the billboard is clean and rentable again.</li>
+    </ul>
+
+    <h4>Owner settings &amp; info</h4>
+    <ul>
+      <li><code>/setrentprice [amount]</code> — set your billboard's 24h rent price (48h/72h scale x2/x3 automatically)</li>
+    </ul>
+    <p>Every rental pays <span class="num">50%</span> of the rent straight into the billboard's own bank, whether you're online or not — check it in the <a href="dashboard.php">UCP dashboard</a>.</p>
+
+    <div class="note">Billboard income comes from renters, not passive use - a well-placed billboard (busy road, city center) rents out faster and more often.</div>
   </div>
 </section>
 

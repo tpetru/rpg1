@@ -1,0 +1,3 @@
+[13:16:28] [plugins/mysql] cache_get_value_name_int: field 'bb_key' not found
+[14:25:26] [plugins/mysql] cache_get_value_name_int: field 'bb_key' not found
+[14:35:08] [plugins/mysql] cache_get_value_name_int: field 'bb_key' not found

@@ -376,3 +376,229 @@ Executing Server Config...
 *** Streamer Plugin v2.9.6 by Incognito unloaded ***
 
 [11:50:49] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[13:16:04] [Info] Loading plugin: mysql
+[13:16:04] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[13:16:04] [Info] Loading plugin: streamer
+[13:16:04] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[13:16:04] [Info]  
+[13:16:04] [Info] ==================================================
+[13:16:04] [Info]   N-RP  |  incarcare date din baza de date
+[13:16:04] [Info] ==================================================
+[13:16:04] [Info] [DB] Conectat la MySQL cu succes!
+[13:16:04] [Info] [DB] Tabel `players` verificat/creat.
+[13:16:04] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[13:16:04] [Info] [DB] Tabele verificate/create.
+[13:16:04] [Info] 
+----------------------------------
+[13:16:04] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[13:16:04] [Info] ----------------------------------
+
+[13:16:04] [Info] Legacy Network started on port 7777
+[13:16:04] [Info] [Load] Factiuni: 8
+[13:16:05] [Info] [Load] Case: 42
+[13:16:05] [Info] [Load] Hoteluri: 11
+[13:16:05] [Info] [Load] Interioare GTA: 138
+[13:16:05] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[13:16:05] [Info] [Load] Animale: 1
+[13:16:05] [Info] [Load] Copaci: 1
+[13:16:05] [Info] [Load] Business-uri: 22
+[13:16:05] [Warning] Gangzone Y co-ordinates 2349.00 and 2305.00 out of order, inverting.
+[13:16:05] [Info] [Load] Turf-uri: 8
+[13:16:05] [Info] [Load] ATM-uri: 10
+[13:16:05] [Info] [Load] Tomberoane: 6
+[13:16:05] [Info] [Load] Benzinarii: 0
+[13:16:05] [Info] [Load] Billboard-uri: 1
+[13:16:05] [Info] [Load] Shop-uri: 11
+[13:16:05] [Info] [Load] Magazine de haine (create in-game): 2
+[13:16:05] [Info] [Load] Ammu-Nation-uri (create in-game): 4
+[13:16:05] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[13:16:05] [Info] [Load] Locatii: 52
+[13:16:05] [Info] [Load] Cosuri baschet: 4
+[13:16:05] [Info] [Load] Spawn-uri baschet: 32
+[13:16:05] [Info] [Load] Vehicule factiune: 102
+[13:16:05] [Info] [Load] Vehicule personale: 36
+[13:16:05] [Info] [Load] Rulote: 1
+[13:16:05] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[13:16:05] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[13:16:05] [Info] [Load] Recorduri curse: 18
+[13:16:05] [Info] [Load] Paduri: 1
+[13:16:05] [Info] [Load] Ferme: 7
+[13:16:05] [Info] [Load] Utilaje ferma: 5
+[13:16:05] [Info] ==================================================
+[13:16:05] [Info]   N-RP  |  gamemode incarcat cu succes.
+[13:16:05] [Info] ==================================================
+[13:16:05] [Info]  
+[13:16:26] [Info] [connection] incoming connection: 127.0.0.1:56827 id: 0
+[13:16:26] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[13:16:59] [Info] [PayDay] Distribuit la 13:00.
+[13:16:59] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[13:16:59] [Info] [Load] Animale: 1
+[13:17:01] [Info] [PayDay] Distribuit la 13:00.
+[13:17:01] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[13:17:01] [Info] [Load] Animale: 1
+[13:17:02] [Info] [PayDay] Distribuit la 13:00.
+[13:17:02] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[13:17:02] [Info] [Load] Animale: 1
+[13:38:01] [Info] [Load] Billboard-uri: 2
+[13:54:21] [Info] [part] Punctulet has left the server (0:1)
+[14:00:05] [Info] [PayDay] Distribuit la 14:00.
+[14:00:05] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[14:00:05] [Info] [Load] Animale: 1
+[14:24:59] [Info]  
+[14:24:59] [Info] ==================================================
+[14:24:59] [Info]   N-RP  |  incarcare date din baza de date
+[14:24:59] [Info] ==================================================
+[14:24:59] [Info] [DB] Conectat la MySQL cu succes!
+[14:24:59] [Info] [DB] Tabel `players` verificat/creat.
+[14:24:59] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[14:24:59] [Info] [DB] Tabele verificate/create.
+[14:24:59] [Info] 
+----------------------------------
+[14:24:59] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[14:24:59] [Info] ----------------------------------
+
+[14:24:59] [Info] [Load] Factiuni: 8
+[14:24:59] [Info] [Load] Case: 42
+[14:24:59] [Info] [Load] Hoteluri: 11
+[14:24:59] [Info] [Load] Interioare GTA: 138
+[14:24:59] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[14:24:59] [Info] [Load] Animale: 1
+[14:24:59] [Info] [Load] Copaci: 1
+[14:24:59] [Info] [Load] Business-uri: 22
+[14:24:59] [Warning] Gangzone Y co-ordinates 2349.00 and 2305.00 out of order, inverting.
+[14:24:59] [Info] [Load] Turf-uri: 8
+[14:24:59] [Info] [Load] ATM-uri: 10
+[14:24:59] [Info] [Load] Tomberoane: 6
+[14:24:59] [Info] [Load] Benzinarii: 0
+[14:24:59] [Info] [Load] Billboard-uri: 2
+[14:24:59] [Info] [Load] Shop-uri: 11
+[14:24:59] [Info] [Load] Magazine de haine (create in-game): 2
+[14:24:59] [Info] [Load] Ammu-Nation-uri (create in-game): 4
+[14:24:59] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[14:24:59] [Info] [Load] Locatii: 52
+[14:24:59] [Info] [Load] Cosuri baschet: 4
+[14:24:59] [Info] [Load] Spawn-uri baschet: 32
+[14:24:59] [Info] [Load] Vehicule factiune: 102
+[14:24:59] [Info] [Load] Vehicule personale: 36
+[14:24:59] [Info] [Load] Rulote: 1
+[14:24:59] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[14:24:59] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[14:24:59] [Info] [Load] Recorduri curse: 18
+[14:24:59] [Info] [Load] Paduri: 1
+[14:24:59] [Info] [Load] Ferme: 7
+[14:24:59] [Info] [Load] Utilaje ferma: 5
+[14:24:59] [Info] ==================================================
+[14:24:59] [Info]   N-RP  |  gamemode incarcat cu succes.
+[14:24:59] [Info] ==================================================
+[14:24:59] [Info]  
+[14:25:17] [Info] [connection] incoming connection: 127.0.0.1:58270 id: 0
+[14:25:17] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[14:34:48] [Info]  
+[14:34:48] [Info] ==================================================
+[14:34:48] [Info]   N-RP  |  incarcare date din baza de date
+[14:34:48] [Info] ==================================================
+[14:34:48] [Info] [DB] Conectat la MySQL cu succes!
+[14:34:48] [Info] [DB] Tabel `players` verificat/creat.
+[14:34:48] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[14:34:48] [Info] [DB] Tabele verificate/create.
+[14:34:48] [Info] 
+----------------------------------
+[14:34:48] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[14:34:48] [Info] ----------------------------------
+
+[14:34:48] [Info] [Load] Factiuni: 8
+[14:34:48] [Info] [Load] Case: 42
+[14:34:48] [Info] [Load] Hoteluri: 11
+[14:34:49] [Info] [Load] Interioare GTA: 138
+[14:34:49] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[14:34:49] [Info] [Load] Animale: 1
+[14:34:49] [Info] [Load] Copaci: 1
+[14:34:49] [Info] [Load] Business-uri: 22
+[14:34:49] [Warning] Gangzone Y co-ordinates 2349.00 and 2305.00 out of order, inverting.
+[14:34:49] [Info] [Load] Turf-uri: 8
+[14:34:49] [Info] [Load] ATM-uri: 10
+[14:34:49] [Info] [Load] Tomberoane: 6
+[14:34:49] [Info] [Load] Benzinarii: 0
+[14:34:49] [Info] [Load] Billboard-uri: 2
+[14:34:49] [Info] [Load] Shop-uri: 11
+[14:34:49] [Info] [Load] Magazine de haine (create in-game): 2
+[14:34:49] [Info] [Load] Ammu-Nation-uri (create in-game): 4
+[14:34:49] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[14:34:49] [Info] [Load] Locatii: 52
+[14:34:49] [Info] [Load] Cosuri baschet: 4
+[14:34:49] [Info] [Load] Spawn-uri baschet: 32
+[14:34:49] [Info] [Load] Vehicule factiune: 102
+[14:34:49] [Info] [Load] Vehicule personale: 36
+[14:34:49] [Info] [Load] Rulote: 1
+[14:34:49] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[14:34:49] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[14:34:49] [Info] [Load] Recorduri curse: 18
+[14:34:49] [Info] [Load] Paduri: 1
+[14:34:49] [Info] [Load] Ferme: 7
+[14:34:49] [Info] [Load] Utilaje ferma: 5
+[14:34:49] [Info] ==================================================
+[14:34:49] [Info]   N-RP  |  gamemode incarcat cu succes.
+[14:34:49] [Info] ==================================================
+[14:34:49] [Info]  
+[14:41:38] [Info] [part] Punctulet has left the server (0:1)
+[15:00:48] [Info] [PayDay] Distribuit la 15:00.
+[15:00:48] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[15:00:48] [Info] [Load] Animale: 1
+[16:59:36] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[16:59:36] [Info] plugin.mysql: Unloading plugin...

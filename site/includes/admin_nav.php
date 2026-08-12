@@ -1,12 +1,13 @@
 <?php
 // Sub-navigation between the admin editor pages. The including page must set
-// $adminActive to one of: houses, businesses, vehicles, farms, hotels, shops, fastfood, forests
+// $adminActive to one of: houses, businesses, vehicles, farms, hotels, billboards, shops, fastfood, forests
 $adminPages = [
     'houses'     => ['🏠 Houses', 'houses.php'],
     'businesses' => ['🏢 Businesses', 'businesses.php'],
     'vehicles'   => ['🚗 Vehicles', 'vehicles.php'],
     'farms'      => ['🌾 Farms', 'farms.php'],
     'hotels'     => ['🏨 Hotels', 'hotels.php'],
+    'billboards' => ['📢 Billboards', 'billboards.php'],
     'shops'      => ['🛒 Shops', 'shops.php'],
     'fastfood'   => ['🍔 Fast-food', 'fastfood.php'],
     'forests'    => ['🌲 Forests', 'forests.php'],

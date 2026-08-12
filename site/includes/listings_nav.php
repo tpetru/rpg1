@@ -1,12 +1,13 @@
 <?php
-// Floating right-side quick nav between the property listing pages (houses/hotels/businesses/farms/vehicles).
-// The including page must set $listingsActive to one of: houses, hotels, businesses, farms, vehicles
+// Floating right-side quick nav between the property listing pages (houses/hotels/businesses/farms/vehicles/billboards).
+// The including page must set $listingsActive to one of: houses, hotels, businesses, farms, vehicles, billboards
 $listingsPages = [
     'houses'     => ['🏠', 'Houses', 'houses.php'],
     'hotels'     => ['🏨', 'Hotels', 'hotels.php'],
     'businesses' => ['🏢', 'Businesses', 'businesses.php'],
     'farms'      => ['🌾', 'Farms', 'farms.php'],
     'vehicles'   => ['🚗', 'Vehicles', 'vehicles.php'],
+    'billboards' => ['📢', 'Billboards', 'billboards.php'],
 ];
 ?>
 <nav class="section-nav" aria-label="Jump to listing">
