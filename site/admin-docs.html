@@ -440,6 +440,26 @@ RP    += 1</pre>
     </div>
   </div>
 
+  <h3>🏨 Hoteluri</h3>
+  <p>Proprietate ownable ca o casă/business, dar oricine poate dormi acolo (nu doar proprietarul). <code>/sleep</code> lângă un
+  hotel: <code>HOTEL_SLEEP_PRICE</code> ($150), 45s freeze (<code>HOTEL_SLEEP_FREEZE</code>), oboseala scade la
+  <code>HOTEL_SLEEP_TIRED</code> (10, nu 0 ca la patul propriu). 50% din sumă intră în <code>htlBank</code>. Chirie
+  pe termen lung cu <code>/renthotel</code> (dacă <code>htlIsRentable</code> și sub <code>htlCapacity</code>) — chiria e
+  colectată automat la fiecare PayDay direct în <code>htlBank</code>, plus un bonus fix <code>HOTEL_RENT_BONUS</code> ($100)
+  per hotel cu chiriași.</p>
+  <p><strong>Iteme de igienă (<code>htlItems</code>, 0-200):</strong> fiecare <code>/sleep</code> reușit la hotel și fiecare
+  <code>/renthotel</code> consumă <strong>1 item</strong> din stoc (<code>Hotels_ConsumeItem</code>). Cât timp
+  <code>htlItems == 0</code>, hotelul <strong>nu mai primește bani în <code>htlBank</code></strong> — verificat separat
+  la toate cele 3 surse de venit (plata de <code>/sleep</code>, chiria de PayDay, bonusul fix). Restock:
+  <code>/htlitems buy [amount]</code> (proprietarul, la un shop <code>shopType==1</code> „24/7", la volanul unui
+  <strong>Boxville (model 498)</strong> — singurul vehicul acceptat, <code>HOTEL_ITEMS_VEHICLE_MODEL</code>), max 100 per
+  cursă (<code>HOTEL_ITEMS_MAX_CARRY</code>), $100/bucată (<code>HOTEL_ITEM_PRICE</code>); apoi <code>/htlitems unload</code>
+  la propriul hotel (rază <code>HOTEL_RANGE</code>) adaugă cantitatea transportată, plafonat la 200
+  (<code>HOTEL_ITEMS_MAX</code>) — surplusul peste plafon se pierde.</p>
+  <p><strong>Admin — <code>/htlc [loc/price/name/rentable/rentprice/capacity/items] [htlID]</code></strong> (nivel 5;
+  <code>items</code> setează direct <code>htlItems</code>, 0-200); <code>/hotellist</code> (nivel 1+) teleportează
+  dintr-un dialog.</p>
+
   <h3>Rutarea veniturilor pe ID de business</h3>
   <table>
     <tr><th>ID</th><th>Sursă</th><th>Detaliu</th></tr>
@@ -514,6 +534,24 @@ RP    += 1</pre>
     captura inițială din <code>/vbuy</code> foloseau acest nativ — înlocuit cu <code>GetVehicleRotation</code> (funcția proprie
     din secțiunea Rulote, bazată pe <code>GetVehicleRotationQuat</code>), folosind componenta <code>rz</code> ca yaw real.
   </div>
+
+  <h3>vVip / vRetroVeh — culori extinse, jante, vUnusedVeh</h3>
+  <p><code>pvVip</code> și <code>pvRetroVeh</code> pornesc <code>0</code> pe orice vehicul nou; se setează manual de admin
+  cu <code>/vc vip [0/1]</code> / <code>/vc retro [0/1]</code> (nivel 5+, pe vehiculul în care ești).</p>
+  <table>
+    <tr><th>Funcție</th><th>vVip=0</th><th>vVip=1</th></tr>
+    <tr><td><code>/v color1 [id]</code> / <code>/v color2 [id]</code></td><td>0-127 (<code>VEHICLE_COLOR_MAX_NORMAL</code>)</td><td>0-255 (<code>VEHICLE_COLOR_MAX_VIP</code>)</td></tr>
+    <tr><td><code>/v wheels</code></td><td>blocat — „Only VIP vehicles can change wheels."</td><td>dialog cu 5 jante (Classic/Twist/Wire/Trance/Atomic, component ID 1074/1073/1075/1076/1077), <strong>$2.000/set</strong> (<code>VEHICLE_WHEELS_PRICE</code>)</td></tr>
+  </table>
+  <p>Janta aleasă se salvează în <code>vehicles_personal.wheels</code> (<code>Vehicle_SaveWheels</code>) și se reaplică automat
+  la fiecare <code>PVehicles_Create</code> (<code>AddVehicleComponent</code>) — deci ține și după restart.</p>
+  <p><strong>vUnusedVeh:</strong> <code>pvLastStartEngine</code> se actualizează la fiecare pornire reușită de motor
+  (<code>Vehicle_ToggleEngine</code>, doar la tranziția oprit→pornit) și resetează automat <code>pvUnusedVeh</code> la 0.
+  Zilnic la 00:00 (agățat de <code>PayDay_Check</code>, alături de <code>Newspaper_ResetAll</code>),
+  <code>Vehicle_CheckUnusedDaily()</code> marchează <code>unused_veh=1</code> pentru orice vehicul nepornit de peste
+  <code>VEHICLE_UNUSED_DAYS</code> (30) zile — vehiculele niciodată pornite (<code>pvLastStartEngine==0</code>) sunt ignorate.
+  <code>/showUnusedVeh</code> (nivel 2+) interoghează direct DB-ul (JOIN cu <code>players</code> pentru username) și
+  afișează VehId/ModelId/LastStartEngine/Owner/RetroVeh într-un dialog informativ.</p>
 </section>
 
 <section id="exams">
@@ -1349,6 +1387,15 @@ loc_x/y/z FLOAT DEFAULT 0.0, anaf INT DEFAULT 0, anaf_docs_sent INT DEFAULT 0
 -- anaf = blocaj ANAF activ (1=blocat, niciun venit nu intra); anaf_docs_sent = documente predate, se deblocheaza la urmatorul PayDay
 -- vezi sectiunea Case &amp; Business-uri pentru fluxul complet (/biz getdocs / givedocs, /bc [id] anaf)</pre>
 
+  <h4>hotels</h4>
+  <pre>id INT PK AI, name VARCHAR(32) DEFAULT 'Hotel', owner VARCHAR(24) DEFAULT '', owner_id INT DEFAULT 0,
+owned TINYINT DEFAULT 0, is_for_sale TINYINT DEFAULT 0, price INT DEFAULT 7500000,
+loc_x/y/z FLOAT DEFAULT 0.0, bank INT DEFAULT 0, is_rentable TINYINT DEFAULT 0, rent_price INT DEFAULT 0,
+renter_id INT DEFAULT 0, capacity INT DEFAULT 5, items INT DEFAULT 200
+-- renter_id: coloana neutilizata - ocuparea reala se recalculeaza la pornire din players.rent_hotel
+-- items (htlItems, 0-200): iteme de igiena, consumate 1/1 la /sleep si /renthotel; la 0, htlBank nu mai incaseaza
+--   (vezi sectiunea Case &amp; Business-uri &gt; Hoteluri, /htlitems buy/unload)</pre>
+
   <h4>vehicles_faction</h4>
   <pre>id INT PK AI, faction_id INT NOT NULL, model_id INT NOT NULL, loc_x/y/z FLOAT DEFAULT 0.0,
 rotation FLOAT DEFAULT 0.0, color1/color2 INT DEFAULT 1</pre>
@@ -1358,10 +1405,18 @@ rotation FLOAT DEFAULT 0.0, color1/color2 INT DEFAULT 1</pre>
 plate VARCHAR(16) UNIQUE DEFAULT NULL, price INT DEFAULT 0, loc_x/y/z FLOAT DEFAULT 0.0,
 rotation FLOAT DEFAULT 0.0, insurance_exp/medkit_exp/extinguisher_exp/itp_exp DATE DEFAULT NULL,
 locked TINYINT DEFAULT 0, first_registration DATE DEFAULT NULL, from_biz INT DEFAULT 0,
-fuel FLOAT DEFAULT 100.0, is_confiscated TINYINT DEFAULT 0, is_for_sale TINYINT DEFAULT 0
+fuel FLOAT DEFAULT 100.0, is_confiscated TINYINT DEFAULT 0, is_for_sale TINYINT DEFAULT 0,
+dirty INT DEFAULT 0, count_owners INT DEFAULT 0,
+vip TINYINT DEFAULT 0, retro_veh TINYINT DEFAULT 0, wheels INT DEFAULT 0,
+last_start_engine INT DEFAULT 0, unused_veh TINYINT DEFAULT 0
 -- owner_id: 0 = liber (showroom). Nu exista camp de nume pentru proprietar.
 -- is_confiscated = tractat de R.A.R. (motorul nu porneste pana la /redeemcar)
--- is_for_sale = pus la vanzare de proprietar; alt player il cumpara cu /vbuy (vezi Marketplace)</pre>
+-- is_for_sale = pus la vanzare de proprietar; alt player il cumpara cu /vbuy (vezi Marketplace)
+-- vip: extinde /v color1/color2 la 0-255 (altfel 0-127) si deblocheaza /v wheels ($2000/set, vezi sectiunea Vehicule personale)
+-- retro_veh: doar informativ, afisat in /showUnusedVeh
+-- wheels: component ID jante instalate (0 = default), reaplicat la fiecare PVehicles_Create
+-- last_start_engine: unix timestamp, actualizat la fiecare pornire de motor (/engine)
+-- unused_veh: recalculat zilnic la 00:00 (Vehicle_CheckUnusedDaily) - 1 daca motorul n-a mai pornit de 30+ zile</pre>
 
   <h4>turfs</h4>
   <pre>id INT PK AI, faction_id INT DEFAULT 0, name VARCHAR(32) NOT NULL DEFAULT '',
@@ -1463,7 +1518,7 @@ rTimeRecord FLOAT DEFAULT 999 (secunde), rPlayerName VARCHAR(24)
   <table>
     <tr><th>Nivel</th><th>Comenzi</th></tr>
     <tr><td><span class="pill pill-lvl">1</span></td><td><code>/ahelp</code>, <code>/respawn</code>, <code>/aheal</code>, <code>/aa [text]</code> — anunț global al adminilor (<code>(( Admin &lt;nume&gt;: text ))</code>), <code>/slap [playerid]</code> — ridică jucătorul la <code>z + 2.0</code>, <code>/setskin [playerid] [skinid]</code> — setează skin-ul (0-311) și îl și dăruiește jucătorului, <code>/fixcar</code>, <code>/flipcar</code>, <code>/setinterior</code>, <code>/setvirtualworld</code> (alias <code>/setvw</code>), <code>/setjob</code>, <code>/businesslist</code>, <code>/reports</code> — dialog cu reporturile deschise, <code>/reportreply [repID] [text]</code> — răspunde la un report (vezi secțiunea Reporturi)</td></tr>
-    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/farmlist</code> — dialog cu toate fermele (click = teleport), <code>/houselist</code> — dialog cu toate casele (ID/Nume/Tip/Proprietar, click = teleport), <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code>, <code>/giveweapon [playerid] [weapon] [ammo]</code>, <code>/cscreate [csType] [name]</code>, <code>/csdelete [csID]</code>, <code>/cslist</code>, <code>/event cs open|start [nr]|stop [nr]</code>, <code>/event htm open|start|stop</code>, <code>/event race [lap1/lap2/lap3] [vehicle/random]</code>, <code>/event start</code>, <code>/event stop</code></td></tr>
+    <tr><td><span class="pill pill-lvl">2</span></td><td><code>/createfire</code>, <code>/healall</code>, <code>/gotoloc</code>, <code>/goto</code>, <code>/gotobiz</code>, <code>/gotohouse</code>, <code>/gotofaction</code>, <code>/opengolftournament</code>, <code>/startgolf</code>, <code>/joblist</code>, <code>/bizzlist</code>, <code>/farmlist</code> — dialog cu toate fermele (click = teleport), <code>/houselist</code> — dialog cu toate casele (ID/Nume/Tip/Proprietar, click = teleport), <code>/getcar [vehicleid]</code>, <code>/gotocar [vehicleid]</code>, <code>/saveloc</code>, <code>/gotosave</code>, <code>/giveweapon [playerid] [weapon] [ammo]</code>, <code>/cscreate [csType] [name]</code>, <code>/csdelete [csID]</code>, <code>/cslist</code>, <code>/event cs open|start [nr]|stop [nr]</code>, <code>/event htm open|start|stop</code>, <code>/event race [lap1/lap2/lap3] [vehicle/random]</code>, <code>/event start</code>, <code>/event stop</code>, <code>/showUnusedVeh</code> — dialog cu vehiculele personale nepornite de 30+ zile (VehId/ModelId/LastStartEngine/Owner/RetroVeh, vezi secțiunea Vehicule personale)</td></tr>
     <tr><td><span class="pill pill-lvl">3</span></td><td><code>/veh [nume sau model id]</code>, <code>/rac</code>, <code>/createdisease</code>, <code>/setlic [playerid] [all/A/B/C/D/H/P] [YYYY-MM-DD]</code> (A/B/C/D=auto, P=avion, H=elicopter), <code>/gotoxyz</code>, <code>/forceunlock</code>, <code>/changecar [engine/lights/alarm/doors/hood/boot]</code> — comută o componentă a vehiculului în care ești</td></tr>
     <tr><td><span class="pill pill-lvl">4</span></td><td><code>/forcewar [turf_id] [atk_fid] [def_fid]</code> — forțează un război de teritoriu (vezi secțiunea Turfs &amp; Războaie); <code>/adminuninvite [playerid]</code> — scoate un player din facțiune (faction=0, scade fMembers, resetează fLead dacă era lider)</td></tr>
     <tr><td><span class="pill pill-lvl">5</span></td><td>
@@ -1472,7 +1527,8 @@ rTimeRecord FLOAT DEFAULT 999 (secunde), rPlayerName VARCHAR(24)
       <code>/bc [bizid] [name/price/loc/anaf/forsale/ownerid/bank]</code><br>
       <code>/farmc [farmid] [loc/range/price/name/isOwned/ownerid/forsale/bank]</code><br>
       <code>/fc [factionid] [hq/interiorloc/interior/vw/hqicon/pickup/lead/vehloc/createveh/removelead]</code><br>
-      <code>/vc [loc/price/insurance/medkit/extinctor/itp/forsale/ownerid]</code> (pe vehiculul personal în care ești, nu ia ID; <code>/vc price</code> necesită nivel 6)<br>
+      <code>/vc [loc/price/insurance/medkit/extinctor/itp/forsale/ownerid/vip/retro]</code> (pe vehiculul personal în care ești, nu ia ID; <code>/vc price</code> necesită nivel 6; <code>vip</code>/<code>retro</code> = <code>/vc vip [0/1]</code> / <code>/vc retro [0/1]</code>, vezi secțiunea Vehicule personale)<br>
+      <code>/htlc [htlID] [loc/price/name/rentable/rentprice/capacity/items]</code> — <code>items</code> setează direct stocul de igienă (0-200, vezi secțiunea Hoteluri)<br>
       <code>/hupgrade [houseid] [animal [nume]/tree]</code> — acordă gratuit un upgrade de casă (fără taxă)<br>
       Sentinela <code>none</code> (în loc de un <code>playerid</code>) la <code>owner</code>/<code>ownerid</code> resetează proprietatea la nedeținută/vânzare standard.<br>
       <code>/payday</code>, <code>/jetpack</code> (primești un jetpack), <code>/ffc &lt;loc|name|type&gt; &lt;ffID&gt; [valoare]</code> — editează o locație fast-food (<code>loc</code>=mută la poziția ta, <code>name</code>=redenumește, <code>type</code>=pizza/burger/cluckin), <code>/fastfoodlist</code> — dialog cu toate locațiile fast-food (click = teleport), <code>/setfactionskin [fid] [skin r1/2] [skin r3/4] [skin r5]</code> — uniformele facțiunii (0 = fără)

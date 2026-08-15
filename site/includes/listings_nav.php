@@ -8,6 +8,7 @@ $listingsPages = [
     'farms'      => ['🌾', 'Farms', 'farms.php'],
     'vehicles'   => ['🚗', 'Vehicles', 'vehicles.php'],
     'billboards' => ['📢', 'Billboards', 'billboards.php'],
+    'bars'       => ['🍺', 'Bars', 'bars.php'],
 ];
 ?>
 <nav class="section-nav" aria-label="Jump to listing">

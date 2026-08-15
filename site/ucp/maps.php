@@ -52,7 +52,7 @@ $allHotels     = ($res = $mysqli->query("SELECT `id`,`loc_x`,`loc_y`,`owned`,`ow
 $allAtms       = ($res = $mysqli->query("SELECT `atmID`,`atmLocX`,`atmLocY`,`atmBankOwner` FROM `atms` WHERE `atmLocX` != 0 OR `atmLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allFarms      = ($res = $mysqli->query("SELECT `id`,`name`,`x`,`y`,`isOwned`,`owner`,`is_for_sale` FROM `farms` WHERE `x` != 0 OR `y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allForests    = ($res = $mysqli->query("SELECT `id`,`owner`,`locX`,`locY`,`ownerId`,`isForSale` FROM `forests` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
-$allGasStations = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `gasStations` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFuelStations = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `fuelStations` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allClothStores = ($res = $mysqli->query("SELECT `clstID`,`clstName`,`clstX`,`clstY` FROM `clothstores` WHERE `clstX` != 0 OR `clstY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allAmmuNations = ($res = $mysqli->query("SELECT `amoID`,`amoName`,`amoLocX`,`amoLocY` FROM `ammunations` WHERE `amoLocX` != 0 OR `amoLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allLocations  = ($res = $mysqli->query("SELECT `locID`,`locName`,`locX`,`locY`,`locCategory` FROM `locations_admin` WHERE `locForGPS` = 1")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
@@ -72,7 +72,7 @@ $hotels     = array_values(array_filter($allHotels, function($h) { return ucp_in
 $atms       = array_values(array_filter($allAtms, function($a) { return ucp_in_los_santos($a['atmLocX'], $a['atmLocY']); }));
 $farms      = array_values(array_filter($allFarms, function($f) { return ucp_in_los_santos($f['x'], $f['y']); }));
 $forests    = array_values(array_filter($allForests, function($f) { return ucp_in_los_santos($f['locX'], $f['locY']); }));
-$gasStations = array_values(array_filter($allGasStations, function($g) { return ucp_in_los_santos($g['locX'], $g['locY']); }));
+$fuelStations = array_values(array_filter($allFuelStations, function($g) { return ucp_in_los_santos($g['locX'], $g['locY']); }));
 $clothStores = array_values(array_filter($allClothStores, function($c) { return ucp_in_los_santos($c['clstX'], $c['clstY']); }));
 $ammuNations = array_values(array_filter($allAmmuNations, function($a) { return ucp_in_los_santos($a['amoLocX'], $a['amoLocY']); }));
 $locationsInLS = array_values(array_filter($allLocations, function($l) { return ucp_in_los_santos($l['locX'], $l['locY']); }));
@@ -214,7 +214,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
         <label><input type="checkbox" checked data-cat="atm"><span class="legend-dot dot-atm"></span>ATMs (<?= count($atms) ?>)</label>
         <label><input type="checkbox" checked data-cat="farm"><span class="legend-dot dot-farm"></span>Farms (<?= count($farms) ?>)</label>
         <label><input type="checkbox" checked data-cat="forest"><span class="legend-dot dot-forest"></span>Forests (<?= count($forests) ?>)</label>
-        <label><input type="checkbox" checked data-cat="gas"><span class="legend-dot dot-gas"></span>Gas Stations (<?= count($gasStations) ?>)</label>
+        <label><input type="checkbox" checked data-cat="gas"><span class="legend-dot dot-gas"></span>Fuel Stations (<?= count($fuelStations) ?>)</label>
         <label><input type="checkbox" checked data-cat="cloth"><span class="legend-dot dot-cloth"></span>Cloth Stores (<?= count($clothStores) ?>)</label>
         <label><input type="checkbox" checked data-cat="ammo"><span class="legend-dot dot-ammo"></span>AmmuNations (<?= count($ammuNations) ?>)</label>
         <label><input type="checkbox" checked data-cat="loc"><span class="legend-dot dot-loc"></span>Locations (<?= count($locations) ?>)</label>
@@ -293,9 +293,9 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
           </div>
         <?php endforeach; ?>
 
-        <?php foreach ($gasStations as $g): [$px, $py] = ucp_world_to_pct($g['locX'], $g['locY']); ?>
+        <?php foreach ($fuelStations as $g): [$px, $py] = ucp_world_to_pct($g['locX'], $g['locY']); ?>
           <div class="pin pin-gas" data-cat="gas" style="left:<?= $px ?>%; top:<?= $py ?>%">
-            <div class="pin-tooltip">[ GasStation #<?= (int)$g['id'] ?> ]<br>[ <?= ucp_escape($g['name']) ?> ]</div>
+            <div class="pin-tooltip">[ Fuel Station #<?= (int)$g['id'] ?> ]<br>[ <?= ucp_escape($g['name']) ?> ]</div>
           </div>
         <?php endforeach; ?>
 

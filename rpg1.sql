@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Aug 12, 2026 at 03:58 PM
+-- Generation Time: Aug 14, 2026 at 06:50 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -45,10 +45,11 @@ CREATE TABLE `ammunations` (
 --
 
 INSERT INTO `ammunations` (`amoID`, `amoLocX`, `amoLocY`, `amoLocZ`, `amoName`, `amoInteriorId`, `amoVwId`, `amoInteriorX`, `amoInteriorY`, `amoInteriorZ`) VALUES
-(1, 1791.4, -1164.8, 23.8281, 'Downtown AmmuNation', 7, 1, 315.24, -140.88, 999.6),
+(1, 1791.4, -1164.8, 23.8281, 'Downtown AmmuNation', 6, 1, 316.5, -167.62, 999.59),
 (2, 2400.4, -1981.05, 13.5469, 'WillowField AmmuNation', 6, 2, 297.14, -109.87, 1001.51),
 (3, 1081.5, -1698.15, 13.5469, 'Verona AmmuNation', 7, 3, 315.24, -140.88, 999.6),
-(4, 1366.61, -1279.79, 13.5469, '', 7, 4, 315.24, -140.88, 999.6);
+(4, 1366.61, -1279.79, 13.5469, '', 7, 4, 315.24, -140.88, 999.6),
+(5, 2335.03, 62.1586, 26.4833, '', 6, 5, 316.5, -167.62, 999.59);
 
 -- --------------------------------------------------------
 
@@ -109,6 +110,34 @@ CREATE TABLE `bans` (
   `ban_date` int(11) DEFAULT 0,
   `expire` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `bars`
+--
+
+CREATE TABLE `bars` (
+  `id` int(11) NOT NULL,
+  `name` varchar(32) DEFAULT 'Bar',
+  `type` tinyint(4) DEFAULT 1,
+  `gta_interior_id` int(11) DEFAULT 0,
+  `vw_id` int(11) DEFAULT 0,
+  `loc_x` float DEFAULT 0,
+  `loc_y` float DEFAULT 0,
+  `loc_z` float DEFAULT 0,
+  `stock_max` int(11) DEFAULT 100,
+  `stock_curr` int(11) DEFAULT 100
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `bars`
+--
+
+INSERT INTO `bars` (`id`, `name`, `type`, `gta_interior_id`, `vw_id`, `loc_x`, `loc_y`, `loc_z`, `stock_max`, `stock_curr`) VALUES
+(1, 'Bar', 1, 24, 1, 2309.83, -1645.09, 14.827, 100, 99),
+(2, 'Rock\'n\'Beer', 1, 25, 2, 816.298, -1387.44, 13.6115, 100, 99),
+(3, 'FPD cock-tails', 1, 117, 3, 1786.25, -1722.31, 13.5469, 100, 98);
 
 -- --------------------------------------------------------
 
@@ -257,7 +286,9 @@ INSERT INTO `bin` (`id`, `type`, `status_current`, `status_max`, `locX`, `locY`,
 (3, 1, 10, 10, 2382.3, -1940.17, 13.5),
 (4, 1, 10, 10, 1420.46, -1846.38, 13.5469),
 (5, 1, 10, 10, 1516.62, -1849.3, 13.5469),
-(6, 1, 10, 10, 1461.48, -1488.45, 13.5469);
+(6, 1, 10, 10, 1461.48, -1488.45, 13.5469),
+(7, 1, 10, 10, 1521.25, -1014.7, 23.9765),
+(8, 1, 10, 10, 1829.58, -1143.87, 23.8811);
 
 -- --------------------------------------------------------
 
@@ -287,7 +318,7 @@ CREATE TABLE `businesses` (
 --
 
 INSERT INTO `businesses` (`id`, `owned`, `owner`, `owner_id`, `price`, `bank`, `loc_x`, `loc_y`, `loc_z`, `name`, `is_for_sale`, `anaf`, `anaf_docs`, `default_price`) VALUES
-(1, 0, '', 0, 3000000, 105, 830.194, -2047.81, 12.8672, 'Rent Mountain Bike LS', 1, 0, 0, 3000000),
+(1, 0, '', 0, 3000000, 120, 830.194, -2047.81, 12.8672, 'Rent Mountain Bike LS', 1, 0, 0, 3000000),
 (2, 0, '', 0, 3000000, 599, 341.339, -1500.45, 36.0391, 'DMV - B Category', 1, 0, 0, 3000000),
 (3, 0, '', 0, 3000000, 90, 1109.79, -1796.64, 16.5938, 'Rent Car LosSantos', 1, 0, 0, 3000000),
 (4, 0, '', 0, 3000000, 1000, 336.535, -1505.59, 36.0391, 'DMV - C Category', 1, 0, 0, 3000000),
@@ -302,13 +333,14 @@ INSERT INTO `businesses` (`id`, `owned`, `owner`, `owner_id`, `price`, `bank`, `
 (13, 0, '', 0, 3000000, 505, 2350.67, -1412.17, 23.9924, 'Home Furnitures', 1, 0, 0, 3000000),
 (14, 0, '', 0, 3000000, 360, 1095.79, -1437.42, 22.7631, 'Supermarket Carifura', 1, 0, 0, 3000000),
 (15, 0, '', 0, 3000000, 30, 1045.71, -324.804, 73.9922, 'Hidden Harbor Lodge', 1, 0, 0, 3000000),
-(16, 0, '', 0, 3000000, 0, 988.774, -1366.03, 13.5488, 'Glovo Co.', 1, 0, 0, 3000000),
+(16, 0, '', 0, 3000000, 10, 988.774, -1366.03, 13.5488, 'Glovo Co.', 1, 0, 0, 3000000),
 (17, 0, '', 0, 3000000, 0, 2485.36, -1957.92, 13.5881, 'Bikers Dealership', 1, 0, 0, 3000000),
 (18, 0, '', 0, 3000000, 0, 2046.89, -1918.25, 13.5469, 'SUV Dealership', 1, 0, 0, 3000000),
 (19, 0, '', 0, 3000000, 0, 1464.81, -1012.59, 26.8438, 'Swiss Bank', 1, 0, 0, 3000000),
 (20, 0, '', 0, 3000000, 41, 2232.58, -1332.84, 23.9815, 'Jew\' Bank', 1, 0, 0, 3000000),
-(21, 0, '', 0, 3000000, 810, 1471.9, -1263.4, 14.5625, 'Hello? Phones', 1, 0, 0, 3000000),
-(22, 0, '', 0, 3000000, 130, 1546.69, -1270.5, 17.4063, 'Eujenia Network', 1, 0, 0, 3000000);
+(21, 0, '', 0, 3000000, 810, 1471.9, -1263.4, 14.5625, 'Hello? ElectroShop', 1, 0, 0, 3000000),
+(22, 0, '', 0, 3000000, 130, 1546.69, -1270.5, 17.4063, 'Eujenia Network', 1, 0, 0, 3000000),
+(23, 0, '', 0, 10000000, 0, 2617.82, -2195.04, 13.5469, 'Gas Distribuitor', 1, 0, 0, 10000000);
 
 -- --------------------------------------------------------
 
@@ -334,8 +366,10 @@ CREATE TABLE `clothstores` (
 --
 
 INSERT INTO `clothstores` (`csID`, `csLocX`, `csLocY`, `csLocZ`, `clsName`, `clsInteriorId`, `clsVwId`, `clsInteriorX`, `clsInteriorY`, `clsInteriorZ`) VALUES
-(1, 2244.4, -1664.22, 15.4766, '', 15, 1, 207.52, -109.74, 1005.13),
-(2, 459.84, -1501.17, 31.0387, '', 1, 2, 204.11, -46.8, 1001.8);
+(1, 2244.4, -1664.22, 15.4766, 'ZaraZara', 15, 1, 207.52, -109.74, 1005.13),
+(2, 459.84, -1501.17, 31.0387, 'M and H', 1, 2, 204.11, -46.8, 1001.8),
+(3, 500.439, -1358.41, 16.1774, 'Naic', 18, 3, 161.4, -94.24, 1001.8),
+(4, 1457.78, -1140.07, 24.0683, 'Abibas', 18, 4, 161.4, -94.24, 1001.8);
 
 -- --------------------------------------------------------
 
@@ -381,7 +415,7 @@ CREATE TABLE `factions` (
   `skin2` int(11) DEFAULT 0,
   `skin3` int(11) DEFAULT 0,
   `smuggle_cooldown_day` int(11) DEFAULT 0,
-  `max_members` int(11) NOT NULL DEFAULT 6,
+  `max_members` int(11) NOT NULL DEFAULT 5,
   `application_on` tinyint(1) NOT NULL DEFAULT 1,
   `interior_a` float DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -391,14 +425,14 @@ CREATE TABLE `factions` (
 --
 
 INSERT INTO `factions` (`id`, `name`, `members`, `lead`, `bank`, `pickup_id`, `mapicon_id`, `hq_x`, `hq_y`, `hq_z`, `interior_x`, `interior_y`, `interior_z`, `interior`, `vw`, `seif_herbs`, `seif_drugs`, `skin`, `skin1`, `skin2`, `skin3`, `smuggle_cooldown_day`, `max_members`, `application_on`, `interior_a`) VALUES
-(1, 'Police Department', 0, '', 12000, 1247, 30, 1554.2, -1675.9, 16.25, 247.2, 63.4, 1003.7, 6, 0, 0, 0, 0, 266, 281, 265, 0, 6, 1, 0),
+(1, 'Police Department', 0, '', 12000, 1247, 30, 1554.2, -1675.9, 16.25, 246.812, 63.5707, 1003.64, 6, 0, 0, 0, 0, 266, 281, 265, 0, 6, 1, 0),
 (2, 'Department of Motor Vehicles', 0, '', 2850, 1581, 55, 918.405, -1252.19, 16.2109, 246.06, 108.97, 1003.3, 10, 2, 0, 0, 0, 268, 304, 302, 0, 6, 1, 0),
-(3, 'SMURD', 0, '', 250, 11738, 22, 1172.71, -1323.21, 15.4017, 2267.75, 1647.55, 1084.23, 1, 3, 0, 0, 0, 276, 277, 274, 0, 6, 1, 270.473),
-(4, 'European Mafia', 0, '', 331000, 1314, 58, 1872.64, -2020.46, 13.5469, 2569.41, -1301.77, 1044.12, 2, 4, 684, 5, 0, 114, 115, 116, 0, 6, 1, 0),
-(5, 'American Mafia', 0, '', 48100, 1314, 59, 1905.89, -1115.16, 25.9538, 2569.41, -1301.77, 1044.12, 2, 5, 0, 0, 0, 102, 103, 104, 0, 6, 1, 0),
-(6, 'African Mafia', 0, '', 48400, 1314, 62, 2495.4, -1688.71, 13.9735, 2569.41, -1301.77, 1044.12, 2, 6, 0, 0, 0, 105, 106, 107, 0, 6, 1, 0),
-(7, 'Asian Mafia', 0, '', 50500, 1314, 60, 2231.89, -1159.81, 25.8906, 2569.41, -1301.77, 1044.12, 2, 7, 0, 0, 0, 108, 109, 110, 0, 6, 1, 0),
-(8, 'News Reporters', 0, '', 750, 1318, 34, 733.452, -1350.27, 13.5, 322.5, 303.7, 999.2, 5, 8, 0, 0, 0, 273, 48, 46, 0, 6, 1, 0);
+(3, 'SMURD', 1, 'Punctulet', 250, 11738, 22, 1172.71, -1323.21, 15.4017, 2267.75, 1647.55, 1084.23, 1, 3, 0, 0, 0, 276, 277, 274, 0, 6, 1, 270.473),
+(4, 'European Mafia', 0, '', 334000, 1314, 58, 1872.64, -2020.46, 13.5469, 2569.41, -1301.77, 1044.12, 2, 4, 684, 5, 0, 114, 115, 116, 0, 6, 1, 0),
+(5, 'American Mafia', 0, '', 51100, 1314, 59, 1905.89, -1115.16, 25.9538, 2569.41, -1301.77, 1044.12, 2, 5, 0, 0, 0, 102, 103, 104, 0, 6, 1, 0),
+(6, 'African Mafia', 0, '', 51400, 1314, 62, 2495.4, -1688.71, 13.9735, 2569.41, -1301.77, 1044.12, 2, 6, 0, 0, 0, 105, 106, 107, 0, 6, 1, 0),
+(7, 'Asian Mafia', 0, '', 53500, 1314, 60, 2231.89, -1159.81, 25.8906, 2569.41, -1301.77, 1044.12, 2, 7, 0, 0, 0, 108, 109, 110, 0, 6, 1, 0),
+(8, 'News Reporters', 0, '', 885, 1318, 34, 733.452, -1350.27, 13.5, 322.5, 303.7, 999.2, 5, 8, 0, 0, 0, 273, 48, 46, 0, 6, 1, 0);
 
 -- --------------------------------------------------------
 
@@ -492,13 +526,13 @@ CREATE TABLE `fastfood` (
 --
 
 INSERT INTO `fastfood` (`ffID`, `ffName`, `ffType`, `ffLocX`, `ffLocY`, `ffLocZ`) VALUES
-(1, 'Pizza Stack', 1, 2102.94, -1806.71, 13.5547),
-(2, 'Burger Shot', 2, 1214.53, -905.507, 42.6478),
-(3, 'Burger Shot', 2, 799.88, -1630.01, 13.1099),
-(4, 'Cluckin Bell', 3, 925.618, -1352.81, 13.3766),
-(5, 'Cluckin Bell', 3, 2409.52, -1487.22, 23.5552),
+(1, 'Pizzeria Mammamia', 1, 2102.94, -1806.71, 13.5547),
+(2, 'Burger House', 2, 1214.53, -905.507, 42.6478),
+(3, 'Burger Shooooot', 2, 799.88, -1630.01, 13.1099),
+(4, 'FatChicken', 3, 925.618, -1352.81, 13.3766),
+(5, 'Chicken 20CM', 3, 2409.52, -1487.22, 23.5552),
 (6, 'Eat my Donut', 4, 1038.07, -1338.63, 13.7266),
-(7, 'Cluck\'in', 3, 2397.76, -1897.59, 13.5469);
+(7, 'CFK RO', 3, 2397.76, -1897.59, 13.5469);
 
 -- --------------------------------------------------------
 
@@ -534,16 +568,26 @@ INSERT INTO `forests` (`id`, `ownerId`, `owner`, `isForSale`, `defaultPrice`, `p
 -- --------------------------------------------------------
 
 --
--- Table structure for table `gasstations`
+-- Table structure for table `fuelstations`
 --
 
-CREATE TABLE `gasstations` (
+CREATE TABLE `fuelstations` (
   `id` int(11) NOT NULL,
   `name` varchar(32) DEFAULT 'Gas Station',
   `locX` float DEFAULT 0,
   `locY` float DEFAULT 0,
-  `locZ` float DEFAULT 0
+  `locZ` float DEFAULT 0,
+  `fuelLevel_max` int(11) DEFAULT 5000,
+  `fuelLevel_curr` int(11) DEFAULT 4000
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `fuelstations`
+--
+
+INSERT INTO `fuelstations` (`id`, `name`, `locX`, `locY`, `locZ`, `fuelLevel_max`, `fuelLevel_curr`) VALUES
+(1, 'Gas Station', 1944.05, -1772.49, 13.3906, 5000, 4000),
+(2, 'Gas Station', 1004.63, -940.135, 42.1797, 5000, 4000);
 
 -- --------------------------------------------------------
 
@@ -726,25 +770,26 @@ CREATE TABLE `hotels` (
   `is_rentable` tinyint(4) DEFAULT 0,
   `rent_price` int(11) DEFAULT 0,
   `renter_id` int(11) DEFAULT 0,
-  `capacity` int(11) DEFAULT 5
+  `capacity` int(11) DEFAULT 5,
+  `items` int(11) DEFAULT 200
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `hotels`
 --
 
-INSERT INTO `hotels` (`id`, `name`, `owner`, `owner_id`, `owned`, `is_for_sale`, `price`, `loc_x`, `loc_y`, `loc_z`, `bank`, `is_rentable`, `rent_price`, `renter_id`, `capacity`) VALUES
-(1, 'Hotel 1', 'Punctulet', 1, 1, 0, 50000, 1519.15, -1451.87, 14.2031, 100, 0, 0, 0, 2),
-(2, 'Hotel 2', '', 0, 0, 1, 50000, 1332.36, -985.285, 33.8966, 0, 0, 0, 0, 5),
-(3, 'Hotel 3', '', 0, 0, 1, 50000, 1023.82, -981.757, 42.6307, 0, 0, 0, 0, 5),
-(4, 'Hotel 4', '', 0, 0, 1, 50000, 952.886, -911.671, 45.7656, 0, 0, 0, 0, 5),
-(5, 'Hotel 5', '', 0, 0, 1, 50000, 609.042, -1459.49, 14.3925, 0, 0, 0, 0, 5),
-(6, 'Hotel 6', '', 0, 0, 1, 50000, 867.5, -1797.06, 13.8064, 0, 0, 0, 0, 5),
-(7, 'Hotel 7', '', 0, 0, 1, 50000, 1420.61, -1624.06, 13.5469, 0, 0, 0, 0, 5),
-(8, 'Hotel 8', '', 0, 0, 1, 50000, 2379.09, -1197.2, 27.4223, 0, 0, 0, 0, 5),
-(9, 'Hotel 9', '', 0, 0, 1, 50000, 2657.86, -1392.55, 30.4246, 0, 0, 0, 0, 5),
-(10, 'Hotel 10', '', 0, 0, 1, 50000, 2752.48, -1962.53, 13.5469, 75, 0, 0, 0, 5),
-(12, 'San Andreas Motel', '', 0, 0, 1, 50000, 2178.44, -1770.24, 13.5453, 0, 0, 0, 0, 5);
+INSERT INTO `hotels` (`id`, `name`, `owner`, `owner_id`, `owned`, `is_for_sale`, `price`, `loc_x`, `loc_y`, `loc_z`, `bank`, `is_rentable`, `rent_price`, `renter_id`, `capacity`, `items`) VALUES
+(1, 'Hotel 1', 'Punctulet', 1, 1, 0, 50000, 1519.15, -1451.87, 14.2031, 100, 0, 0, 0, 2, 200),
+(2, 'Hotel 2', '', 0, 0, 1, 50000, 1332.36, -985.285, 33.8966, 0, 0, 0, 0, 5, 200),
+(3, 'Hotel 3', '', 0, 0, 1, 50000, 1023.82, -981.757, 42.6307, 0, 0, 0, 0, 5, 200),
+(4, 'Hotel 4', '', 0, 0, 1, 50000, 952.886, -911.671, 45.7656, 0, 0, 0, 0, 5, 200),
+(5, 'Hotel 5', '', 0, 0, 1, 50000, 609.042, -1459.49, 14.3925, 0, 0, 0, 0, 5, 200),
+(6, 'Hotel 6', '', 0, 0, 1, 50000, 867.5, -1797.06, 13.8064, 0, 0, 0, 0, 5, 200),
+(7, 'Hotel 7', '', 0, 0, 1, 50000, 1420.61, -1624.06, 13.5469, 0, 0, 0, 0, 5, 200),
+(8, 'Hotel 8', '', 0, 0, 1, 50000, 2379.09, -1197.2, 27.4223, 0, 0, 0, 0, 5, 200),
+(9, 'Hotel 9', '', 0, 0, 1, 50000, 2657.86, -1392.55, 30.4246, 0, 0, 0, 0, 5, 200),
+(10, 'Hotel 10', '', 0, 0, 1, 50000, 2752.48, -1962.53, 13.5469, 75, 0, 0, 0, 5, 200),
+(12, 'San Andreas Motel', '', 0, 0, 1, 50000, 2178.44, -1770.24, 13.5453, 0, 0, 0, 0, 5, 200);
 
 -- --------------------------------------------------------
 
@@ -860,7 +905,7 @@ CREATE TABLE `houses_animals` (
 --
 
 INSERT INTO `houses_animals` (`aID`, `aType`, `aPlayerID`, `aHouseID`, `aName`, `aDefaultName`, `aAge`, `aDeceased`) VALUES
-(1, 1609, 1, 1, 'Ronal', 'Turtle', 58, 0);
+(1, 1609, 1, 1, 'Ronal', 'Turtle', 67, 0);
 
 -- --------------------------------------------------------
 
@@ -886,6 +931,28 @@ CREATE TABLE `houses_tree` (
 
 INSERT INTO `houses_tree` (`treeId`, `treeHouseId`, `treeType`, `treeName`, `treePlantedDate`, `treeFruitStatus`, `treeLocX`, `treeLocY`, `treeLocZ`) VALUES
 (4, 1, 0, 'Tree', 1785263901, 30, 0, 0, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ips`
+--
+
+CREATE TABLE `ips` (
+  `id` int(11) NOT NULL,
+  `ip` varchar(45) NOT NULL,
+  `isOnline` tinyint(1) DEFAULT 0,
+  `playerName` varchar(24) NOT NULL,
+  `lastLogin` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `ips`
+--
+
+INSERT INTO `ips` (`id`, `ip`, `isOnline`, `playerName`, `lastLogin`) VALUES
+(1, '127.0.0.1', 0, 'Punctulet6', '2026-08-14 10:37:12'),
+(3, '127.0.0.1', 0, 'Punctulet', '2026-08-14 15:48:31');
 
 -- --------------------------------------------------------
 
@@ -922,8 +989,8 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (9, 'lodge', -688.106, 949.078, 12.5, '', 0, 0, 1, 'Fun'),
 (11, 'PR/duty', 256.123, 65.5168, 1003.64, 'PR - /duty', 6, 0, 0, ''),
 (12, 'jail', 263.748, 77.754, 1001.04, 'Interior JAIL', 6, 0, 0, ''),
-(13, 'PR/arrest-int', 268.416, 77.7611, 1001.04, 'Comanda /arrest la interior', 6, 0, 0, ''),
-(14, 'PR/arrest-ext', 1568.48, -1691.7, 5.89, 'Comanda /arrest din exterior(garaj) JAIL', 0, 0, 0, ''),
+(13, 'PR/arrest-left', 1754.33, -1594.06, 13.537, 'Comanda /arrest din stanga', 0, 0, 0, ''),
+(14, 'PR/arrest-right', 1825.95, -1538.12, 13.5469, 'Comanda /arrest din dreapta', 0, 0, 0, ''),
 (15, 'Vehicle Plate', 867.269, -1205.11, 16.9766, 'Change Vehicle Plate', 0, 0, 1, 'Vehicle'),
 (16, 'Vehicle ITP', 831.053, -1205.11, 16.9766, 'Change Vehicle ITP', 0, 0, 1, 'Vehicle'),
 (18, 'police_int_to_ext', 246.7, 63.4, 1003.64, 'Police Interior to Exterior', 6, 0, 0, ''),
@@ -941,28 +1008,32 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (40, 'examW', 1883.87, -1270.38, 13.54, 'Examen W - start (/examW)', 0, 0, 1, 'Licence'),
 (50, 'ad W LS', 914.5, -1003.31, 38, 'Locatie pentru /ad West LS', 0, 0, 1, 'CNN'),
 (51, 'ad S LS', 1448.95, -2286.96, 13.54, 'Locatie pentru /ad South LS', 0, 0, 1, 'CNN'),
-(52, 'ad E LS', 1853.65, -1145.18, 23.85, 'Locatie /ad East LS', 0, 0, 0, 'CNN'),
+(52, 'ad E LS', 1853.65, -1145.18, 23.85, 'Locatie pentru /ad East LS', 0, 0, 1, 'CNN'),
 (55, 'Arrest Me', 1798.31, -1578.39, 14.08, '/arrestme if wanted 2+, and no cops on-duty', 0, 0, 1, 'Others'),
-(60, 'W LosSantos Station', 824.527, -1361.05, -0.5078, 'West Los Santos Train Station', 0, 0, 1, 'Train Station'),
-(61, 'S LosSantos Station', 1738.98, -1950.01, 14.1172, 'South Los Santos Train Station', 0, 0, 1, 'Train Station'),
-(62, 'E LosSantos Station', 2261.17, -1507.29, 21.5038, 'East Los Santos Train Station', 0, 0, 1, 'Train Station'),
+(60, 'W LosSantos Station', 824.527, -1361.05, -0.5078, 'West Los Santos Train Station', 0, 0, 1, 'Public Transport'),
+(61, 'S LosSantos Station', 1738.98, -1950.01, 14.1172, 'South Los Santos Train Station', 0, 0, 1, 'Public Transport'),
+(62, 'E LosSantos Station', 2261.17, -1507.29, 21.5038, 'East Los Santos Train Station', 0, 0, 1, 'Public Transport'),
 (100, 'lspd_barrier', 1544.7, -1630.9, 13.24, 'Bariera LSPD (horn factiune 1)', 0, 0, 0, ''),
-(101, 'Job Glovo Delivery', 2390, 1667, 11, 'Starting point of job Glovo Delivery', 0, 0, 1, 'Job'),
-(102, 'Job Cement Truck Driver', 334.625, 871.524, 20.4063, 'Starting point of job Cement Truck Driver', 0, 0, 1, 'Job'),
-(103, 'Job Gun Delivery', 2501.69, -2618.84, 13.7147, 'Starting point of job Gun Delivery', 0, 0, 1, 'Job'),
-(104, 'Job Car Transportator', 1984.05, -2065.85, 14.0127, 'Starting point of job Car Transportator', 0, 0, 1, 'Job'),
-(105, 'Job Fish 1', 383.61, -2086.89, 7.83, 'Fish zone 1', 0, 0, 1, 'Job'),
-(106, 'Job Fish 2', 820.32, -1952.68, 12.86, '', 0, 0, 1, 'Job'),
-(107, 'Job Fish 3', 2938.01, -2051.49, 3.27, '', 0, 0, 1, 'Job'),
+(101, 'Job Glovo Delivery', 1013.5, -1366.97, 13.36, 'Job 1 - Glovo Delivery', 0, 0, 1, 'Job'),
+(102, 'Job Cement Truck Driver', 334.62, 871.524, 20.4, 'Job 2 - Cement Truck Driver', 0, 0, 1, 'Job'),
+(103, 'Job Gun Delivery', 2501.69, -2618.84, 13.71, 'Job 3 - Gun Delivery', 0, 0, 1, 'Job'),
+(104, 'Job Car Transportator', 1984.05, -2065.85, 14.01, 'Job 4 - Car Transportator', 0, 0, 1, 'Job'),
+(106, 'Job Emergency Logistics Driver', 1112.39, -1232.44, 15.82, 'Job 6 - Emergency Logistics Driver', 0, 0, 1, 'Job'),
+(107, 'Job Bus Driver', 1425.45, -2325.27, 13.54, 'Job 7 - Bus Driver', 0, 0, 1, 'Job'),
+(108, 'Job Electrician', 2700.15, -1954.21, 13.55, 'Job 8 - Electrician', 0, 0, 1, 'Job'),
+(109, 'Job Crop Duster Pilot', 1959.8, -2638.24, 13.54, 'Job 9 - Crop Duster Pilot', 0, 0, 1, 'Job'),
+(110, 'Job Water Hauler', 1632.35, -1888.13, 13.55, 'Job 10 - Water Hauler', 0, 0, 1, 'Job'),
+(111, 'Job Fish 1', 383.61, -2086.89, 7.83, 'Fish zone 1', 0, 0, 1, 'Job'),
+(113, 'Job Fuel carrier', 2439.75, -2244.22, 15.5671, 'Job 13 - Fuel carrier', 0, 0, 1, 'Job'),
+(146, 'Job Fish 3', 2938.01, -2051.49, 3.27, 'Fish zone 2', 0, 0, 1, 'Job'),
+(147, 'Job Fish 2', 820.32, -1952.68, 12.86, 'Fish zone 3', 0, 0, 1, 'Job'),
+(148, 'taxi-civil', 836.131, -2023.8, 12.8672, '/taxi - Spawn Civil (cood vechi)', 0, 0, 1, 'Public Transport'),
+(149, 'taxi-jail', 1807.82, -1599.42, 13.5469, '/taxi - Spawn Jail (coord noi adaugate)', 0, 0, 1, 'Public Transport'),
 (899, 'Cityhall', 1481.22, -1771.37, 18.7958, 'City Hall - exterior (intrare)', 0, 0, 1, 'Others'),
 (900, 'cityhall_int', 386.52, 173.63, 1008.38, 'City Hall - interior', 0, 0, 0, ''),
 (901, 'GetJob', 358.421, 182.193, 1008.38, 'Job Center - angajare (/getjob)', 0, 0, 0, ''),
 (902, 'QuitJob', 359.265, 166.433, 1008.38, 'Job Center - demisie (/quitjob)', 0, 0, 0, ''),
-(909, 'Job Uber', 1481.22, -1771.37, 18.7958, 'Starting point of job Uber', 0, 0, 1, 'Job'),
-(910, 'Job Emergency Logistics Driver', 1110.27, -1225.35, 15.807, 'Starting point of job Emergency Logistics Driver', 0, 0, 1, 'Job'),
-(911, 'Job Bus Driver', 1411.4, -2310.66, 13.6462, 'Starting point of job Bus Driver', 0, 0, 1, 'Job'),
-(912, 'Job Electrician', 2692.75, -1961.36, 13.6393, 'Starting point of job Electrician', 0, 0, 1, 'Job'),
-(913, 'Job Crop Duster Pilot', 1948.76, -2645.63, 14.9193, 'Crop Duster Pilot job depot', 0, 0, 1, 'Job');
+(909, 'Job Uber', 1481.22, -1771.37, 18.7958, 'Starting point of job Uber', 0, 0, 1, 'Job');
 
 -- --------------------------------------------------------
 
@@ -1025,15 +1096,18 @@ CREATE TABLE `players` (
   `gamble_wagered` int(11) DEFAULT 0,
   `fishing_rod` tinyint(1) NOT NULL DEFAULT 0,
   `forest_key` int(11) NOT NULL DEFAULT 0,
-  `bb_key` int(11) DEFAULT 0
+  `bb_key` int(11) DEFAULT 0,
+  `has_gps` tinyint(4) DEFAULT 0,
+  `phone_book` tinyint(4) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `players`
 --
 
-INSERT INTO `players` (`id`, `username`, `password`, `email`, `level`, `money`, `bank`, `rp`, `admin_level`, `faction`, `house`, `spawn_type`, `faction_rank`, `key1`, `key2`, `key3`, `faction_join`, `business`, `driving_lic_a_exp`, `driving_lic_b_exp`, `driving_lic_c_exp`, `driving_lic_d_exp`, `diseased`, `disease_paydays`, `caravan_key`, `is_president`, `voted`, `was_president`, `job`, `phone_model`, `phone_number`, `medkits`, `extinguishers`, `mute_expire`, `airplane_lic_a_exp`, `airplane_lic_h_exp`, `wanted_level`, `jail_seconds`, `rob_points`, `skin`, `gas_can`, `watch_model`, `phone_expire`, `tired`, `hotel`, `rent_house`, `rent_hotel`, `warns`, `watch_expire`, `weapon_lic_w_exp`, `vip`, `gamble_wagered`, `fishing_rod`, `forest_key`, `bb_key`) VALUES
-(1, 'Punctulet', '112', '', 2, 703133, 28027982, 157, 6, 0, 1, 2, 0, 1, 2, 4, NULL, 0, '2030-12-31', '2030-12-31', '2030-12-31', '2030-12-31', 0, 2, 1, 0, 0, 0, 11, 3, 79640, 0, 0, 0, '2030-12-31', '2030-12-31', 0, 0, 10, 7, 0, 3, 0, 100, 1, 0, 0, 0, NULL, '0000-00-00', 1, 0, 1, 0, 0);
+INSERT INTO `players` (`id`, `username`, `password`, `email`, `level`, `money`, `bank`, `rp`, `admin_level`, `faction`, `house`, `spawn_type`, `faction_rank`, `key1`, `key2`, `key3`, `faction_join`, `business`, `driving_lic_a_exp`, `driving_lic_b_exp`, `driving_lic_c_exp`, `driving_lic_d_exp`, `diseased`, `disease_paydays`, `caravan_key`, `is_president`, `voted`, `was_president`, `job`, `phone_model`, `phone_number`, `medkits`, `extinguishers`, `mute_expire`, `airplane_lic_a_exp`, `airplane_lic_h_exp`, `wanted_level`, `jail_seconds`, `rob_points`, `skin`, `gas_can`, `watch_model`, `phone_expire`, `tired`, `hotel`, `rent_house`, `rent_hotel`, `warns`, `watch_expire`, `weapon_lic_w_exp`, `vip`, `gamble_wagered`, `fishing_rod`, `forest_key`, `bb_key`, `has_gps`, `phone_book`) VALUES
+(1, 'Punctulet', '112', '', 2, 769007, 28179697, 172, 6, 3, 1, 2, 5, 1, 2, 4, NULL, 0, '2030-12-31', '2030-12-31', '2030-12-31', '2030-12-31', 0, 2, 1, 0, 0, 0, 10, 3, 79640, 0, 0, 0, '2030-12-31', '2030-12-31', 0, 0, 10, 7, 0, 3, 0, 100, 1, 0, 0, 0, NULL, '0000-00-00', 1, 0, 1, 0, 0, 1, 0),
+(2, 'Punctulet6', '', '', 2, 10000, 15000, 0, 0, 0, 0, 1, 0, 0, 0, 0, NULL, 0, '2026-08-14', '2026-08-14', '0000-00-00', '0000-00-00', 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, '0000-00-00', '0000-00-00', 0, 0, 10, 7, -1, -1, 0, 2, 0, 0, 0, 0, NULL, '0000-00-00', 0, 0, 0, 0, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -1054,7 +1128,8 @@ CREATE TABLE `player_skins` (
 
 INSERT INTO `player_skins` (`id`, `player_id`, `skin_id`, `qty`) VALUES
 (1, 1, 7, 15),
-(2, 1, 302, 1);
+(2, 1, 302, 1),
+(3, 2, 7, 1);
 
 -- --------------------------------------------------------
 
@@ -1224,7 +1299,15 @@ INSERT INTO `server_setup` (`ssId`, `ssSetare`, `ssValue`) VALUES
 (67, 'weapon_mp5_price', '10000'),
 (68, 'weapon_ak47_price', '25000'),
 (69, 'weapon_m4_price', '20000'),
-(70, 'weapon_uzi_price', '9000');
+(70, 'weapon_uzi_price', '9000'),
+(2183, 'phonebook_price', '2000'),
+(2184, 'gps_price', '200'),
+(2185, 'sapling_price', '10'),
+(2186, 'fishingrod_price', '300'),
+(2187, 'chainsaw_price', '1500'),
+(2188, 'bag_price_small', '10'),
+(2189, 'bag_price_medium', '30'),
+(2190, 'bag_price_large', '70');
 
 -- --------------------------------------------------------
 
@@ -1246,17 +1329,19 @@ CREATE TABLE `shops` (
 --
 
 INSERT INTO `shops` (`shopID`, `shopLocX`, `shopLocY`, `shopLocZ`, `shopName`, `type`) VALUES
-(1, 1142.99, -1520.15, 15.7969, '24/7 Shop', 1),
-(2, 822.054, -1758.33, 13.6484, 'Electronics Shop', 2),
-(3, 1352.3, -1758.31, 13.5078, '24/7 Shop', 1),
-(4, 2163.22, -1744.15, 13.5469, 'Electronics Shop', 2),
-(5, 2423.07, -1742.42, 13.5469, '24/7 Shop', 1),
-(6, 2362.68, -1339.17, 24.0078, '24/7 Shop', 1),
-(7, 1315.33, -899.083, 39.5781, '24/7 Shop', 3),
-(8, 2002.84, -1282.41, 23.9733, 'Tools Shop', 3),
-(9, 994.824, -1297.04, 13.5469, '24/7 Shop', 1),
-(10, 841.601, -2047.8, 12.8672, '24/7 Shop', 1),
-(11, 975.431, -1335.86, 13.5318, 'Tools Shop', 3);
+(1, 1142.99, -1520.15, 15.7969, 'Carifura 24/7', 1),
+(2, 822.054, -1758.33, 13.6484, 'Alex Nostalgia', 2),
+(3, 1352.3, -1758.31, 13.5078, 'BilaMare', 1),
+(4, 2163.22, -1744.15, 13.5469, 'evlogMag', 2),
+(5, 2423.07, -1742.42, 13.5469, 'Carifura Center', 1),
+(6, 2362.68, -1339.17, 24.0078, 'At 2 steps', 1),
+(7, 1315.33, -899.083, 39.5781, 'LaUnealta SRL', 3),
+(8, 2002.84, -1282.41, 23.9733, 'Didi-Man', 3),
+(9, 994.824, -1297.04, 13.5469, 'IniMini Market', 1),
+(10, 841.601, -2047.8, 12.8672, 'Ca-nau-fland', 1),
+(11, 975.431, -1335.86, 13.5318, 'Leroi Gicuta', 3),
+(12, 2101.14, -1360.92, 23.9844, 'eMagazinul', 2),
+(13, 2246.37, 49.5054, 26.4844, 'Horny Bach', 3);
 
 -- --------------------------------------------------------
 
@@ -1339,18 +1424,18 @@ CREATE TABLE `vehicles_faction` (
 --
 
 INSERT INTO `vehicles_faction` (`id`, `faction_id`, `model_id`, `loc_x`, `loc_y`, `loc_z`, `rotation`, `color1`, `color2`, `fuel`) VALUES
-(1, 3, 560, 1189.21, -1347, 13.2719, 0, 175, 1, 94.9),
-(2, 3, 560, 1189.3, -1302.52, 13.2601, 180, 175, 1, 99.72),
-(3, 3, 489, 1212.19, -1308.16, 13.6996, 180, 175, 1, 99.75),
-(4, 3, 489, 1212.43, -1334.59, 13.7107, 0, 175, 1, 99.52),
-(5, 3, 407, 1177.47, -1309.14, 14.0944, 270, 175, 1, 99.68),
-(6, 3, 407, 1212.37, -1300.47, 13.7882, 0, 175, 1, 99.72),
-(7, 3, 407, 1212.62, -1342.93, 13.807, 180, 175, 1, 99.58),
-(8, 3, 407, 1178.87, -1339.81, 14.1021, 270, 175, 1, 99.64),
-(9, 3, 416, 1184.63, -1329.13, 13.7163, 270, 175, 1, 99.72),
-(10, 3, 416, 1184.49, -1334.09, 13.7204, 270, 175, 1, 99.77),
-(11, 3, 416, 1184.5, -1317.24, 13.7193, 270, 175, 1, 99.74),
-(12, 3, 416, 1184.58, -1313.15, 13.7142, 270, 175, 1, 99.13),
+(1, 3, 560, 1189.21, -1347, 13.2719, 0, 175, 1, 100),
+(2, 3, 560, 1189.3, -1302.52, 13.2601, 180, 175, 1, 100),
+(3, 3, 489, 1212.19, -1308.16, 13.6996, 180, 175, 1, 100),
+(4, 3, 489, 1212.43, -1334.59, 13.7107, 0, 175, 1, 100),
+(5, 3, 407, 1177.47, -1309.14, 14.0944, 270, 175, 1, 100),
+(6, 3, 407, 1212.37, -1300.47, 13.7882, 0, 175, 1, 100),
+(7, 3, 407, 1212.62, -1342.93, 13.807, 180, 175, 1, 100),
+(8, 3, 407, 1178.87, -1339.81, 14.1021, 270, 175, 1, 100),
+(9, 3, 416, 1184.63, -1329.13, 13.7163, 270, 175, 1, 100),
+(10, 3, 416, 1184.49, -1334.09, 13.7204, 270, 175, 1, 100),
+(11, 3, 416, 1184.5, -1317.24, 13.7193, 270, 175, 1, 100),
+(12, 3, 416, 1184.58, -1313.15, 13.7142, 270, 175, 1, 100),
 (13, 1, 523, 1542, -1685, 13.1224, 90, 1, 0, 100),
 (14, 1, 523, 1542, -1689, 13.1232, 90, 1, 0, 100),
 (15, 1, 523, 1542, -1693, 13.1185, 90, 1, 0, 100),
@@ -1358,7 +1443,7 @@ INSERT INTO `vehicles_faction` (`id`, `faction_id`, `model_id`, `loc_x`, `loc_y`
 (17, 1, 523, 1542, -1661, 13.2355, 90, 1, 0, 100),
 (18, 1, 523, 1542, -1657, 13.1082, 90, 1, 0, 100),
 (19, 1, 596, 1536.07, -1677.92, 13.1305, 180, 1, 0, 100),
-(20, 1, 596, 1536.01, -1666.99, 13.1303, 0, 1, 0, 100),
+(20, 1, 596, 1536.01, -1666.99, 13.1303, 0, 1, 0, 99.87),
 (21, 1, 596, 1546.44, -1676.17, 5.6366, 90, 1, 0, 100),
 (22, 1, 596, 1546.59, -1684.52, 5.6356, 90, 1, 0, 100),
 (23, 1, 596, 1528.01, -1684.03, 5.6344, 270, 1, 0, 100),
@@ -1471,50 +1556,55 @@ CREATE TABLE `vehicles_personal` (
   `is_confiscated` tinyint(4) DEFAULT 0,
   `is_for_sale` tinyint(4) DEFAULT 0,
   `dirty` int(11) DEFAULT 0,
-  `count_owners` int(11) DEFAULT 0
+  `count_owners` int(11) DEFAULT 0,
+  `vip` tinyint(4) DEFAULT 0,
+  `retro_veh` tinyint(4) DEFAULT 0,
+  `wheels` int(11) DEFAULT 0,
+  `last_start_engine` date DEFAULT NULL,
+  `unused_veh` tinyint(4) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `vehicles_personal`
 --
 
-INSERT INTO `vehicles_personal` (`id`, `owner_id`, `model_id`, `color1`, `color2`, `plate`, `price`, `loc_x`, `loc_y`, `loc_z`, `rotation`, `insurance_exp`, `medkit_exp`, `extinguisher_exp`, `itp_exp`, `locked`, `first_registration`, `from_biz`, `fuel`, `is_confiscated`, `is_for_sale`, `dirty`, `count_owners`) VALUES
-(1, 1, 411, 1, 1, 'f', 8, 976.309, 2140.76, 10.5474, 272.362, '2026-06-18', '2026-06-17', '2026-06-18', '2026-08-15', 0, '2026-07-01', 0, 99.86, 0, 0, 100, 1),
-(2, 1, 541, 1, 1, '123', 5000000, 968.921, 2158, 10.4452, 273.257, '2026-06-22', '2026-06-19', '2026-07-31', '2026-06-01', 0, '2026-06-01', 0, 100, 0, 0, 70, 1),
-(4, 1, 411, 1, 1, '{FF2700}LS 01 XXX', 1000000, 887.893, -1211.42, 16.8526, 44.6099, '2026-08-05', '2026-08-05', '2026-08-05', '2026-08-06', 0, '2026-07-29', 8, 90.42, 0, 0, 59, 1),
-(5, 0, 411, 1, 1, 'LV 5', 1000000, 2147.41, -1143.31, 24.6911, 268.529, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.81, 0, 1, 43, 0),
-(6, 0, 411, 1, 1, 'LV 6', 1000000, 2147.05, -1148.32, 24.1413, 269.025, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.77, 0, 1, 52, 0),
-(7, 0, 541, 1, 1, 'LV 7', 900000, 2162.88, -1143.71, 24.4721, 91.1427, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.71, 0, 1, 56, 0),
-(8, 0, 541, 1, 1, 'LV 8', 900000, 2162.9, -1148.22, 24.0128, 90.718, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.77, 0, 1, 47, 0),
-(9, 0, 541, 0, 1, 'LV 9', 900000, 2163.02, -1153.01, 23.5528, 90.5515, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.74, 0, 1, 52, 0),
-(10, 0, 560, 1, 1, 'LV 10', 750000, 2146.89, -1152.98, 23.6386, 267.32, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.7, 0, 1, 44, 0),
-(11, 0, 560, 1, 1, 'LV 11', 750000, 2146.9, -1157.21, 23.551, 269.889, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.8, 0, 1, 55, 0),
-(12, 0, 562, 1, 1, 'LV 12', 600000, 2162.94, -1157.96, 23.4997, 89.844, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.74, 0, 1, 48, 0),
-(13, 0, 562, 1, 1, 'LV 13', 600000, 2162.88, -1163.12, 23.4766, 89.0513, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.77, 0, 1, 46, 0),
-(14, 0, 451, 1, 1, 'LV 14', 650000, 2146.93, -1161.68, 23.5292, 268.965, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.72, 0, 1, 51, 0),
-(15, 0, 451, 1, 1, 'LV 15', 650000, 2147.01, -1166.31, 23.5267, 269.909, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.78, 0, 1, 45, 0),
-(16, 0, 522, 1, 1, 'LV 16', 1100000, 2474.79, -1954.59, 12.9858, 359.262, NULL, NULL, NULL, NULL, 0, NULL, 17, 95.26, 0, 1, 52, 0),
-(17, 0, 522, 1, 1, 'LV 17', 1100000, 2477.97, -1954.74, 12.9844, 0.3759, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.82, 0, 1, 53, 0),
-(18, 0, 522, 1, 1, 'LV 18', 1100000, 2476.42, -1954.83, 12.9819, 359.379, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.77, 0, 1, 52, 0),
-(19, 0, 522, 1, 1, 'LV 19', 1100000, 2479.68, -1954.7, 12.986, 0.7223, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.8, 0, 1, 49, 0),
-(20, 0, 581, 1, 1, 'LV 20', 700000, 2482.71, -1954.88, 13.0079, 0.427, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.77, 0, 1, 55, 0),
-(21, 0, 581, 1, 1, 'LV 21', 700000, 2484.38, -1954.83, 13.0099, 1.1779, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.79, 0, 1, 49, 0),
-(22, 0, 581, 1, 1, 'LV 22', 700000, 2486.14, -1954.9, 13.0087, 359.565, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.81, 0, 1, 53, 0),
-(23, 0, 461, 1, 1, 'LV 23', 850000, 2489.17, -1954.84, 12.9971, 3.3526, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.77, 0, 1, 50, 0),
-(24, 0, 461, 1, 1, 'LV 24', 850000, 2490.77, -1954.86, 12.9968, 356.616, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.73, 0, 1, 51, 0),
-(25, 0, 461, 1, 1, 'LV 25', 850000, 2492.28, -1954.8, 12.9954, 3.0746, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.79, 0, 1, 48, 0),
-(26, 0, 463, 1, 1, 'LV 26', 900000, 2495.4, -1954.72, 12.9542, 0.6371, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.69, 0, 1, 54, 0),
-(27, 0, 463, 1, 1, 'LV 27', 900000, 2497.21, -1954.76, 12.954, 359.312, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.82, 0, 1, 54, 0),
-(28, 0, 468, 1, 1, 'LV 28', 550000, 2500.38, -1954.98, 13.0808, 359.916, NULL, NULL, '0000-00-00', NULL, 0, NULL, 17, 99.69, 0, 1, 49, 0),
-(29, 0, 468, 1, 1, 'LV 29', 550000, 2503.73, -1954.95, 13.0815, 358.399, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.73, 0, 1, 45, 0),
-(30, 0, 489, 1, 1, 'LV 30', 600000, 2052.48, -1903.2, 13.6899, 179.254, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.58, 0, 1, 51, 0),
-(31, 0, 489, 1, 1, 'LV 31', 600000, 2058.89, -1903.22, 13.6904, 179.418, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.69, 0, 1, 53, 0),
-(32, 0, 579, 1, 1, 'LV 32', 500000, 2069.17, -1903.09, 13.4774, 181.767, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.7, 0, 1, 49, 0),
-(33, 0, 579, 1, 1, 'LV 33', 500000, 2064.99, -1903.13, 13.4762, 179.539, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.74, 0, 1, 51, 0),
-(34, 0, 400, 1, 1, 'LV 34', 350000, 2064.7, -1940.84, 13.4477, 90.1334, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.79, 0, 1, 52, 0),
-(35, 0, 400, 1, 1, 'LV 35', 350000, 2056.66, -1941.04, 13.4516, 270.59, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.65, 0, 1, 46, 0),
-(36, 0, 422, 1, 1, 'LV 36', 200000, 2038.12, -1941.11, 13.3505, 270.408, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.6, 0, 1, 55, 0),
-(37, 0, 554, 1, 1, 'LV 37', 275000, 2048.47, -1940.82, 13.4383, 89.9542, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.65, 0, 1, 56, 0);
+INSERT INTO `vehicles_personal` (`id`, `owner_id`, `model_id`, `color1`, `color2`, `plate`, `price`, `loc_x`, `loc_y`, `loc_z`, `rotation`, `insurance_exp`, `medkit_exp`, `extinguisher_exp`, `itp_exp`, `locked`, `first_registration`, `from_biz`, `fuel`, `is_confiscated`, `is_for_sale`, `dirty`, `count_owners`, `vip`, `retro_veh`, `wheels`, `last_start_engine`, `unused_veh`) VALUES
+(1, 1, 411, 1, 1, '{AA2700}LS 03 XXX', 8, 1111.94, -1233.5, 15.5639, 124.393, '2026-06-18', '2026-06-17', '2026-06-18', '2026-08-15', 0, '2026-07-01', 0, 99.86, 0, 0, 100, 1, 0, 0, 0, NULL, 0),
+(2, 1, 541, 222, 128, '{0027FF}LS 02 XXX', 5000000, 784.488, -1341.3, 13.1672, 261.277, '2026-06-22', '2026-06-19', '2026-07-31', '2026-06-01', 0, '2026-06-01', 0, 95.69, 0, 0, 0, 1, 1, 0, 1074, '2026-08-14', 0),
+(4, 1, 411, 222, 1, '{FF2700}LS 01 XXX', 1000000, 1511.83, -1661.93, 13.2835, 269.161, '2026-08-05', '2026-08-05', '2026-08-05', '2026-08-06', 0, '2026-07-29', 8, 74.49, 0, 0, 100, 1, 1, 1, 1076, '2026-08-13', 0),
+(5, 0, 411, 1, 1, 'LV 5', 1000000, 2147.41, -1143.31, 24.6911, 268.529, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.81, 0, 1, 97, 0, 0, 0, 0, NULL, 0),
+(6, 0, 411, 1, 1, 'LV 6', 1000000, 2147.05, -1148.32, 24.1413, 269.025, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.77, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(7, 0, 541, 1, 1, 'LV 7', 900000, 2162.88, -1143.71, 24.4721, 91.1427, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.71, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(8, 0, 541, 1, 1, 'LV 8', 900000, 2162.9, -1148.22, 24.0128, 90.718, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.77, 0, 1, 95, 0, 0, 0, 0, NULL, 0),
+(9, 0, 541, 0, 1, 'LV 9', 900000, 2163.02, -1153.01, 23.5528, 90.5515, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.74, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(10, 0, 560, 1, 1, 'LV 10', 750000, 2146.89, -1152.98, 23.6386, 267.32, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.7, 0, 1, 95, 0, 0, 0, 0, NULL, 0),
+(11, 0, 560, 1, 1, 'LV 11', 750000, 2146.9, -1157.21, 23.551, 269.889, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.8, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(12, 0, 562, 1, 1, 'LV 12', 600000, 2162.94, -1157.96, 23.4997, 89.844, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.74, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(13, 0, 562, 1, 1, 'LV 13', 600000, 2162.88, -1163.12, 23.4766, 89.0513, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.77, 0, 1, 88, 0, 0, 0, 0, NULL, 0),
+(14, 0, 451, 1, 1, 'LV 14', 650000, 2146.93, -1161.68, 23.5292, 268.965, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.72, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(15, 0, 451, 1, 1, 'LV 15', 650000, 2147.01, -1166.31, 23.5267, 269.909, NULL, NULL, NULL, NULL, 0, NULL, 8, 99.78, 0, 1, 97, 0, 0, 0, 0, NULL, 0),
+(16, 0, 522, 1, 1, 'LV 16', 1100000, 2474.79, -1954.59, 12.9858, 359.262, NULL, NULL, NULL, NULL, 0, NULL, 17, 95.26, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(17, 0, 522, 1, 1, 'LV 17', 1100000, 2477.97, -1954.74, 12.9844, 0.3759, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.82, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(18, 0, 522, 1, 1, 'LV 18', 1100000, 2476.42, -1954.83, 12.9819, 359.379, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.77, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(19, 0, 522, 1, 1, 'LV 19', 1100000, 2479.68, -1954.7, 12.986, 0.7223, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.8, 0, 1, 98, 0, 0, 0, 0, NULL, 0),
+(20, 0, 581, 1, 1, 'LV 20', 700000, 2482.71, -1954.88, 13.0079, 0.427, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.77, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(21, 0, 581, 1, 1, 'LV 21', 700000, 2484.38, -1954.83, 13.0099, 1.1779, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.79, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(22, 0, 581, 1, 1, 'LV 22', 700000, 2486.14, -1954.9, 13.0087, 359.565, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.81, 0, 1, 98, 0, 0, 0, 0, NULL, 0),
+(23, 0, 461, 1, 1, 'LV 23', 850000, 2489.17, -1954.84, 12.9971, 3.3526, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.77, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(24, 0, 461, 1, 1, 'LV 24', 850000, 2490.77, -1954.86, 12.9968, 356.616, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.73, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(25, 0, 461, 1, 1, 'LV 25', 850000, 2492.28, -1954.8, 12.9954, 3.0746, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.79, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(26, 0, 463, 1, 1, 'LV 26', 900000, 2495.4, -1954.72, 12.9542, 0.6371, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.69, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(27, 0, 463, 1, 1, 'LV 27', 900000, 2497.21, -1954.76, 12.954, 359.312, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.82, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(28, 0, 468, 1, 1, 'LV 28', 550000, 2500.38, -1954.98, 13.0808, 359.916, NULL, NULL, '0000-00-00', NULL, 0, NULL, 17, 99.69, 0, 1, 98, 0, 0, 0, 0, NULL, 0),
+(29, 0, 468, 1, 1, 'LV 29', 550000, 2503.73, -1954.95, 13.0815, 358.399, NULL, NULL, NULL, NULL, 0, NULL, 17, 99.73, 0, 1, 94, 0, 0, 0, 0, NULL, 0),
+(30, 0, 489, 1, 1, 'LV 30', 600000, 2052.48, -1903.2, 13.6899, 179.254, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.58, 0, 1, 98, 0, 0, 0, 0, NULL, 0),
+(31, 0, 489, 1, 1, 'LV 31', 600000, 2058.89, -1903.22, 13.6904, 179.418, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.69, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(32, 0, 579, 1, 1, 'LV 32', 500000, 2069.17, -1903.09, 13.4774, 181.767, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.7, 0, 1, 97, 0, 0, 0, 0, NULL, 0),
+(33, 0, 579, 1, 1, 'LV 33', 500000, 2064.99, -1903.13, 13.4762, 179.539, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.74, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(34, 0, 400, 1, 1, 'LV 34', 350000, 2064.7, -1940.84, 13.4477, 90.1334, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.79, 0, 1, 99, 0, 0, 0, 0, NULL, 0),
+(35, 0, 400, 1, 1, 'LV 35', 350000, 2056.66, -1941.04, 13.4516, 270.59, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.65, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(36, 0, 422, 1, 1, 'LV 36', 200000, 2038.12, -1941.11, 13.3505, 270.408, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.6, 0, 1, 100, 0, 0, 0, 0, NULL, 0),
+(37, 0, 554, 1, 1, 'LV 37', 275000, 2048.47, -1940.82, 13.4383, 89.9542, NULL, NULL, NULL, NULL, 0, NULL, 18, 99.65, 0, 1, 100, 0, 0, 0, 0, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -1557,6 +1647,12 @@ ALTER TABLE `atms`
 --
 ALTER TABLE `bans`
   ADD PRIMARY KEY (`banID`);
+
+--
+-- Indexes for table `bars`
+--
+ALTER TABLE `bars`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `basket_hoops`
@@ -1632,9 +1728,9 @@ ALTER TABLE `forests`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `gasstations`
+-- Indexes for table `fuelstations`
 --
-ALTER TABLE `gasstations`
+ALTER TABLE `fuelstations`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1666,6 +1762,13 @@ ALTER TABLE `houses_animals`
 --
 ALTER TABLE `houses_tree`
   ADD PRIMARY KEY (`treeId`);
+
+--
+-- Indexes for table `ips`
+--
+ALTER TABLE `ips`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_ip_player` (`ip`,`playerName`);
 
 --
 -- Indexes for table `locations_admin`
@@ -1768,7 +1871,7 @@ ALTER TABLE `warns`
 -- AUTO_INCREMENT for table `ammunations`
 --
 ALTER TABLE `ammunations`
-  MODIFY `amoID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `amoID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `arm_equipment`
@@ -1789,6 +1892,12 @@ ALTER TABLE `bans`
   MODIFY `banID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `bars`
+--
+ALTER TABLE `bars`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT for table `basket_spawns`
 --
 ALTER TABLE `basket_spawns`
@@ -1804,19 +1913,19 @@ ALTER TABLE `billboards`
 -- AUTO_INCREMENT for table `bin`
 --
 ALTER TABLE `bin`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `businesses`
 --
 ALTER TABLE `businesses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `clothstores`
 --
 ALTER TABLE `clothstores`
-  MODIFY `csID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `csID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `cs_locations`
@@ -1849,10 +1958,10 @@ ALTER TABLE `forests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT for table `gasstations`
+-- AUTO_INCREMENT for table `fuelstations`
 --
-ALTER TABLE `gasstations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `fuelstations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `gta_interiors`
@@ -1885,6 +1994,12 @@ ALTER TABLE `houses_tree`
   MODIFY `treeId` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
+-- AUTO_INCREMENT for table `ips`
+--
+ALTER TABLE `ips`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
 -- AUTO_INCREMENT for table `locations_admin`
 --
 ALTER TABLE `locations_admin`
@@ -1894,13 +2009,13 @@ ALTER TABLE `locations_admin`
 -- AUTO_INCREMENT for table `players`
 --
 ALTER TABLE `players`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `player_skins`
 --
 ALTER TABLE `player_skins`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `president_votes`
@@ -1918,7 +2033,7 @@ ALTER TABLE `races`
 -- AUTO_INCREMENT for table `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `repID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `repID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `rulote_personale`
@@ -1930,13 +2045,13 @@ ALTER TABLE `rulote_personale`
 -- AUTO_INCREMENT for table `server_setup`
 --
 ALTER TABLE `server_setup`
-  MODIFY `ssId` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=731;
+  MODIFY `ssId` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2919;
 
 --
 -- AUTO_INCREMENT for table `shops`
 --
 ALTER TABLE `shops`
-  MODIFY `shopID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `shopID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `turfs`

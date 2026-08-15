@@ -58,6 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button type="submit">Register</button>
     </form>
 
+    <p style="margin-top:16px; font-size:0.82rem; color:var(--muted); border-left:3px solid #ff5d5d; padding:8px 12px; background:rgba(255,93,93,0.06); border-radius:0 6px 6px 0;">
+      <strong>Attention:</strong> Use a unique password that you do NOT use on any other site/application.
+      Registering confirms you agree to the Nostalgia: Los Santos <a href="../tc.html" target="_blank">Terms &amp; Conditions</a>.
+    </p>
+
     <p style="text-align:center; margin-top:16px; font-size:0.85rem; color:var(--muted)">
       Already have an account? <a href="login.php">Login</a>
     </p>

@@ -339,17 +339,20 @@ ucp_require_login();
     <h4>Info &amp; navigation</h4>
     <ul>
       <li><code>/vstats</code> — all your vehicles: documents, fuel and dirt level</li>
-      <li><code>/myveh1</code> / <code>/myveh2</code> / <code>/myveh3</code> — checkpoint to the vehicle in that slot</li>
+      <li><code>/findmy veh1</code> / <code>/findmy veh2</code> / <code>/findmy veh3</code> — checkpoint to the vehicle in that slot</li>
     </ul>
 
     <h4>Using your vehicle</h4>
     <ul>
       <li><code>/engine</code> — start/stop the engine · <code>/lock</code> — lock/unlock the doors</li>
-      <li><code>/vpark</code> — save the current spot as its permanent spawn point</li>
-      <li><code>/vcolor [1/2] [colorID]</code> — repaint (1 = primary, 2 = secondary)</li>
+      <li><code>/v park</code> — save the current spot as its permanent spawn point</li>
+      <li><code>/v color1 [colorID]</code> / <code>/v color2 [colorID]</code> — repaint (primary/secondary). Range is <span class="num">0-127</span> normally, <span class="num">0-255</span> on a <strong>VIP</strong> vehicle.</li>
       <li><code>/changecar [engine/lights/alarm/doors/hood/boot]</code> — toggle a component of the vehicle you drive</li>
     </ul>
     <p>You can also press the horn key for lights, and the analog up/down keys for hood/boot while driving.</p>
+
+    <h4>VIP vehicles — <code>/v wheels</code></h4>
+    <p>Some vehicles are marked <strong>VIP</strong> by staff. On top of the extended <span class="num">0-255</span> color range above, a VIP vehicle unlocks <code>/v wheels</code>: pick one of <span class="num">5</span> rim sets (Classic, Twist, Wire, Trance, Atomic) from a menu for <span class="num">$2.000</span>. The rims are saved and stay on the car through respawns and restarts.</p>
 
     <h4>Fuel</h4>
     <p>Every vehicle burns fuel while the engine runs.</p>
@@ -373,7 +376,7 @@ ucp_require_login();
     <p>They can inspect your car and confiscate it or its documents. Use <code>/redeemcar</code> to buy back a vehicle that was confiscated or towed.</p>
 
     <h4>Dirty vehicles</h4>
-    <p>Your car gets dirtier every time it respawns (<span class="num">+8-12</span> each time). At <span class="num">75</span> you're warned to wash it; above <span class="num">90</span> the engine won't start at all. Use <code>/vwash</code> at a CarWash (<span class="num">$100</span>) to clean it.</p>
+    <p>Your car gets dirtier every time it respawns (<span class="num">+8-12</span> each time). At <span class="num">75</span> you're warned to wash it; above <span class="num">90</span> the engine won't start at all. Use <code>/v wash</code> at a CarWash (<span class="num">$100</span>) to clean it.</p>
 
     <h4>Renting (no license needed)</h4>
     <p><code>/rentcar</code> — rent a car at a rental point · <code>/rentbike</code> — rent a bicycle (<span class="num">$15</span>)</p>
@@ -434,7 +437,7 @@ ucp_require_login();
     <h4>Info</h4>
     <ul>
       <li><code>/hstats</code> — name, ID, price, type, fridge contents + break dates</li>
-      <li><code>/myhouse</code> / <code>/findhouse [id]</code> — checkpoint to your house / any house</li>
+      <li><code>/findmy house</code> / <code>/findhouse [id]</code> — checkpoint to your house / any house</li>
       <li><code>/mybank house deposit|withdraw [amount]</code> — house bank (near a bank/ATM)</li>
     </ul>
     <p>If the house has an interior, press <span class="num">ENTER</span> at the pickup to go in/out.</p>
@@ -503,7 +506,7 @@ ucp_require_login();
     <h4>Info &amp; navigation</h4>
     <ul>
       <li><code>/htlstats</code> — name, ID, price, hotel bank balance and the sleep price</li>
-      <li><code>/myhotel</code> — set a checkpoint to the hotel you own</li>
+      <li><code>/findmy hotel</code> — set a checkpoint to the hotel you own</li>
       <li><code>/findhotel [id]</code> — set a checkpoint to any hotel by its ID</li>
     </ul>
 
@@ -515,7 +518,14 @@ ucp_require_login();
       <li><code>/mybank</code> — see the balance of every property you own</li>
     </ul>
 
-    <div class="note">A hotel near a busy area earns more, because tiredness builds up on everyone (+2/minute) and players away from home need somewhere to sleep.</div>
+    <h4>Hygiene items — <code>/htlitems</code></h4>
+    <p>Your hotel stocks up to <span class="num">200</span> hygiene items (soap, towels...). Every <code>/sleep</code> stay and every new <code>/renthotel</code> check-in uses up <span class="num">1</span> item. Run out, and <strong class="warn">your hotel stops earning money in its bank</strong> until you restock - guests can still sleep there, you just don't get paid.</p>
+    <ul>
+      <li><code>/htlitems buy [amount]</code> — buy items at a <span class="num">24/7 Shop</span>, <span class="num">$100</span> each, up to <span class="num">100</span> per trip. You must be at the wheel of the designated supply vehicle (<span class="num">Boxville</span>).</li>
+      <li><code>/htlitems unload</code> — deliver the items you're carrying to your own hotel (still in the Boxville). Anything over the 200 cap is wasted, so don't overbuy.</li>
+    </ul>
+
+    <div class="note">A hotel near a busy area earns more, because tiredness builds up on everyone (+2/minute) and players away from home need somewhere to sleep - but it also burns through hygiene items faster, so keep it stocked.</div>
   </div>
 </section>
 

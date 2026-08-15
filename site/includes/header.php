@@ -18,7 +18,7 @@ $b = UCP_BASE;
     <a href="../index.php">🏠 Homepage</a>
     <a href="<?= $b ?>/dashboard.php">🏠 Dashboard</a>
     <a href="<?= $b ?>/vip.php" style="color:#FFD700">⭐ VIP</a>
-    <a href="<?= $b ?>/maps.php">🗺️ Map</a>
+    <a href="<?= $b ?>/maps.php">🗺️ Maps</a>
     <a href="<?= $b ?>/howto.php">❓ How To</a>
     <a href="<?= $b ?>/weapons.php">🔫 Weapons</a>
 
@@ -31,6 +31,7 @@ $b = UCP_BASE;
         <a href="<?= $b ?>/farms.php">🌾 Farms</a>
         <a href="<?= $b ?>/vehicles.php">🚗 Vehicles</a>
         <a href="<?= $b ?>/billboards.php">📢 Billboards</a>
+        <a href="<?= $b ?>/bars.php">🍺 Bars</a>
       </div>
     </div>
 
