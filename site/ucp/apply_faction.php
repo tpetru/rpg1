@@ -31,7 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
     } elseif ($motiv === '' || mb_strlen($motiv) < 10) {
         $error = 'Please write a longer reason for your application (at least 10 characters).';
     } else {
-        $stmt = $mysqli->prepare("SELECT `id` FROM `ucp_FactApplications` WHERE `playerId` = ? AND `factionsId` = ? AND `status` IN ('Open','Review') LIMIT 1");
+        $stmt = $mysqli->prepare("SELECT `id` FROM `ucp_factapplications` WHERE `playerId` = ? AND `factionsId` = ? AND `status` IN ('Open','Review') LIMIT 1");
         $stmt->bind_param('ii', $playerId, $factionId);
         $stmt->execute();
         $existing = $stmt->get_result()->fetch_assoc();
@@ -40,7 +40,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
         if ($existing) {
             $error = 'You already have a pending application for this faction.';
         } else {
-            $stmt = $mysqli->prepare("INSERT INTO `ucp_FactApplications` (`playerId`, `factionsId`, `data_aplicarii`, `status`, `motiv`, `lastFaction`) VALUES (?, ?, NOW(), 'Open', ?, ?)");
+            $stmt = $mysqli->prepare("INSERT INTO `ucp_factapplications` (`playerId`, `factionsId`, `data_aplicarii`, `status`, `motiv`, `lastFaction`) VALUES (?, ?, NOW(), 'Open', ?, ?)");
             $stmt->bind_param('iisi', $playerId, $factionId, $motiv, $lastFaction);
             $stmt->execute();
             $stmt->close();

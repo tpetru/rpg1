@@ -3,11 +3,6 @@ require_once __DIR__ . '/../../includes/admin_common.php';
 ucp_admin_require_level5();
 
 $houseTypeName = [1 => 'Villa', 2 => 'City House', 3 => 'Apartment', 4 => 'Countryside House'];
-$sectionNav = [
-  ['list', '🏠', 'Houses'],
-  ['prices', '💲', 'Prices'],
-  ['player', '🧍', 'Player'],
-];
 
 $flash = null;
 $flashErr = false;
@@ -151,11 +146,7 @@ $adminActive = 'houses';
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-<nav class="section-nav" aria-label="Jump to section">
-  <?php foreach ($sectionNav as [$anchorId, $icon, $label]): ?>
-  <a href="/ucp/admin/<?= $anchorId ?>.php" title="<?= htmlspecialchars($label) ?>"><span><?= $icon ?></span></a>
-  <?php endforeach; ?>
-</nav>
+<?php include __DIR__ . '/../../includes/admin_section_nav.php'; ?>
 
 <main>
   <h1>🏠 Houses</h1>
@@ -217,11 +208,11 @@ $adminActive = 'houses';
                   <tr><th>Food</th><th>Quantity</th><th>Capacity</th></tr>
                   <?php foreach ($fridgeItems as $col => [$label, $unit, $max]): ?>
                   <tr>
-                    <td><?= ucp_escape($label) ?></td>
+                    <td><?= ucp_escape($label) ?> (<?= ucp_escape($unit) ?>)</td>
                     <td style="max-width:110px">
-                      <input form="<?= $fid ?>" type="number" name="<?= $col ?>" min="0" max="<?= $max ?>" value="<?= (int)$h[$col] ?>"> <?= $unit ?>
+                      <input form="<?= $fid ?>" type="number" name="<?= $col ?>" min="0" max="<?= $max ?>" value="<?= (int)$h[$col] ?>">
                     </td>
-                    <td><?= $max ?> <?= $unit ?></td>
+                    <td><?= $max ?></td>
                   </tr>
                   <?php endforeach; ?>
                 </table>
@@ -258,7 +249,7 @@ $adminActive = 'houses';
                 <?php endif; ?>
               <?php else: ?>
                 <table class="edittable" style="width:100%">
-                  <tr><th>Name</th><th>Fruit growth</th><th>Status</th></tr>
+                  <tr><th>Name</th><th>Fruit growth (bananas)</th><th>Status</th></tr>
                   <tr>
                     <td><?= ucp_escape($tree['treeName']) ?> (#<?= (int)$tree['treeId'] ?>)</td>
                     <td style="max-width:110px">

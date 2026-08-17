@@ -4,6 +4,10 @@ $businessCount = 0;
 $hotelCount = 0;
 $farmCount = 0;
 $forestCount = 0;
+$vehicleCount = 0;
+$ammuCount = 0;
+$shopCount = 0;
+$gasStationCount = 0;
 
 try {
     require_once __DIR__ . '/includes/db.php';
@@ -21,6 +25,10 @@ try {
         $hotelCount    = presentation_count($mysqli, 'hotels');
         $farmCount     = presentation_count($mysqli, 'farms');
         $forestCount   = presentation_count($mysqli, 'forests');
+        $vehicleCount    = presentation_count($mysqli, 'vehicles_personal');
+        $ammuCount       = presentation_count($mysqli, 'ammunations');
+        $shopCount       = presentation_count($mysqli, 'shops');
+        $gasStationCount = presentation_count($mysqli, 'fuelstations');
     }
 } catch (Exception $e) {
     // DB unavailable
@@ -35,14 +43,15 @@ try {
 <link rel="icon" type="image/png" href="ucp/assets/img/favicon.ico">
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #161922;
-    --panel-2: #1d212c;
-    --border: #2a2f3d;
-    --text: #d8dce5;
-    --muted: #8b93a7;
-    --accent: #5b9dff;
-    --accent-2: #ffcc00;
+    --bg: #0b0d10;
+    --panel: #12161b;
+    --panel-2: #171c22;
+    --border: #252b32;
+    --text: #f2f2f2;
+    --muted: #8e969f;
+    --accent: #ff6a00;
+    --accent-2: #ff8533;
+    --accent-soft: #e8a268;
     --green: #3ecf8e;
     --red: #ff5d5d;
   }
@@ -58,24 +67,65 @@ try {
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  .topbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 8px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; min-height: 60px; }
-  .topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 1.1rem; color: #fff; text-decoration: none; }
-  .topbar .brand:hover { text-decoration: none; opacity: 0.9; }
-  .topbar .brand-logo { height: 32px; width: 32px; border-radius: 6px; }
-  .topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
-  .topbar nav a { color: var(--text); font-size: 0.92rem; text-decoration: none; }
-  .topbar nav a:hover { color: var(--accent); text-decoration: none; }
+  .topbar {
+    position: relative;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; row-gap: 8px; padding: 14px 24px;
+    background: rgba(18, 22, 27, 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100; min-height: 64px;
+  }
+  .topbar::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,106,0,0.6) 20%, rgba(255,133,51,0.4) 50%, rgba(255,106,0,0.6) 80%, transparent);
+    opacity: 0.7;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.3px; color: #fff; text-decoration: none; transition: color 0.25s ease; }
+  .topbar .brand:hover { text-decoration: none; color: var(--accent); }
+  .topbar .brand-logo {
+    height: 34px; width: 34px; border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .topbar .brand:hover .brand-logo {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,106,0,0.12), 0 4px 14px rgba(255,106,0,0.2);
+    transform: rotate(-4deg) scale(1.05);
+  }
+  .topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+  .topbar nav a {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 108px; padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 0.92rem; text-decoration: none; text-align: center;
+    transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+  }
+  .topbar nav a::after {
+    content: "";
+    position: absolute; left: 50%; bottom: 4px; width: 0; height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.28s ease, left 0.28s ease;
+  }
+  .topbar nav a:hover { color: #fff; text-decoration: none; border-color: var(--accent-soft); background: var(--panel-2); }
+  .topbar nav a:hover::after { width: calc(100% - 24px); left: 12px; }
   .nav-dd { position: relative; }
   .nav-dd-toggle { cursor: pointer; }
   .nav-dd-menu {
     display: none;
-    position: absolute; top: 100%; left: 0; margin-top: 0;
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 0;
+    background: rgba(23, 28, 34, 0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: 10px;
     min-width: 200px; padding: 6px; z-index: 200;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    box-shadow: 0 14px 32px rgba(0,0,0,0.5);
   }
-  .nav-dd-menu a { display: block; padding: 7px 10px; border-radius: 6px; font-size: 0.88rem; white-space: nowrap; text-decoration: none; }
-  .nav-dd-menu a:hover { background: var(--panel); text-decoration: none; }
+  .topbar .nav-dd-menu a { display: block; position: static; padding: 8px 10px; border: none; border-radius: 7px; font-size: 0.88rem; white-space: nowrap; text-decoration: none; transition: background 0.2s ease, color 0.2s ease; }
+  .topbar .nav-dd-menu a::after { display: none; }
+  .topbar .nav-dd-menu a:hover { background: rgba(255,106,0,0.1); border: none; color: var(--accent); text-decoration: none; }
   .nav-dd:hover .nav-dd-menu, .nav-dd:focus-within .nav-dd-menu { display: block; }
   .topbar .brand .dot-live {
     width: 8px; height: 8px; border-radius: 50%; background: var(--green);
@@ -84,38 +134,74 @@ try {
   .topbar .status { color: var(--muted); font-size: 0.82rem; }
 
   header.hero {
-    padding: 64px 24px 0;
+    position: relative;
+    overflow: hidden;
+    padding: 100px 24px 56px;
     text-align: center;
-    background: radial-gradient(ellipse at top, #1b2030 0%, #0f1115 65%);
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(255,106,0,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 10%, rgba(255,133,51,0.03) 0%, transparent 50%),
+      linear-gradient(180deg, #1a1410 0%, #0b0d10 75%);
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,106,0,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,106,0,0.02) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+    pointer-events: none;
   }
   header.hero .kicker {
+    position: relative;
+    z-index: 1;
     display: inline-block;
-    color: var(--accent-2);
-    font-size: 0.78rem;
+    width: 270px;
+    text-align: center;
+    margin: 0 0 16px;
+    padding: 6px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: #cc8a52;
+    background: rgba(255,106,0,0.08);
+    font-size: 0.82rem;
+    font-weight: 700;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    border: 1px solid rgba(255,204,0,0.35);
-    background: rgba(255,204,0,0.08);
-    padding: 5px 14px;
-    border-radius: 999px;
-    margin-bottom: 18px;
   }
   header.hero h1 {
-    margin: 0 0 14px;
+    position: relative;
+    z-index: 1;
+    margin: 0 0 12px;
     font-size: 3rem;
-    letter-spacing: 0.5px;
-    color: #fff;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text);
+    text-shadow: 0 0 24px rgba(255,106,0,0.1);
   }
-  header.hero h1 span { color: var(--accent); }
-  header.hero p.tagline { margin: 0 auto; max-width: 680px; color: var(--muted); font-size: 1.12rem; }
+  header.hero h1 span {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header.hero p.tagline { position: relative; z-index: 1; margin: 0; color: var(--muted); font-size: 1.05rem; }
 
   .stat-strip {
     max-width: 900px; margin: 40px auto 0;
     display: grid; grid-template-columns: repeat(4, 1fr);
+    text-align: center;
     border-top: 1px solid var(--border);
     border-left: 1px solid var(--border);
   }
   .stat-strip .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     padding: 20px 14px;
@@ -213,7 +299,7 @@ try {
 
   .note {
     border-left: 3px solid var(--accent-2);
-    background: rgba(255,204,0,0.06);
+    background: rgba(255,133,51,0.06);
     padding: 12px 18px;
     border-radius: 0 10px 10px 0;
     margin: 16px 0;
@@ -229,21 +315,18 @@ try {
     top: 50%;
     right: 18px;
     transform: translateY(-50%);
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 36px);
+    grid-auto-flow: row;
     gap: 6px;
-    max-height: 82vh;
-    overflow-y: auto;
+    max-height: 90vh;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 10px 7px;
     z-index: 150;
     box-shadow: 0 10px 28px rgba(0,0,0,0.45);
-    scrollbar-width: thin;
   }
-  .side-nav::-webkit-scrollbar { width: 5px; }
-  .side-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
   .side-nav a {
     position: relative;
     display: flex; align-items: center; justify-content: center;
@@ -277,22 +360,25 @@ try {
 
 <header class="hero">
   <span class="kicker">Now recruiting citizens</span>
-  <h1>Welcome to <span>Nostalgia: Los Santos | RPG</span></h1>
-  <p class="tagline">An RPG server built from scratch, with a real economy, active factions, systems modeled after
-  real life down to the smallest detail, and a life system that never lets you sit idle.</p>
-
-  <div class="stat-strip">
-    <div class="stat"><div class="num">∞</div><div class="lbl">Ways to make money</div></div>
-    <div class="stat"><div class="num">8</div><div class="lbl">Factions</div></div>
-    <div class="stat"><div class="num">12</div><div class="lbl">Jobs</div></div>
-    <div class="stat"><div class="num">1</div><div class="lbl">Elected President</div></div>
-    <div class="stat"><div class="num"><?= $forestCount ?></div><div class="lbl">Forests</div></div>
-    <div class="stat"><div class="num"><?= $houseCount ?></div><div class="lbl">Houses</div></div>
-    <div class="stat"><div class="num"><?= $businessCount ?></div><div class="lbl">Businesses</div></div>
-    <div class="stat"><div class="num"><?= $hotelCount ?></div><div class="lbl">Hotels</div></div>
-    <div class="stat"><div class="num"><?= $farmCount ?></div><div class="lbl">Farms</div></div>
-  </div>
+  <h1>🌴 Nostalgia: <span>Los Santos</span> | RPG</h1>
+  <p class="tagline">"Man, this whole street's changed."</p>
 </header>
+
+<div class="stat-strip">
+  <div class="stat"><div class="num">∞</div><div class="lbl">Ways to make money</div></div>
+  <div class="stat"><div class="num">8</div><div class="lbl">Factions</div></div>
+  <div class="stat"><div class="num">13</div><div class="lbl">Jobs</div></div>
+  <div class="stat"><div class="num">1</div><div class="lbl">Elected President</div></div>
+  <div class="stat"><div class="num"><?= $forestCount ?></div><div class="lbl">Forests</div></div>
+  <div class="stat"><div class="num"><?= $houseCount ?></div><div class="lbl">Houses</div></div>
+  <div class="stat"><div class="num"><?= $businessCount ?></div><div class="lbl">Businesses</div></div>
+  <div class="stat"><div class="num"><?= $hotelCount ?></div><div class="lbl">Hotels</div></div>
+  <div class="stat"><div class="num"><?= $farmCount ?></div><div class="lbl">Farms</div></div>
+  <div class="stat"><div class="num"><?= $vehicleCount ?></div><div class="lbl">Personal vehicles</div></div>
+  <div class="stat"><div class="num"><?= $ammuCount ?></div><div class="lbl">Ammu-Nations</div></div>
+  <div class="stat"><div class="num"><?= $shopCount ?></div><div class="lbl">Shops</div></div>
+  <div class="stat"><div class="num"><?= $gasStationCount ?></div><div class="lbl">Fuel Stations</div></div>
+</div>
 
 <nav class="side-nav" aria-label="Jump to section">
   <a href="#start" title="Getting started">🚪</a>
@@ -336,7 +422,7 @@ try {
   <div class="explore-grid">
     <a class="explore-card" href="#start"><span class="ico">🚪</span><span class="ttl">Getting started</span><span class="desc">Account, stats, help</span></a>
     <a class="explore-card" href="#factions"><span class="ico">🪪</span><span class="ttl">Factions</span><span class="desc">8 factions, ranks, duty</span></a>
-    <a class="explore-card" href="#jobs"><span class="ico">💼</span><span class="ttl">Jobs</span><span class="desc">12 jobs, from delivery to lumberjack</span></a>
+    <a class="explore-card" href="#jobs"><span class="ico">💼</span><span class="ttl">Jobs</span><span class="desc">13 jobs, from delivery to lumberjack</span></a>
     <a class="explore-card" href="#houses-biz"><span class="ico">🏠</span><span class="ttl">Houses &amp; Businesses</span><span class="desc">Fridge, animals, income</span></a>
     <a class="explore-card" href="#vehicles"><span class="ico">🚗</span><span class="ttl">Vehicles</span><span class="desc">Fuel, dirt, documents</span></a>
     <a class="explore-card" href="#hotels"><span class="ico">🏨</span><span class="ttl">Hotels</span><span class="desc">Passive income, rooms</span></a>
@@ -505,7 +591,7 @@ try {
 
 <section id="jobs">
   <h2>💼 Jobs</h2>
-  <p class="subtitle">Earn your living honestly — or close to it. 12 unique jobs to choose from</p>
+  <p class="subtitle">Earn your living honestly — or close to it. 13 unique jobs to choose from</p>
 
   <div class="card">
     <h4 style="margin-top:0">📋 Getting a job</h4>
@@ -574,6 +660,11 @@ try {
       <h4 style="margin-top:0">🌲 Lumberjack</h4>
       <p>Grab a chainsaw and harvest timber from forests across the map. Use <code>/chopwood</code> at any forest to chop trees (one harvest per payday),
       then load the wood into a truck and deliver it to the timber business. Earn money based on your haul. The more trees available in forests, the better the yield.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">⛽ Fuel Carrier</h4>
+      <p>Haul a roadtrain and tanker trailer from the Gas Distributor to a fuel station of your choice (or your own faction's HQ), topping up its tank.
+      Pays <strong>$6,000-$7,500</strong> per delivery. Keeps the city's gas stations running.</p>
     </div>
   </div>
 </section>
@@ -1465,7 +1556,7 @@ try {
 </main>
 
 <footer>
-  Nostalgia LosSantos | RPG — come play, build your story.
+  Nostalgia LosSantos | RPG — come play, build your story. · <a href="tc.html">Terms &amp; Conditions</a>
 </footer>
 
 </body>

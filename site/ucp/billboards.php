@@ -27,6 +27,7 @@ $listingsActive = 'billboards';
 
 <main>
   <h1>📢 Billboards</h1>
+  <p style="color:var(--muted)">Rentable ad space around the city, showing custom text to passersby. Also marked live on the <a href="maps.php">map</a>.</p>
 
   <div class="card">
     <div style="overflow-x:auto">

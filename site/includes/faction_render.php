@@ -126,7 +126,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
         $newStatus = $_POST['new_status'] ?? '';
         $rejectReason = trim($_POST['reject_reason'] ?? '');
 
-        $stmt = $mysqli->prepare("SELECT * FROM `ucp_FactApplications` WHERE `id` = ? AND `factionsId` = ? LIMIT 1");
+        $stmt = $mysqli->prepare("SELECT * FROM `ucp_factapplications` WHERE `id` = ? AND `factionsId` = ? LIMIT 1");
         $stmt->bind_param('ii', $appId, $factionId);
         $stmt->execute();
         $app = $stmt->get_result()->fetch_assoc();
@@ -160,7 +160,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
 
                 faction_sync_members($mysqli, $factionId);
 
-                $stmt = $mysqli->prepare("UPDATE `ucp_FactApplications` SET `status`='Accepted' WHERE `id`=?");
+                $stmt = $mysqli->prepare("UPDATE `ucp_factapplications` SET `status`='Accepted' WHERE `id`=?");
                 $stmt->bind_param('i', $appId);
                 $stmt->execute();
                 $stmt->close();
@@ -168,7 +168,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
                 $flash = ucp_escape($applicant['username']) . "'s application was accepted and they joined the faction.";
             }
         } else {
-            $stmt = $mysqli->prepare("UPDATE `ucp_FactApplications` SET `status`=?, `reject_reason`=? WHERE `id`=?");
+            $stmt = $mysqli->prepare("UPDATE `ucp_factapplications` SET `status`=?, `reject_reason`=? WHERE `id`=?");
             $rr = $newStatus === 'Rejected' ? $rejectReason : null;
             $stmt->bind_param('ssi', $newStatus, $rr, $appId);
             $stmt->execute();
@@ -199,7 +199,7 @@ $stmt->close();
 $applications = [];
 if ($isLeader || $isAdmin) {
     $stmt = $mysqli->prepare(
-        "SELECT a.*, p.username FROM `ucp_FactApplications` a
+        "SELECT a.*, p.username FROM `ucp_factapplications` a
          LEFT JOIN `players` p ON p.id = a.playerId
          WHERE a.factionsId = ? ORDER BY FIELD(a.status,'Open','Review','Accepted','Rejected'), a.data_aplicarii DESC"
     );

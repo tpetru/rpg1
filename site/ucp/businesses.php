@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 ucp_require_login();
 
-$businesses = $mysqli->query("SELECT `id`,`name`,`owner`,`owned`,`price`,`is_for_sale` FROM `businesses` ORDER BY `id` ASC")->fetch_all(MYSQLI_ASSOC);
+$businesses = $mysqli->query("SELECT `id`,`name`,`owner`,`owned`,`price`,`is_for_sale`,`coffee_maker` FROM `businesses` ORDER BY `id` ASC")->fetch_all(MYSQLI_ASSOC);
 $listingsActive = 'businesses';
 ?>
 <!DOCTYPE html>
@@ -22,11 +22,12 @@ $listingsActive = 'businesses';
 
 <main>
   <h1>🏢 Businesses</h1>
+  <p style="color:var(--muted)">Buyable properties that earn passive income from nearby player activity. Also marked live on the <a href="maps.php">map</a>.</p>
 
   <div class="card">
     <div style="overflow-x:auto">
     <table>
-      <tr><th>ID</th><th>Name</th><th>Owner</th><th>Price</th><th>For sale</th></tr>
+      <tr><th>ID</th><th>Name</th><th>Owner</th><th>Price</th><th>For sale</th><th>Has coffee</th></tr>
       <?php foreach ($businesses as $b): ?>
       <tr>
         <td>#<?= (int)$b['id'] ?></td>
@@ -34,6 +35,7 @@ $listingsActive = 'businesses';
         <td><?= $b['owned'] ? ucp_escape($b['owner']) : '—' ?></td>
         <td>$<?= ucp_money($b['price']) ?></td>
         <td><?= $b['is_for_sale'] ? '<span class="pill pill-ok">Yes</span>' : '<span class="pill pill-bad">No</span>' ?></td>
+        <td><?= $b['coffee_maker'] ? '☕' : '—' ?></td>
       </tr>
       <?php endforeach; ?>
     </table>

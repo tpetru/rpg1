@@ -37,6 +37,7 @@ $listingsActive = 'farms';
 
 <main>
   <h1>🌾 Farms</h1>
+  <p style="color:var(--muted)">Buyable properties worked through a 5-stage daily cycle for a harvest payout. Also marked live on the <a href="maps.php">map</a>.</p>
 
   <div class="card">
     <div style="overflow-x:auto">

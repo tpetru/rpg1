@@ -60,6 +60,7 @@ $adminActive = 'businesses';
 <body>
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/admin_section_nav.php'; ?>
 
 <main>
   <h1>🏢 Businesses</h1>

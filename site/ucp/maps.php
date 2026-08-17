@@ -52,8 +52,8 @@ $allHotels     = ($res = $mysqli->query("SELECT `id`,`loc_x`,`loc_y`,`owned`,`ow
 $allAtms       = ($res = $mysqli->query("SELECT `atmID`,`atmLocX`,`atmLocY`,`atmBankOwner` FROM `atms` WHERE `atmLocX` != 0 OR `atmLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allFarms      = ($res = $mysqli->query("SELECT `id`,`name`,`x`,`y`,`isOwned`,`owner`,`is_for_sale` FROM `farms` WHERE `x` != 0 OR `y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allForests    = ($res = $mysqli->query("SELECT `id`,`owner`,`locX`,`locY`,`ownerId`,`isForSale` FROM `forests` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
-$allFuelStations = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `fuelStations` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
-$allClothStores = ($res = $mysqli->query("SELECT `clstID`,`clstName`,`clstX`,`clstY` FROM `clothstores` WHERE `clstX` != 0 OR `clstY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFuelStations = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `fuelstations` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allClothStores = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `clothstores` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allAmmuNations = ($res = $mysqli->query("SELECT `amoID`,`amoName`,`amoLocX`,`amoLocY` FROM `ammunations` WHERE `amoLocX` != 0 OR `amoLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 $allLocations  = ($res = $mysqli->query("SELECT `locID`,`locName`,`locX`,`locY`,`locCategory` FROM `locations_admin` WHERE `locForGPS` = 1")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
 // `billboards` is created by the gamemode on startup (CREATE TABLE IF NOT EXISTS) - may not exist yet if it hasn't run since this feature was added
@@ -73,7 +73,7 @@ $atms       = array_values(array_filter($allAtms, function($a) { return ucp_in_l
 $farms      = array_values(array_filter($allFarms, function($f) { return ucp_in_los_santos($f['x'], $f['y']); }));
 $forests    = array_values(array_filter($allForests, function($f) { return ucp_in_los_santos($f['locX'], $f['locY']); }));
 $fuelStations = array_values(array_filter($allFuelStations, function($g) { return ucp_in_los_santos($g['locX'], $g['locY']); }));
-$clothStores = array_values(array_filter($allClothStores, function($c) { return ucp_in_los_santos($c['clstX'], $c['clstY']); }));
+$clothStores = array_values(array_filter($allClothStores, function($c) { return ucp_in_los_santos($c['locX'], $c['locY']); }));
 $ammuNations = array_values(array_filter($allAmmuNations, function($a) { return ucp_in_los_santos($a['amoLocX'], $a['amoLocY']); }));
 $locationsInLS = array_values(array_filter($allLocations, function($l) { return ucp_in_los_santos($l['locX'], $l['locY']); }));
 $jobLocations  = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') === 0; }));
@@ -110,7 +110,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
     background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
     border-radius: 999px; padding: 5px 12px; font-size: 0.8rem; cursor: pointer;
   }
-  .map-legend-actions button:hover { border-color: var(--accent); color: var(--accent); }
+  .map-legend-actions button:hover { border-color: var(--accent-soft); color: var(--accent); }
   .map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
   .map-legend label { display: flex; align-items: center; gap: 7px; font-size: 0.88rem; color: var(--text); cursor: pointer; user-select: none; }
   .map-legend input { accent-color: var(--accent); }
@@ -299,9 +299,9 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
           </div>
         <?php endforeach; ?>
 
-        <?php foreach ($clothStores as $c): [$px, $py] = ucp_world_to_pct($c['clstX'], $c['clstY']); ?>
+        <?php foreach ($clothStores as $c): [$px, $py] = ucp_world_to_pct($c['locX'], $c['locY']); ?>
           <div class="pin pin-cloth" data-cat="cloth" style="left:<?= $px ?>%; top:<?= $py ?>%">
-            <div class="pin-tooltip">[ Cloth Store #<?= (int)$c['clstID'] ?> ]<br>[ <?= ucp_escape($c['clsName']) ?> ]</div>
+            <div class="pin-tooltip">[ Cloth Store #<?= (int)$c['id'] ?> ]<br>[ <?= ucp_escape($c['name']) ?> ]</div>
           </div>
         <?php endforeach; ?>
 

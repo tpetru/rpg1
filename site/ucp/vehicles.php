@@ -31,6 +31,7 @@ $listingsActive = 'vehicles';
 
 <main>
   <h1>🚗 Vehicles</h1>
+  <p style="color:var(--muted)">Every personally owned vehicle on the server — up to 3 per player.</p>
 
   <div class="card">
     <div style="overflow-x:auto">

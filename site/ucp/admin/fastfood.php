@@ -2,13 +2,6 @@
 require_once __DIR__ . '/../../includes/admin_common.php';
 ucp_admin_require_level5();
 
-$sectionNav = [
-  ['shops', '🛒', 'Shops'],
-  ['fastfood', '🍔', 'Fast-food'],
-  ['prices', '💲', 'Prices'],
-  ['player', '🧍', 'Player'],
-];
-
 $ffTypeName = [1 => 'Pizza', 2 => 'Burger', 3 => 'Cluckin Bell', 4 => 'Desert'];
 
 $flash = null;
@@ -46,11 +39,7 @@ $adminActive = 'fastfood';
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-<nav class="section-nav" aria-label="Jump to section">
-  <?php foreach ($sectionNav as [$anchorId, $icon, $label]): ?>
-  <a href="/ucp/admin/<?= $anchorId ?>.php" title="<?= htmlspecialchars($label) ?>"><span><?= $icon ?></span></a>
-  <?php endforeach; ?>
-</nav>
+<?php include __DIR__ . '/../../includes/admin_section_nav.php'; ?>
 
 <main>
   <h1>🍔 Fast-food</h1>

@@ -59,6 +59,13 @@ $stmt->execute();
 $farm = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
+// Owned forest - not a column in `players`, the source of truth is `forests`.`ownerId`
+$stmt = $mysqli->prepare("SELECT * FROM `forests` WHERE `ownerId` = ? LIMIT 1");
+$stmt->bind_param('i', $pid);
+$stmt->execute();
+$forest = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
 // Owned house (full details for the dedicated card)
 $stmt = $mysqli->prepare("SELECT * FROM `houses` WHERE `owner_id` = ? AND `owned` = 1 LIMIT 1");
 $stmt->bind_param('i', $pid);
@@ -227,6 +234,7 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         <tr><th>Faction</th><td><?= ucp_escape(ucp_faction_name($player['faction'])) ?><?= $player['faction'] > 0 ? ' (rank ' . (int)$player['faction_rank'] . ')' : '' ?></td></tr>
         <tr><th>Admin level</th><td><?= (int)$player['admin_level'] ?></td></tr>
         <tr><th>Warns</th><td><?= (int)$player['warns'] ?>/3</td></tr>
+        <tr><th>Register date</th><td><?= $player['register_date'] ? ucp_escape(date('Y-m-d', strtotime($player['register_date']))) : '—' ?></td></tr>
         <tr><th>Ban</th><td>
           <?php if ($activeBan): ?>
             <span class="pill pill-bad">Yes</span>
@@ -467,6 +475,7 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         <tr><th>Bank</th><td>$<?= ucp_money($myBusiness['bank']) ?></td></tr>
         <tr><th>For sale</th><td><span class="pill <?= $myBusiness['is_for_sale'] ? 'pill-bad' : 'pill-ok' ?>"><?= $myBusiness['is_for_sale'] ? 'Yes' : 'No' ?></span></td></tr>
         <tr><th>ANAF</th><td><span class="pill <?= $myBusiness['anaf'] ? 'pill-bad' : 'pill-ok' ?>"><?= $myBusiness['anaf'] ? 'Blocked' : 'OK' ?></span></td></tr>
+        <tr><th>Has coffee</th><td><?= $myBusiness['coffee_maker'] ? '☕ Yes' : '—' ?></td></tr>
       </table>
       <?php endif; ?>
     </div>

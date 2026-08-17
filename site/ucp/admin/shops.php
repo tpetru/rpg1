@@ -2,13 +2,6 @@
 require_once __DIR__ . '/../../includes/admin_common.php';
 ucp_admin_require_level5();
 
-$sectionNav = [
-  ['shops', '🛒', 'Shops'],
-  ['fastfood', '🍔', 'Fast-food'],
-  ['prices', '💲', 'Prices'],
-  ['player', '🧍', 'Player'],
-];
-
 $shopTypeName = [
   1 => '24/7 Shop',
   2 => 'Electronics Shop',
@@ -27,7 +20,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
   $shopType = (int)($_POST['shopType'] ?? 0);
 
   if ($shopID > 0 && $shopName && isset($shopTypeName[$shopType])) {
-    $stmt = $mysqli->prepare("UPDATE `shops` SET `shopName` = ?, `shopType` = ? WHERE `shopID` = ?");
+    $stmt = $mysqli->prepare("UPDATE `shops` SET `shopName` = ?, `type` = ? WHERE `shopID` = ?");
     $stmt->bind_param('sii', $shopName, $shopType, $shopID);
     if ($stmt->execute()) {
       $flash = "Shop #$shopID updated successfully";
@@ -57,11 +50,7 @@ $adminActive = 'shops';
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-<nav class="section-nav" aria-label="Jump to section">
-  <?php foreach ($sectionNav as [$anchorId, $icon, $label]): ?>
-  <a href="/ucp/admin/<?= $anchorId ?>.php" title="<?= htmlspecialchars($label) ?>"><span><?= $icon ?></span></a>
-  <?php endforeach; ?>
-</nav>
+<?php include __DIR__ . '/../../includes/admin_section_nav.php'; ?>
 
 <main>
   <h1>🛒 Shops</h1>
@@ -78,7 +67,7 @@ $adminActive = 'shops';
   <div class="card">
     <div style="overflow-x:auto">
     <table class="edittable">
-      <tr><th>ID</th><th>Name</th><th>Type</th><th>X</th><th>Y</th><th>Z</th><th></th></tr>
+      <tr><th>ID</th><th>Name</th><th>Type</th><th></th></tr>
       <?php foreach ($shops as $s): $sid = 'shop-' . (int)$s['shopID']; ?>
       <tr>
         <td>#<?= (int)$s['shopID'] ?></td>
@@ -86,13 +75,10 @@ $adminActive = 'shops';
         <td>
           <select form="<?= $sid ?>" name="shopType" required>
             <?php foreach ($shopTypeName as $tid => $tname): ?>
-              <option value="<?= $tid ?>" <?= ((int)$s['shopType'] === $tid) ? 'selected' : '' ?>><?= htmlspecialchars($tname) ?></option>
+              <option value="<?= $tid ?>" <?= ((int)$s['type'] === $tid) ? 'selected' : '' ?>><?= htmlspecialchars($tname) ?></option>
             <?php endforeach; ?>
           </select>
         </td>
-        <td><?= number_format((float)$s['shopLocX'], 2) ?></td>
-        <td><?= number_format((float)$s['shopLocY'], 2) ?></td>
-        <td><?= number_format((float)$s['shopLocZ'], 2) ?></td>
         <td>
           <form id="<?= $sid ?>" method="POST">
             <?= ucp_csrf_field() ?>

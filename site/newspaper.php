@@ -24,14 +24,15 @@ if (is_dir($newspaperDir)) {
 <link rel="icon" type="image/png" href="ucp/assets/img/favicon.ico">
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #161922;
-    --panel-2: #1d212c;
-    --border: #2a2f3d;
-    --text: #d8dce5;
-    --muted: #8b93a7;
-    --accent: #5b9dff;
-    --accent-2: #ffcc00;
+    --bg: #0b0d10;
+    --panel: #12161b;
+    --panel-2: #171c22;
+    --border: #252b32;
+    --text: #f2f2f2;
+    --muted: #8e969f;
+    --accent: #ff6a00;
+    --accent-2: #ff8533;
+    --accent-soft: #e8a268;
     --green: #3ecf8e;
     --red: #ff5d5d;
   }
@@ -47,24 +48,65 @@ if (is_dir($newspaperDir)) {
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  .topbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 8px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; min-height: 60px; }
-  .topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 1.1rem; color: #fff; text-decoration: none; }
-  .topbar .brand:hover { text-decoration: none; opacity: 0.9; }
-  .topbar .brand img { height: 32px; width: 32px; border-radius: 6px; }
-  .topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
-  .topbar nav a { color: var(--text); font-size: 0.92rem; text-decoration: none; }
-  .topbar nav a:hover { color: var(--accent); text-decoration: none; }
+  .topbar {
+    position: relative;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; row-gap: 8px; padding: 14px 24px;
+    background: rgba(18, 22, 27, 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100; min-height: 64px;
+  }
+  .topbar::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,106,0,0.6) 20%, rgba(255,133,51,0.4) 50%, rgba(255,106,0,0.6) 80%, transparent);
+    opacity: 0.7;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.3px; color: #fff; text-decoration: none; transition: color 0.25s ease; }
+  .topbar .brand:hover { text-decoration: none; color: var(--accent); }
+  .topbar .brand img {
+    height: 34px; width: 34px; border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .topbar .brand:hover img {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,106,0,0.12), 0 4px 14px rgba(255,106,0,0.2);
+    transform: rotate(-4deg) scale(1.05);
+  }
+  .topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+  .topbar nav a {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 108px; padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 0.92rem; text-decoration: none; text-align: center;
+    transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+  }
+  .topbar nav a::after {
+    content: "";
+    position: absolute; left: 50%; bottom: 4px; width: 0; height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.28s ease, left 0.28s ease;
+  }
+  .topbar nav a:hover { color: #fff; text-decoration: none; border-color: var(--accent-soft); background: var(--panel-2); }
+  .topbar nav a:hover::after { width: calc(100% - 24px); left: 12px; }
   .nav-dd { position: relative; }
   .nav-dd-toggle { cursor: pointer; }
   .nav-dd-menu {
     display: none;
-    position: absolute; top: 100%; left: 0; margin-top: 0;
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 0;
+    background: rgba(23, 28, 34, 0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: 10px;
     min-width: 200px; padding: 6px; z-index: 200;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    box-shadow: 0 14px 32px rgba(0,0,0,0.5);
   }
-  .nav-dd-menu a { display: block; padding: 7px 10px; border-radius: 6px; font-size: 0.88rem; white-space: nowrap; text-decoration: none; }
-  .nav-dd-menu a:hover { background: var(--panel); text-decoration: none; }
+  .topbar .nav-dd-menu a { display: block; position: static; padding: 8px 10px; border: none; border-radius: 7px; font-size: 0.88rem; white-space: nowrap; text-decoration: none; transition: background 0.2s ease, color 0.2s ease; }
+  .topbar .nav-dd-menu a::after { display: none; }
+  .topbar .nav-dd-menu a:hover { background: rgba(255,106,0,0.1); border: none; color: var(--accent); text-decoration: none; }
   .nav-dd:hover .nav-dd-menu, .nav-dd:focus-within .nav-dd-menu { display: block; }
 
 main {
@@ -216,7 +258,6 @@ main {
     <div class="page-spread" onclick="openModal(<?= $index ?>)">
       <img src="<?= htmlspecialchars($image['path']) ?>" alt="Page" class="page-image">
       <div class="page-info">
-        <h3><?= htmlspecialchars($image['name']) ?></h3>
         <p>📄 Click to view full page</p>
       </div>
     </div>
@@ -239,7 +280,7 @@ main {
   </div>
 </div>
 
-<footer>Nostalgia: Los Santos | RPG — 2026 Newspaper Archive</footer>
+<footer>Nostalgia: Los Santos | RPG — 2026 Newspaper Archive · <a href="tc.html">Terms &amp; Conditions</a></footer>
 
 <script>
   let currentPage = 0;

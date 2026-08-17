@@ -2,13 +2,6 @@
 require_once __DIR__ . '/../../includes/admin_common.php';
 ucp_admin_require_level5();
 
-$sectionNav = [
-  ['farms', '🌾', 'Farms'],
-  ['forests', '🌲', 'Forests'],
-  ['prices', '💲', 'Prices'],
-  ['player', '🧍', 'Player'],
-];
-
 $flash = null;
 $flashErr = false;
 
@@ -34,7 +27,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !ucp_csrf_verify()) {
       `defaultPrice` = ?, `price` = ?, `size` = ?,
       `maxTree` = ?, `currentTree` = ?, `saplings` = ?, `plantedSaplings` = ?
       WHERE `id` = ?");
-    $stmt->bind_param('iiiiidiiiii', $fstOwnerId, $fstOwnerId, $fstForSale, $fstDefaultPrice, $fstPrice, $fstSize, $fstMaxTree, $fstCurrentTree, $fstSaplings, $fstPlantedSaplings, $fstID);
+    $stmt->bind_param('siiiidiiiii', $fstOwnerName, $fstOwnerId, $fstForSale, $fstDefaultPrice, $fstPrice, $fstSize, $fstMaxTree, $fstCurrentTree, $fstSaplings, $fstPlantedSaplings, $fstID);
     if ($stmt->execute()) {
       $flash = "Forest #$fstID updated successfully";
     } else {
@@ -63,11 +56,7 @@ $adminActive = 'forests';
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-<nav class="section-nav" aria-label="Jump to section">
-  <?php foreach ($sectionNav as [$anchorId, $icon, $label]): ?>
-  <a href="/ucp/admin/<?= $anchorId ?>.php" title="<?= htmlspecialchars($label) ?>"><span><?= $icon ?></span></a>
-  <?php endforeach; ?>
-</nav>
+<?php include __DIR__ . '/../../includes/admin_section_nav.php'; ?>
 
 <main>
   <h1>🌲 Forests</h1>
@@ -98,27 +87,27 @@ $adminActive = 'forests';
         <th>Planted Saplings</th>
         <th></th>
       </tr>
-      <?php foreach ($forests as $f): ?>
-      <form method="POST" style="display:contents;">
-      <?= ucp_csrf_field() ?>
+      <?php foreach ($forests as $f): $fid = 'forest-' . (int)$f['id']; ?>
       <tr>
         <td>#<?= (int)$f['id'] ?></td>
-        <td><input type="number" name="fstOwnerId" value="<?= (int)$f['ownerId'] ?>" min="0"></td>
-        <td><input type="text" name="fstOwnerName" value="<?= htmlspecialchars($f['owner'] ?? '') ?>" maxlength="24"></td>
-        <td><input type="checkbox" name="fstForSale" <?= (int)$f['isForSale'] ? 'checked' : '' ?> class="chk"></td>
-        <td><input type="number" name="fstDefaultPrice" value="<?= (int)$f['defaultPrice'] ?>" min="0"></td>
-        <td><input type="number" name="fstPrice" value="<?= (int)$f['price'] ?>" min="0"></td>
-        <td><input type="number" name="fstSize" value="<?= number_format((float)$f['size'], 2) ?>" step="0.01" min="0.01" required></td>
-        <td><input type="number" name="fstMaxTree" value="<?= (int)$f['maxTree'] ?>" min="0"></td>
-        <td><input type="number" name="fstCurrentTree" value="<?= (int)$f['currentTree'] ?>" min="0"></td>
-        <td><input type="number" name="fstSaplings" value="<?= (int)$f['saplings'] ?>" min="0"></td>
-        <td><input type="number" name="fstPlantedSaplings" value="<?= (int)$f['plantedSaplings'] ?>" min="0"></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstOwnerId" value="<?= (int)$f['ownerId'] ?>" min="0"></td>
+        <td><input form="<?= $fid ?>" type="text" name="fstOwnerName" value="<?= htmlspecialchars($f['owner'] ?? '') ?>" maxlength="24"></td>
+        <td class="chk"><input form="<?= $fid ?>" type="checkbox" name="fstForSale" <?= (int)$f['isForSale'] ? 'checked' : '' ?>></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstDefaultPrice" value="<?= (int)$f['defaultPrice'] ?>" min="0"></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstPrice" value="<?= (int)$f['price'] ?>" min="0"></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstSize" value="<?= number_format((float)$f['size'], 2) ?>" step="0.01" min="0.01" required></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstMaxTree" value="<?= (int)$f['maxTree'] ?>" min="0"></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstCurrentTree" value="<?= (int)$f['currentTree'] ?>" min="0"></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstSaplings" value="<?= (int)$f['saplings'] ?>" min="0"></td>
+        <td><input form="<?= $fid ?>" type="number" name="fstPlantedSaplings" value="<?= (int)$f['plantedSaplings'] ?>" min="0"></td>
         <td>
-          <input type="hidden" name="fstID" value="<?= (int)$f['id'] ?>">
-          <button type="submit" class="save-btn">💾</button>
+          <form id="<?= $fid ?>" method="post">
+            <?= ucp_csrf_field() ?>
+            <input type="hidden" name="fstID" value="<?= (int)$f['id'] ?>">
+            <button type="submit" class="save-btn">💾</button>
+          </form>
         </td>
       </tr>
-      </form>
       <?php endforeach; ?>
     </table>
     </div>

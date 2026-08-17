@@ -22,6 +22,7 @@ $listingsActive = 'hotels';
 
 <main>
   <h1>🏨 Hotels</h1>
+  <p style="color:var(--muted)">Passive-income properties anyone can rent a room at, no ownership needed. Also marked live on the <a href="maps.php">map</a>.</p>
 
   <div class="card">
     <div style="overflow-x:auto">

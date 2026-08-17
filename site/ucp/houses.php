@@ -24,6 +24,7 @@ $listingsActive = 'houses';
 
 <main>
   <h1>🏠 Houses</h1>
+  <p style="color:var(--muted)">Buyable properties — one per player, complete with beds, fridges and yards for pets. Also marked live on the <a href="maps.php">map</a>.</p>
 
   <div class="card">
     <div style="overflow-x:auto">

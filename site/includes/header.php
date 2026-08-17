@@ -23,15 +23,17 @@ $b = UCP_BASE;
     <a href="<?= $b ?>/weapons.php">🔫 Weapons</a>
 
     <div class="nav-dd">
-      <a href="<?= $b ?>/houses.php" class="dd-toggle">📋 Listings ▾</a>
+      <a href="<?= $b ?>/houses.php" class="dd-toggle">🗺️ World Data ▾</a>
       <div class="nav-dd-menu">
         <a href="<?= $b ?>/houses.php">🏠 Houses</a>
         <a href="<?= $b ?>/hotels.php">🏨 Hotels</a>
         <a href="<?= $b ?>/businesses.php">🏢 Businesses</a>
         <a href="<?= $b ?>/farms.php">🌾 Farms</a>
+        <a href="<?= $b ?>/forests.php">🌲 Forests</a>
         <a href="<?= $b ?>/vehicles.php">🚗 Vehicles</a>
         <a href="<?= $b ?>/billboards.php">📢 Billboards</a>
         <a href="<?= $b ?>/bars.php">🍺 Bars</a>
+        <a href="<?= $b ?>/gasstations.php">⛽ Gas Stations</a>
       </div>
     </div>
 
@@ -62,8 +64,11 @@ $b = UCP_BASE;
         <a href="<?= $b ?>/admin/houses.php" class="dd-toggle">🛠️ Admin ▾</a>
         <div class="nav-dd-menu">
           <a href="<?= $b ?>/admincmds.php">🛡️ Admin Cmds</a>
+          <a href="<?= $b ?>/admin/ammunation.php">🔫 AmmuNation</a>
+          <a href="<?= $b ?>/admin/bars.php">🍺 Bars</a>
           <a href="<?= $b ?>/admin/billboards.php">📢 Billboards</a>
           <a href="<?= $b ?>/admin/businesses.php">🏢 Businesses</a>
+          <a href="<?= $b ?>/admin/clothstores.php">👕 Clothing Stores</a>
           <a href="<?= $b ?>/admin/farms.php">🌾 Farms</a>
           <a href="<?= $b ?>/admin/fastfood.php">🍔 Fast-food</a>
           <a href="<?= $b ?>/admin/forests.php">🌲 Forests</a>

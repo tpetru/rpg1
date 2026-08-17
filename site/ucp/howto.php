@@ -18,7 +18,7 @@ ucp_require_login();
   header.hero {
     padding: 40px 24px 30px;
     text-align: center;
-    background: radial-gradient(ellipse at top, #1b2030 0%, #0f1115 70%);
+    background: radial-gradient(ellipse at top, #1a1410 0%, #0b0d10 70%);
     border-bottom: 1px solid var(--border);
   }
   header.hero h1 {
@@ -36,7 +36,7 @@ ucp_require_login();
     display: flex; flex-wrap: wrap; gap: 6px;
     justify-content: center;
     padding: 12px 16px;
-    background: rgba(15,17,21,0.94);
+    background: rgba(11,13,16,0.94);
     backdrop-filter: blur(6px);
     border-bottom: 1px solid var(--border);
   }
@@ -48,7 +48,7 @@ ucp_require_login();
     background: var(--panel);
     border: 1px solid var(--border);
   }
-  nav.toc a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent-soft); text-decoration: none; }
 
   main { max-width: 1400px; margin: 0 auto; padding: 36px 24px 100px; }
 
@@ -58,7 +58,7 @@ ucp_require_login();
 
   .card {
     background: var(--panel);
-    border: 1px solid var(--border);
+    border: 1px solid rgba(232,162,104,0.35);
     border-radius: 12px;
     padding: 18px 20px;
     margin: 12px 0;
@@ -85,8 +85,8 @@ ucp_require_login();
   .t { color: #FF6347; }
 
   .note {
-    border-left: 3px solid var(--accent-2);
-    background: rgba(255,204,0,0.06);
+    border-left: 3px solid var(--accent-soft);
+    background: rgba(255,133,51,0.06);
     padding: 10px 16px;
     border-radius: 0 10px 10px 0;
     margin: 12px 0;
@@ -120,6 +120,7 @@ ucp_require_login();
   <a href="#caravan">Caravan</a>
   <a href="#licence">Licence</a>
   <a href="#farm">Farm</a>
+  <a href="#forest">Forest</a>
   <a href="#rob">Rob</a>
   <a href="#smuggle">Smuggle</a>
   <a href="#skins">Skins</a>
@@ -447,7 +448,7 @@ ucp_require_login();
       <li><code>frigde</code> — <span class="num">$10.000</span>, breaks after <span class="num">32 days</span></li>
       <li><code>bed</code> — <span class="num">$7.500</span>, breaks after <span class="num">29 days</span></li>
       <li><code>tree</code> — <span class="num">$20.000</span> (city or countryside house), unlocks <code>/tree plant</code></li>
-      <li><code>animal [name]</code> — <span class="num">$5.000</span>: Turtle/Deer (Villa only), Cow (countryside only)</li>
+      <li><code>animal [name]</code> — <span class="num">$5.000</span>: Turtle/Deer (Villa only), Cow (countryside only), Parrot (any house type)</li>
     </ul>
     <p>Same command replaces a broken fridge/bed (1% to Home Furnitures).</p>
 
@@ -475,6 +476,9 @@ ucp_require_login();
 
     <h4>Cow</h4>
     <p>Gives a 50% chance/payday (while online) of 2-5L milk straight into your fridge.</p>
+
+    <h4>Parrot — <code>/parrot [get/down]</code></h4>
+    <p>The only portable pet — available at <strong>any</strong> house type, unlike the others. <code>/parrot get</code> puts it on your shoulder so it follows you everywhere; <code>/parrot down</code> sets it back down and it flies home. It doesn't stay on your shoulder across a disconnect — you'll need <code>/parrot get</code> again next time.</p>
 
     <h4>Repairs</h4>
     <p>An Electrician can fix your fridge/bed in the last 5 days before they break, paid from the house bank ($2.000/$1.000), adding 15 days.</p>
@@ -696,6 +700,27 @@ ucp_require_login();
 
     <h4>Info</h4>
     <p><code>/farm stats</code> (on a field) and <code>/farmstats</code> (your farm) show the next step, progress and whether you can work today.</p>
+  </div>
+</section>
+
+<section id="forest">
+  <h2>🌲 Forests — <code>/howto forest</code></h2>
+  <div class="card">
+    <p>Own a forest and grow trees to fund the Lumberjack job.</p>
+
+    <h4>Owning a forest</h4>
+    <p>Stand on a for-sale forest (pickup + sign) and use <code>/buyforest</code>. Resell with <code>/sellforest [price]</code> (<code>/sellforest 0</code> cancels), offer it directly with <code>/sellforestto [playerid] [price]</code>, or sell to the state with <code>/sellforesttostate</code> (60%). Check it with <code>/foreststats</code>.</p>
+
+    <h4>Trees</h4>
+    <p>Each forest has <code>currentTree</code>/<code>maxTree</code>. It grows <span class="num">+10 per PayDay</span> (capped at max) — this is what Lumberjacks cut down with <code>/chopwood</code>.</p>
+
+    <h4>Saplings (growing trees faster)</h4>
+    <ul>
+      <li>Buy saplings at a <strong>Tools Shop</strong> (<span class="num">$10/unit</span>) while sitting in a <strong>Benson</strong> — you'll be asked how many to buy.</li>
+      <li>Drive the Benson to your forest and use <code>/forest saplings deposit [amount]</code> to store them (max 2x maxTree).</li>
+      <li>A Lumberjack can then plant one: drive a <strong>Forklift</strong> to the forest and use <code>/forest tree plant</code>. A marker appears inside the forest — get out, switch to a <strong>Shovel</strong> and press FIRE to plant (pays <span class="num">$600</span>).</li>
+      <li>Planted saplings are added to <code>currentTree</code> at the next PayDay.</li>
+    </ul>
   </div>
 </section>
 
