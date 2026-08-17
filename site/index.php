@@ -181,12 +181,15 @@
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 32px;
-    max-width: 980px;
+    max-width: 1180px;
     margin: 0 auto;
   }
-  @media (max-width: 860px) {
+  @media (max-width: 1100px) {
+    .grid { grid-template-columns: repeat(2, 1fr); max-width: 700px; }
+  }
+  @media (max-width: 620px) {
     .grid { grid-template-columns: 1fr; max-width: 480px; }
   }
 
@@ -450,6 +453,7 @@
     <a href="presentation.php">🏙️ Presentation</a>
     <a href="newspaper.php">📰 Newspaper</a>
     <a href="ucp/index.php">🧭 UCP</a>
+    <a href="ucp/forum.php">💬 Forum</a>
   </nav>
 </header>
 
@@ -484,6 +488,24 @@
       <div class="icon">🏙️</div>
       <h2>Presentation</h2>
       <p>The server's presentation — welcome to Nostalgia: Los Santos | RPG.</p>
+      <span class="go">Enter <span>→</span></span>
+      <div class="cj" aria-hidden="true">
+        <div class="cj-sprite">
+          <span class="cj-head"></span>
+          <span class="cj-torso"></span>
+          <span class="cj-arm cj-arm-l"></span>
+          <span class="cj-arm cj-arm-r"></span>
+          <span class="cj-leg cj-leg-l"></span>
+          <span class="cj-leg cj-leg-r"></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="ucp/forum.php">
+      <div class="spot"></div>
+      <div class="icon">💬</div>
+      <h2>Forum</h2>
+      <p>Suggestions, complaints, bugs, faction regulations and the server's rules.</p>
       <span class="go">Enter <span>→</span></span>
       <div class="cj" aria-hidden="true">
         <div class="cj-sprite">

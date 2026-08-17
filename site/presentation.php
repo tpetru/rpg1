@@ -499,7 +499,7 @@ try {
     <h4 style="margin-top:0">How it works</h4>
     <p>Every faction has a headquarters (HQ), its own bank, and a rank system (1 to 5, where 5 is the leader).
     Senior members can invite new players, manage the faction bank, promote or remove others, and refuel/respawn
-    the faction's fleet. Police, RAR and SMURD also run a <strong>duty</strong> system — clocking in near the HQ
+    the faction's fleet. Police, DMV and SMURD also run a <strong>duty</strong> system — clocking in near the HQ
     gives you access to your faction's special powers while you're on shift. SMURD crews can also respond to
     <strong>random house fires</strong> around the map with the faction's Firetruck.</p>
   </div>
@@ -919,7 +919,7 @@ try {
     </div>
     <div class="card">
       <h4 style="margin-top:0">🎨 Personalization</h4>
-      <p>Repaint your primary and secondary colors, and get a custom license plate at the RAR HQ.</p>
+      <p>Repaint your primary and secondary colors, and get a custom license plate at the DMV HQ.</p>
     </div>
   </div>
 
@@ -927,7 +927,7 @@ try {
     <h4 style="margin-top:0">📋 Documents (all at R.A.R.)</h4>
     <p>Insurance, a technical inspection (ITP — engine off, hood open, boot closed, lights on), a plate, plus a
     medical kit and extinguisher fitted from items bought at the shop. Each stays valid for the whole day it's
-    due to expire on. Police and RAR can inspect and confiscate any of them on the road.</p>
+    due to expire on. Police and DMV can inspect and confiscate any of them on the road.</p>
   </div>
 
   <div class="grid-2" style="margin-top:8px">
@@ -938,7 +938,7 @@ try {
     </div>
     <div class="card">
       <h4 style="margin-top:0">🚚 Impounding &amp; towing</h4>
-      <p>RAR can tow away a car with expired documents; Police and RAR can also confiscate a vehicle outright.
+      <p>DMV can tow away a car with expired documents; Police and DMV can also confiscate a vehicle outright.
       Either way, the car won't start until you pay a release fee to get it back at the vehicle itself.</p>
     </div>
   </div>
@@ -1536,13 +1536,13 @@ try {
     </div>
     <div class="card">
       <h4 style="margin-top:0">🎫 Fines &amp; checks</h4>
-      <p>A RAR or Police officer can issue a fine for a violation — it isn't deducted automatically, the driver
+      <p>A DMV or Police officer can issue a fine for a violation — it isn't deducted automatically, the driver
       has to accept it for the payment to go through. Both factions can also inspect your vehicle's documents
       and your driving licenses right there in the field, and confiscate either.</p>
     </div>
     <div class="card">
       <h4 style="margin-top:0">🚚 Impounding</h4>
-      <p>RAR can tow away vehicles with expired documents; once impounded, the engine stays dead until the owner
+      <p>DMV can tow away vehicles with expired documents; once impounded, the engine stays dead until the owner
       pays a release fee to get it back.</p>
     </div>
     <div class="card">

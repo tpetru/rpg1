@@ -135,7 +135,7 @@
   <a href="#police-garage">Garaj Poliție</a>
   <a href="#gps-radar">GPS / Radar / HUD</a>
   <a href="#phone">Telefonie</a>
-  <a href="#police-rar-cmds">RAR / Poliție / SMURD</a>
+  <a href="#police-rar-cmds">DMV / Poliție / SMURD</a>
   <a href="#turfs">Turfs &amp; Războaie</a>
   <a href="#drugs">Droguri &amp; Seif</a>
   <a href="#smuggle">Contrabandă pe mare (/smuggle)</a>
@@ -192,7 +192,7 @@
     <tr><th>Rang</th><th>Acces</th></tr>
     <tr><td>1+</td><td><code>/f</code>, <code>/fmembers</code>, <code>/fhelp</code> (toți membrii)</td></tr>
     <tr><td>2+</td><td><code>/radar install/remove</code>, <code>/showradars</code>, <code>/removeradar</code> — doar Poliție; <code>/confiscate insurance|licence</code> — doar Poliție (rang 2+)</td></tr>
-    <tr><td>3+</td><td><code>/confiscate extinctor/medkit/itp</code> — doar RAR (rang 3+)</td></tr>
+    <tr><td>3+</td><td><code>/confiscate extinctor/medkit/itp</code> — doar DMV (rang 3+)</td></tr>
     <tr><td>4+</td><td><code>/finvite</code>, <code>/fbank</code> (vizualizare)</td></tr>
     <tr><td>5 (Lead)</td><td><code>/fbankwithdraw</code>, <code>/fsetrank</code></td></tr>
   </table>
@@ -201,7 +201,7 @@
   <h3>Sistem de tură (pOnDuty)</h3>
   <p>Boolean <strong>doar în memorie, NU e persistat în DB</strong> — la fiecare reconectare, starea de duty pornește de la <code>false</code>.
   Relevant doar pentru facțiunile 1-3. <code>/duty</code> necesită <code>DUTY_HQ_RANGE=10.0</code> de HQ (HQ trebuie setat, adică hq_x/hq_y ≠ 0).</p>
-  <p>Comenzi care verifică direct <code>pOnDuty</code>: <code>/heal</code> (SMURD), <code>/inspectcar</code>, <code>/fine</code>, <code>/m</code> (RAR/Poliție),
+  <p>Comenzi care verifică direct <code>pOnDuty</code>: <code>/heal</code> (SMURD), <code>/inspectcar</code>, <code>/fine</code>, <code>/m</code> (DMV/Poliție),
   <code>/checklicenses</code>, <code>/suspendlic</code> (Poliție). <code>/garage</code>, <code>/entrace</code> și tasta ENTER pentru teleport <strong>NU</strong> cer duty, doar apartenență la facțiune.</p>
 </section>
 
@@ -489,7 +489,7 @@ RP    += 1</pre>
     (care descarcă la 8/17/18) plătește <strong>doar șoferul</strong>, nu business-ul.
   </div>
   <div class="note">
-    <strong>Nu merg către business, ci către banca facțiunii RAR</strong> (via <code>Faction_AddBank</code>): <code>/vplate</code> (g_PlatePrice)
+    <strong>Nu merg către business, ci către banca facțiunii DMV</strong> (via <code>Faction_AddBank</code>): <code>/vplate</code> (g_PlatePrice)
     și <code>/vitp</code> (g_ITPPrice).
   </div>
   <div class="note">
@@ -519,14 +519,14 @@ RP    += 1</pre>
   <div class="note">Nu îți poți cumpăra propriul vehicul: verificarea cere <code>pvOwnerId != pID</code>-ul cumpărătorului.</div>
 
   <h3>/vitp — verificare tehnică (async)</h3>
-  <p>La sediul RAR (ITP_LOC: 930.0, 2067.0, 12.5, rază 5m), motor oprit, ITP expirat. Costă <code>g_ITPPrice</code> (750),
+  <p>La sediul DMV (ITP_LOC: 930.0, 2067.0, 12.5, rază 5m), motor oprit, ITP expirat. Costă <code>g_ITPPrice</code> (750),
   plătit integral către <code>FACTION_RAR</code>. Îngheață jucătorul 10s (<code>ITP_CHECK_TIME</code>), apoi callback async
   <code>OnVehicleITPCheck</code>: trece doar dacă <code>health &gt; ITP_MIN_HEALTH</code> ȘI asigurarea/kitul/extinctorul sunt
   toate valide în acel moment. Eșec = nimic nu se schimbă, banii nu se restituie.</p>
 
   <h3>/vplate — verificare async de unicitate</h3>
   <p>Max 10 caractere, la PLATE_LOC (930.0, 2074.0, 12.5, rază 5m), motor oprit. Verificarea de unicitate e async
-  (<code>OnVehiclePlateChecked</code>) — banii sunt scăzuți și creditați RAR-ului <strong>în callback</strong>, nu în corpul comenzii.</p>
+  (<code>OnVehiclePlateChecked</code>) — banii sunt scăzuți și creditați DMV-ului <strong>în callback</strong>, nu în corpul comenzii.</p>
 
   <div class="note ok">
     <strong>Fix — /vpark rotația greșită.</strong> <code>GetVehicleZAngle</code> e un nativ SA-MP cunoscut ca imprecis pentru
@@ -751,23 +751,23 @@ RP    += 1</pre>
 </section>
 
 <section id="police-rar-cmds">
-  <h2>RAR / Poliție / SMURD — detalii comenzi</h2>
+  <h2>DMV / Poliție / SMURD — detalii comenzi</h2>
 
-  <h3><span class="pill pill-rar">RAR</span> + <span class="pill pill-police">Poliție</span></h3>
+  <h3><span class="pill pill-rar">DMV</span> + <span class="pill pill-police">Poliție</span></h3>
   <table>
     <tr><th>Comandă</th><th>Detalii</th></tr>
     <tr><td><code>/fine [id] [sumă] [motiv]</code></td><td>On-duty, target în 15m (FINE_RANGE). Nicio limită superioară pe sumă. NU scade bani imediat — stochează amenda în așteptare.</td></tr>
     <tr><td><code>/accept fine [officerid]</code></td><td>Re-validează raza de 15m la momentul acceptării (nu la momentul emiterii). Banii merg direct în <strong>cash-ul personal al ofițerului</strong>, NU într-o bancă de facțiune.</td></tr>
-    <tr><td><code>/inspectcar [id]</code></td><td>On-duty, target în 15m (FINE_RANGE), motor oprit, trebuie să fie vehicul personal înregistrat. Doar raport, fără acțiune. <strong>Câmpurile afișate diferă pe facțiune</strong>: Poliție vede Insurance + Medical Kit + Extinguisher; RAR vede Medical Kit + Extinguisher + ITP + Vehicle Health.</td></tr>
+    <tr><td><code>/inspectcar [id]</code></td><td>On-duty, target în 15m (FINE_RANGE), motor oprit, trebuie să fie vehicul personal înregistrat. Doar raport, fără acțiune. <strong>Câmpurile afișate diferă pe facțiune</strong>: Poliție vede Insurance + Medical Kit + Extinguisher; DMV vede Medical Kit + Extinguisher + ITP + Vehicle Health.</td></tr>
     <tr><td><code>/m [id]</code></td><td>On-duty ȘI ofițerul trebuie să fie într-un vehicul de facțiune. Target în 50m (M_RANGE). Mesaj text simplu — nu există mecanism real de oprire forțată.</td></tr>
   </table>
 
-  <h3><span class="pill pill-rar">RAR</span> rang 3+ &nbsp;/&nbsp; <span class="pill pill-police">Poliție</span> rang 2+</h3>
+  <h3><span class="pill pill-rar">DMV</span> rang 3+ &nbsp;/&nbsp; <span class="pill pill-police">Poliție</span> rang 2+</h3>
   <p>Comandă partajată <code>/confiscate</code>, on-duty obligatoriu. <strong>Rangul minim diferă pe facțiune</strong>:
-  RAR necesită <code>pFactionRank&gt;=3</code>, Poliția <code>pFactionRank&gt;=2</code>. Sub-cuvintele disponibile diferă și ele.</p>
+  DMV necesită <code>pFactionRank&gt;=3</code>, Poliția <code>pFactionRank&gt;=2</code>. Sub-cuvintele disponibile diferă și ele.</p>
   <table>
     <tr><th>Comandă</th><th>Detalii</th></tr>
-    <tr><td><code>/confiscate [extinctor/medkit/itp] [id]</code></td><td><strong>RAR</strong>, rang 3+, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează coloana aleasă (<code>extinguisher_exp</code> / <code>medkit_exp</code> / <code>itp_exp</code>) la <code>gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători.</td></tr>
+    <tr><td><code>/confiscate [extinctor/medkit/itp] [id]</code></td><td><strong>DMV</strong>, rang 3+, target în 15m (FINE_RANGE), motor oprit, vehicul personal înregistrat. Setează coloana aleasă (<code>extinguisher_exp</code> / <code>medkit_exp</code> / <code>itp_exp</code>) la <code>gettime()</code> (expiră imediat) și persistă în DB. Notifică ambii jucători.</td></tr>
     <tr><td><code>/confiscate insurance [id]</code></td><td><strong>Poliție</strong>, rang 2+, target în 15m. Expiră imediat asigurarea (<code>insurance_exp</code>) vehiculului personal al țintei.</td></tr>
     <tr><td><code>/confiscate licence [A/B/C/D/all] [id]</code></td><td><strong>Poliție</strong>, rang 2+, target în 15m. Anulează (NULL) data de expirare a permisului ales (sau toate) — revocare permanentă, identică cu <code>/suspendlic</code>.</td></tr>
   </table>
@@ -1591,7 +1591,7 @@ rTimeRecord FLOAT DEFAULT 999 (secunde), rPlayerName VARCHAR(24)
     <tr><th>Comandă</th><th>Descriere</th></tr>
     <tr><td><code>/f [mesaj]</code></td><td>Chat facțiune</td></tr>
     <tr><td><code>/finvite [id]</code></td><td>Rang 4+, target în 15m (FINVITE_RANGE), fără facțiune</td></tr>
-    <tr><td><code>/accept finvite/fine [id]</code></td><td>Comandă partajată, vezi secțiunea RAR/Poliție</td></tr>
+    <tr><td><code>/accept finvite/fine [id]</code></td><td>Comandă partajată, vezi secțiunea DMV/Poliție</td></tr>
     <tr><td><code>/fmembers</code> / <code>/fhelp</code> / <code>/factions</code> / <code>/duty</code></td><td>Vezi sus</td></tr>
     <tr><td><code>/news</code> / <code>/newspaper</code> / <code>/qa</code> / <code>/question</code> / <code>/answer</code> / <code>/accept newspaper|qa</code></td><td>News Reporters (facțiune 8) — vezi secțiunea Facțiuni</td></tr>
   </table>

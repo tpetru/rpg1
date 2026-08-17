@@ -205,6 +205,7 @@ $sectionNav = [
     ['card-skin',        '🧍', 'Skin'],
     ['card-collections', '👕', 'Skin collections'],
     ['card-cars',        '🚗', 'Cars'],
+    ['card-weapons',     '🔫', 'Weapons'],
 ];
 $sectionNav[] = ['card-house',    '🏠', 'House'];
 $sectionNav[] = ['card-business', '🏢', 'Business'];
@@ -359,6 +360,12 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
       </table>
     <?php endif; ?>
   </div>
+
+    <div class="card" id="card-weapons">
+      <h2>🔫 Weapons</h2>
+      <p style="color:var(--muted); margin:0 0 14px">Full reference of every weapon ID, its name and its legal status (which ones get your Weapon W license confiscated on <code>/inspectplayer</code>).</p>
+      <a href="weapons.php" class="btn">View weapons list</a>
+    </div>
 
     <div class="card" id="card-house">
       <h2>🏠 Your house (<?= $myHouse ? 1 : 0 ?>)</h2>

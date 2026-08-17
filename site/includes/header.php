@@ -19,8 +19,8 @@ $b = UCP_BASE;
     <a href="<?= $b ?>/dashboard.php">🏠 Dashboard</a>
     <a href="<?= $b ?>/vip.php" style="color:#FFD700">⭐ VIP</a>
     <a href="<?= $b ?>/maps.php">🗺️ Maps</a>
+    <a href="<?= $b ?>/forum.php">💬 Forum</a>
     <a href="<?= $b ?>/howto.php">❓ How To</a>
-    <a href="<?= $b ?>/weapons.php">🔫 Weapons</a>
 
     <div class="nav-dd">
       <a href="<?= $b ?>/houses.php" class="dd-toggle">🗺️ World Data ▾</a>
