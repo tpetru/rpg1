@@ -433,7 +433,8 @@ INSERT INTO `factions` (`id`, `name`, `members`, `lead`, `bank`, `pickup_id`, `m
 (5, 'American Mafia', 0, '', 52600, 1314, 59, 1905.89, -1115.16, 25.9538, 2569.41, -1301.77, 1044.12, 2, 5, 0, 0, 0, 102, 103, 104, 0, 6, 1, 0),
 (6, 'African Mafia', 0, '', 52400, 1314, 62, 2495.4, -1688.71, 13.9735, 2569.41, -1301.77, 1044.12, 2, 6, 0, 0, 0, 105, 106, 107, 0, 6, 1, 0),
 (7, 'Asian Mafia', 0, '', 54500, 1314, 60, 2231.89, -1159.81, 25.8906, 2569.41, -1301.77, 1044.12, 2, 7, 0, 0, 0, 108, 109, 110, 0, 6, 1, 0),
-(8, 'News Reporters', 0, '', 885, 1318, 34, 733.452, -1350.27, 13.5, 322.5, 303.7, 999.2, 5, 8, 0, 0, 0, 273, 48, 46, 0, 6, 1, 0);
+(8, 'News Reporters', 0, '', 885, 1318, 34, 733.452, -1350.27, 13.5, 322.5, 303.7, 999.2, 5, 8, 0, 0, 0, 273, 48, 46, 0, 6, 1, 0),
+(9, 'Loco Outlaw Customs', 0, '', 0, 1314, 52, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 6, 1, 0);
 
 -- --------------------------------------------------------
 
@@ -1009,6 +1010,7 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (32, 'Trash unload', 2122.97, -2015.28, 13.6, 'Trash unload point', 0, 0, 1, 'Others'),
 (33, 'ANAF', 1765.24, -1343.33, 915.75, 'ANAF /biz givedocs', 0, 0, 1, 'ANAF'),
 (40, 'examW', 1883.87, -1270.38, 13.54, 'Examen W - start (/examW)', 0, 0, 1, 'Licence'),
+(45, 'LOC''s Garage #1', 711.36, -448.54, 16.2, 'LOC''s Garage #1 - tuning point', 0, 0, 1, 'Tuning'),
 (50, 'ad W LS', 914.5, -1003.31, 38, 'Locatie pentru /ad West LS', 0, 0, 1, 'CNN'),
 (51, 'ad S LS', 1448.95, -2286.96, 13.54, 'Locatie pentru /ad South LS', 0, 0, 1, 'CNN'),
 (52, 'ad E LS', 1853.65, -1145.18, 23.85, 'Locatie pentru /ad East LS', 0, 0, 1, 'CNN'),
@@ -1428,7 +1430,9 @@ CREATE TABLE `vehicles_faction` (
   `rotation` float DEFAULT 0,
   `color1` int(11) DEFAULT 1,
   `color2` int(11) DEFAULT 1,
-  `fuel` float DEFAULT 100
+  `fuel` float DEFAULT 100,
+  `wheels` int(11) DEFAULT 0,
+  `wheels_exp` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

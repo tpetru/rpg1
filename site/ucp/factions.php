@@ -26,6 +26,7 @@ $factionDescriptions = [
     6 => 'Organized crime family. Runs drugs (transport & craft weed), smuggles contraband by boat, fights other mafias over territory, and stocks weapons at the HQ.',
     7 => 'Organized crime family. Runs drugs (transport & craft weed), smuggles contraband by boat, fights other mafias over territory, and stocks weapons at the HQ.',
     8 => 'The press. Broadcasts live news headlines, hosts live Q&A interviews, and publishes a newspaper with player-written stories.',
+    9 => "The city's tuning shop - not a mafia, no smuggling or turf wars. Members can install parts (spoiler, wheels, nitro, hydraulics, paintjob, and more) on any player's vehicle, for free, at one of the faction's tuning points.",
 ];
 ?>
 <!DOCTYPE html>
@@ -56,7 +57,7 @@ $factionDescriptions = [
   <p style="color:var(--muted); margin:-10px 0 20px">What each faction on the server does.</p>
 
   <div class="grid-3">
-    <?php for ($fid = 1; $fid <= 8; $fid++): ?>
+    <?php for ($fid = 1; $fid <= 9; $fid++): ?>
     <div class="card faction-card">
       <h2 style="color:<?= ucp_faction_color($fid) ?>"><?= ucp_escape(ucp_faction_name($fid)) ?></h2>
       <p class="fmembers"><?= $memberCounts[$fid] ?? 0 ?> / <?= $maxMembers[$fid] ?? 6 ?> member<?= ($memberCounts[$fid] ?? 0) === 1 ? '' : 's' ?></p>
@@ -69,7 +70,7 @@ $factionDescriptions = [
   </div>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/../includes/footer.php'; ?>
 
 </body>
 </html>

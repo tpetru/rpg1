@@ -10,8 +10,20 @@ $GLOBALS['forumStatusLabels'] = [
     'rejected'    => ['Rejected', 'bad'],
 ];
 
+// Forum permissions use their own tier (`players.admin_forum`), separate from the site's admin_level:
+// 1+ = manage structure (move categories/subcategories, post in admin-only subforums)
+// 2+ = moderate topics (pin/lock/status, and move pinned topics)
+// 3+ = delete (topics/posts)
+function ucp_forum_can_manage_structure() {
+    return ucp_current_admin_forum() >= 1;
+}
+
 function ucp_forum_can_moderate() {
-    return ucp_current_admin_level() >= 1;
+    return ucp_current_admin_forum() >= 2;
+}
+
+function ucp_forum_can_delete() {
+    return ucp_current_admin_forum() >= 3;
 }
 
 function ucp_forum_status_label($status) {
@@ -66,7 +78,7 @@ function ucp_forum_category_by_slug($slug) {
 // ============================================================
 function ucp_forum_subcategories($categoryId) {
     global $mysqli;
-    $sql = "SELECT s.`id`, s.`name`, s.`slug`, s.`description`, s.`admin_only_post`,
+    $sql = "SELECT s.`id`, s.`name`, s.`slug`, s.`description`, s.`admin_only_post`, s.`require_login`,
                    (SELECT COUNT(*) FROM `z_forum_topics` t WHERE t.`subcategory_id` = s.`id`) AS topic_count,
                    (SELECT COUNT(*) FROM `z_forum_posts` p
                       INNER JOIN `z_forum_topics` t ON t.`id` = p.`topic_id`
@@ -84,7 +96,7 @@ function ucp_forum_subcategories($categoryId) {
 
 function ucp_forum_subcategory_by_slug($slug) {
     global $mysqli;
-    $sql = "SELECT s.`id`, s.`name`, s.`slug`, s.`description`, s.`admin_only_post`,
+    $sql = "SELECT s.`id`, s.`name`, s.`slug`, s.`description`, s.`admin_only_post`, s.`require_login`,
                    c.`id` AS category_id, c.`name` AS category_name, c.`slug` AS category_slug
             FROM `z_forum_subcategories` s
             INNER JOIN `z_forum_categories` c ON c.`id` = s.`category_id`
@@ -130,7 +142,7 @@ function ucp_forum_topics($subcategoryId) {
             FROM `z_forum_topics` t
             INNER JOIN `players` pl ON pl.`id` = t.`player_id`
             WHERE t.`subcategory_id` = ?
-            ORDER BY t.`is_pinned` DESC, t.`last_post_at` DESC";
+            ORDER BY t.`is_pinned` DESC, t.`sort_order` ASC, t.`last_post_at` DESC";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('i', $subcategoryId);
     $stmt->execute();
@@ -142,7 +154,7 @@ function ucp_forum_topics($subcategoryId) {
 function ucp_forum_topic($topicId) {
     global $mysqli;
     $sql = "SELECT t.*, pl.`username`,
-                   s.`slug` AS subcategory_slug, s.`name` AS subcategory_name,
+                   s.`slug` AS subcategory_slug, s.`name` AS subcategory_name, s.`require_login`,
                    c.`slug` AS category_slug, c.`name` AS category_name
             FROM `z_forum_topics` t
             INNER JOIN `z_forum_subcategories` s ON s.`id` = t.`subcategory_id`
@@ -186,7 +198,7 @@ function ucp_forum_create_topic($subcategoryId, $playerId, $title, $body) {
 // ============================================================
 function ucp_forum_posts($topicId) {
     global $mysqli;
-    $sql = "SELECT p.`id`, p.`body`, p.`created_at`, p.`edited_at`, p.`player_id`, pl.`username`, pl.`admin_level`, pl.`vip`
+    $sql = "SELECT p.`id`, p.`body`, p.`created_at`, p.`edited_at`, p.`player_id`, pl.`username`, pl.`admin_level`, pl.`admin_forum`, pl.`vip`
             FROM `z_forum_posts` p
             INNER JOIN `players` pl ON pl.`id` = p.`player_id`
             WHERE p.`topic_id` = ?
@@ -259,4 +271,70 @@ function ucp_forum_delete_post($postId) {
     $stmt->bind_param('i', $postId);
     $stmt->execute();
     $stmt->close();
+}
+
+// ============================================================
+//  MANUAL REORDERING (admin only) - swaps sort_order with the row immediately
+//  above/below it within its group, based on position rather than raw value
+//  so it works even when several rows share the same sort_order (e.g. 0).
+// ============================================================
+function ucp_forum_swap_order($rows, $id, $direction, $table) {
+    global $mysqli;
+    $ids = array_map('intval', array_column($rows, 'id'));
+    $idx = array_search((int)$id, $ids, true);
+    if ($idx === false) return;
+    $swapIdx = $direction === 'up' ? $idx - 1 : $idx + 1;
+    if ($swapIdx < 0 || $swapIdx >= count($rows)) return;
+
+    $a = $rows[$idx];
+    $b = $rows[$swapIdx];
+    $stmt = $mysqli->prepare("UPDATE `$table` SET `sort_order` = ? WHERE `id` = ?");
+    $newA = (int)$b['sort_order'];
+    $stmt->bind_param('ii', $newA, $a['id']);
+    $stmt->execute();
+    $newB = (int)$a['sort_order'];
+    $stmt->bind_param('ii', $newB, $b['id']);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function ucp_forum_move_category($id, $direction) {
+    global $mysqli;
+    $rows = $mysqli->query("SELECT `id`, `sort_order` FROM `z_forum_categories` ORDER BY `sort_order` ASC, `id` ASC")->fetch_all(MYSQLI_ASSOC);
+    ucp_forum_swap_order($rows, $id, $direction, 'z_forum_categories');
+}
+
+function ucp_forum_move_subcategory($id, $direction) {
+    global $mysqli;
+    $stmt = $mysqli->prepare("SELECT `category_id` FROM `z_forum_subcategories` WHERE `id` = ? LIMIT 1");
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) return;
+
+    $stmt = $mysqli->prepare("SELECT `id`, `sort_order` FROM `z_forum_subcategories` WHERE `category_id` = ? ORDER BY `sort_order` ASC, `id` ASC");
+    $stmt->bind_param('i', $row['category_id']);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    ucp_forum_swap_order($rows, $id, $direction, 'z_forum_subcategories');
+}
+
+// Only pinned topics can be manually reordered - regular topics stay sorted by last activity.
+function ucp_forum_move_topic($id, $direction) {
+    global $mysqli;
+    $stmt = $mysqli->prepare("SELECT `subcategory_id`, `is_pinned` FROM `z_forum_topics` WHERE `id` = ? LIMIT 1");
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row || !$row['is_pinned']) return;
+
+    $stmt = $mysqli->prepare("SELECT `id`, `sort_order` FROM `z_forum_topics` WHERE `subcategory_id` = ? AND `is_pinned` = 1 ORDER BY `sort_order` ASC, `id` ASC");
+    $stmt->bind_param('i', $row['subcategory_id']);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    ucp_forum_swap_order($rows, $id, $direction, 'z_forum_topics');
 }

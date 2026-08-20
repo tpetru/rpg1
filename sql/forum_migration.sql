@@ -2,6 +2,10 @@
 -- Ierarhie: category -> subcategory -> topic -> post.
 -- Ruleaza manual (phpMyAdmin / HeidiSQL) pe aceeasi baza de date ca UCP-ul si gamemode-ul.
 
+-- Permisiune de forum separata de `admin_level` (site admin): 0=niciuna, 1=muta categorii/subcategorii,
+-- 2=pin/lock/status pe topicuri, 3=stergere topicuri/postari. Seteaza manual cui vrei sa dai puteri de forum.
+ALTER TABLE `players` ADD COLUMN `admin_forum` TINYINT(4) NOT NULL DEFAULT 0 AFTER `admin_level`;
+
 CREATE TABLE `z_forum_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL,
@@ -20,6 +24,7 @@ CREATE TABLE `z_forum_subcategories` (
   `description` varchar(255) DEFAULT NULL,
   `sort_order` tinyint(4) NOT NULL DEFAULT 0,
   `admin_only_post` tinyint(1) NOT NULL DEFAULT 0,
+  `require_login` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   UNIQUE KEY `slug` (`slug`),
   KEY `category_id` (`category_id`),
@@ -34,6 +39,7 @@ CREATE TABLE `z_forum_topics` (
   `status` enum('open','in_progress','resolved','rejected') NOT NULL DEFAULT 'open',
   `is_pinned` tinyint(1) NOT NULL DEFAULT 0,
   `is_locked` tinyint(1) NOT NULL DEFAULT 0,
+  `sort_order` tinyint(4) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `last_post_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),

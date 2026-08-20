@@ -93,6 +93,7 @@ function ucp_faction_color($id) {
         6 => '#44AA44',
         7 => '#FFCC00',
         8 => '#85648C',
+        9 => '#661414',
     ];
     return $colors[(int)$id] ?? '#FFFFFF';
 }

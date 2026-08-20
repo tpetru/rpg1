@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/../includes/forum_functions.php';
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/forum_functions.php';
 ucp_require_login();
 
 $slug = trim($_GET['subcategory'] ?? $_POST['subcategory'] ?? '');
@@ -46,7 +46,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nostalgia LosSantos | RPG — New Topic</title>
 <link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
-<link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
+<link rel="stylesheet" href="ucp/assets/css/style.css?v=<?= filemtime(__DIR__ . '/ucp/assets/css/style.css') ?>">
 <style>
   .apply-form label { display: block; font-size: 0.85rem; color: var(--muted); margin: 14px 0 4px; }
   .apply-form input, .apply-form textarea {
@@ -65,10 +65,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 </head>
 <body>
 
-<?php include __DIR__ . '/../includes/header.php'; ?>
+<?php include __DIR__ . '/includes/header.php'; ?>
 
 <main style="max-width:600px">
-  <p><a href="forum_subcategory.php?slug=<?= urlencode($subcategory['slug']) ?>">&larr; <?= ucp_escape($subcategory['name']) ?></a></p>
+  <nav class="forum-breadcrumb">
+    <a href="forum.php">💬 Forum</a>
+    <span class="crumb-sep">›</span>
+    <a href="forum_category.php?slug=<?= urlencode($subcategory['category_slug']) ?>"><?= ucp_escape($subcategory['category_name']) ?></a>
+    <span class="crumb-sep">›</span>
+    <a href="forum_subcategory.php?slug=<?= urlencode($subcategory['slug']) ?>"><?= ucp_escape($subcategory['name']) ?></a>
+    <span class="crumb-sep">›</span>
+    <span class="crumb-current">New topic</span>
+  </nav>
   <h1>New topic in <?= ucp_escape($subcategory['name']) ?></h1>
 
   <div class="card">
@@ -91,7 +99,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
   </div>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/includes/footer.php'; ?>
 
 </body>
 </html>

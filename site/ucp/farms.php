@@ -69,7 +69,7 @@ $listingsActive = 'farms';
   </div>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/../includes/footer.php'; ?>
 
 </body>
 </html>

@@ -323,7 +323,7 @@ function ucp_owner_line($owned, $ownerName, $isForSale) {
   </div>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/../includes/footer.php'; ?>
 
 <script>
 document.querySelectorAll('.map-legend input[type=checkbox]').forEach(function(cb) {

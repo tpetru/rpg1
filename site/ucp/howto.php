@@ -230,9 +230,9 @@ ucp_require_login();
 
 <section id="factions">
   <h2>🚓 Factions — <code>/howto faction</code></h2>
-  <p class="subtitle">Comanda de bază: <code>/howto faction [1-8]</code> pentru o facțiune anume</p>
+  <p class="subtitle">Comanda de bază: <code>/howto faction [1-9]</code> pentru o facțiune anume</p>
   <div class="card">
-    <p>Factions: Police (1), R.A.R. (2), SMURD (3), Mafias (4-7), News (8).</p>
+    <p>Factions: Police (1), R.A.R. (2), SMURD (3), Mafias (4-7), News (8), Loco Outlaw Customs (9).</p>
     <p>Joining: a rank 4+ member invites you with <code>/finvite</code>; you accept with <code>/accept [id]</code> (be within 15m).</p>
     <ul>
       <li><code>/f [text]</code> — faction chat</li>
@@ -812,7 +812,7 @@ ucp_require_login();
 
 </main>
 
-<footer>Nostalgia LosSantos | RPG — generat din comanda <code>/howto</code> a gamemode-ului</footer>
+<?php include __DIR__ . '/../includes/footer.php'; ?>
 
 </body>
 </html>

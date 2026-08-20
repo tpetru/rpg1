@@ -44,14 +44,6 @@ if ((int)$player['caravan_key'] > 0) {
     $stmt->close();
 }
 
-// Active rent (house/apartment or hotel) - see /renthouse, /rentappartment, /renthotel in the gamemode
-$rentLabel = null;
-if ((int)$player['rent_house'] > 0) {
-    $rentLabel = 'House/apartment #' . (int)$player['rent_house'];
-} elseif ((int)$player['rent_hotel'] > 0) {
-    $rentLabel = 'Hotel #' . (int)$player['rent_hotel'];
-}
-
 // Owned farm - not a column in `players`, the source of truth is `farms`.`owner_id` (see Farm_SyncPlayerKey in the gamemode)
 $stmt = $mysqli->prepare("SELECT * FROM `farms` WHERE `owner_id` = ? AND `isOwned` = 1 LIMIT 1");
 $stmt->bind_param('i', $pid);
@@ -205,7 +197,6 @@ $sectionNav = [
     ['card-skin',        '🧍', 'Skin'],
     ['card-collections', '👕', 'Skin collections'],
     ['card-cars',        '🚗', 'Cars'],
-    ['card-weapons',     '🔫', 'Weapons'],
 ];
 $sectionNav[] = ['card-house',    '🏠', 'House'];
 $sectionNav[] = ['card-business', '🏢', 'Business'];
@@ -222,7 +213,7 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
 </nav>
 
 <main>
-  <h1>Welcome, <?= ucp_escape($player['username']) ?></h1>
+  <h1>Welcome, <?= ucp_escape($player['username']) ?><?php if ($player['register_date']): ?> <span style="font-style:italic; font-weight:300; font-size:0.6em; color:var(--muted);">(Member since <?= ucp_escape(date('Y-m-d', strtotime($player['register_date']))) ?>)</span><?php endif; ?></h1>
 
   <div class="grid-3">
     <div class="card" id="card-account">
@@ -234,8 +225,6 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
         <tr><th>Bank</th><td>$<?= ucp_money($player['bank']) ?></td></tr>
         <tr><th>Faction</th><td><?= ucp_escape(ucp_faction_name($player['faction'])) ?><?= $player['faction'] > 0 ? ' (rank ' . (int)$player['faction_rank'] . ')' : '' ?></td></tr>
         <tr><th>Admin level</th><td><?= (int)$player['admin_level'] ?></td></tr>
-        <tr><th>Warns</th><td><?= (int)$player['warns'] ?>/3</td></tr>
-        <tr><th>Register date</th><td><?= $player['register_date'] ? ucp_escape(date('Y-m-d', strtotime($player['register_date']))) : '—' ?></td></tr>
         <tr><th>Ban</th><td>
           <?php if ($activeBan): ?>
             <span class="pill pill-bad">Yes</span>
@@ -244,7 +233,7 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
             <span class="pill pill-ok">No</span>
           <?php endif; ?>
         </td></tr>
-        <tr><th>Rent</th><td><?= $rentLabel ? ucp_escape($rentLabel) : 'No active rent' ?></td></tr>
+        <tr><th>Warns</th><td><?= (int)$player['warns'] ?>/3</td></tr>
       </table>
     </div>
 
@@ -361,12 +350,6 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
     <?php endif; ?>
   </div>
 
-    <div class="card" id="card-weapons">
-      <h2>🔫 Weapons</h2>
-      <p style="color:var(--muted); margin:0 0 14px">Full reference of every weapon ID, its name and its legal status (which ones get your Weapon W license confiscated on <code>/inspectplayer</code>).</p>
-      <a href="weapons.php" class="btn">View weapons list</a>
-    </div>
-
     <div class="card" id="card-house">
       <h2>🏠 Your house (<?= $myHouse ? 1 : 0 ?>)</h2>
       <?php if (!$myHouse): ?>
@@ -417,16 +400,17 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
       <?php if (!$myHouse['has_bed']): ?>
         <p style="color:var(--muted); margin:4px 0">No bed. Buy one with <code>/house upgrade bed</code> ($7,500).</p>
       <?php else: ?>
-        <?php $bedBroken = (int)$myHouse['bed_expire'] > 0 && time() >= (int)$myHouse['bed_expire']; ?>
+        <?php $bedExpire = ($myHouse['bed_Exp'] && $myHouse['bed_Exp'] !== '0000-00-00') ? strtotime($myHouse['bed_Exp']) : 0; ?>
+        <?php $bedBroken = $bedExpire > 0 && time() >= $bedExpire; ?>
         <p style="margin:4px 0">
           Status:
           <?php if ($bedBroken): ?>
             <span class="pill pill-bad">Broken</span> — needs replacement (<code>/house upgrade bed</code>, $7,500)
           <?php else: ?>
             <span class="pill pill-ok">Working</span>
-            <?php if ((int)$myHouse['bed_expire'] > 0): ?>
-              — breaks on <strong><?= date('d.m.Y H:i', (int)$myHouse['bed_expire']) ?></strong>
-              (<?= max(0, (int)floor(((int)$myHouse['bed_expire'] - time()) / 86400)) ?> days left)
+            <?php if ($bedExpire > 0): ?>
+              — breaks on <strong><?= date('d.m.Y', $bedExpire) ?></strong>
+              (<?= max(0, (int)floor(($bedExpire - time()) / 86400)) ?> days left)
             <?php endif; ?>
           <?php endif; ?>
         </p>
@@ -628,7 +612,7 @@ $sectionNav[] = ['card-caravan',  '🚐', 'Caravan'];
     </div>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/../includes/footer.php'; ?>
 
 </body>
 </html>

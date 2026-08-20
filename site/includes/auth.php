@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/db.php';
 
 // Site-root-relative base path for the UCP, used for links/asset URLs in shared includes (header.php,
@@ -13,7 +15,7 @@ if (!defined('UCP_BASE')) define('UCP_BASE', '/ucp');
 function ucp_login($username, $password) {
     global $mysqli;
 
-    $stmt = $mysqli->prepare("SELECT `id`,`username`,`password`,`admin_level`,`faction`,`faction_rank` FROM `players` WHERE `username` = ? LIMIT 1");
+    $stmt = $mysqli->prepare("SELECT `id`,`username`,`password`,`admin_level`,`admin_forum`,`faction`,`faction_rank` FROM `players` WHERE `username` = ? LIMIT 1");
     $stmt->bind_param('s', $username);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -25,6 +27,7 @@ function ucp_login($username, $password) {
     $_SESSION['ucp_player_id']    = (int)$row['id'];
     $_SESSION['ucp_username']     = $row['username'];
     $_SESSION['ucp_admin_level']  = (int)$row['admin_level'];
+    $_SESSION['ucp_admin_forum']  = (int)$row['admin_forum'];
     $_SESSION['ucp_faction']      = (int)$row['faction'];
     $_SESSION['ucp_faction_rank'] = (int)$row['faction_rank'];
     return true;
@@ -72,6 +75,7 @@ function ucp_register($username, $password, &$error) {
     $_SESSION['ucp_player_id']    = (int)$newId;
     $_SESSION['ucp_username']     = $username;
     $_SESSION['ucp_admin_level']  = 0;
+    $_SESSION['ucp_admin_forum']  = 0;
     $_SESSION['ucp_faction']      = 0;
     $_SESSION['ucp_faction_rank'] = 1;
     return true;
@@ -82,9 +86,12 @@ function ucp_logout() {
     session_destroy();
 }
 
+// Absolute (UCP_BASE-rooted) redirects, not relative ones - these functions are called from
+// pages at different directory depths (ucp/*.php, ucp/admin/*.php, and now site-root forum*.php),
+// so a relative "index.php"/"dashboard.php" would resolve against the wrong directory.
 function ucp_require_login() {
     if (!isset($_SESSION['ucp_player_id'])) {
-        header('Location: index.php');
+        header('Location: ' . UCP_BASE . '/index.php');
         exit;
     }
 }
@@ -92,7 +99,7 @@ function ucp_require_login() {
 function ucp_require_admin() {
     ucp_require_login();
     if ((int)$_SESSION['ucp_admin_level'] < 1) {
-        header('Location: dashboard.php');
+        header('Location: ' . UCP_BASE . '/dashboard.php');
         exit;
     }
 }
@@ -103,6 +110,11 @@ function ucp_current_player_id() {
 
 function ucp_current_admin_level() {
     return isset($_SESSION['ucp_admin_level']) ? (int)$_SESSION['ucp_admin_level'] : 0;
+}
+
+// Forum permission tier, separate from the site's `admin_level`. See ucp_forum_can_*() in forum_functions.php.
+function ucp_current_admin_forum() {
+    return isset($_SESSION['ucp_admin_forum']) ? (int)$_SESSION['ucp_admin_forum'] : 0;
 }
 
 function ucp_current_faction() {
@@ -147,7 +159,7 @@ function ucp_is_faction_leader($factionId) {
 function ucp_require_faction_access($factionId) {
     ucp_require_login();
     if (!ucp_is_faction_leader($factionId) && ucp_current_admin_level() < 1) {
-        header('Location: dashboard.php');
+        header('Location: ' . UCP_BASE . '/dashboard.php');
         exit;
     }
 }

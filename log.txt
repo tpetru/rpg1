@@ -8098,3 +8098,1611 @@ Executing Server Config...
 *** Streamer Plugin v2.9.6 by Incognito unloaded ***
 
 [15:38:38] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[10:03:03] [Info] Loading plugin: mysql
+[10:03:03] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[10:03:03] [Info] Loading plugin: streamer
+[10:03:03] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[10:03:03] [Info]  
+[10:03:03] [Info] ==================================================
+[10:03:03] [Info]   N-RP  |  incarcare date din baza de date
+[10:03:03] [Info] ==================================================
+[10:03:03] [Info] [DB] Conectat la MySQL cu succes!
+[10:03:03] [Info] [DB] Tabel `players` verificat/creat.
+[10:03:03] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[10:03:03] [Info] [DB] Tabele verificate/create.
+[10:03:03] [Info] 
+----------------------------------
+[10:03:03] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[10:03:03] [Info] ----------------------------------
+
+[10:03:03] [Info] Legacy Network started on port 7777
+[10:03:03] [Info] [Load] Factiuni: 8
+[10:03:03] [Info] [Load] Case: 42
+[10:03:03] [Info] [Load] Hoteluri: 11
+[10:03:03] [Info] [Load] Interioare GTA: 138
+[10:03:03] [Info] [Load] Baruri: 4
+[10:03:03] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[10:03:03] [Info] [Load] Animale: 2
+[10:03:03] [Info] [Load] Copaci: 1
+[10:03:03] [Info] [Load] Business-uri: 23
+[10:03:03] [Info] [Load] Turf-uri: 10
+[10:03:03] [Info] [Load] ATM-uri: 10
+[10:03:03] [Info] [Load] Tomberoane: 8
+[10:03:03] [Info] [Load] Benzinarii: 2
+[10:03:03] [Info] [Load] Billboard-uri: 2
+[10:03:03] [Info] [Load] Shop-uri: 18
+[10:03:03] [Info] [Load] Magazine de haine (create in-game): 4
+[10:03:03] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[10:03:03] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[10:03:03] [Info] [Load] Locatii: 56
+[10:03:03] [Info] [Load] Cosuri baschet: 4
+[10:03:03] [Info] [Load] Spawn-uri baschet: 32
+[10:03:03] [Info] [Load] Vehicule factiune: 102
+[10:03:03] [Info] [Load] Vehicule personale: 36
+[10:03:03] [Info] [Load] Rulote: 1
+[10:03:03] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[10:03:03] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[10:03:03] [Info] [Load] Recorduri curse: 18
+[10:03:03] [Info] [Load] Paduri: 1
+[10:03:03] [Info] [Load] Ferme: 7
+[10:03:03] [Info] [Load] Utilaje ferma: 5
+[10:03:03] [Info] ==================================================
+[10:03:03] [Info]   N-RP  |  gamemode incarcat cu succes.
+[10:03:03] [Info] ==================================================
+[10:03:03] [Info]  
+[10:07:06] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[10:07:06] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[10:07:08] [Info] Loading plugin: mysql
+[10:07:08] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[10:07:08] [Info] Loading plugin: streamer
+[10:07:08] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[10:07:08] [Info]  
+[10:07:08] [Info] ==================================================
+[10:07:08] [Info]   N-RP  |  incarcare date din baza de date
+[10:07:08] [Info] ==================================================
+[10:07:08] [Info] [DB] Conectat la MySQL cu succes!
+[10:07:08] [Info] [DB] Tabel `players` verificat/creat.
+[10:07:08] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[10:07:08] [Info] [DB] Tabele verificate/create.
+[10:07:08] [Info] 
+----------------------------------
+[10:07:08] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[10:07:08] [Info] ----------------------------------
+
+[10:07:08] [Error] Unable to start legacy network on port 7777. Port in use?
+[10:07:08] [Info] [Load] Factiuni: 8
+[10:07:08] [Info] [Load] Case: 42
+[10:07:08] [Info] [Load] Hoteluri: 11
+[10:07:08] [Info] [Load] Interioare GTA: 138
+[10:07:08] [Info] [Load] Baruri: 4
+[10:07:08] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[10:07:08] [Info] [Load] Animale: 2
+[10:07:08] [Info] [Load] Copaci: 1
+[10:07:08] [Info] [Load] Business-uri: 23
+[10:07:08] [Info] [Load] Turf-uri: 10
+[10:07:08] [Info] [Load] ATM-uri: 10
+[10:07:08] [Info] [Load] Tomberoane: 8
+[10:07:08] [Info] [Load] Benzinarii: 2
+[10:07:08] [Info] [Load] Billboard-uri: 2
+[10:07:08] [Info] [Load] Shop-uri: 18
+[10:07:08] [Info] [Load] Magazine de haine (create in-game): 4
+[10:07:08] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[10:07:08] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[10:07:08] [Info] [Load] Locatii: 56
+[10:07:08] [Info] [Load] Cosuri baschet: 4
+[10:07:08] [Info] [Load] Spawn-uri baschet: 32
+[10:07:08] [Info] [Load] Vehicule factiune: 102
+[10:07:08] [Info] [Load] Vehicule personale: 36
+[10:07:08] [Info] [Load] Rulote: 1
+[10:07:08] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[10:07:08] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[10:07:08] [Info] [Load] Recorduri curse: 18
+[10:07:08] [Info] [Load] Paduri: 1
+[10:07:08] [Info] [Load] Ferme: 7
+[10:07:08] [Info] [Load] Utilaje ferma: 5
+[10:07:08] [Info] ==================================================
+[10:07:08] [Info]   N-RP  |  gamemode incarcat cu succes.
+[10:07:08] [Info] ==================================================
+[10:07:08] [Info]  
+[11:00:08] [Info] [PayDay] Distribuit la 11:00.
+[11:00:08] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[11:00:08] [Info] [Load] Animale: 2
+[12:00:08] [Info] [PayDay] Distribuit la 12:00.
+[12:00:08] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[12:00:08] [Info] [Load] Animale: 2
+[13:00:08] [Info] [PayDay] Distribuit la 13:00.
+[13:00:08] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[13:00:08] [Info] [Load] Animale: 2
+[14:00:09] [Info] [PayDay] Distribuit la 14:00.
+[14:00:09] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[14:00:09] [Info] [Load] Animale: 2
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[16:06:10] [Info] Loading plugin: mysql
+[16:06:10] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[16:06:10] [Info] Loading plugin: streamer
+[16:06:10] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:06:11] [Info]  
+[16:06:11] [Info] ==================================================
+[16:06:11] [Info]   N-RP  |  incarcare date din baza de date
+[16:06:11] [Info] ==================================================
+[16:06:11] [Info] [DB] Conectat la MySQL cu succes!
+[16:06:11] [Info] [DB] Tabel `players` verificat/creat.
+[16:06:11] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[16:06:11] [Info] [DB] Tabele verificate/create.
+[16:06:11] [Info] 
+----------------------------------
+[16:06:11] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[16:06:11] [Info] ----------------------------------
+
+[16:06:11] [Info] Legacy Network started on port 7777
+[16:06:11] [Info] [Load] Factiuni: 9
+[16:06:11] [Info] [Load] Case: 42
+[16:06:11] [Info] [Load] Hoteluri: 11
+[16:06:11] [Info] [Load] Interioare GTA: 138
+[16:06:11] [Info] [Load] Baruri: 4
+[16:06:11] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:06:11] [Info] [Load] Animale: 2
+[16:06:11] [Info] [Load] Copaci: 1
+[16:06:11] [Info] [Load] Business-uri: 23
+[16:06:11] [Info] [Load] Turf-uri: 10
+[16:06:11] [Info] [Load] ATM-uri: 10
+[16:06:11] [Info] [Load] Tomberoane: 8
+[16:06:11] [Info] [Load] Benzinarii: 2
+[16:06:11] [Info] [Load] Billboard-uri: 2
+[16:06:11] [Info] [Load] Shop-uri: 18
+[16:06:11] [Info] [Load] Magazine de haine (create in-game): 4
+[16:06:11] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[16:06:11] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:06:11] [Info] [Load] Locatii: 59
+[16:06:11] [Info] [Load] Cosuri baschet: 4
+[16:06:11] [Info] [Load] Spawn-uri baschet: 32
+[16:06:11] [Info] [Load] Vehicule factiune: 102
+[16:06:11] [Info] [Load] Vehicule personale: 36
+[16:06:11] [Info] [Load] Rulote: 1
+[16:06:11] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:06:11] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:06:11] [Info] [Load] Recorduri curse: 18
+[16:06:11] [Info] [Load] Paduri: 1
+[16:06:11] [Info] [Load] Ferme: 7
+[16:06:11] [Info] [Load] Utilaje ferma: 5
+[16:06:11] [Info] ==================================================
+[16:06:11] [Info]   N-RP  |  gamemode incarcat cu succes.
+[16:06:11] [Info] ==================================================
+[16:06:11] [Info]  
+[16:06:34] [Info] [connection] incoming connection: 127.0.0.1:54849 id: 0
+[16:06:34] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:17:24] [Warning] RCON (In-Game): Player #0 (Punctulet) has logged in.
+[16:17:28] [Warning] RCON (In-Game): Player [Punctulet] sent command: gmx
+[16:17:40] [Info]  
+[16:17:40] [Info] ==================================================
+[16:17:40] [Info]   N-RP  |  incarcare date din baza de date
+[16:17:40] [Info] ==================================================
+[16:17:40] [Info] [DB] Conectat la MySQL cu succes!
+[16:17:40] [Info] [DB] Tabel `players` verificat/creat.
+[16:17:40] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[16:17:40] [Info] [DB] Tabele verificate/create.
+[16:17:40] [Info] 
+----------------------------------
+[16:17:40] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[16:17:40] [Info] ----------------------------------
+
+[16:17:40] [Info] [Load] Factiuni: 9
+[16:17:40] [Info] [Load] Case: 42
+[16:17:40] [Info] [Load] Hoteluri: 11
+[16:17:40] [Info] [Load] Interioare GTA: 138
+[16:17:40] [Info] [Load] Baruri: 4
+[16:17:40] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:17:40] [Info] [Load] Animale: 2
+[16:17:40] [Info] [Load] Copaci: 1
+[16:17:40] [Info] [Load] Business-uri: 23
+[16:17:40] [Info] [Load] Turf-uri: 10
+[16:17:40] [Info] [Load] ATM-uri: 10
+[16:17:40] [Info] [Load] Tomberoane: 8
+[16:17:40] [Info] [Load] Benzinarii: 2
+[16:17:40] [Info] [Load] Billboard-uri: 2
+[16:17:40] [Info] [Load] Shop-uri: 18
+[16:17:40] [Info] [Load] Magazine de haine (create in-game): 4
+[16:17:40] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[16:17:40] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:17:40] [Info] [Load] Locatii: 59
+[16:17:40] [Info] [Load] Cosuri baschet: 4
+[16:17:40] [Info] [Load] Spawn-uri baschet: 32
+[16:17:40] [Info] [Load] Vehicule factiune: 102
+[16:17:40] [Info] [Load] Vehicule personale: 36
+[16:17:40] [Info] [Load] Rulote: 1
+[16:17:40] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:17:40] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:17:40] [Info] [Load] Recorduri curse: 18
+[16:17:40] [Info] [Load] Paduri: 1
+[16:17:40] [Info] [Load] Ferme: 7
+[16:17:40] [Info] [Load] Utilaje ferma: 5
+[16:17:40] [Info] ==================================================
+[16:17:40] [Info]   N-RP  |  gamemode incarcat cu succes.
+[16:17:40] [Info] ==================================================
+[16:17:40] [Info]  
+[16:17:55] [Info] [part] Punctulet has left the server (0:1)
+[16:18:05] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[16:18:05] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[16:20:15] [Info] Loading plugin: mysql
+[16:20:15] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[16:20:15] [Info] Loading plugin: streamer
+[16:20:15] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:20:15] [Info]  
+[16:20:15] [Info] ==================================================
+[16:20:15] [Info]   N-RP  |  incarcare date din baza de date
+[16:20:15] [Info] ==================================================
+[16:20:15] [Info] [DB] Conectat la MySQL cu succes!
+[16:20:15] [Info] [DB] Tabel `players` verificat/creat.
+[16:20:15] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[16:20:15] [Info] [DB] Tabele verificate/create.
+[16:20:15] [Info] 
+----------------------------------
+[16:20:15] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[16:20:15] [Info] ----------------------------------
+
+[16:20:15] [Info] Legacy Network started on port 7777
+[16:20:15] [Info] [Load] Factiuni: 9
+[16:20:15] [Info] [Load] Case: 42
+[16:20:15] [Info] [Load] Hoteluri: 11
+[16:20:15] [Info] [Load] Interioare GTA: 138
+[16:20:15] [Info] [Load] Baruri: 4
+[16:20:15] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:20:15] [Info] [Load] Animale: 2
+[16:20:15] [Info] [Load] Copaci: 1
+[16:20:15] [Info] [Load] Business-uri: 23
+[16:20:15] [Info] [Load] Turf-uri: 10
+[16:20:15] [Info] [Load] ATM-uri: 10
+[16:20:15] [Info] [Load] Tomberoane: 8
+[16:20:15] [Info] [Load] Benzinarii: 2
+[16:20:15] [Info] [Load] Billboard-uri: 2
+[16:20:15] [Info] [Load] Shop-uri: 18
+[16:20:15] [Info] [Load] Magazine de haine (create in-game): 4
+[16:20:15] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[16:20:15] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:20:15] [Info] [Load] Locatii: 59
+[16:20:15] [Info] [Load] Cosuri baschet: 4
+[16:20:15] [Info] [Load] Spawn-uri baschet: 32
+[16:20:15] [Info] [Load] Vehicule factiune: 102
+[16:20:15] [Info] [Load] Vehicule personale: 36
+[16:20:15] [Info] [Load] Rulote: 1
+[16:20:15] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:20:15] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:20:15] [Info] [Load] Recorduri curse: 18
+[16:20:15] [Info] [Load] Paduri: 1
+[16:20:15] [Info] [Load] Ferme: 7
+[16:20:15] [Info] [Load] Utilaje ferma: 5
+[16:20:15] [Info] ==================================================
+[16:20:15] [Info]   N-RP  |  gamemode incarcat cu succes.
+[16:20:15] [Info] ==================================================
+[16:20:15] [Info]  
+[16:20:17] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[16:20:17] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[16:20:18] [Info] Loading plugin: mysql
+[16:20:18] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[16:20:18] [Info] Loading plugin: streamer
+[16:20:19] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:20:19] [Info]  
+[16:20:19] [Info] ==================================================
+[16:20:19] [Info]   N-RP  |  incarcare date din baza de date
+[16:20:19] [Info] ==================================================
+[16:20:19] [Info] [DB] Conectat la MySQL cu succes!
+[16:20:19] [Info] [DB] Tabel `players` verificat/creat.
+[16:20:19] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[16:20:19] [Info] [DB] Tabele verificate/create.
+[16:20:19] [Info] 
+----------------------------------
+[16:20:19] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[16:20:19] [Info] ----------------------------------
+
+[16:20:19] [Error] Unable to start legacy network on port 7777. Port in use?
+[16:20:19] [Info] [Load] Factiuni: 9
+[16:20:19] [Info] [Load] Case: 42
+[16:20:19] [Info] [Load] Hoteluri: 11
+[16:20:19] [Info] [Load] Interioare GTA: 138
+[16:20:19] [Info] [Load] Baruri: 4
+[16:20:19] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:20:19] [Info] [Load] Animale: 2
+[16:20:19] [Info] [Load] Copaci: 1
+[16:20:19] [Info] [Load] Business-uri: 23
+[16:20:19] [Info] [Load] Turf-uri: 10
+[16:20:19] [Info] [Load] ATM-uri: 10
+[16:20:19] [Info] [Load] Tomberoane: 8
+[16:20:19] [Info] [Load] Benzinarii: 2
+[16:20:19] [Info] [Load] Billboard-uri: 2
+[16:20:19] [Info] [Load] Shop-uri: 18
+[16:20:19] [Info] [Load] Magazine de haine (create in-game): 4
+[16:20:19] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[16:20:19] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:20:19] [Info] [Load] Locatii: 59
+[16:20:19] [Info] [Load] Cosuri baschet: 4
+[16:20:19] [Info] [Load] Spawn-uri baschet: 32
+[16:20:19] [Info] [Load] Vehicule factiune: 102
+[16:20:19] [Info] [Load] Vehicule personale: 36
+[16:20:19] [Info] [Load] Rulote: 1
+[16:20:19] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:20:19] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:20:19] [Info] [Load] Recorduri curse: 18
+[16:20:19] [Info] [Load] Paduri: 1
+[16:20:19] [Info] [Load] Ferme: 7
+[16:20:19] [Info] [Load] Utilaje ferma: 5
+[16:20:19] [Info] ==================================================
+[16:20:19] [Info]   N-RP  |  gamemode incarcat cu succes.
+[16:20:19] [Info] ==================================================
+[16:20:19] [Info]  
+[16:21:42] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[16:21:42] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[16:21:44] [Info] Loading plugin: mysql
+[16:21:44] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[16:21:44] [Info] Loading plugin: streamer
+[16:21:44] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[16:21:44] [Info]  
+[16:21:44] [Info] ==================================================
+[16:21:44] [Info]   N-RP  |  incarcare date din baza de date
+[16:21:44] [Info] ==================================================
+[16:21:44] [Info] [DB] Conectat la MySQL cu succes!
+[16:21:44] [Info] [DB] Tabel `players` verificat/creat.
+[16:21:44] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[16:21:44] [Info] [DB] Tabele verificate/create.
+[16:21:44] [Info] 
+----------------------------------
+[16:21:44] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[16:21:44] [Info] ----------------------------------
+
+[16:21:44] [Info] Legacy Network started on port 7777
+[16:21:44] [Info] [Load] Factiuni: 9
+[16:21:44] [Info] [Load] Case: 42
+[16:21:44] [Info] [Load] Hoteluri: 11
+[16:21:44] [Info] [Load] Interioare GTA: 138
+[16:21:44] [Info] [Load] Baruri: 4
+[16:21:44] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[16:21:44] [Info] [Load] Animale: 2
+[16:21:44] [Info] [Load] Copaci: 1
+[16:21:44] [Info] [Load] Business-uri: 23
+[16:21:44] [Info] [Load] Turf-uri: 10
+[16:21:44] [Info] [Load] ATM-uri: 10
+[16:21:44] [Info] [Load] Tomberoane: 8
+[16:21:44] [Info] [Load] Benzinarii: 2
+[16:21:44] [Info] [Load] Billboard-uri: 2
+[16:21:44] [Info] [Load] Shop-uri: 18
+[16:21:44] [Info] [Load] Magazine de haine (create in-game): 4
+[16:21:44] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[16:21:44] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[16:21:44] [Info] [Load] Locatii: 59
+[16:21:44] [Info] [Load] Cosuri baschet: 4
+[16:21:44] [Info] [Load] Spawn-uri baschet: 32
+[16:21:44] [Info] [Load] Vehicule factiune: 102
+[16:21:44] [Info] [Load] Vehicule personale: 36
+[16:21:44] [Info] [Load] Rulote: 1
+[16:21:44] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[16:21:44] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[16:21:44] [Info] [Load] Recorduri curse: 18
+[16:21:44] [Info] [Load] Paduri: 1
+[16:21:44] [Info] [Load] Ferme: 7
+[16:21:44] [Info] [Load] Utilaje ferma: 5
+[16:21:44] [Info] ==================================================
+[16:21:44] [Info]   N-RP  |  gamemode incarcat cu succes.
+[16:21:44] [Info] ==================================================
+[16:21:44] [Info]  
+[16:22:01] [Info] [connection] incoming connection: 127.0.0.1:57956 id: 0
+[16:22:01] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[16:22:35] [Info] [part] Punctulet has left the server (0:1)
+[16:22:56] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[16:22:56] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[17:02:58] [Info] Loading plugin: mysql
+[17:02:58] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[17:02:58] [Info] Loading plugin: streamer
+[17:02:58] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[17:02:58] [Info]  
+[17:02:58] [Info] ==================================================
+[17:02:58] [Info]   N-RP  |  incarcare date din baza de date
+[17:02:58] [Info] ==================================================
+[17:02:58] [Info] [DB] Conectat la MySQL cu succes!
+[17:02:58] [Info] [DB] Tabel `players` verificat/creat.
+[17:02:58] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[17:02:58] [Info] [DB] Tabele verificate/create.
+[17:02:58] [Info] 
+----------------------------------
+[17:02:58] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[17:02:58] [Info] ----------------------------------
+
+[17:02:58] [Info] Legacy Network started on port 7777
+[17:02:59] [Info] [Load] Factiuni: 9
+[17:02:59] [Info] [Load] Case: 42
+[17:02:59] [Info] [Load] Hoteluri: 11
+[17:02:59] [Info] [Load] Interioare GTA: 138
+[17:02:59] [Info] [Load] Baruri: 4
+[17:02:59] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[17:02:59] [Info] [Load] Animale: 2
+[17:02:59] [Info] [Load] Copaci: 1
+[17:02:59] [Info] [Load] Business-uri: 23
+[17:02:59] [Info] [Load] Turf-uri: 10
+[17:02:59] [Info] [Load] ATM-uri: 10
+[17:02:59] [Info] [Load] Tomberoane: 8
+[17:02:59] [Info] [Load] Benzinarii: 2
+[17:02:59] [Info] [Load] Billboard-uri: 2
+[17:02:59] [Info] [Load] Shop-uri: 18
+[17:02:59] [Info] [Load] Magazine de haine (create in-game): 4
+[17:02:59] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[17:02:59] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[17:02:59] [Info] [Load] Locatii: 59
+[17:02:59] [Info] [Tuning] 3 puncte de tuning incarcate.
+[17:02:59] [Info] [Load] Cosuri baschet: 4
+[17:02:59] [Info] [Load] Spawn-uri baschet: 32
+[17:02:59] [Info] [Load] Vehicule factiune: 102
+[17:02:59] [Info] [Load] Vehicule personale: 36
+[17:02:59] [Info] [Load] Rulote: 1
+[17:02:59] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[17:02:59] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[17:02:59] [Info] [Load] Recorduri curse: 18
+[17:02:59] [Info] [Load] Paduri: 1
+[17:02:59] [Info] [Load] Ferme: 7
+[17:02:59] [Info] [Load] Utilaje ferma: 5
+[17:02:59] [Info] ==================================================
+[17:02:59] [Info]   N-RP  |  gamemode incarcat cu succes.
+[17:02:59] [Info] ==================================================
+[17:02:59] [Info]  
+[17:03:22] [Info] [connection] incoming connection: 127.0.0.1:52215 id: 0
+[17:03:22] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[17:04:29] [Info] [Load] Benzinarii: 3
+[17:06:57] [Info] [part] Punctulet has left the server (0:1)
+[17:12:56] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[17:12:56] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[17:13:00] [Info] Loading plugin: mysql
+[17:13:00] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[17:13:00] [Info] Loading plugin: streamer
+[17:13:00] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[17:13:00] [Info]  
+[17:13:00] [Info] ==================================================
+[17:13:00] [Info]   N-RP  |  incarcare date din baza de date
+[17:13:00] [Info] ==================================================
+[17:13:00] [Info] [DB] Conectat la MySQL cu succes!
+[17:13:00] [Info] [DB] Tabel `players` verificat/creat.
+[17:13:00] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[17:13:00] [Info] [DB] Tabele verificate/create.
+[17:13:00] [Info] 
+----------------------------------
+[17:13:00] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[17:13:00] [Info] ----------------------------------
+
+[17:13:00] [Error] Unable to start legacy network on port 7777. Port in use?
+[17:13:00] [Info] [Load] Factiuni: 9
+[17:13:01] [Info] [Load] Case: 42
+[17:13:01] [Info] [Load] Hoteluri: 11
+[17:13:01] [Info] [Load] Interioare GTA: 138
+[17:13:01] [Info] [Load] Baruri: 4
+[17:13:01] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[17:13:01] [Info] [Load] Animale: 2
+[17:13:01] [Info] [Load] Copaci: 1
+[17:13:01] [Info] [Load] Business-uri: 23
+[17:13:01] [Info] [Load] Turf-uri: 10
+[17:13:01] [Info] [Load] ATM-uri: 10
+[17:13:01] [Info] [Load] Tomberoane: 8
+[17:13:01] [Info] [Load] Benzinarii: 3
+[17:13:01] [Info] [Load] Billboard-uri: 2
+[17:13:01] [Info] [Load] Shop-uri: 18
+[17:13:01] [Info] [Load] Magazine de haine (create in-game): 4
+[17:13:01] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[17:13:01] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[17:13:01] [Info] [Load] Locatii: 59
+[17:13:01] [Info] [Tuning] 3 puncte de tuning incarcate.
+[17:13:01] [Info] [Load] Cosuri baschet: 4
+[17:13:01] [Info] [Load] Spawn-uri baschet: 32
+[17:13:01] [Info] [Load] Vehicule factiune: 102
+[17:13:01] [Info] [Load] Vehicule personale: 36
+[17:13:01] [Info] [Load] Rulote: 1
+[17:13:01] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[17:13:01] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[17:13:01] [Info] [Load] Recorduri curse: 18
+[17:13:01] [Info] [Load] Paduri: 1
+[17:13:01] [Info] [Load] Ferme: 7
+[17:13:01] [Info] [Load] Utilaje ferma: 5
+[17:13:01] [Info] ==================================================
+[17:13:01] [Info]   N-RP  |  gamemode incarcat cu succes.
+[17:13:01] [Info] ==================================================
+[17:13:01] [Info]  
+[17:13:41] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[17:13:41] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[17:13:42] [Info] Loading plugin: mysql
+[17:13:42] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[17:13:42] [Info] Loading plugin: streamer
+[17:13:42] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[17:13:42] [Info]  
+[17:13:42] [Info] ==================================================
+[17:13:42] [Info]   N-RP  |  incarcare date din baza de date
+[17:13:42] [Info] ==================================================
+[17:13:42] [Info] [DB] Conectat la MySQL cu succes!
+[17:13:42] [Info] [DB] Tabel `players` verificat/creat.
+[17:13:42] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[17:13:42] [Info] [DB] Tabele verificate/create.
+[17:13:42] [Info] 
+----------------------------------
+[17:13:42] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[17:13:42] [Info] ----------------------------------
+
+[17:13:42] [Info] Legacy Network started on port 7777
+[17:13:42] [Info] [Load] Factiuni: 9
+[17:13:42] [Info] [Load] Case: 42
+[17:13:42] [Info] [Load] Hoteluri: 11
+[17:13:42] [Info] [Load] Interioare GTA: 138
+[17:13:42] [Info] [Load] Baruri: 4
+[17:13:42] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[17:13:42] [Info] [Load] Animale: 2
+[17:13:42] [Info] [Load] Copaci: 1
+[17:13:42] [Info] [Load] Business-uri: 23
+[17:13:42] [Info] [Load] Turf-uri: 10
+[17:13:42] [Info] [Load] ATM-uri: 10
+[17:13:42] [Info] [Load] Tomberoane: 8
+[17:13:42] [Info] [Load] Benzinarii: 3
+[17:13:42] [Info] [Load] Billboard-uri: 2
+[17:13:42] [Info] [Load] Shop-uri: 18
+[17:13:42] [Info] [Load] Magazine de haine (create in-game): 4
+[17:13:42] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[17:13:42] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[17:13:42] [Info] [Load] Locatii: 59
+[17:13:42] [Info] [Tuning] 3 puncte de tuning incarcate.
+[17:13:42] [Info] [Load] Cosuri baschet: 4
+[17:13:42] [Info] [Load] Spawn-uri baschet: 32
+[17:13:42] [Info] [Load] Vehicule factiune: 102
+[17:13:42] [Info] [Load] Vehicule personale: 36
+[17:13:42] [Info] [Load] Rulote: 1
+[17:13:42] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[17:13:42] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[17:13:42] [Info] [Load] Recorduri curse: 18
+[17:13:42] [Info] [Load] Paduri: 1
+[17:13:42] [Info] [Load] Ferme: 7
+[17:13:42] [Info] [Load] Utilaje ferma: 5
+[17:13:42] [Info] ==================================================
+[17:13:42] [Info]   N-RP  |  gamemode incarcat cu succes.
+[17:13:42] [Info] ==================================================
+[17:13:42] [Info]  
+[17:14:02] [Info] [connection] incoming connection: 127.0.0.1:59738 id: 0
+[17:14:02] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[17:44:18] [Info] [part] Punctulet has left the server (0:1)
+[17:46:25] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[17:46:25] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[18:03:28] [Info] Loading plugin: mysql
+[18:03:28] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[18:03:28] [Info] Loading plugin: streamer
+[18:03:28] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[18:03:28] [Info]  
+[18:03:28] [Info] ==================================================
+[18:03:28] [Info]   N-RP  |  incarcare date din baza de date
+[18:03:28] [Info] ==================================================
+[18:03:28] [Info] [DB] Conectat la MySQL cu succes!
+[18:03:28] [Info] [DB] Tabel `players` verificat/creat.
+[18:03:28] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[18:03:28] [Info] [DB] Tabele verificate/create.
+[18:03:28] [Info] 
+----------------------------------
+[18:03:28] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[18:03:28] [Info] ----------------------------------
+
+[18:03:28] [Info] Legacy Network started on port 7777
+[18:03:28] [Info] [Load] Factiuni: 9
+[18:03:28] [Info] [Load] Case: 42
+[18:03:28] [Info] [Load] Hoteluri: 11
+[18:03:28] [Info] [Load] Interioare GTA: 138
+[18:03:28] [Info] [Load] Baruri: 4
+[18:03:28] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[18:03:28] [Info] [Load] Animale: 2
+[18:03:28] [Info] [Load] Copaci: 1
+[18:03:28] [Info] [Load] Business-uri: 23
+[18:03:28] [Info] [Load] Turf-uri: 10
+[18:03:28] [Info] [Load] ATM-uri: 11
+[18:03:28] [Info] [Load] Tomberoane: 8
+[18:03:28] [Info] [Load] Benzinarii: 3
+[18:03:28] [Info] [Load] Billboard-uri: 2
+[18:03:28] [Info] [Load] Shop-uri: 18
+[18:03:28] [Info] [Load] Magazine de haine (create in-game): 4
+[18:03:28] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[18:03:28] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[18:03:28] [Info] [Load] Locatii: 59
+[18:03:28] [Info] [Tuning] 3 puncte de tuning incarcate.
+[18:03:28] [Info] [Load] Cosuri baschet: 4
+[18:03:28] [Info] [Load] Spawn-uri baschet: 32
+[18:03:28] [Info] [Load] Vehicule factiune: 115
+[18:03:28] [Info] [Load] Vehicule personale: 36
+[18:03:28] [Info] [Load] Rulote: 1
+[18:03:28] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[18:03:28] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[18:03:28] [Info] [Load] Recorduri curse: 18
+[18:03:28] [Info] [Load] Paduri: 1
+[18:03:28] [Info] [Load] Ferme: 7
+[18:03:28] [Info] [Load] Utilaje ferma: 5
+[18:03:28] [Info] ==================================================
+[18:03:28] [Info]   N-RP  |  gamemode incarcat cu succes.
+[18:03:28] [Info] ==================================================
+[18:03:28] [Info]  
+[18:03:46] [Info] [connection] incoming connection: 127.0.0.1:51704 id: 0
+[18:03:46] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[18:04:37] [Info] [part] Punctulet has left the server (0:1)
+[18:05:02] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[18:05:02] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[18:37:30] [Info] Loading plugin: mysql
+[18:37:30] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[18:37:30] [Info] Loading plugin: streamer
+[18:37:30] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[18:37:30] [Info]  
+[18:37:30] [Info] ==================================================
+[18:37:30] [Info]   N-RP  |  incarcare date din baza de date
+[18:37:30] [Info] ==================================================
+[18:37:30] [Info] [DB] Conectat la MySQL cu succes!
+[18:37:30] [Info] [DB] Tabel `players` verificat/creat.
+[18:37:30] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[18:37:30] [Info] [DB] Tabele verificate/create.
+[18:37:30] [Info] 
+----------------------------------
+[18:37:30] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[18:37:30] [Info] ----------------------------------
+
+[18:37:30] [Info] Legacy Network started on port 7777
+[18:37:30] [Info] [Load] Factiuni: 9
+[18:37:30] [Info] [Load] Case: 42
+[18:37:30] [Info] [Load] Hoteluri: 11
+[18:37:30] [Info] [Load] Interioare GTA: 138
+[18:37:30] [Info] [Load] Baruri: 4
+[18:37:30] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[18:37:30] [Info] [Load] Animale: 2
+[18:37:30] [Info] [Load] Copaci: 1
+[18:37:30] [Info] [Load] Business-uri: 23
+[18:37:30] [Info] [Load] Turf-uri: 10
+[18:37:30] [Info] [Load] ATM-uri: 11
+[18:37:30] [Info] [Load] Tomberoane: 8
+[18:37:30] [Info] [Load] Benzinarii: 3
+[18:37:30] [Info] [Load] Billboard-uri: 2
+[18:37:30] [Info] [Load] Shop-uri: 18
+[18:37:30] [Info] [Load] Magazine de haine (create in-game): 4
+[18:37:30] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[18:37:30] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[18:37:30] [Info] [Load] Locatii: 59
+[18:37:30] [Info] [Tuning] 3 puncte de tuning incarcate.
+[18:37:30] [Info] [Load] Cosuri baschet: 4
+[18:37:30] [Info] [Load] Spawn-uri baschet: 32
+[18:37:30] [Info] [Load] Vehicule factiune: 115
+[18:37:30] [Info] [Load] Vehicule personale: 36
+[18:37:30] [Info] [Load] Rulote: 1
+[18:37:30] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[18:37:30] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[18:37:30] [Info] [Load] Recorduri curse: 18
+[18:37:30] [Info] [Load] Paduri: 1
+[18:37:30] [Info] [Load] Ferme: 7
+[18:37:30] [Info] [Load] Utilaje ferma: 5
+[18:37:30] [Info] ==================================================
+[18:37:30] [Info]   N-RP  |  gamemode incarcat cu succes.
+[18:37:30] [Info] ==================================================
+[18:37:30] [Info]  
+[18:37:48] [Info] [connection] incoming connection: 127.0.0.1:54415 id: 0
+[18:37:48] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[19:00:30] [Info] [PayDay] Distribuit la 19:00.
+[19:00:30] [Info] [Rulote] Caravanele au fost refacute: 1 la rParkLoc, 0 la rCampLoc.
+[19:00:30] [Info] [Load] Animale: 2
+[19:01:46] [Info] [part] Punctulet has left the server (0:1)
+[19:03:40] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[19:03:40] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[19:04:21] [Info] Loading plugin: mysql
+[19:04:21] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[19:04:21] [Info] Loading plugin: streamer
+[19:04:21] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[19:04:21] [Info]  
+[19:04:21] [Info] ==================================================
+[19:04:21] [Info]   N-RP  |  incarcare date din baza de date
+[19:04:21] [Info] ==================================================
+[19:04:21] [Info] [DB] Conectat la MySQL cu succes!
+[19:04:21] [Info] [DB] Tabel `players` verificat/creat.
+[19:04:21] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[19:04:21] [Info] [DB] Tabele verificate/create.
+[19:04:21] [Info] 
+----------------------------------
+[19:04:21] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[19:04:21] [Info] ----------------------------------
+
+[19:04:21] [Info] Legacy Network started on port 7777
+[19:04:21] [Info] [Load] Factiuni: 9
+[19:04:22] [Info] [Load] Case: 42
+[19:04:22] [Info] [Load] Hoteluri: 11
+[19:04:22] [Info] [Load] Interioare GTA: 138
+[19:04:22] [Info] [Load] Baruri: 4
+[19:04:22] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[19:04:22] [Info] [Load] Animale: 2
+[19:04:22] [Info] [Load] Copaci: 1
+[19:04:22] [Info] [Load] Business-uri: 23
+[19:04:22] [Info] [Load] Turf-uri: 10
+[19:04:22] [Info] [Load] ATM-uri: 11
+[19:04:22] [Info] [Load] Tomberoane: 8
+[19:04:22] [Info] [Load] Benzinarii: 3
+[19:04:22] [Info] [Load] Billboard-uri: 2
+[19:04:22] [Info] [Load] Shop-uri: 18
+[19:04:22] [Info] [Load] Magazine de haine (create in-game): 4
+[19:04:22] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[19:04:22] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[19:04:22] [Info] [Load] Locatii: 57
+[19:04:22] [Info] [Tuning] 1 puncte de tuning incarcate.
+[19:04:22] [Info] [Load] Cosuri baschet: 4
+[19:04:22] [Info] [Load] Spawn-uri baschet: 32
+[19:04:22] [Info] [Load] Vehicule factiune: 115
+[19:04:22] [Info] [Load] Vehicule personale: 36
+[19:04:22] [Info] [Load] Rulote: 1
+[19:04:22] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[19:04:22] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[19:04:22] [Info] [Load] Recorduri curse: 18
+[19:04:22] [Info] [Load] Paduri: 1
+[19:04:22] [Info] [Load] Ferme: 7
+[19:04:22] [Info] [Load] Utilaje ferma: 5
+[19:04:22] [Info] ==================================================
+[19:04:22] [Info]   N-RP  |  gamemode incarcat cu succes.
+[19:04:22] [Info] ==================================================
+[19:04:22] [Info]  
+[19:04:41] [Info] [connection] incoming connection: 127.0.0.1:65081 id: 0
+[19:04:41] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[19:05:38] [Info] [part] Punctulet has left the server (0:1)
+[19:19:23] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[19:19:23] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[19:19:25] [Info] Loading plugin: mysql
+[19:19:25] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[19:19:25] [Info] Loading plugin: streamer
+[19:19:25] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[19:19:25] [Info]  
+[19:19:25] [Info] ==================================================
+[19:19:25] [Info]   N-RP  |  incarcare date din baza de date
+[19:19:25] [Info] ==================================================
+[19:19:25] [Info] [DB] Conectat la MySQL cu succes!
+[19:19:25] [Info] [DB] Tabel `players` verificat/creat.
+[19:19:25] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[19:19:25] [Info] [DB] Tabele verificate/create.
+[19:19:25] [Info] 
+----------------------------------
+[19:19:25] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[19:19:25] [Info] ----------------------------------
+
+[19:19:25] [Error] Unable to start legacy network on port 7777. Port in use?
+[19:19:25] [Info] [Load] Factiuni: 9
+[19:19:25] [Info] [Load] Case: 42
+[19:19:25] [Info] [Load] Hoteluri: 11
+[19:19:25] [Info] [Load] Interioare GTA: 138
+[19:19:25] [Info] [Load] Baruri: 4
+[19:19:25] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[19:19:25] [Info] [Load] Animale: 2
+[19:19:25] [Info] [Load] Copaci: 1
+[19:19:25] [Info] [Load] Business-uri: 23
+[19:19:25] [Info] [Load] Turf-uri: 10
+[19:19:25] [Info] [Load] ATM-uri: 11
+[19:19:25] [Info] [Load] Tomberoane: 8
+[19:19:25] [Info] [Load] Benzinarii: 3
+[19:19:25] [Info] [Load] Billboard-uri: 2
+[19:19:25] [Info] [Load] Shop-uri: 18
+[19:19:25] [Info] [Load] Magazine de haine (create in-game): 4
+[19:19:25] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[19:19:25] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[19:19:25] [Info] [Load] Locatii: 57
+[19:19:25] [Info] [Tuning] 1 puncte de tuning incarcate.
+[19:19:25] [Info] [Load] Cosuri baschet: 4
+[19:19:25] [Info] [Load] Spawn-uri baschet: 32
+[19:19:25] [Info] [Load] Vehicule factiune: 115
+[19:19:25] [Info] [Load] Vehicule personale: 36
+[19:19:25] [Info] [Load] Rulote: 1
+[19:19:25] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[19:19:25] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[19:19:25] [Info] [Load] Recorduri curse: 18
+[19:19:25] [Info] [Load] Paduri: 1
+[19:19:25] [Info] [Load] Ferme: 7
+[19:19:25] [Info] [Load] Utilaje ferma: 5
+[19:19:25] [Info] ==================================================
+[19:19:25] [Info]   N-RP  |  gamemode incarcat cu succes.
+[19:19:25] [Info] ==================================================
+[19:19:25] [Info]  
+[19:20:15] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[19:20:15] [Info] plugin.mysql: Unloading plugin...
+Starting open.mp server (1.5.8.3079) from commit c6759bd8d265171ae3d86598895a23d5a8d92a3b
+Loading component $CAPI.dll
+	Successfully loaded component C-API (1.5.8.3079) with UID 10467dd8d4c56fc6
+Loading component Actors.dll
+	Successfully loaded component Actors (1.5.8.3079) with UID c81ca021eae2ad5c
+Loading component Checkpoints.dll
+	Successfully loaded component Checkpoints (1.5.8.3079) with UID 44a937350d611dde
+Loading component Classes.dll
+	Successfully loaded component Classes (1.5.8.3079) with UID 8cfb3183976da208
+Loading component Console.dll
+	Successfully loaded component Console (1.5.8.3079) with UID bfa24e49d0c95ee4
+Loading component CustomModels.dll
+	Successfully loaded component CustomModels (1.5.8.3079) with UID 15e3cb1e7c77ffff
+Loading component Databases.dll
+	Successfully loaded component Databases (1.5.8.3079) with UID 80092e7eb5821a96
+Loading component Dialogs.dll
+	Successfully loaded component Dialogs (1.5.8.3079) with UID 44a111350d611dde
+Loading component GangZones.dll
+	Successfully loaded component GangZones (1.5.8.3079) with UID b3351d11ee8d8056
+Loading component LegacyConfig.dll
+	Successfully loaded component LegacyConfig (1.5.8.3079) with UID 24ef6216838f9ffc
+Loading component LegacyNetwork.dll
+	Successfully loaded component RakNetLegacyNetwork (1.5.8.3079) with UID ea9799fd79cf8442
+Loading component Menus.dll
+	Successfully loaded component Menus (1.5.8.3079) with UID 621e219eb97ee0b2
+Loading component NPCs.dll
+	Successfully loaded component NPCs (1.5.8.3079) with UID 3d0e59e87f4e90bc
+Loading component Objects.dll
+	Successfully loaded component Objects (1.5.8.3079) with UID 59f8415f72da6160
+Loading component Pawn.dll
+	Successfully loaded component Pawn (1.5.8.3079) with UID 78906cd9f19c36a6
+Loading component Pickups.dll
+	Successfully loaded component Pickups (1.5.8.3079) with UID cf304faa363dd971
+Loading component Recordings.dll
+	Successfully loaded component Recordings (1.5.8.3079) with UID 871144d399f5f613
+Loading component TextDraws.dll
+	Successfully loaded component TextDraws (1.5.8.3079) with UID 9b5dc2b1d15c992a
+Loading component TextLabels.dll
+	Successfully loaded component TextLabels (1.5.8.3079) with UID a0c57ea80a009742
+Loading component Timers.dll
+	Successfully loaded component Timers (1.5.8.3079) with UID 2ad8124c5ea257a3
+Loading component Variables.dll
+	Successfully loaded component Variables (1.5.8.3079) with UID 75e121848bc01fa2
+Loading component Vehicles.dll
+	Successfully loaded component Vehicles (1.5.8.3079) with UID 3f1f62ee9e22ab19
+Loaded 22 component(s) from D:\GTA SA\server\rpg1\components
+Executing Server Config...
+[19:20:16] [Info] Loading plugin: mysql
+[19:20:16] [Info]  >> plugin.mysql: R41-4 successfully loaded.
+[19:20:16] [Info] Loading plugin: streamer
+[19:20:16] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito loaded ***
+
+[19:20:16] [Info]  
+[19:20:16] [Info] ==================================================
+[19:20:16] [Info]   N-RP  |  incarcare date din baza de date
+[19:20:16] [Info] ==================================================
+[19:20:16] [Info] [DB] Conectat la MySQL cu succes!
+[19:20:16] [Info] [DB] Tabel `players` verificat/creat.
+[19:20:16] [Info] [DB] Tabel `rulote_personale` verificat/creat.
+[19:20:16] [Info] [DB] Tabele verificate/create.
+[19:20:16] [Info] 
+----------------------------------
+[19:20:16] [Info]   NostalgiaRP by Nikolas Maduro  
+
+[19:20:16] [Info] ----------------------------------
+
+[19:20:16] [Info] Legacy Network started on port 7777
+[19:20:16] [Info] [Load] Factiuni: 9
+[19:20:16] [Info] [Load] Case: 42
+[19:20:16] [Info] [Load] Hoteluri: 11
+[19:20:16] [Info] [Load] Interioare GTA: 138
+[19:20:16] [Info] [Load] Baruri: 4
+[19:20:16] [Info] [Load] Locatii CS: 0 (0 T, 0 CT, 0 bombsite)
+[19:20:16] [Info] [Load] Animale: 2
+[19:20:16] [Info] [Load] Copaci: 1
+[19:20:16] [Info] [Load] Business-uri: 23
+[19:20:16] [Info] [Load] Turf-uri: 10
+[19:20:16] [Info] [Load] ATM-uri: 11
+[19:20:16] [Info] [Load] Tomberoane: 8
+[19:20:16] [Info] [Load] Benzinarii: 3
+[19:20:16] [Info] [Load] Billboard-uri: 2
+[19:20:16] [Info] [Load] Shop-uri: 18
+[19:20:16] [Info] [Load] Magazine de haine (create in-game): 4
+[19:20:16] [Info] [Load] Ammu-Nation-uri (create in-game): 5
+[19:20:16] [Info] [Load] Fast-food: 7 (1 pizza, 2 burger, 3 cluckin, 1 desert)
+[19:20:16] [Info] [Load] Locatii: 57
+[19:20:16] [Info] [Tuning] 1 puncte de tuning incarcate.
+[19:20:16] [Info] [Load] Cosuri baschet: 4
+[19:20:16] [Info] [Load] Spawn-uri baschet: 32
+[19:20:16] [Info] [Load] Vehicule factiune: 115
+[19:20:16] [Info] [Load] Vehicule personale: 36
+[19:20:16] [Info] [Load] Rulote: 1
+[19:20:16] [Info] [Setari] PayDay: Salar minim $2500 | Impozit 10% | CASS 10% | Dobanda 0.05%
+[19:20:16] [Info] [Setari] Preturi: Asigurare $500 | Kit medical $500 | Extinctor $500 | ITP $750 | Nr. inmatriculare $250 | Bicicleta $15 | Examene A/B/C/D/P/H $200/$300/$500/$400/$800/$900 | Pizza $50 | Burger $55 | Cluckin $60 | Desert $30
+[19:20:16] [Info] [Load] Recorduri curse: 18
+[19:20:16] [Info] [Load] Paduri: 1
+[19:20:16] [Info] [Load] Ferme: 7
+[19:20:16] [Info] [Load] Utilaje ferma: 5
+[19:20:16] [Info] ==================================================
+[19:20:16] [Info]   N-RP  |  gamemode incarcat cu succes.
+[19:20:16] [Info] ==================================================
+[19:20:16] [Info]  
+[19:20:42] [Info] [connection] incoming connection: 127.0.0.1:51050 id: 0
+[19:20:42] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[19:21:13] [Info] [part] Punctulet has left the server (0:2)
+[19:22:15] [Info] [connection] incoming connection: 127.0.0.1:64389 id: 0
+[19:22:15] [Info] [join] Punctulet has joined the server (0:127.0.0.1)
+[19:23:50] [Info] [part] Punctulet has left the server (0:1)
+[19:23:57] [Info] 
+
+*** Streamer Plugin v2.9.6 by Incognito unloaded ***
+
+[19:23:57] [Info] plugin.mysql: Unloading plugin...

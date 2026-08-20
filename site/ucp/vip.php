@@ -74,7 +74,7 @@ $benefits = [
   <p class="vip-howto">VIP status is granted by the server administration. Contact an admin in-game if you'd like to become a VIP member.</p>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/../includes/footer.php'; ?>
 
 </body>
 </html>

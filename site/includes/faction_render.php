@@ -453,7 +453,7 @@ include __DIR__ . '/header.php';
   </div>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/footer.php'; ?>
 
 </body>
 </html>

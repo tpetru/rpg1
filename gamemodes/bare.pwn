@@ -27,7 +27,7 @@
 // ============================================================
 //  CULORI - FACTIUNI
 // ============================================================
-#define MAX_FACTIONS    8
+#define MAX_FACTIONS    9
 #define FACTION_NONE    0
 #define MAX_HOUSES      50
 
@@ -40,7 +40,8 @@ new const FactionColors[MAX_FACTIONS + 1] = {
     0xAA44AAFF,  // 5 = American Mafia     (mov)
     0x44AA44FF,  // 6 = African Mafia      (verde)
     0xFFCC00FF,  // 7 = Asian Mafia      (galben)
-    0x85648CFF   // 8 = News Reporters      (mov deschis)
+    0x85648CFF,  // 8 = News Reporters      (mov deschis)
+    0x661414FF   // 9 = Loco Outlaw Customs (rosu-inchis spre negru)
 };
 
 // ============================================================
@@ -1278,12 +1279,58 @@ stock Faction_SaveSeif(fid)
 }
 
 new g_TrainID = -1;
-new g_FactionPickup[MAX_FACTIONS + 1] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
+new g_FactionPickup[MAX_FACTIONS + 1] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 new Text3D:g_FactionLabel[MAX_FACTIONS + 1];
-new g_FactionInteriorPickup[MAX_FACTIONS + 1] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
+new g_FactionInteriorPickup[MAX_FACTIONS + 1] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 new Text3D:g_FactionInteriorLabel[MAX_FACTIONS + 1];
 #define FACTION_INTERIOR_PICKUP_MODEL 19197
 new g_PlayerInFactionHQ[MAX_PLAYERS]; // fid al carui HQ interior il ocupa playerul, 0 = niciunul (setat/golit doar de Factions_InteriorToggle)
+
+// ============================================================
+//  LOCO OUTLAW CUSTOMS (factiune 9) - tuning masini (/tune)
+// ============================================================
+#define FACTION_TUNING           9
+#define TUNING_RANGE             8.0
+#define TUNING_CATEGORY_PAINTJOB 99   // sentinel pt Paintjob (nu e un CARMODTYPE_* real)
+#define MAX_TUNING_POINTS        10
+#define MAX_TUNING_PARTS         40   // capacitate lista de piese per dialog
+
+new Float:g_TuningPointX[MAX_TUNING_POINTS];
+new Float:g_TuningPointY[MAX_TUNING_POINTS];
+new Float:g_TuningPointZ[MAX_TUNING_POINTS];
+new g_TuningPointInterior[MAX_TUNING_POINTS];
+new g_TuningPointVW[MAX_TUNING_POINTS];
+new g_TuningPointCount = 0;
+
+new g_TuningVehicle[MAX_PLAYERS];              // vehiculul blocat cand se deschide meniul de tuning
+new g_TuningCategory[MAX_PLAYERS];             // CARMODTYPE_* curent (sau TUNING_CATEGORY_PAINTJOB)
+new g_TuningPartID[MAX_PLAYERS][MAX_TUNING_PARTS]; // listitem -> component id, pt dialogul curent
+new g_TuningPartCount[MAX_PLAYERS];
+
+// Jante disponibile la tuning - reutilizeaza acelasi set VIP+Retro deja definit la /v wheels
+#define TUNING_WHEEL_COUNT 12
+new const g_TuningWheelModel[TUNING_WHEEL_COUNT] = {1098, 1085, 1074, 1097, 1075, 1073, 1080, 1077, 1084, 1083, 1076, 1078};
+new const g_TuningWheelName[TUNING_WHEEL_COUNT][20] = {"Access", "Atomic", "Mega", "Virtual", "Rimshine", "Shadow", "Switch", "Classic", "Trance", "Dollar", "Wires", "Twist"};
+
+// Numele jantei dupa component ID (din g_TuningWheelModel/g_TuningWheelName); "Unknown" daca nu e in lista curatoriata
+stock Tuning_WheelName(model, out[], len)
+{
+    for(new w = 0; w < TUNING_WHEEL_COUNT; w++)
+    {
+        if(g_TuningWheelModel[w] == model)
+        {
+            format(out, len, "%s", g_TuningWheelName[w]);
+            return;
+        }
+    }
+    format(out, len, "Unknown");
+}
+
+#define TUNING_NITRO_COUNT 3
+new const g_TuningNitroModel[TUNING_NITRO_COUNT] = {1010, 1009, 1008};
+new const g_TuningNitroName[TUNING_NITRO_COUNT][24] = {"Nitro (2x)", "Nitro (5x)", "Nitro (10x)"};
+
+#define TUNING_HYDRAULICS_MODEL 1087
 
 // ============================================================
 //  NEWS REPORTERS (factiune 8) - stiri live si ziare
@@ -4967,7 +5014,8 @@ new const Float:g_DrugPickup[MAX_FACTIONS + 1][3] = {
     {-819.8571, -1954.8936, 6.5274},  // 5 - American Mafia
     {-810.5676, -1942.0809, 5.8185},  // 6 - African Mafia
     {-740.3304, -2062.4729, 6.2076},  // 7 - Asian Mafia
-    {0.0, 0.0, 0.0}                   // 8 - News Reporters (fara drog)
+    {0.0, 0.0, 0.0},                  // 8 - News Reporters (fara drog)
+    {0.0, 0.0, 0.0}                   // 9 - Loco Outlaw Customs (fara drog)
 };
 
 // Catalog joburi pentru /joblist (nume + locatie de teleport admin). Index 0 = job 1.
@@ -6316,6 +6364,8 @@ stock bool:Bar_IsAtCafe(playerid)
 #define BARDRINK_DRUNK_AMOUNT  1000  // cat de "beat" te face o bautura (vezi SetPlayerDrunkLevel), la fel ca la party
 #define BARDRINK_MAX_SIPS      3     // dupa al 3-lea KEY_FIRE, sticla/paharul e gol
 #define DIALOG_BARDRINK        9059
+#define DIALOG_TUNING_CATEGORY 9060
+#define DIALOG_TUNING_PARTS    9061
 
 enum E_BAR_DRINK_DATA
 {
@@ -8174,7 +8224,9 @@ enum E_VFACTION_DATA
     vfID, vfFactionID, vfModelID,
     Float:vfLocX, Float:vfLocY, Float:vfLocZ, Float:vfRotation,
     vfColor1, vfColor2,
-    Float:vfFuel
+    Float:vfFuel,
+    vfWheels,    // component ID al jantelor instalate prin /tune (0 = default), persistat in DB
+    vfWheelsExp  // timestamp unix cand expira jantele (0 = nesetat); in DB e coloana `wheels_exp` de tip DATE
 }
 new VFactionData[MAX_VFACTION_VEHICLES][E_VFACTION_DATA];
 new g_VFactionVehicle[MAX_VFACTION_VEHICLES];
@@ -8253,7 +8305,7 @@ stock VehiclesFaction_Create(idx)
 
     new vehid = CreateVehicle(VFactionData[idx][vfModelID],
         VFactionData[idx][vfLocX], VFactionData[idx][vfLocY], VFactionData[idx][vfLocZ]+0.2,
-        VFactionData[idx][vfRotation], VFactionData[idx][vfColor1], VFactionData[idx][vfColor2], -1, false);
+        VFactionData[idx][vfRotation], VFactionData[idx][vfColor1], VFactionData[idx][vfColor2], 900, false);
 
     new plate[8];
     Factions_GetPlate(VFactionData[idx][vfFactionID], plate, sizeof(plate));
@@ -14038,6 +14090,53 @@ stock Vehicle_SaveFuel(vehicleid)
     }
 }
 
+// Salveaza jantele puse prin /tune pe un vehicul de factiune - valabile 7 zile (VEHICLE_DOC_DURATION)
+stock VFaction_SaveWheels(vfidx, wheels)
+{
+    VFactionData[vfidx][vfWheels]    = wheels;
+    VFactionData[vfidx][vfWheelsExp] = gettime() + 604800; // 7 zile (acelasi interval ca VEHICLE_DOC_DURATION)
+
+    new dateStr[11];
+    UnixToDateStr(VFactionData[vfidx][vfWheelsExp], dateStr, sizeof(dateStr));
+
+    new q[160];
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `vehicles_faction` SET `wheels`=%d, `wheels_exp`='%s' WHERE `id`=%d",
+        wheels, dateStr, VFactionData[vfidx][vfID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+}
+
+// Reseteaza jantele unui vehicul de factiune la valoarea default (0, fara janta custom)
+stock VFaction_ClearWheels(vfidx)
+{
+    VFactionData[vfidx][vfWheels]    = 0;
+    VFactionData[vfidx][vfWheelsExp] = 0;
+
+    new q[128];
+    mysql_format(g_SQL, q, sizeof(q), "UPDATE `vehicles_faction` SET `wheels`=0, `wheels_exp`=NULL WHERE `id`=%d",
+        VFactionData[vfidx][vfID]);
+    mysql_tquery(g_SQL, q, "", "", 0);
+}
+
+// La ora 5:00 (PayDay_Check): reseteaza in DB jantele expirate (wheels_exp < azi), apoi distruge
+// La ora 5:00 (PayDay_Check): reseteaza (in memorie + DB) jantele expirate (wheels_exp < azi) la
+// valoarea default. NU atinge vehiculele fizice - jantele se aplica/scot abia cand vehiculul chiar
+// respawneaza (vezi OnVehicleSpawn, care citeste live VFactionData[..][vfWheels]/[vfWheelsExp]).
+stock VFaction_DailyRefresh()
+{
+    for(new v = 0; v < g_VFactionCount; v++)
+    {
+        if(VFactionData[v][vfWheels] == 0) continue;
+        if(VehicleDoc_IsValid(VFactionData[v][vfWheelsExp])) continue; // inca valabile
+
+        VFactionData[v][vfWheels]    = 0;
+        VFactionData[v][vfWheelsExp] = 0;
+
+        new q[128];
+        mysql_format(g_SQL, q, sizeof(q), "UPDATE `vehicles_faction` SET `wheels`=0, `wheels_exp`=NULL WHERE `id`=%d", VFactionData[v][vfID]);
+        mysql_tquery(g_SQL, q, "", "", 0);
+    }
+}
+
 // Benzinarii sunt acum din baza de date (tabelul fuelStations)
 
 stock bool:Fuel_PlayerAtStation(playerid)
@@ -14304,6 +14403,129 @@ stock Vehicle_BuildWheelList(bool:showVip, bool:showRetro, models[], names[][20]
         names[j + 1]  = tWName;
         tags[j + 1]   = tWTag;
     }
+}
+
+// ---- Loco Outlaw Customs - tuning (/tune) ----
+
+// Incarca punctele de tuning din locations_admin (locCategory = "Tuning") si creeaza pickup-urile.
+// Apelata din OnLocationsLoaded(), dupa ce LocationData e populat.
+Tuning_LoadPoints()
+{
+    g_TuningPointCount = 0;
+    for(new i = 0; i < g_LocationCount && g_TuningPointCount < MAX_TUNING_POINTS; i++)
+    {
+        if(strcmp(LocationData[i][locCategory], "Tuning", true) != 0) continue;
+
+        new p = g_TuningPointCount;
+        g_TuningPointX[p]        = LocationData[i][locX];
+        g_TuningPointY[p]        = LocationData[i][locY];
+        g_TuningPointZ[p]        = LocationData[i][locZ];
+        g_TuningPointInterior[p] = LocationData[i][locInterior];
+        g_TuningPointVW[p]       = LocationData[i][locVW];
+        g_TuningPointCount++;
+
+        CreatePickup(1078, 1, g_TuningPointX[p], g_TuningPointY[p], g_TuningPointZ[p], g_TuningPointVW[p]);
+
+        new tpLabel[128];
+        format(tpLabel, sizeof(tpLabel), "[ %s ]\n[ Tuning Point ]\n[ Use /tune ]", LocationData[i][locName]);
+        Create3DTextLabel(tpLabel, COLOR_WHITE,
+            g_TuningPointX[p], g_TuningPointY[p], g_TuningPointZ[p] - 0.5, 20.0, g_TuningPointVW[p], 0);
+    }
+    printf("[Tuning] %d puncte de tuning incarcate.", g_TuningPointCount);
+}
+
+// Verifica daca playerul e in raza uneia dintre punctele de tuning (interior + world trebuie sa coincida)
+Tuning_IsPlayerAtPoint(playerid)
+{
+    for(new p = 0; p < g_TuningPointCount; p++)
+    {
+        if(GetPlayerInterior(playerid) != g_TuningPointInterior[p]) continue;
+        if(GetPlayerVirtualWorld(playerid) != g_TuningPointVW[p]) continue;
+        if(IsPlayerInRangeOfPoint(playerid, TUNING_RANGE, g_TuningPointX[p], g_TuningPointY[p], g_TuningPointZ[p]))
+            return 1;
+    }
+    return 0;
+}
+
+// Instaleaza componentul pe vehicul (scoate ce era pe acelasi slot inainte) si confirma prin citirea slotului.
+Tuning_ApplyPart(vehicleid, componentid)
+{
+    new type = GetVehicleComponentType(componentid);
+    new existing = GetVehicleComponentInSlot(vehicleid, type);
+    if(existing != 0) RemoveVehicleComponent(vehicleid, existing);
+    AddVehicleComponent(vehicleid, componentid);
+    return (GetVehicleComponentInSlot(vehicleid, type) == componentid);
+}
+
+// Scoate componentul instalat pe un anumit slot (daca exista). Returneaza true daca a scos ceva.
+Tuning_RemovePart(vehicleid, type)
+{
+    new existing = GetVehicleComponentInSlot(vehicleid, type);
+    if(existing == 0) return false;
+    RemoveVehicleComponent(vehicleid, existing);
+    return true;
+}
+
+// Scoate toate mod-urile instalate (toate cele 14 sloturi CARMODTYPE_*)
+Tuning_RemoveAll(vehicleid)
+{
+    new removed = 0;
+    for(new type = CARMODTYPE_SPOILER; type <= CARMODTYPE_VENT_LEFT; type++)
+        if(Tuning_RemovePart(vehicleid, type)) removed++;
+    return removed;
+}
+
+#define TUNING_TEST_VW 999999 // virtual world separat, folosit doar pt testarea compatibilitatii pieselor (nu il vede niciun jucator)
+
+// Descopera id-urile de componente REAL compatibile cu un model de vehicul, pt un CARMODTYPE dat.
+// Foloseste un vehicul de test invizibil (creat departe, intr-un virtual world separat, distrus imediat)
+// ca sa incerce fiecare id candidat si sa verifice cu GetVehicleComponentInSlot daca s-a instalat -
+// asta ne da compatibilitatea reala dupa model, fara sa ghicim un tabel static si fara sa afectam
+// vehiculul jucatorului sau pe cei din jur.
+Tuning_ScanComponents(model, carmodtype, ids[], maxCount, &count)
+{
+    count = 0;
+    new testVeh = CreateVehicle(model, 0.0, 0.0, -500.0, 0.0, 0, 0, -1, 0);
+    if(testVeh == INVALID_VEHICLE_ID) return;
+    SetVehicleVirtualWorld(testVeh, TUNING_TEST_VW);
+
+    for(new cid = 1000; cid <= 1193 && count < maxCount; cid++)
+    {
+        if(GetVehicleComponentType(cid) != carmodtype) continue;
+
+        AddVehicleComponent(testVeh, cid);
+        if(GetVehicleComponentInSlot(testVeh, carmodtype) == cid)
+        {
+            ids[count] = cid;
+            count++;
+        }
+    }
+
+    DestroyVehicle(testVeh);
+}
+
+// Revalidare comuna intre pasii dialogului: playerul trebuie sa fie inca soferul vehiculului blocat,
+// la un punct de tuning, cu motorul oprit si capota deschisa.
+stock bool:Tuning_Revalidate(playerid, vehicleid)
+{
+    if(vehicleid <= 0 || GetPlayerVehicleID(playerid) != vehicleid || GetPlayerVehicleSeat(playerid) != 0)
+    {
+        SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must still be the driver of the vehicle to do this.");
+        return false;
+    }
+    if(!Tuning_IsPlayerAtPoint(playerid))
+    {
+        SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not at a Loco Outlaw Customs tuning point.");
+        return false;
+    }
+    new rEngine, rLights, rAlarm, rDoors, rBonnet, rBoot, rObjective;
+    GetVehicleParamsEx(vehicleid, rEngine, rLights, rAlarm, rDoors, rBonnet, rBoot, rObjective);
+    if(rEngine != 0 || rBonnet != 1)
+    {
+        SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"The engine must be off and the hood open.");
+        return false;
+    }
+    return true;
 }
 
 #define ITP_RANGE       3.0
@@ -15054,9 +15276,13 @@ stock DB_CreateTables()
         `rotation`   FLOAT DEFAULT 0.0,\
         `color1`     INT DEFAULT 1,\
         `color2`     INT DEFAULT 1,\
-        `fuel`       FLOAT DEFAULT 100.0\
+        `fuel`       FLOAT DEFAULT 100.0,\
+        `wheels`     INT DEFAULT 0,\
+        `wheels_exp` DATE DEFAULT NULL\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `vehicles_faction` ADD COLUMN IF NOT EXISTS `wheels` INT DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `vehicles_faction` ADD COLUMN IF NOT EXISTS `wheels_exp` DATE DEFAULT NULL", "", "", 0);
 
     mysql_tquery(g_SQL,
         "CREATE TABLE IF NOT EXISTS `vehicles_personal` (\
@@ -16236,6 +16462,7 @@ public OnLocationsLoaded()
     }
     printf("[Load] Locatii: %d", g_LocationCount);
     Locations_ApplyToCommands();
+    Tuning_LoadPoints();
     return 1;
 }
 
@@ -16544,7 +16771,7 @@ public OnBusinessCreated(playerid, idx)
 stock VehiclesFaction_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `id`,`faction_id`,`model_id`,`loc_x`,`loc_y`,`loc_z`,`rotation`,`color1`,`color2`,`fuel` \
+        "SELECT `id`,`faction_id`,`model_id`,`loc_x`,`loc_y`,`loc_z`,`rotation`,`color1`,`color2`,`fuel`,`wheels`,`wheels_exp` \
          FROM `vehicles_faction` ORDER BY `id` ASC",
         "OnVehiclesFactionLoaded");
 }
@@ -16566,6 +16793,10 @@ public OnVehiclesFactionLoaded()
         cache_get_value_name_int  (i, "color1",      VFactionData[idx][vfColor1]);
         cache_get_value_name_int  (i, "color2",      VFactionData[idx][vfColor2]);
         cache_get_value_name_float(i, "fuel",        VFactionData[idx][vfFuel]);
+        cache_get_value_name_int  (i, "wheels",      VFactionData[idx][vfWheels]);
+        new vfWheelsExpBuf[11];
+        cache_get_value_name      (i, "wheels_exp",  vfWheelsExpBuf, sizeof(vfWheelsExpBuf));
+        VFactionData[idx][vfWheelsExp] = DateStrToUnix(vfWheelsExpBuf);
         g_VFactionVehicle[idx] = -1;
         VehiclesFaction_Create(idx);
         g_VFactionCount++;
@@ -17263,6 +17494,7 @@ public PayDay_Check()
         if(hour == 0) Newspaper_ResetAll(); // reset ziare la miezul noptii
         if(hour == 0) Vehicle_CheckUnusedDaily(); // recalculeaza vUnusedVeh la miezul noptii
         if(hour == 5) Player_ResetDailyCoffee(); // reseteaza pCoffee la 0 pentru toti playerii online
+        if(hour == 5) VFaction_DailyRefresh(); // reseteaza jantele expirate si respawneaza vehiculele de factiune, fara tuning
     }
 }
 
@@ -19025,6 +19257,8 @@ public Veh_SpawnAll()
     AddStaticVehicle(439, 211.1283,  -1424.0679, 13.1478, 135.0597, random(256), random(256)); // civil_car
     AddStaticVehicle(471, 486.9443,  -1329.8665, 14.9302, 31.6559,  random(256), random(256)); // civil_car
     AddStaticVehicle(471, 482.6758,  -1331.1949, 14.9250, 29.7574,  random(256), random(256)); // civil_car
+    AddStaticVehicle(480, 668.4583,  -546.2129,  16.1094, 89.7762,  53, 53); // comet
+    AddStaticVehicle(461, 658.2681,  -652.0063,  16.1180, 263.5220, 36, 1);  // pcj
 
     AddStaticVehicle(554, 607.5045,   -1236.2205, 18.4017, 109.7893, random(256), random(256)); // yose1
     AddStaticVehicle(554, 796.3958,   -840.9927,  60.7280, 189.7078, random(256), random(256)); // yose2
@@ -26504,7 +26738,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         // ---- /factionstats vehicles ----
         if(strlen(fsSub) && strcmp(fsSub, "vehicles", true) == 0)
         {
-            new body[2500];
+            new body[4500];
             format(body, sizeof(body), "%s\n\nVehicles:\n", FactionData[fsFid][fName]);
 
             for(new i = 0; i < g_VFactionCount; i++)
@@ -26526,9 +26760,21 @@ public OnPlayerCommandText(playerid, cmdtext[])
                 if(occupied) format(vStatus, sizeof(vStatus), C_ERROR"occupied"C_WHITE);
                 else         format(vStatus, sizeof(vStatus), C_SUCCESS"unoccupied"C_WHITE);
 
-                new line[112];
-                format(line, sizeof(line), "#%d - %s - Fuel: %d/100 - %s\n",
-                    VFactionData[i][vfID], vname, floatround(g_VehicleFuel[vehid]), vStatus);
+                new wheelInfo[48];
+                if(VFactionData[i][vfWheels] != 0)
+                {
+                    new wheelName[20];
+                    Tuning_WheelName(VFactionData[i][vfWheels], wheelName, sizeof(wheelName));
+                    new wheelExpStr[11];
+                    UnixToDateStr(VFactionData[i][vfWheelsExp], wheelExpStr, sizeof(wheelExpStr));
+                    format(wheelInfo, sizeof(wheelInfo), " (Wheel: %s, Exp: %s)", wheelName, wheelExpStr);
+                }
+                else
+                    format(wheelInfo, sizeof(wheelInfo), " (Wheel: None)");
+
+                new line[160];
+                format(line, sizeof(line), "#%d - %s - Fuel: %d/100 - %s%s\n",
+                    VFactionData[i][vfID], vname, floatround(g_VehicleFuel[vehid]), vStatus, wheelInfo);
                 strcat(body, line);
             }
 
@@ -26579,7 +26825,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         // ---- /afactionstats [id] vehicles ----
         if(strlen(afsSub) && strcmp(afsSub, "vehicles", true) == 0)
         {
-            new body[2500];
+            new body[4500];
             format(body, sizeof(body), "%s\n\nVehicles:\n", FactionData[afsFid][fName]);
 
             for(new i = 0; i < g_VFactionCount; i++)
@@ -26601,9 +26847,21 @@ public OnPlayerCommandText(playerid, cmdtext[])
                 if(occupied) format(vStatus, sizeof(vStatus), C_ERROR"occupied"C_WHITE);
                 else         format(vStatus, sizeof(vStatus), C_SUCCESS"unoccupied"C_WHITE);
 
-                new line[112];
-                format(line, sizeof(line), "#%d - %s - Fuel: %d/100 - %s\n",
-                    VFactionData[i][vfID], vname, floatround(g_VehicleFuel[vehid]), vStatus);
+                new wheelInfo[48];
+                if(VFactionData[i][vfWheels] != 0)
+                {
+                    new wheelName[20];
+                    Tuning_WheelName(VFactionData[i][vfWheels], wheelName, sizeof(wheelName));
+                    new wheelExpStr[11];
+                    UnixToDateStr(VFactionData[i][vfWheelsExp], wheelExpStr, sizeof(wheelExpStr));
+                    format(wheelInfo, sizeof(wheelInfo), " (Wheel: %s, Exp: %s)", wheelName, wheelExpStr);
+                }
+                else
+                    format(wheelInfo, sizeof(wheelInfo), " (Wheel: None)");
+
+                new line[160];
+                format(line, sizeof(line), "#%d - %s - Fuel: %d/100 - %s%s\n",
+                    VFactionData[i][vfID], vname, floatround(g_VehicleFuel[vehid]), vStatus, wheelInfo);
                 strcat(body, line);
             }
 
@@ -26968,6 +27226,39 @@ public OnPlayerCommandText(playerid, cmdtext[])
                 g_DutyArmed[playerid] = false;
             }
         }
+        return 1;
+    }
+
+    // ---- /tune (Loco Outlaw Customs - modifica vehiculul in care esti soferul) ----
+    if(strcmp(cmd, "/tune", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        if(PlayerData[playerid][pFaction] != FACTION_TUNING)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not part of Loco Outlaw Customs."), 1;
+
+        new tVehid = GetPlayerVehicleID(playerid);
+        if(tVehid == 0 || GetPlayerVehicleSeat(playerid) != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be the driver of the vehicle you want to tune."), 1;
+
+        if(!Tuning_IsPlayerAtPoint(playerid))
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You are not at a Loco Outlaw Customs tuning point."), 1;
+
+        new tEngine, tLights, tAlarm, tDoors, tBonnet, tBoot, tObjective;
+        GetVehicleParamsEx(tVehid, tEngine, tLights, tAlarm, tDoors, tBonnet, tBoot, tObjective);
+
+        if(tEngine != 0)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Turn off the engine first ("C_INFO"/changecar engine"C_WHITE")."), 1;
+
+        if(tBonnet != 1)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Open the hood first ("C_INFO"/changecar hood"C_WHITE")."), 1;
+
+        g_TuningVehicle[playerid] = tVehid;
+        ShowPlayerDialog(playerid, DIALOG_TUNING_CATEGORY, DIALOG_STYLE_LIST,
+            "Loco Outlaw Customs - Tuning",
+            "Spoiler\nHood\nRoof\nSide Skirt\nFront Bumper\nRear Bumper\nExhaust\nWheels\nNitro\nHydraulics\nPaintjob\nRemove All Mods",
+            "Select", "Cancel");
         return 1;
     }
 
@@ -29623,7 +29914,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 
         new fid = strval(p1);
         if(fid < 1 || fid > MAX_FACTIONS)
-            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid faction ID (1-8)."), 1;
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid faction ID (1-"#MAX_FACTIONS")."), 1;
 
         if(FactionData[fid][fHQX] == 0.0 && FactionData[fid][fHQY] == 0.0)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This faction doesn't have a HQ set."), 1;
@@ -30257,6 +30548,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
                     case 3: body = "{E3E3E3}SMURD - emergency medical & fire service.\n\n{FFFF00}Medical:{E3E3E3}\n- /heal [player] - heal a player who is a passenger in your ambulance (paid)\nSick players come to the hospital to /curedisease.\n\n{FFFF00}Firefighting:{E3E3E3} fires can break out anywhere on the map. On duty, take the Firetruck, drive within 25m of the fire, and hold the FIRE button (spray water) to put it out.";
                     case 4, 5, 6, 7: body = "{E3E3E3}Mafia - organized crime family.\n\nMafias run drugs and fight over territory.\n- /drugs transport - haul weed to the vault\n- /drugs craft - turn weed into drugs\n- /drugs get / use - take & use drugs during a war\n- /seif - the faction vault (rank 4+)\n- /equip - get weapons inside the HQ\n- /smuggle - run contraband by boat: drive a designated boat (plate SMG) to the loading point (10s freeze), then to 2 random collection points (5s freeze each). At loading, Police are alerted and everyone aboard gets wanted 6. Finally, switch to your faction's Sultan (driver or passenger) and deliver it to a random hotel: wanted drops to 5, the vault gets $25.000 + 500g weed, and each living crew member earns $2.000-3.000. The Police get a bounty for every smuggler they catch. One successful run per faction per day.\n- /war - start a turf war\n- /warsurrender - surrender an ongoing war (rank 4+)\nEach mafia controls its own territories.";
                     case 8: body = "{E3E3E3}News Reporters - the press. They inform the city via live broadcasts, live interviews and the newspaper.\n\n{FFFF00}Live news (rank 1+):{E3E3E3}\n- /news [text] - broadcast a headline to everyone\n\n{FFFF00}Live Q&A / interviews (rank 3+):{E3E3E3}\n- /qa [player] - start a live interview (the guest accepts with /accept qa)\n- /qa list - see submitted questions\n- /qa ask [nr] - ask one live\n- /qa del [nr] - remove one\n- /qa end - stop the Q&A\nAnyone can /question [text] to submit; the guest replies with /answer [text].\n\n{FFFF00}Newspaper:{E3E3E3}\n- /newspaper create - start a new edition\n- /newspaper edit [1-5] [text] - write up to 5 stories\n- /newspaper sell - put it on sale\n- /newspaper open - read the current newspaper";
+                    case 9: body = "{E3E3E3}Loco Outlaw Customs - the city's tuning shop. Not a mafia - no smuggling, no turf wars.\n\nMembers can install parts on ANY player's vehicle (not just their own), for free, at one of the faction's tuning points.\n\n{FFFF00}/tune requirements:{E3E3E3}\n- You must be the driver of the target vehicle\n- Engine off ("C_INFO"/changecar engine"C_WHITE") and hood open ("C_INFO"/changecar hood"C_WHITE")\n- Within range of a Loco Outlaw Customs tuning point\n\nUse /tune to open the parts menu: Spoiler, Hood, Roof, Side Skirt, Front/Rear Bumper, Exhaust, Wheels, Nitro, Hydraulics, Paintjob, or Remove All Mods.";
                 }
 
                 // Comenzi comune de conducere (rank 4/5), adaugate la orice facatiune
@@ -30265,7 +30557,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             else
             {
                 title = "How to: Factions";
-                body = "{E3E3E3}Factions: Police (1), DMV (2), SMURD (3), Mafias (4-7), News (8).\n\nJoining: a rank 4+ member invites you with /finvite; you accept with /accept [id] (be within 15m).\n\n- /f [text] - faction chat\n- /factionstats [members/vehicles] - faction info (rank 5)\n- /duty - go on/off duty (factions 1-3, inside the HQ)\n\nUse /howto factions [1-8] for a specific faction.";
+                body = "{E3E3E3}Factions: Police (1), DMV (2), SMURD (3), Mafias (4-7), News (8), Loco Outlaw Customs (9).\n\nJoining: a rank 4+ member invites you with /finvite; you accept with /accept [id] (be within 15m).\n\n- /f [text] - faction chat\n- /factionstats [members/vehicles] - faction info (rank 5)\n- /duty - go on/off duty (factions 1-3, inside the HQ)\n\nUse /howto factions [1-9] for a specific faction.";
             }
         }
         else if(!strcmp(topic, "vehicle", true) || !strcmp(topic, "vehicles", true))
@@ -39345,7 +39637,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             return 1;
         }
 
-        // ---- /fc [factionid] interior [interior_id] ----
+        // ---- /fc [factionid] interior [gtaIntID] (leaga factiunea de un interior din gta_interiors, ca la /barc, /clsc, /ammoc) ----
         if(strcmp(item, "interior", true) == 0)
         {
             while(cmdtext[idx] == ' ') idx++;
@@ -39353,21 +39645,31 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             strmid(p2, cmdtext, idx, strlen(cmdtext), 8);
 
             if(!strlen(p2))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/fc [factionid] interior [interior_id]"C_WHITE"."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/fc [factionid] interior [gtaIntID]"C_WHITE"."), 1;
 
-            new interiorid = strval(p2);
-            FactionData[fid][fInterior] = interiorid;
+            new fcGiIdx = GTAInteriors_FindByID(strval(p2));
+            if(fcGiIdx == -1)
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid GTA interior ID. Browse them with "C_INFO"/interiorlist"C_WHITE"."), 1;
 
-            new q[160];
+            FactionData[fid][fInterior]  = GTAInteriorData[fcGiIdx][gtaIntInterior];
+            FactionData[fid][fInteriorX] = GTAInteriorData[fcGiIdx][gtaIntLocX];
+            FactionData[fid][fInteriorY] = GTAInteriorData[fcGiIdx][gtaIntLocY];
+            FactionData[fid][fInteriorZ] = GTAInteriorData[fcGiIdx][gtaIntLocZ];
+
+            new q[220];
             mysql_format(g_SQL, q, sizeof(q),
-                "UPDATE `factions` SET `interior`=%d WHERE `id`=%d", interiorid, fid);
+                "UPDATE `factions` SET `interior`=%d, `interior_x`=%.4f, `interior_y`=%.4f, `interior_z`=%.4f WHERE `id`=%d",
+                FactionData[fid][fInterior], FactionData[fid][fInteriorX], FactionData[fid][fInteriorY], FactionData[fid][fInteriorZ], fid);
             mysql_tquery(g_SQL, q, "", "", 0);
 
-            Drugs_RecreateSeifMarker(fid); // seiful depinde de interior
-            Factions_RecreateEquipLabel(fid); // punctul de echipare depinde de interior
+            Factions_RecreateInteriorPickup(fid); // pozitia din interior s-a schimbat
+            Factions_RecreateLabel(fid);          // eticheta exterioara depinde de interiorX/Y/Z (fInteriorX/Y != 0)
+            Drugs_RecreateSeifMarker(fid);        // seiful depinde de interior
+            Factions_RecreateEquipLabel(fid);     // punctul de echipare depinde de interior
 
-            new lmsg[128];
-            format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"Interior for "C_INFO"%s"C_WHITE" set to "C_INFO"%d"C_WHITE".", FactionData[fid][fName], interiorid);
+            new lmsg[176];
+            format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"Interior for "C_INFO"%s"C_WHITE" set to "C_INFO"%s"C_WHITE" (interior "C_INFO"%d"C_WHITE"), position taken from the catalog entry.",
+                FactionData[fid][fName], GTAInteriorData[fcGiIdx][gtaIntName], FactionData[fid][fInterior]);
             SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
             return 1;
         }
@@ -39400,26 +39702,22 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             return 1;
         }
 
-        // ---- /fc [factionid] spawn (seteaza interiorX/Y/Z, interior, vw si unghiul, toate luate de pe pozitia curenta a playerului) ----
+        // ---- /fc [factionid] spawn (seteaza doar interiorX/Y/Z + unghiul, de pe pozitia curenta a playerului; interior/vw se seteaza separat) ----
         if(strcmp(item, "spawn", true) == 0)
         {
             new Float:sx, Float:sy, Float:sz, Float:sa;
             GetPlayerPos(playerid, sx, sy, sz);
             GetPlayerFacingAngle(playerid, sa);
-            new sInterior = GetPlayerInterior(playerid);
-            new sVw       = GetPlayerVirtualWorld(playerid);
 
             FactionData[fid][fInteriorX] = sx;
             FactionData[fid][fInteriorY] = sy;
             FactionData[fid][fInteriorZ] = sz;
             FactionData[fid][fInteriorA] = sa;
-            FactionData[fid][fInterior]  = sInterior;
-            FactionData[fid][fvw]        = sVw;
 
-            new q[300];
+            new q[220];
             mysql_format(g_SQL, q, sizeof(q),
-                "UPDATE `factions` SET `interior_x`=%.4f, `interior_y`=%.4f, `interior_z`=%.4f, `interior_a`=%.4f, `interior`=%d, `vw`=%d WHERE `id`=%d",
-                sx, sy, sz, sa, sInterior, sVw, fid);
+                "UPDATE `factions` SET `interior_x`=%.4f, `interior_y`=%.4f, `interior_z`=%.4f, `interior_a`=%.4f WHERE `id`=%d",
+                sx, sy, sz, sa, fid);
             mysql_tquery(g_SQL, q, "", "", 0);
 
             Factions_RecreateInteriorPickup(fid);
@@ -39427,9 +39725,8 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
             Drugs_RecreateSeifMarker(fid);
             Factions_RecreateEquipLabel(fid);
 
-            new lmsg[160];
-            format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"Spawn point for "C_INFO"%s"C_WHITE" set to your position (interior "C_INFO"%d"C_WHITE", vw "C_INFO"%d"C_WHITE").",
-                FactionData[fid][fName], sInterior, sVw);
+            new lmsg[128];
+            format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"Interior spawn point for "C_INFO"%s"C_WHITE" set to your position.", FactionData[fid][fName]);
             SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
             return 1;
         }
@@ -41784,6 +42081,156 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         return 1; // informativ - fara actiune la click
     }
 
+    if(dialogid == DIALOG_TUNING_CATEGORY)
+    {
+        new tcVehid = g_TuningVehicle[playerid];
+        if(!response) { g_TuningVehicle[playerid] = -1; return 1; } // Cancel
+
+        if(!Tuning_Revalidate(playerid, tcVehid)) { g_TuningVehicle[playerid] = -1; return 1; }
+
+        // "Remove All Mods" - actiune directa, fara al doilea dialog
+        if(listitem == 11)
+        {
+            new tcRemoved = Tuning_RemoveAll(tcVehid);
+            g_TuningVehicle[playerid] = -1;
+            new tcMsg[96];
+            format(tcMsg, sizeof(tcMsg), C_SUCCESS"Success: "C_WHITE"Removed "C_INFO"%d"C_WHITE" installed part(s).", tcRemoved);
+            SendClientMessage(playerid, COLOR_SUCCESS, tcMsg);
+            return 1;
+        }
+
+        // Paintjob - dialog separat, fara sa treaca prin scanarea de componente
+        if(listitem == 10)
+        {
+            g_TuningCategory[playerid] = TUNING_CATEGORY_PAINTJOB;
+            ShowPlayerDialog(playerid, DIALOG_TUNING_PARTS, DIALOG_STYLE_LIST,
+                "Loco Outlaw Customs - Paintjob",
+                "Paintjob 1\nPaintjob 2\nPaintjob 3", "Select", "Back");
+            return 1;
+        }
+
+        new tcType;
+        new tcCatName[16];
+        switch(listitem)
+        {
+            case 0: { tcType = CARMODTYPE_SPOILER;      tcCatName = "Spoiler"; }
+            case 1: { tcType = CARMODTYPE_HOOD;          tcCatName = "Hood"; }
+            case 2: { tcType = CARMODTYPE_ROOF;          tcCatName = "Roof"; }
+            case 3: { tcType = CARMODTYPE_SIDESKIRT;     tcCatName = "Side Skirt"; }
+            case 4: { tcType = CARMODTYPE_FRONT_BUMPER;  tcCatName = "Front Bumper"; }
+            case 5: { tcType = CARMODTYPE_REAR_BUMPER;   tcCatName = "Rear Bumper"; }
+            case 6: { tcType = CARMODTYPE_EXHAUST;       tcCatName = "Exhaust"; }
+            case 7: tcType = CARMODTYPE_WHEELS;
+            case 8: tcType = CARMODTYPE_NITRO;
+            case 9: tcType = CARMODTYPE_HYDRAULICS;
+            default: return 1;
+        }
+        g_TuningCategory[playerid] = tcType;
+
+        new tcIds[MAX_TUNING_PARTS], tcCount, tcDlg[900], tcLine[32];
+        strcat(tcDlg, "None (remove)\n", sizeof(tcDlg));
+
+        if(tcType == CARMODTYPE_WHEELS)
+        {
+            for(new w = 0; w < TUNING_WHEEL_COUNT && tcCount < MAX_TUNING_PARTS - 1; w++)
+            {
+                g_TuningPartID[playerid][tcCount] = g_TuningWheelModel[w];
+                format(tcLine, sizeof(tcLine), "%s\n", g_TuningWheelName[w]);
+                strcat(tcDlg, tcLine, sizeof(tcDlg));
+                tcCount++;
+            }
+        }
+        else if(tcType == CARMODTYPE_NITRO)
+        {
+            for(new n = 0; n < TUNING_NITRO_COUNT && tcCount < MAX_TUNING_PARTS - 1; n++)
+            {
+                g_TuningPartID[playerid][tcCount] = g_TuningNitroModel[n];
+                format(tcLine, sizeof(tcLine), "%s\n", g_TuningNitroName[n]);
+                strcat(tcDlg, tcLine, sizeof(tcDlg));
+                tcCount++;
+            }
+        }
+        else if(tcType == CARMODTYPE_HYDRAULICS)
+        {
+            g_TuningPartID[playerid][tcCount] = TUNING_HYDRAULICS_MODEL;
+            strcat(tcDlg, "Hydraulics\n", sizeof(tcDlg));
+            tcCount++;
+        }
+        else
+        {
+            Tuning_ScanComponents(GetVehicleModel(tcVehid), tcType, tcIds, MAX_TUNING_PARTS - 1, tcCount);
+            if(tcCount == 0)
+            {
+                g_TuningVehicle[playerid] = -1;
+                return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"This vehicle has no parts available for that category."), 1;
+            }
+            for(new c = 0; c < tcCount; c++)
+            {
+                g_TuningPartID[playerid][c] = tcIds[c];
+                format(tcLine, sizeof(tcLine), "%s #%d\n", tcCatName, c + 1);
+                strcat(tcDlg, tcLine, sizeof(tcDlg));
+            }
+        }
+
+        g_TuningPartCount[playerid] = tcCount;
+        ShowPlayerDialog(playerid, DIALOG_TUNING_PARTS, DIALOG_STYLE_LIST,
+            "Loco Outlaw Customs - Piese", tcDlg, "Select", "Back");
+        return 1;
+    }
+
+    if(dialogid == DIALOG_TUNING_PARTS)
+    {
+        new tpVehid = g_TuningVehicle[playerid];
+        if(!response) { g_TuningVehicle[playerid] = -1; return 1; } // Back
+
+        if(!Tuning_Revalidate(playerid, tpVehid)) { g_TuningVehicle[playerid] = -1; return 1; }
+
+        if(g_TuningCategory[playerid] == TUNING_CATEGORY_PAINTJOB)
+        {
+            if(listitem < 0 || listitem > 2) return 1;
+            ChangeVehiclePaintjob(tpVehid, listitem);
+            g_TuningVehicle[playerid] = -1;
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Paintjob applied.");
+            return 1;
+        }
+
+        new tpType = g_TuningCategory[playerid];
+        g_TuningVehicle[playerid] = -1;
+
+        if(listitem == 0) // "None (remove)"
+        {
+            if(Tuning_RemovePart(tpVehid, tpType))
+            {
+                SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Part removed.");
+                if(tpType == CARMODTYPE_WHEELS)
+                {
+                    new tpVfIdx = VFaction_FindByVehicle(tpVehid);
+                    if(tpVfIdx != -1) VFaction_ClearWheels(tpVfIdx);
+                }
+            }
+            else
+                SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"There was nothing installed on that slot.");
+            return 1;
+        }
+
+        new tpIdx = listitem - 1;
+        if(tpIdx < 0 || tpIdx >= g_TuningPartCount[playerid]) return 1;
+
+        new tpComponent = g_TuningPartID[playerid][tpIdx];
+        if(Tuning_ApplyPart(tpVehid, tpComponent))
+        {
+            SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Part installed.");
+            if(tpType == CARMODTYPE_WHEELS)
+            {
+                new tpVfIdx = VFaction_FindByVehicle(tpVehid);
+                if(tpVfIdx != -1) VFaction_SaveWheels(tpVfIdx, tpComponent);
+            }
+        }
+        else
+            SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"That part is not compatible with this vehicle.");
+        return 1;
+    }
+
     if(dialogid == DIALOG_HOTELLIST)
     {
         if(!response) return 1; // Close
@@ -42598,8 +43045,19 @@ public OnVehicleSpawn(vehicleid)
         }
 
         // Vehiculele din DB (personal/factiune) isi pastreaza motorina salvata; restul primesc 50% la respawn
-        if(pvidx == -1 && VFaction_FindByVehicle(vehicleid) == -1)
-            g_VehicleFuel[vehicleid] = 50.0;
+        if(pvidx == -1)
+        {
+            new vfidx = VFaction_FindByVehicle(vehicleid);
+            if(vfidx != -1)
+            {
+                // SetVehicleToRespawn reseteaza culoarea/componentele la valorile de la CreateVehicle - le reaplicam
+                ChangeVehicleColor(vehicleid, VFactionData[vfidx][vfColor1], VFactionData[vfidx][vfColor2]);
+                if(VFactionData[vfidx][vfWheels] != 0 && VehicleDoc_IsValid(VFactionData[vfidx][vfWheelsExp]))
+                    AddVehicleComponent(vehicleid, VFactionData[vfidx][vfWheels]);
+            }
+            else
+                g_VehicleFuel[vehicleid] = 50.0;
+        }
     }
     return 1;
 }

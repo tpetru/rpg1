@@ -105,7 +105,7 @@ $factionName = ucp_faction_name($factionId);
         <label for="last_faction">Current faction</label>
         <select id="last_faction" name="last_faction">
           <option value="0">Civil</option>
-          <?php for ($fi = 1; $fi <= 8; $fi++): ?>
+          <?php for ($fi = 1; $fi <= 9; $fi++): ?>
             <option value="<?= $fi ?>"><?= ucp_escape(ucp_faction_name($fi)) ?></option>
           <?php endfor; ?>
         </select>
@@ -119,7 +119,7 @@ $factionName = ucp_faction_name($factionId);
   </div>
 </main>
 
-<footer>Nostalgia: Los Santos UCP</footer>
+<?php include __DIR__ . '/../includes/footer.php'; ?>
 
 </body>
 </html>
