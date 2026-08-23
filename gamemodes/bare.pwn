@@ -212,7 +212,10 @@ enum E_PLAYER_DATA
     pWarns,                    // numar de warn-uri primite de la admini (0-MAX_WARNS); persistat in DB
     bool:pVIP,                 // cont VIP (0/1), setat de admin cu /setvip; persistat in DB
     pGambleWagered,            // total pariat la cazino (slots/roulette/dice) in ciclul curent; plafon CASINO_WAGER_LIMIT_PER_LEVEL * pLevel; resetat la 0 la fiecare payday; persistat in DB
-    bool:pCoffee               // true daca playerul a baut cafea azi (vezi /drink categoria coffee si /getcoffee); persistat in DB, resetat la 0 in fiecare zi la payday-ul de ora 5:00
+    bool:pCoffee,              // true daca playerul a baut cafea azi (vezi /drink categoria coffee si /getcoffee); persistat in DB, resetat la 0 in fiecare zi la payday-ul de ora 5:00
+    pLastPray,                 // timestamp unix (miezul noptii) al ultimei zile in care a folosit /pray (0 = niciodata); persistat in DB, coloana `lastPrayDate` (DATE)
+    pReligion,                 // religia aleasa cu /setreligion: 0=Ateu, 1=The Ascendants, 2=The Holy Order, 3=The Divine Blessing; persistat in DB
+    pLanguage[3]               // limba aleasa cu /en sau /ro ("en"/"ro"); persistat in DB
 }
 
 // ---- Canistra de benzina (gas can) ----
@@ -392,6 +395,8 @@ stock Casino_ParseBet(playerid, const amtStr[], const usage[])
             MoneyStr(left), MoneyStr(wagerLimit));
         return SendClientMessage(playerid, COLOR_ERROR, lm), -1;
     }
+
+    Pray_FlagSin(playerid, 3); // Viciul jocurilor de noroc
     return bet;
 }
 
@@ -3172,7 +3177,7 @@ stock AnimLib_SendChunked(playerid, color, const header[], const list[])
 // ============================================================
 //  MESAJE INFORMATIVE (TIPS) - afisate periodic, aleatoriu, tuturor playerilor logati
 // ============================================================
-#define SERVERTIP_COUNT       44
+#define SERVERTIP_COUNT       45
 #define SERVERTIP_INTERVAL_MS 600000 // 10 minute
 
 new const g_ServerTips[SERVERTIP_COUNT][200] =
@@ -3220,7 +3225,8 @@ new const g_ServerTips[SERVERTIP_COUNT][200] =
     "Visit any "C_INFO"Shop"C_WHITE" ("C_INFO"/shop"C_WHITE") for essentials like medkits, extinguishers, phones, watches, tools, or a fishing rod, depending on the shop type.",
     "Want to earn extra cash? Collect trash with "C_INFO"/bin"C_WHITE", load it into an SGR van, then unload and sell it with /sgrunload and /sellsgr.",
     "Careful when using a "C_INFO"/find"C_WHITE" command - it overwrites your current active checkpoint, if you have one.",
-    "Starting work in the morning? A good coffee first goes a long way - grab one with "C_INFO"/drink"C_WHITE" at any cafe or its terrace."
+    "Starting work in the morning? A good coffee first goes a long way - grab one with "C_INFO"/drink"C_WHITE" at any cafe or its terrace.",
+    "Do not enter road-work zones. You can be severely sanctioned."
 };
 
 #define SERVERJOKE_COUNT 20
@@ -6366,6 +6372,9 @@ stock bool:Bar_IsAtCafe(playerid)
 #define DIALOG_BARDRINK        9059
 #define DIALOG_TUNING_CATEGORY 9060
 #define DIALOG_TUNING_PARTS    9061
+#define DIALOG_PACATE_LIST     9062
+#define DIALOG_SET_RELIGION    9063
+#define DIALOG_WHAT_RELIGION   9064
 
 enum E_BAR_DRINK_DATA
 {
@@ -6434,6 +6443,7 @@ stock BarDrink_Consume(playerid)
     {
         new drunk = GetPlayerDrunkLevel(playerid);
         SetPlayerDrunkLevel(playerid, drunk + BARDRINK_DRUNK_AMOUNT);
+        Pray_FlagSin(playerid, 10); // Bautura si viciul
     }
 
     if(strcmp(BarDrinkData[idx][bdCategory], "coffee", true) == 0)
@@ -7256,6 +7266,7 @@ public Tree_PlantFinish(playerid)
     Trees_SavePlant(tidx);
 
     SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You planted your tree. It will start bearing fruit over time.");
+    Pray_ClearSin(playerid, 4); // Anti-natura - a plantat un copac
     return 1;
 }
 
@@ -8879,6 +8890,7 @@ stock Party_DrinkBeer(playerid)
 
     new drunk = GetPlayerDrunkLevel(playerid);
     SetPlayerDrunkLevel(playerid, drunk + PARTY_DRINK_DRUNK_AMOUNT);
+    Pray_FlagSin(playerid, 10); // Bautura si viciul
 
     new Float:health;
     GetPlayerHealth(playerid, health);
@@ -9884,6 +9896,7 @@ stock Water_OnCheckpoint(playerid)
         format(wMsg, sizeof(wMsg), C_SUCCESS"[Water Hauler] "C_WHITE"You watered the plants with %dL (%dL left in the tank). Paid $%d.",
             dumped, floatround(g_WaterCargo[vehid]), wPay);
         SendClientMessage(playerid, COLOR_SUCCESS, wMsg);
+        Pray_ClearSin(playerid, 4); // Anti-natura - a udat vegetatia (macar o tura Water Hauler)
 
         g_WaterFromX[playerid] = g_WaterToX[playerid]; // punctul de udat devine noul punct de plecare
         g_WaterFromY[playerid] = g_WaterToY[playerid];
@@ -12699,6 +12712,8 @@ stock Smuggle_Payout(leaderid)
         format(fm, sizeof(fm), C_SUCCESS"[Smuggle] "C_WHITE"Delivery complete! Your faction vault got "C_INFO"$%s"C_WHITE" + "C_INFO"%dg weed"C_WHITE", and you earned "C_SUCCESS"$%s"C_WHITE".",
             MoneyStr(SMUGGLE_FACTION_CASH), SMUGGLE_FACTION_WEED, MoneyStr(pay));
         SendClientMessage(pid, COLOR_SUCCESS, fm);
+
+        Pray_FlagSin(pid, 5); // Traficul fara masura
     }
 
     g_SmuggleActive[leaderid]    = false;
@@ -13498,6 +13513,7 @@ public Radar_Tick()
                     C_ERROR"[RADAR] "C_WHITE"You have exceeded the speed limit ("C_INFO"%d km/h"C_WHITE", limit "C_INFO"%d km/h"C_WHITE")! Pull over.",
                     ispeed, g_RadarSpeedLimit[j]);
                 SendClientMessage(i, COLOR_ERROR, rmsg);
+                Pray_FlagSin(i, 8); // Sfidarea vitezei
 
                 format(rmsg, sizeof(rmsg),
                     C_ERROR"[RADAR] "C_INFO"%s"C_WHITE" passed at "C_INFO"%d km/h"C_WHITE" (limit "C_INFO"%d km/h"C_WHITE", +"C_INFO"%d km/h"C_WHITE" over).",
@@ -14964,9 +14980,39 @@ stock DB_CreateTables()
         `has_gps`          TINYINT DEFAULT 0,\
         `phone_book`       TINYINT DEFAULT 0,\
         `coffee`           TINYINT(1) DEFAULT 0,\
+        `lastPrayDate`     DATE DEFAULT NULL,\
+        `religion`         TINYINT(1) DEFAULT 0,\
+        `language`         VARCHAR(2) DEFAULT 'en',\
         `register_date`    DATETIME DEFAULT NULL\
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `lastPrayDate` DATE DEFAULT NULL", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `religion` TINYINT(1) DEFAULT 0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `players` ADD COLUMN IF NOT EXISTS `language` VARCHAR(2) DEFAULT 'en'", "", "", 0);
+
+    mysql_tquery(g_SQL,
+        "CREATE TABLE IF NOT EXISTS `pacate` (\
+        `id`           INT AUTO_INCREMENT PRIMARY KEY,\
+        `pID`          INT NOT NULL,\
+        `weekNo`       INT NOT NULL,\
+        `prayedTimes`  INT DEFAULT 1,\
+        `pacat1`       TINYINT(1) DEFAULT 0,\
+        `pacat2`       TINYINT(1) DEFAULT 0,\
+        `pacat3`       TINYINT(1) DEFAULT 0,\
+        `pacat4`       TINYINT(1) DEFAULT 1,\
+        `pacat5`       TINYINT(1) DEFAULT 0,\
+        `pacat6`       TINYINT(1) DEFAULT 0,\
+        `pacat7`       TINYINT(1) DEFAULT 0,\
+        `pacat8`       TINYINT(1) DEFAULT 0,\
+        `pacat9`       TINYINT(1) DEFAULT 0,\
+        `pacat10`      TINYINT(1) DEFAULT 0,\
+        `pacat11`      TINYINT(1) DEFAULT 0,\
+        `pacat12`      TINYINT(1) DEFAULT 0,\
+        UNIQUE KEY `player_week` (`pID`,`weekNo`)\
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        "", "", 0);
+    // pacat4 (Anti-natura) e "vinovat pana la dovada faptei bune" - default 1, nu 0 ca restul
+    mysql_tquery(g_SQL, "ALTER TABLE `pacate` MODIFY COLUMN `pacat4` TINYINT(1) DEFAULT 1", "", "", 0);
     print("[DB] Tabel `players` verificat/creat.");
 
     mysql_tquery(g_SQL,
@@ -16463,6 +16509,7 @@ public OnLocationsLoaded()
     printf("[Load] Locatii: %d", g_LocationCount);
     Locations_ApplyToCommands();
     Tuning_LoadPoints();
+    Church_LoadLabels();
     return 1;
 }
 
@@ -17493,6 +17540,7 @@ public PayDay_Check()
         PayDay_Apply();
         if(hour == 0) Newspaper_ResetAll(); // reset ziare la miezul noptii
         if(hour == 0) Vehicle_CheckUnusedDaily(); // recalculeaza vUnusedVeh la miezul noptii
+        if(hour == 0) Pray_WeeklyReset(); // luni la 00:00: goleste tabelul `pacate`
         if(hour == 5) Player_ResetDailyCoffee(); // reseteaza pCoffee la 0 pentru toti playerii online
         if(hour == 5) VFaction_DailyRefresh(); // reseteaza jantele expirate si respawneaza vehiculele de factiune, fara tuning
     }
@@ -17521,6 +17569,96 @@ stock DayOfWeek(year, month, day)
     // h: 0 = Sambata, 1 = Duminica, ...  (-2*j mod 7 == +5*j mod 7, evitam negativele)
     new h = (day + (13 * (month + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
     return (h + 6) % 7; // remapeaza la 0 = Duminica
+}
+
+// ============================================================
+//  PACATE (/pray) - sistem religios saptamanal
+// ============================================================
+// Numarul saptamanii din anul curent (simplu, nu ISO-8601 - nu conteaza, tabelul se goleste in fiecare Luni)
+stock Pray_GetWeekNumber()
+{
+    new year, month, day;
+    getdate(year, month, day);
+    new dayOfYear = DaysFromCivil(year, month, day) - DaysFromCivil(year, 1, 1) + 1;
+    return ((dayOfYear - 1) / 7) + 1;
+}
+
+// Luni la 00:00 (PayDay_Check): goleste complet tabelul `pacate` (saptamana noua, pacate noi)
+stock Pray_WeeklyReset()
+{
+    new year, month, day;
+    getdate(year, month, day);
+    if(DayOfWeek(year, month, day) != 1) return; // doar Luni
+
+    mysql_tquery(g_SQL, "TRUNCATE TABLE `pacate`", "", "", 0);
+}
+
+// Marcheaza (idempotent) un pacat (1-11) pt saptamana curenta a jucatorului - independent de /pray.
+// Creeaza randul in `pacate` daca nu exista inca (cu prayedTimes=0), sau doar seteaza pacatN=1 daca exista deja.
+stock Pray_SetSin(playerid, sinNumber, value)
+{
+    if(!PlayerData[playerid][pLogged]) return;
+    if(sinNumber < 1 || sinNumber > 12) return;
+
+    new week = Pray_GetWeekNumber();
+    new q[256];
+    mysql_format(g_SQL, q, sizeof(q),
+        "INSERT INTO `pacate` (`pID`,`weekNo`,`prayedTimes`,`pacat%d`) VALUES (%d,%d,0,%d) ON DUPLICATE KEY UPDATE `pacat%d`=%d",
+        sinNumber, PlayerData[playerid][pID], week, value, sinNumber, value);
+    mysql_tquery(g_SQL, q, "", "", 0);
+}
+
+// Marcheaza (idempotent) un pacat (1-12) pt saptamana curenta a jucatorului - independent de /pray.
+stock Pray_FlagSin(playerid, sinNumber)
+{
+    Pray_SetSin(playerid, sinNumber, 1);
+}
+
+// Anuleaza un pacat "in absenta" (ex: pacat4 - Anti-natura, default vinovat pana la dovada faptei bune)
+stock Pray_ClearSin(playerid, sinNumber)
+{
+    Pray_SetSin(playerid, sinNumber, 0);
+}
+
+// Marcheaza un pacat pt toti PASAGERII (nu soferul) unui vehicul - folosit la pacat7 (/tune Loco Outlaw Customs)
+stock Pray_FlagPassengers(vehicleid, sinNumber)
+{
+    for(new p = 0; p < MAX_PLAYERS; p++)
+    {
+        if(!IsPlayerConnected(p) || !PlayerData[p][pLogged]) continue;
+        if(GetPlayerVehicleID(p) != vehicleid) continue;
+        if(GetPlayerVehicleSeat(p) == 0) continue; // soferul nu e "martor", el a facut tuning-ul
+
+        Pray_FlagSin(p, sinNumber);
+    }
+}
+
+// True Miercuri sau Vineri (zile de post) - folosit pt pacat11 (mancat de carne)
+stock bool:Pray_IsFastingDay()
+{
+    new year, month, day;
+    getdate(year, month, day);
+    new dow = DayOfWeek(year, month, day);
+    return (dow == 3 || dow == 5);
+}
+
+// ---- Religie (/setreligion, /whatreligion) ----
+new const g_ReligionName[4][24] = {"Ateu", "The Ascendants", "The Holy Order", "The Divine Blessing"};
+
+// Cele 3 biserici (locations_admin locID 65/66/67) - eticheta 3D cu numele preluat direct din DB
+new const g_ChurchLocID[3] = {65, 66, 67};
+stock Church_LoadLabels()
+{
+    for(new c = 0; c < 3; c++)
+    {
+        new idx = Locations_FindByID(g_ChurchLocID[c]);
+        if(idx == -1) continue;
+
+        new label[64];
+        format(label, sizeof(label), "[ Church ]\n[ %s ]", LocationData[idx][locName]);
+        Create3DTextLabel(label, COLOR_WHITE,
+            LocationData[idx][locX], LocationData[idx][locY], LocationData[idx][locZ] + 0.6, 20.0, LocationData[idx][locVW], 0);
+    }
 }
 
 // Returneaza true daca acum suntem in fereastra de vot (Duminica, 08:00 - 19:30)
@@ -17932,6 +18070,9 @@ public OnPlayerRegister(playerid)
     PlayerData[playerid][pFaction]    = 0;
     PlayerData[playerid][pFactionRank]= 0;
     PlayerData[playerid][pFactionJoin]= 0;
+    PlayerData[playerid][pLastPray]   = 0;
+    PlayerData[playerid][pReligion]   = 0;
+    format(PlayerData[playerid][pLanguage], 3, "en");
     PlayerData[playerid][pHouse]      = 0;
     PlayerData[playerid][pBusiness]   = 0;
     PlayerData[playerid][pRentHouse]  = 0;
@@ -17966,6 +18107,8 @@ public OnPlayerRegister(playerid)
 
     SendClientMessage(playerid, COLOR_SUCCESS,
         C_SUCCESS"Success: "C_WHITE"Registration successful! You are now logged in.");
+    SendClientMessage(playerid, COLOR_INFO,
+        C_INFO"Info: "C_WHITE"You can choose a religion to belong to with "C_INFO"/setreligion"C_WHITE". See what each one believes with "C_INFO"/whatreligion"C_WHITE".");
     SpawnPlayer(playerid);
     HUD_Show(playerid);
     return 1;
@@ -17987,7 +18130,7 @@ stock Player_Login(playerid, const pass[])
     mysql_format(g_SQL, query, sizeof(query),
         "SELECT `id`,`password`,`email`,`level`,`money`,`bank`,`rp`,`admin_level`,`faction`,`faction_rank`,`faction_join`,`house`,`hotel`,`business`,`rent_house`,`rent_hotel`,`spawn_type`,`key1`,`key2`,`key3`,\
          `driving_lic_a_exp`,`driving_lic_b_exp`,`driving_lic_c_exp`,`driving_lic_d_exp`,`airplane_lic_a_exp`,`airplane_lic_h_exp`,`weapon_lic_w_exp`,`diseased`,`disease_paydays`,\
-         `caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds`,`rob_points`,`skin`,`gas_can`,`watch_model`,`phone_expire`,`watch_expire`,`tired`,`warns`,`vip`,`gamble_wagered`,`fishing_rod`,`forest_key`,`bb_key`,`has_gps`,`phone_book`,`coffee` \
+         `caravan_key`,`is_president`,`voted`,`was_president`,`job`,`phone_model`,`phone_number`,`medkits`,`extinguishers`,`mute_expire`,`wanted_level`,`jail_seconds`,`rob_points`,`skin`,`gas_can`,`watch_model`,`phone_expire`,`watch_expire`,`tired`,`warns`,`vip`,`gamble_wagered`,`fishing_rod`,`forest_key`,`bb_key`,`has_gps`,`phone_book`,`coffee`,`lastPrayDate`,`religion`,`language` \
          FROM `players` WHERE `id`=%d LIMIT 1",
         PlayerData[playerid][pID]);
     mysql_tquery(g_SQL, query, "OnPlayerLogin", "i", playerid);
@@ -18102,6 +18245,12 @@ public OnPlayerLogin(playerid)
     new coffeeInt;
     cache_get_value_name_int(0, "coffee", coffeeInt);
     PlayerData[playerid][pCoffee] = bool:coffeeInt;
+    new lastPrayStr[11];
+    cache_get_value_name(0, "lastPrayDate", lastPrayStr, sizeof(lastPrayStr));
+    PlayerData[playerid][pLastPray] = DateStrToUnix(lastPrayStr);
+    cache_get_value_name_int(0, "religion", PlayerData[playerid][pReligion]);
+    cache_get_value_name(0, "language", PlayerData[playerid][pLanguage], 3);
+    if(!strlen(PlayerData[playerid][pLanguage])) format(PlayerData[playerid][pLanguage], 3, "en");
     g_Sleeping[playerid] = false;
     g_FixReqType[playerid] = 0; // orice cerere de reparatie (Electrician) din sesiunea anterioara e invalidata
 
@@ -18505,6 +18654,25 @@ stock UpdatePlayer(playerid, E_PLAYER_DATA:field)
                 "UPDATE `players` SET `faction_join`=%s WHERE `id`=%d",
                 facJoin, PlayerData[playerid][pID]);
         }
+
+        case pLastPray:
+        {
+            new lastPray[14];
+            BuildDateSqlValueFromUnix(PlayerData[playerid][pLastPray], lastPray, sizeof(lastPray));
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `lastPrayDate`=%s WHERE `id`=%d",
+                lastPray, PlayerData[playerid][pID]);
+        }
+
+        case pReligion:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `religion`=%d WHERE `id`=%d",
+                PlayerData[playerid][pReligion], PlayerData[playerid][pID]);
+
+        case pLanguage:
+            mysql_format(g_SQL, query, sizeof(query),
+                "UPDATE `players` SET `language`='%s' WHERE `id`=%d",
+                PlayerData[playerid][pLanguage], PlayerData[playerid][pID]);
 
         case pHouse:
             mysql_format(g_SQL, query, sizeof(query),
@@ -19707,6 +19875,9 @@ public OnPlayerConnect(playerid)
     PlayerData[playerid][pFaction]    = 0;
     PlayerData[playerid][pFactionRank]= 0;
     PlayerData[playerid][pFactionJoin]= 0;
+    PlayerData[playerid][pLastPray]   = 0;
+    PlayerData[playerid][pReligion]   = 0;
+    format(PlayerData[playerid][pLanguage], 3, "en");
     PlayerData[playerid][pHouse]      = 0;
     PlayerData[playerid][pBusiness]   = 0;
     PlayerData[playerid][pRentHouse]  = 0;
@@ -23556,6 +23727,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
             SetPlayerWantedLevel(pid, 6);
             UpdatePlayer(pid, pWanted);
 
+            Pray_FlagSin(pid, 2); // Lacomia dupa bani
+
             new nm[144];
             format(nm, sizeof(nm), C_ERROR"[Rob] "C_WHITE"Robbery of "C_INFO"%s"C_WHITE" started! Deliver the money to the "C_INFO"2 businesses"C_WHITE" (checkpoints) to get paid.",
                 targetName);
@@ -25754,6 +25927,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
             ApplyAnimation(playerid, "CRACK", "crckidle2", 4.0, 0, 0, 0, 0, 0, 1);
             TogglePlayerControllable(playerid, 0);
             SetTimerEx("Drug_Unfreeze", DRUG_USE_FREEZE * 1000, false, "i", playerid);
+            Pray_FlagSin(playerid, 10); // Bautura si viciul
 
             SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"[Drugs] "C_WHITE"You injected drugs. "C_SUCCESS"+30 HP"C_WHITE".");
             return 1;
@@ -27262,6 +27436,119 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
+    // ---- /pray (o data pe zi; duminica se aleg si pacatele saptamanii - textdraw-urile vin ulterior) ----
+    if(strcmp(cmd, "/pray", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new prToday = gettime() - (gettime() % 86400);
+        if(PlayerData[playerid][pLastPray] == prToday)
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You already prayed today."), 1;
+
+        PlayerData[playerid][pLastPray] = prToday;
+        UpdatePlayer(playerid, pLastPray);
+
+        new prWeek = Pray_GetWeekNumber();
+        new prQ[220];
+        mysql_format(g_SQL, prQ, sizeof(prQ),
+            "INSERT INTO `pacate` (`pID`,`weekNo`,`prayedTimes`) VALUES (%d,%d,1) ON DUPLICATE KEY UPDATE `prayedTimes` = `prayedTimes` + 1",
+            PlayerData[playerid][pID], prWeek);
+        mysql_tquery(g_SQL, prQ, "", "", 0);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"You prayed for forgiveness.");
+
+        new prYear, prMonth, prDay;
+        getdate(prYear, prMonth, prDay);
+        if(DayOfWeek(prYear, prMonth, prDay) == 0) // Duminica
+            SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"It's Sunday - confessing this week's sins is coming soon.");
+
+        return 1;
+    }
+
+    // ---- /sinlist (informativ - cele 12 pacate ale saptamanii, /pray) ----
+    if(strcmp(cmd, "/sinlist", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new lpBody[2000];
+        format(lpBody, sizeof(lpBody),
+            ""C_INFO"1. Defying the Law\n"C_WHITE"You refused to surrender/pull over at the Police's command, even though you were cornered or outnumbered.\n\n\
+"C_INFO"2. Greed for Money\n"C_WHITE"You stole, robbed ("C_INFO"/rob"C_WHITE") or scammed another player for profit.\n\n\
+"C_INFO"3. The Vice of Gambling\n"C_WHITE"You gambled recklessly at the casino, risking money you couldn't afford to lose.\n\n\
+"C_INFO"4. Anti-Nature\n"C_WHITE"You didn't plant a single tree this week and didn't water the vegetation (at least one Water Hauler shift).\n\n\
+"C_INFO"5. Trafficking Without Restraint\n"C_WHITE"You smuggled or hoarded more goods/weapons than you needed, out of pure greed.\n\n\
+"C_INFO"6. Bloody Revenge\n"C_WHITE"You killed or attacked someone out of anger or a desire for revenge, not necessity.\n\n\
+"C_INFO"7. Witness to Illegal Vehicle Modifications\n"C_WHITE"You were a passenger in a vehicle that had "C_INFO"/tune"C_WHITE" used on it by Loco Outlaw Customs members.\n\n\
+"C_INFO"8. Reckless Speeding\n"C_WHITE"You drove at excessive speed or defied a radar, endangering others on the road.\n\n\
+"C_INFO"9. Time Served Behind Bars\n"C_WHITE"You spent time in jail this week, paying for your actions.\n\n\
+"C_INFO"10. Drink and Vice\n"C_WHITE"You got drunk or used illegal substances without restraint.\n\n\
+"C_INFO"11. Breaking the Fast\n"C_WHITE"You ate meat on Wednesday or Friday, days of fasting.\n\n\
+"C_INFO"12. Disregard for Road Law\n"C_WHITE"You tried to drive or fly without a valid license.");
+
+        ShowPlayerDialog(playerid, DIALOG_PACATE_LIST, DIALOG_STYLE_MSGBOX, "The 12 Sins of the Week", lpBody, "Close", "");
+        return 1;
+    }
+
+    // ---- /en (seteaza limba la engleza) ----
+    if(strcmp(cmd, "/en", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        format(PlayerData[playerid][pLanguage], 3, "en");
+        UpdatePlayer(playerid, pLanguage);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Language set to "C_INFO"English"C_WHITE".");
+        return 1;
+    }
+
+    // ---- /ro (seteaza limba la romana) ----
+    if(strcmp(cmd, "/ro", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        format(PlayerData[playerid][pLanguage], 3, "ro");
+        UpdatePlayer(playerid, pLanguage);
+
+        SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Limba a fost setata la "C_INFO"Romana"C_WHITE".");
+        return 1;
+    }
+
+    // ---- /setreligion (alege religia din 4 optiuni) ----
+    if(strcmp(cmd, "/setreligion", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        ShowPlayerDialog(playerid, DIALOG_SET_RELIGION, DIALOG_STYLE_LIST, "Choose your religion",
+            "Ateu\nThe Ascendants\nThe Holy Order\nThe Divine Blessing", "Select", "Cancel");
+        return 1;
+    }
+
+    // ---- /whatreligion (informativ - detaliile celor 4 religii) ----
+    if(strcmp(cmd, "/whatreligion", true) == 0)
+    {
+        if(!PlayerData[playerid][pLogged])
+            return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
+
+        new wrBody[2200];
+        format(wrBody, sizeof(wrBody),
+            ""C_INFO"1. ATHEISTS "C_WHITE"(The Rationalists / No Faith)\n\
+We reject the supernatural and believe that the world operates through natural laws, science, and reason. There is no divine force guiding us - we are responsible for our own destiny and morality. Spirituality is not needed to be ethical or fulfilled; compassion and critical thinking are enough. The universe doesn't care about us, which is why we must create our own meaning and protect each other through logic and evidence. Faith is comforting but it blinds people from truth.\n\n\
+"C_INFO"2. THE ASCENDANTS "C_WHITE"(Modern church)\n\
+We believe that humanity is constantly evolving toward a higher form of existence, beyond material and traditional limits. Spirituality is not found in the past or in religion, but in progress and personal transcendence. The future belongs to those who understand that human consciousness can be elevated through knowledge, technology, and enlightenment. The world is a universe in constant upgrade.\n\n\
+"C_INFO"3. THE HOLY ORDER "C_WHITE"(Medieval church)\n\
+Our faith is rooted in tradition, sacrifice, and devotion to eternal values. The world is full of evil and temptation, but through asceticism and pure faith you can achieve spiritual salvation. Honor, loyalty, and respect for divine law are the moral pillars of existence. The future is built on the strong foundations of the past.\n\n\
+"C_INFO"4. THE DIVINE BLESSING "C_WHITE"(Santa Luz - Hispanic/Colonial church)\n\
+We are connected with nature, with community, and with the supreme good that watches over us. Spirituality lives in honest work, in love for our fellow man, and in respect for the sacred that surrounds us. Our beliefs are simple but powerful - goodness, compassion, and harmony with the earth are the path to peace. The world is a blessing, not a battle.");
+
+        ShowPlayerDialog(playerid, DIALOG_WHAT_RELIGION, DIALOG_STYLE_MSGBOX, "Religions", wrBody, "Close", "");
+        return 1;
+    }
+
     // ---- /heal [playerid] ----
     if(strcmp(cmd, "/heal", true) == 0)
     {
@@ -27343,6 +27630,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
         PlayerData[wtarget][pWanted] = wlevel;
         SetPlayerWantedLevel(wtarget, wlevel);
         UpdatePlayer(wtarget, pWanted);
+
+        if(wlevel > 0) Pray_FlagSin(wtarget, 1); // Sfidarea legii
 
         new wmsg[220];
         format(wmsg, sizeof(wmsg), C_INFO"[P.R.] "C_WHITE"Officer "C_INFO"%s"C_WHITE" (rank %d) set "C_INFO"%s"C_WHITE"'s wanted level to "C_INFO"%d star(s)"C_WHITE".",
@@ -27504,6 +27793,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         PlayerData[artarget][pJailSeconds] = minutes * 60;
         UpdatePlayer(artarget, pJailSeconds);
         Jail_Send(artarget);
+        Pray_FlagSin(artarget, 9); // Timp ispasit dupa gratii
 
         // Anunt catre toti politistii
         new armsg[220];
@@ -27571,6 +27861,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
         PlayerData[playerid][pJailSeconds] = amMinutes * 60;
         UpdatePlayer(playerid, pJailSeconds);
         Jail_Send(playerid);
+        Pray_FlagSin(playerid, 9); // Timp ispasit dupa gratii
 
         // Anunt catre toti politistii (chiar daca niciunul nu e on-duty acum)
         new amcopmsg[220];
@@ -30898,7 +31189,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[4] "C_WHITE"/ban /unban /forcewar /adminuninvite /afactionstats");
         if(alv >= 5)
         {
-            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[5] "C_WHITE"/vc /bc /hc /fc /farmc /htlc /setfactionskin /payday /jetpack /removejetpack /cancelauction");
+            SendClientMessage(playerid, COLOR_WHITE, C_INFO"[5] "C_WHITE"/vc /bizc /hc /fc /farmc /htlc /setfactionskin /payday /jetpack /removejetpack /cancelauction");
             SendClientMessage(playerid, COLOR_WHITE, C_INFO"[5] "C_WHITE"/clsc /ammoc /ffc /hupgrade /licitatie /binc");
         }
         if(alv >= 6)
@@ -35749,8 +36040,8 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
         return 1;
     }
 
-    // ---- /bc [option] ... (admin: modifica un business dupa ID) ----
-    if(strcmp(cmd, "/bc", true) == 0)
+    // ---- /bizc [option] ... (admin: modifica un business dupa ID) ----
+    if(strcmp(cmd, "/bizc", true) == 0)
     {
         if(PlayerData[playerid][pAdminLevel] < 5)
             return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You don't have access. Requires admin level 5."), 1;
@@ -35760,7 +36051,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
         while(cmdtext[idx] > ' ' && bidPos < 7) { bidStr[bidPos++] = cmdtext[idx]; idx++; }
         bidStr[bidPos] = EOS;
         if(!strlen(bidStr))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [bizid] [name/price/loc/anaf]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [bizid] [name/price/loc/anaf]"C_WHITE"."), 1;
 
         new bid = strval(bidStr);
         new bidx = Businesses_FindByID(bid);
@@ -35772,9 +36063,9 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
         while(cmdtext[idx] > ' ' && bpos < 15) { bopt[bpos++] = cmdtext[idx]; idx++; }
         bopt[bpos] = EOS;
         if(!strlen(bopt))
-            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [id] [name/price/loc/anaf/forsale/ownerid/bank]"C_WHITE"."), 1;
+            return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [id] [name/price/loc/anaf/forsale/ownerid/bank]"C_WHITE"."), 1;
 
-        // ---- /bc [id] name [name] ----
+        // ---- /bizc [id] name [name] ----
         if(strcmp(bopt, "name", true) == 0)
         {
             while(cmdtext[idx] == ' ') idx++;
@@ -35782,7 +36073,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             strmid(bname, cmdtext, idx, strlen(cmdtext), 32);
 
             if(!strlen(bname))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [id] name [name]"C_WHITE"."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [id] name [name]"C_WHITE"."), 1;
 
             format(BusinessData[bidx][bName], 32, "%s", bname);
             Businesses_RecreatePickup(bidx);
@@ -35799,7 +36090,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             return 1;
         }
 
-        // ---- /bc [id] price [new_price] ----
+        // ---- /bizc [id] price [new_price] ----
         if(strcmp(bopt, "price", true) == 0)
         {
             while(cmdtext[idx] == ' ') idx++;
@@ -35808,7 +36099,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             new newPrice = strval(p2);
 
             if(!strlen(p2))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [id] price [new_price]"C_WHITE"."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [id] price [new_price]"C_WHITE"."), 1;
 
             if(newPrice <= 0)
                 return SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Invalid price."), 1;
@@ -35827,7 +36118,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             return 1;
         }
 
-        // ---- /bc [id] loc ----
+        // ---- /bizc [id] loc ----
         if(strcmp(bopt, "loc", true) == 0)
         {
             GetPlayerPos(playerid, BusinessData[bidx][bLocX], BusinessData[bidx][bLocY], BusinessData[bidx][bLocZ]);
@@ -35846,14 +36137,14 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             return 1;
         }
 
-        // ---- /bc [id] anaf [0-1] (blocheaza/deblocheaza manual un business) ----
+        // ---- /bizc [id] anaf [0-1] (blocheaza/deblocheaza manual un business) ----
         if(strcmp(bopt, "anaf", true) == 0)
         {
             while(cmdtext[idx] == ' ') idx++;
             new bcVal[4];
             strmid(bcVal, cmdtext, idx, strlen(cmdtext), 4);
             if(!strlen(bcVal))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [id] anaf [0-1]"C_WHITE"."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [id] anaf [0-1]"C_WHITE"."), 1;
 
             new bcAnafVal = strval(bcVal);
             if(bcAnafVal != 0 && bcAnafVal != 1)
@@ -35870,14 +36161,14 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             return 1;
         }
 
-        // ---- /bc [id] forsale [price] (0 = anuleaza listarea) ----
+        // ---- /bizc [id] forsale [price] (0 = anuleaza listarea) ----
         if(strcmp(bopt, "forsale", true) == 0)
         {
             while(cmdtext[idx] == ' ') idx++;
             new bfsStr[16];
             strmid(bfsStr, cmdtext, idx, strlen(cmdtext), 16);
             if(!strlen(bfsStr))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [id] forsale [price]"C_WHITE" (0 = cancel)."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [id] forsale [price]"C_WHITE" (0 = cancel)."), 1;
 
             new bfsPrice = strval(bfsStr);
             new q[160];
@@ -35907,14 +36198,14 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             return 1;
         }
 
-        // ---- /bc [id] ownerid [playerid] (schimba proprietarul; playerid trebuie sa fie conectat) ----
+        // ---- /bizc [id] ownerid [playerid] (schimba proprietarul; playerid trebuie sa fie conectat) ----
         if(strcmp(bopt, "ownerid", true) == 0)
         {
             while(cmdtext[idx] == ' ') idx++;
             new boiStr[8];
             strmid(boiStr, cmdtext, idx, strlen(cmdtext), 8);
             if(!strlen(boiStr))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [id] ownerid [playerid]"C_WHITE" ("C_INFO"none"C_WHITE" = clear, back to standard sale)."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [id] ownerid [playerid]"C_WHITE" ("C_INFO"none"C_WHITE" = clear, back to standard sale)."), 1;
 
             new bool:bcClearOwner = (strcmp(boiStr, "none", true) == 0);
             new boiTarget = bcClearOwner ? -1 : strval(boiStr);
@@ -35986,14 +36277,14 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             return 1;
         }
 
-        // ---- /bc [id] bank [new_value] ----
+        // ---- /bizc [id] bank [new_value] ----
         if(strcmp(bopt, "bank", true) == 0)
         {
             while(cmdtext[idx] == ' ') idx++;
             new bbkStr[16];
             strmid(bbkStr, cmdtext, idx, strlen(cmdtext), 16);
             if(!strlen(bbkStr))
-                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bc [id] bank [new_value]"C_WHITE"."), 1;
+                return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/bizc [id] bank [new_value]"C_WHITE"."), 1;
 
             new bbkVal = strval(bbkStr);
             if(bbkVal < 0)
@@ -36012,7 +36303,7 @@ You can carry up to "C_INFO#HUNT_MAX_MEAT C_WHITE" deer at once. A hunted deer r
             return 1;
         }
 
-        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/bc [id] [name/price/loc/anaf/forsale/ownerid/bank]"C_WHITE"."), 1;
+        return SendClientMessage(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/bizc [id] [name/price/loc/anaf/forsale/ownerid/bank]"C_WHITE"."), 1;
     }
 
     // ---- /rentbike ----
@@ -36586,6 +36877,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"pizza"C_WHITE" for "C_INFO"$%s"C_WHITE" (+%d HP).",
             MoneyStr(g_PizzaPrice), floatround(PIZZA_HEAL_AMOUNT));
         SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        if(Pray_IsFastingDay()) Pray_FlagSin(playerid, 11); // Nerespectarea postului
         return 1;
     }
 
@@ -36626,6 +36918,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"burger"C_WHITE" for "C_INFO"$%s"C_WHITE" (+%d HP).",
             MoneyStr(g_BurgerPrice), floatround(BURGER_HEAL_AMOUNT));
         SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        if(Pray_IsFastingDay()) Pray_FlagSin(playerid, 11); // Nerespectarea postului
         return 1;
     }
 
@@ -36666,6 +36959,7 @@ The insurance, medkit, extinguisher and ITP are valid for "C_INFO"7 days"C_WHITE
         format(lmsg, sizeof(lmsg), C_SUCCESS"Success: "C_WHITE"You bought a "C_INFO"Cluckin Bell meal"C_WHITE" for "C_INFO"$%s"C_WHITE" (+%d HP).",
             MoneyStr(g_MealPrice), floatround(MEAL_HEAL_AMOUNT));
         SendClientMessage(playerid, COLOR_SUCCESS, lmsg);
+        if(Pray_IsFastingDay()) Pray_FlagSin(playerid, 11); // Nerespectarea postului
         return 1;
     }
 
@@ -40347,6 +40641,9 @@ public OnPlayerTakeDamage(playerid, issuerid, Float:amount, weaponid, bodypart)
 
 public OnPlayerDeath(playerid, killerid, reason)
 {
+    if(killerid != INVALID_PLAYER_ID && IsPlayerConnected(killerid) && PlayerData[killerid][pLogged])
+        Pray_FlagSin(killerid, 6); // Razbunarea cu sange
+
     JailWork_Stop(playerid); // daca lucra in inchisoare, i se sterge checkpoint-ul la moarte
 
     War_HandleDeath(playerid, killerid);
@@ -42096,6 +42393,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             new tcMsg[96];
             format(tcMsg, sizeof(tcMsg), C_SUCCESS"Success: "C_WHITE"Removed "C_INFO"%d"C_WHITE" installed part(s).", tcRemoved);
             SendClientMessage(playerid, COLOR_SUCCESS, tcMsg);
+            if(tcRemoved > 0) Pray_FlagPassengers(tcVehid, 7); // Martor la modificari ilegale la vehicule
             return 1;
         }
 
@@ -42191,6 +42489,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             ChangeVehiclePaintjob(tpVehid, listitem);
             g_TuningVehicle[playerid] = -1;
             SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Paintjob applied.");
+            Pray_FlagPassengers(tpVehid, 7); // Martor la modificari ilegale la vehicule
             return 1;
         }
 
@@ -42202,6 +42501,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             if(Tuning_RemovePart(tpVehid, tpType))
             {
                 SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Part removed.");
+                Pray_FlagPassengers(tpVehid, 7); // Martor la modificari ilegale la vehicule
                 if(tpType == CARMODTYPE_WHEELS)
                 {
                     new tpVfIdx = VFaction_FindByVehicle(tpVehid);
@@ -42220,6 +42520,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         if(Tuning_ApplyPart(tpVehid, tpComponent))
         {
             SendClientMessage(playerid, COLOR_SUCCESS, C_SUCCESS"Success: "C_WHITE"Part installed.");
+            Pray_FlagPassengers(tpVehid, 7); // Martor la modificari ilegale la vehicule
             if(tpType == CARMODTYPE_WHEELS)
             {
                 new tpVfIdx = VFaction_FindByVehicle(tpVehid);
@@ -42228,6 +42529,20 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
         }
         else
             SendClientMessage(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"That part is not compatible with this vehicle.");
+        return 1;
+    }
+
+    if(dialogid == DIALOG_SET_RELIGION)
+    {
+        if(!response) return 1; // Cancel
+        if(listitem < 0 || listitem >= 4) return 1;
+
+        PlayerData[playerid][pReligion] = listitem;
+        UpdatePlayer(playerid, pReligion);
+
+        new relMsg[128];
+        format(relMsg, sizeof(relMsg), C_SUCCESS"Success: "C_WHITE"You now belong to "C_INFO"%s"C_WHITE".", g_ReligionName[listitem]);
+        SendClientMessage(playerid, COLOR_SUCCESS, relMsg);
         return 1;
     }
 
@@ -42813,6 +43128,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
                         C_ERROR"Error: "C_WHITE"You need a valid Airplane license "C_INFO"%s"C_WHITE" to fly this.",
                         acatName);
                     SendClientMessage(playerid, COLOR_ERROR, amsg);
+                    Pray_FlagSin(playerid, 12); // Nesocotirea legii drumului
                 }
             }
             else if(!IsExamACarVehicle(vehid) && !IsExamBCarVehicle(vehid) && !IsExamCTruckVehicle(vehid) && !IsExamDCarVehicle(vehid) && !IsRentCarVehicle(vehid))
@@ -42828,6 +43144,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
                         C_ERROR"Error: "C_WHITE"You need a valid category "C_INFO"%s"C_WHITE" license to drive this vehicle.",
                         catName);
                     SendClientMessage(playerid, COLOR_ERROR, lmsg);
+                    Pray_FlagSin(playerid, 12); // Nesocotirea legii drumului
                 }
             }
 

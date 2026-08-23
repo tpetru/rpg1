@@ -1018,6 +1018,9 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (60, 'W LosSantos Station', 824.527, -1361.05, -0.5078, 'West Los Santos Train Station', 0, 0, 1, 'Public Transport'),
 (61, 'S LosSantos Station', 1738.98, -1950.01, 14.1172, 'South Los Santos Train Station', 0, 0, 1, 'Public Transport'),
 (62, 'E LosSantos Station', 2261.17, -1507.29, 21.5038, 'East Los Santos Train Station', 0, 0, 1, 'Public Transport'),
+(65, 'Ascendant Spire', 1772.1508, -1655.6516, 14.4246, 'The Ascendants - church', 0, 0, 1, 'Others'),
+(66, 'Holy Order Chapel', 1719.9230, -1740.4915, 13.5469, 'The Holy Order - church', 0, 0, 1, 'Others'),
+(67, 'Santa Luz Chapel', 2232.7515, -1333.1318, 23.9815, 'The Divine Blessing (Santa Luz) - church', 0, 0, 1, 'Others'),
 (100, 'lspd_barrier', 1544.7, -1630.9, 13.24, 'Bariera LSPD (horn factiune 1)', 0, 0, 0, ''),
 (101, 'Job Glovo Delivery', 1013.5, -1366.97, 13.36, 'Job 1 - Glovo Delivery', 0, 0, 1, 'Job'),
 (102, 'Job Cement Truck Driver', 334.62, 871.524, 20.4, 'Job 2 - Cement Truck Driver', 0, 0, 1, 'Job'),
@@ -1039,6 +1042,31 @@ INSERT INTO `locations_admin` (`locID`, `locName`, `locX`, `locY`, `locZ`, `locD
 (901, 'GetJob', 358.421, 182.193, 1008.38, 'Job Center - angajare (/getjob)', 0, 0, 0, ''),
 (902, 'QuitJob', 359.265, 166.433, 1008.38, 'Job Center - demisie (/quitjob)', 0, 0, 0, ''),
 (909, 'Job Uber', 1481.22, -1771.37, 18.7958, 'Starting point of job Uber', 0, 0, 1, 'Job');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pacate`
+--
+
+CREATE TABLE `pacate` (
+  `id` int(11) NOT NULL,
+  `pID` int(11) NOT NULL,
+  `weekNo` int(11) NOT NULL,
+  `prayedTimes` int(11) DEFAULT 1,
+  `pacat1` tinyint(1) DEFAULT 0,
+  `pacat2` tinyint(1) DEFAULT 0,
+  `pacat3` tinyint(1) DEFAULT 0,
+  `pacat4` tinyint(1) DEFAULT 1,
+  `pacat5` tinyint(1) DEFAULT 0,
+  `pacat6` tinyint(1) DEFAULT 0,
+  `pacat7` tinyint(1) DEFAULT 0,
+  `pacat8` tinyint(1) DEFAULT 0,
+  `pacat9` tinyint(1) DEFAULT 0,
+  `pacat10` tinyint(1) DEFAULT 0,
+  `pacat11` tinyint(1) DEFAULT 0,
+  `pacat12` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1105,6 +1133,9 @@ CREATE TABLE `players` (
   `has_gps` tinyint(4) DEFAULT 0,
   `phone_book` tinyint(4) DEFAULT 0,
   `coffee` tinyint(1) DEFAULT 0,
+  `lastPrayDate` date DEFAULT NULL,
+  `religion` tinyint(1) DEFAULT 0,
+  `language` varchar(2) DEFAULT 'en',
   `register_date` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
