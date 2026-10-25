@@ -72,7 +72,7 @@ export function GameScreen({ me, clockOffset, onLogout }: Props) {
   return (
     <div className="game">
       <header className="topbar">
-        <span className="logo small">GeoWars</span>
+        <span className="logo small">📍 GeoWars</span>
         <span className="muted">{me.world.name}</span>
         <div className="settlement-tabs">
           {mine.map((s) => (
