@@ -1,0 +1,17 @@
+{
+  "name": "@geowars/rules",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Game data and formulas shared by the server (authoritative) and the client (previews).",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "node --import tsx --test src/*.test.ts"
+  }
+}

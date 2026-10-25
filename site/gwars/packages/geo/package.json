@@ -1,0 +1,20 @@
+{
+  "name": "@geowars/geo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Builds world data: Natural Earth countries + GeoNames cities -> H3 hex settlements.",
+  "exports": {
+    ".": {
+      "types": "./src/world-file.ts",
+      "default": "./src/world-file.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsx src/build-world.ts"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "h3-js": "^4.5.0"
+  }
+}

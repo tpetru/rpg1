@@ -1,0 +1,20 @@
+[Unit]
+Description=GeoWars game server
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=simple
+User=gwars
+Group=gwars
+WorkingDirectory=/opt/gwars/apps/server
+ExecStart=/usr/bin/node --import tsx src/main.ts
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
