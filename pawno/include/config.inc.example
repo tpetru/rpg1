@@ -9,7 +9,7 @@
 // ---- MySQL ----
 #define MYSQL_HOST      "127.0.0.1"
 #define MYSQL_USER      "root"
-#define MYSQL_PASS      "parola_ta"
+#define MYSQL_PASS      "CHANGE_ME"
 #define MYSQL_DB        "romania_rpg"
 #define MYSQL_PORT      3306
 

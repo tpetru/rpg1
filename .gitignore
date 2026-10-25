@@ -1,0 +1,17 @@
+# Runtime output
+logs/
+*.log
+log.txt
+server_log.txt
+NUL.amx
+__pycache__/
+*.pyc
+
+# Local config with passwords (copy the .example next to each and fill it in)
+include/config.inc
+pawno/include/config.inc
+server.cfg
+config.json
+
+# Per-machine Claude Code settings
+.claude/

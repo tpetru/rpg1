@@ -1,14 +1,14 @@
 echo Executing Server Config...
 lanmode 0
-rcon_password 112
+rcon_password changeme
 maxplayers 5
 port 7777
-hostname Nostalgia Los Santos | Romania | 2026
+hostname No-Santos | 2026 | localhost
 gamemode0 bare
 filterscripts
 announce 0
 chatlogging 0
-weburl www.sa-mp.com
+weburl no-santos.com
 onfoot_rate 40
 incar_rate 40
 weapon_rate 40
