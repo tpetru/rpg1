@@ -27,7 +27,7 @@ export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => void })
   return (
     <div className="auth">
       <div className="auth-card">
-        <h1 className="logo">GeoWars</h1>
+        <h1 className="logo">📍 GeoWars</h1>
         <p className="tagline">Start with one city. Conquer the real world.</p>
 
         <div className="tabs">

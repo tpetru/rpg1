@@ -40,7 +40,7 @@ export function JoinScreen({ me, onJoined, onLogout }: { me: MeResponse; onJoine
     <div className="join">
       <header className="join-header">
         <div>
-          <h1 className="logo">GeoWars</h1>
+          <h1 className="logo">📍 GeoWars</h1>
           <p className="tagline">
             {me.world.name}: choose where your nation begins, {me.account.username}.
           </p>
