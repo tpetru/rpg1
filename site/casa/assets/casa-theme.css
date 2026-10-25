@@ -1,0 +1,164 @@
+:root {
+  --bg:        #12110f;  /* page background, warm charcoal */
+  --panel:     #1b1a17;  /* cards, table stripes, inputs */
+  --ink:       #f0ece4;  /* primary text, bone */
+  --ink-2:     #968f82;  /* secondary text, body copy on dark */
+  --ink-3:     #8e8677;  /* tertiary: mono labels, timestamps, hints */
+  --line:      rgba(240,236,228,.14);  /* section rules, input borders */
+  --line-soft: rgba(240,236,228,.07);  /* row separators inside a list */
+  --accent:    #d9a441;  /* brass */
+  --on-accent: #17140d;  /* text on a brass fill */
+  --good:      #9dbf7a;  /* sage: price drop, done, under estimate */
+  --bad:       #d2694f;  /* clay: price rise, error, failed check */
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --disp: 'Archivo', system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--disp);
+}
+
+a { color: inherit; }
+
+header.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  height: 56px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+header.hero .brand {
+  display: flex;
+  align-items: baseline;
+  gap: 34px;
+}
+
+header.hero .wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+header.hero .wordmark strong {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .14em;
+  color: var(--ink);
+}
+
+header.hero .wordmark span {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+header.hero nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+header.hero nav a {
+  font-family: var(--disp);
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: none;
+  padding-bottom: 18px;
+  transition: color .15s ease;
+}
+
+header.hero nav a:hover { color: var(--ink); }
+
+header.hero nav a.is-current {
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: 0 12px 0 -10px var(--accent);
+}
+
+header.hero .stage-tag {
+  font: 400 11px var(--mono);
+  color: var(--ink-3);
+  letter-spacing: .04em;
+  flex-shrink: 0;
+}
+
+
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nav-toggle span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--ink);
+  transition: transform .2s ease, opacity .2s ease;
+}
+
+.nav-toggle.is-open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-toggle.is-open span:nth-child(2) { opacity: 0; }
+.nav-toggle.is-open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+@media (max-width: 700px) {
+  .nav-toggle { display: flex; }
+  header.hero .stage-tag { display: none; }
+  header.hero nav {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 6px 20px 14px;
+    display: none;
+  }
+  header.hero nav.is-open { display: flex; }
+  header.hero nav a {
+    width: 100%;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  header.hero nav a.is-current { box-shadow: none; border-bottom-color: var(--accent); }
+}
+
+/* Link "← Înapoi la X" folosit pe paginile de detaliu (product.php, furnizori.php etc.) - un
+   singur stil comun, ca sa nu se redeclare pe fiecare pagina si sa arate identic peste tot. */
+.back-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-bottom: 20px;
+  padding: 7px 14px 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+  color: var(--ink-2);
+  font-family: var(--disp); font-weight: 500; font-size: 0.82rem;
+  text-decoration: none;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+.back-link:hover { border-color: var(--accent); color: var(--accent); background: rgba(217,164,65,.08); }
+.back-link .arrow { transition: transform 0.2s ease; }
+.back-link:hover .arrow { transform: translateX(-3px); }

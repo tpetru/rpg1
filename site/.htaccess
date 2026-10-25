@@ -1,0 +1,23 @@
+# Photo upload limits - see .user.ini for the same values (that file covers CGI/FastCGI/FPM setups,
+# this one covers mod_php). Wrapped in IfModule so the server doesn't 500 when mod_php is absent.
+<IfModule mod_php.c>
+    php_value upload_max_filesize 20M
+    php_value post_max_size 25M
+    php_value memory_limit 256M
+    php_value max_execution_time 120
+    php_value max_input_time 120
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 20M
+    php_value post_max_size 25M
+    php_value memory_limit 256M
+    php_value max_execution_time 120
+    php_value max_input_time 120
+</IfModule>
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 20M
+    php_value post_max_size 25M
+    php_value memory_limit 256M
+    php_value max_execution_time 120
+    php_value max_input_time 120
+</IfModule>

@@ -1,0 +1,187 @@
+/* Temele /casa. Se incarca peste casa-theme.css (tema implicita "Noapte": charcoal + alama) si
+   adauga tema "Cremă": fundal cald deschis cu accent verde-petrol.
+   Tema activa e pusa de PHP pe <html data-casa-theme="...">, din cookie-ul casa_theme (vezi
+   casa/_theme.php); comutarea din footer o face /assets/theme-switch.js, fara reload.
+
+   Aproape toata munca o fac token-urile redefinite mai jos, pentru ca paginile folosesc var(--...).
+   Restul fisierului repara locurile in care paginile au culori scrise direct in CSS-ul lor inline
+   (alb translucid peste inchis) - alea ar disparea pe fundal deschis. Selectorii sunt prefixati cu
+   :root[data-casa-theme="cream"] ca sa bata CSS-ul inline al paginilor, care vine dupa in <head>. */
+
+/* ============================ Tema Crema: token-uri ============================ */
+:root[data-casa-theme="cream"] {
+  --bg:        #f6f1e6;  /* crem cald */
+  --panel:     #fffdf7;  /* carduri, randuri de tabel, campuri */
+  --ink:       #2c2822;  /* text principal */
+  --ink-2:     #5f584c;  /* text secundar */
+  --ink-3:     #8a8175;  /* etichete mono, timestamp-uri, hint-uri */
+  --line:      rgba(44,40,34,.20);
+  --line-soft: rgba(44,40,34,.10);
+  --accent:    #1f7a6d;  /* verde-petrol, in loc de alama */
+  --on-accent: #fbfdfc;  /* text peste accent */
+  --good:      #4a8f46;
+  --bad:       #c2543a;
+}
+
+/* Header-ul e lipit sus si are fundalul paginii - pe crem ii trebuie o umbra discreta ca sa se
+   desprinda de continutul care trece pe sub el. */
+:root[data-casa-theme="cream"] header.hero {
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--line-soft), 0 6px 18px rgba(44,40,34,.06);
+}
+
+/* ============================ Tema Santier: token-uri ============================ */
+:root[data-casa-theme="santier"] {
+  --bg:        #d9d3c7;  /* beton / nisip */
+  --panel:     #f7f4ee;  /* carduri si campuri, ca sa se citeasca peste desen */
+  --ink:       #2c2823;
+  --ink-2:     #5e574d;
+  --ink-3:     #8a8175;
+  --line:      rgba(44,40,35,.22);
+  --line-soft: rgba(44,40,35,.11);
+  --accent:    #a8492c;  /* caramida */
+  --on-accent: #fdf8f4;
+  --good:      #5f8f46;
+  --bad:       #bf3f2f;
+}
+
+/* Materiale desenate pe fundal, peste culoarea de beton */
+:root[data-casa-theme="santier"] body {
+  background-color: var(--bg);
+  background-image: url('/assets/patterns/santier.svg');
+  background-size: 430px 430px;
+  background-repeat: repeat;
+}
+/* Header-ul e lipit sus si trebuie sa acopere desenul care trece pe sub el */
+:root[data-casa-theme="santier"] header.hero { background: var(--bg); }
+
+/* Continutul sta pe o foaie translucida, ca textul sa nu cada direct peste materiale; desenul
+   ramane vizibil pe margini si transpare usor prin foaie. */
+:root[data-casa-theme="santier"] main {
+  /* Gri rece, nu crem: se desprinde de nisipul cald al fundalului si nu seamana cu tema "Cremă".
+     Peste el, rosturile unui zid in opus - destul de stinse cat sa nu incurce cititul. */
+  background-color: rgba(233, 234, 232, .82);
+  background-image: url('/assets/patterns/zid.svg');
+  background-size: 160px 80px;
+  background-repeat: repeat;
+  border-radius: 18px;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
+/* ============================ Tema Plante: token-uri ============================ */
+/* Varianta intunecata - gradina noaptea: verde-negru cu frunze abia ghicite si un verde crud pe
+   post de accent. Fiind tema inchisa, ca cea implicita, nu are nevoie de corectiile de mai jos
+   pentru culorile scrise direct in paginile gandite pentru fundal inchis. */
+:root[data-casa-theme="plante"] {
+  --bg:        #131810;  /* verde-negru */
+  --panel:     #1c2218;
+  --ink:       #e9efe0;
+  --ink-2:     #9aa891;
+  --ink-3:     #7f8c77;
+  --line:      rgba(233,239,224,.14);
+  --line-soft: rgba(233,239,224,.07);
+  --accent:    #86c65c;  /* verde crud, vizibil pe inchis */
+  --on-accent: #121a0c;
+  --good:      #86c65c;
+  --bad:       #d2694f;
+}
+
+/* Frunze si ghivece desenate pe fundal */
+:root[data-casa-theme="plante"] body {
+  background-color: var(--bg);
+  background-image: url('/assets/patterns/plante.svg');
+  background-size: 430px 430px;
+  background-repeat: repeat;
+}
+/* Header-ul e lipit sus si trebuie sa acopere desenul care trece pe sub el */
+:root[data-casa-theme="plante"] header.hero { background: var(--bg); }
+
+/* Continutul sta pe o foaie translucida, ca textul sa nu cada direct peste frunze */
+:root[data-casa-theme="plante"] main {
+  background: rgba(26, 32, 21, .82);
+  border-radius: 18px;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
+/* ============================ Corectii comune temelor deschise ============================ */
+/* Paginile au si culori scrise direct in CSS-ul lor inline, gandite pentru fundal inchis:
+   alb translucid pentru umpluturi/borduri si alama pentru hover. Pe fundal deschis ar disparea
+   sau ar sari in ochi, deci le rescriem aici pentru fiecare tema deschisa. */
+/* .name (numele casei din admin) si .delete-btn arata a link/contur, nu a buton plin - sunt
+   excluse aici, altfel ar prinde umplutura de accent la hover (regula asta bate CSS-ul paginii). */
+:root[data-casa-theme="cream"] .login-card button:hover,
+:root[data-casa-theme="cream"] .house-row button:not(.name):not(.delete-btn):hover,
+:root[data-casa-theme="cream"] .add-row button:hover,
+:root[data-casa-theme="cream"] .check-all-btn:hover { background: #17635a; }
+
+:root[data-casa-theme="santier"] .login-card button:hover,
+:root[data-casa-theme="santier"] .house-row button:not(.name):not(.delete-btn):hover,
+:root[data-casa-theme="santier"] .add-row button:hover,
+:root[data-casa-theme="santier"] .check-all-btn:hover { background: #8c3a22; }
+
+/* Umpluturi si borduri facute din alb translucid - invizibile pe fundal deschis. */
+:root[data-casa-theme="cream"] .stage-rail-track,
+:root[data-casa-theme="santier"] .stage-rail-track { background: rgba(44,40,34,.12); }
+:root[data-casa-theme="cream"] .stage-step,
+:root[data-casa-theme="santier"] .stage-step { border-color: rgba(44,40,34,.18); }
+:root[data-casa-theme="cream"] .stage-photo-empty,
+:root[data-casa-theme="santier"] .stage-photo-empty { border-color: rgba(44,40,34,.20); }
+:root[data-casa-theme="cream"] .room-floating-nav a:hover,
+:root[data-casa-theme="cream"] .room-nav a.is-active,
+:root[data-casa-theme="santier"] .room-floating-nav a:hover,
+:root[data-casa-theme="santier"] .room-nav a.is-active { background: rgba(44,40,34,.07); }
+:root[data-casa-theme="cream"] .product-tag,
+:root[data-casa-theme="santier"] .product-tag { background: rgba(44,40,34,.06); }
+
+/* Umbrele grele de pe panourile plutitoare, imblanzite pentru fundal deschis. */
+:root[data-casa-theme="cream"] .room-floating-nav,
+:root[data-casa-theme="cream"] .room-floating-btn,
+:root[data-casa-theme="cream"] .room-floating-panel,
+:root[data-casa-theme="santier"] .room-floating-nav,
+:root[data-casa-theme="santier"] .room-floating-btn,
+:root[data-casa-theme="santier"] .room-floating-panel {
+  box-shadow: 0 10px 28px rgba(44,40,34,.16);
+}
+
+/* „Ieși" e ultimul din meniu si duce afara din aplicatie - il tinem stins, ca sa nu concureze
+   vizual cu paginile propriu-zise, si il colorăm in rosu doar la hover. */
+header.hero nav a.nav-exit { color: var(--ink-3); }
+header.hero nav a.nav-exit:hover { color: var(--bad); }
+
+/* ============================ Footer cu selectorul de tema ============================ */
+.site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 28px 24px 44px;
+  margin: 0 auto;
+}
+.site-footer-label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.theme-picker { display: flex; justify-content: center; }
+.theme-select {
+  min-width: 170px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--disp);
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .15s ease;
+}
+.theme-select:hover,
+.theme-select:focus { outline: none; border-color: var(--accent); }
+
+/* Pe paginile de login selectorul sta singur, sub formular */
+.login-theme-picker { margin-top: 22px; align-self: center; }

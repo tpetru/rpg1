@@ -1,0 +1,679 @@
+/* Teme vizuale pentru paginile /aris. Se incarca peste /assets/theme.css (tema "clasic" - charcoal
+   + alama, aceeasi cu restul site-ului) si adauga temele jucause: culori vii, forme rotunde,
+   fonturi rotunjite si un desen repetat pe fundal. Tema activa e pusa de PHP pe
+   <html data-theme="...">, din cookie-ul aris_theme, si e comutata instant de assets/aris-theme.js.
+
+   Structura fisierului:
+     1. blocurile per tema de mai jos - DOAR culori + desenul de fundal;
+     2. restul fisierului - forme, butoane, carduri, popup-uri - comun tuturor temelor jucause,
+        de aceea prefixat cu :root:not([data-theme="classic"]).
+   Regulile lucreaza pe token-uri (var(--...)), asa ca o tema noua inseamna un bloc de culori
+   plus un SVG in assets/patterns/, nu o copie a intregului CSS.
+
+   Prefixul :root:not(...) e acolo si ca sa castige la specificitate in fata CSS-ului pe care
+   fiecare pagina il tine inline in <style>, dupa acest fisier. */
+
+/* ============================ Valori comune temelor jucause ============================ */
+:root:not([data-theme="classic"]) {
+  --disp: 'Fredoka', 'Archivo', system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: 'Nunito', 'Archivo', system-ui, -apple-system, "Segoe UI", sans-serif;
+  --k-sun:       #ffd23f;
+  --k-grass:     #57cc6b;
+  --k-tangerine: #ff9f1c;
+  --k-radius: 18px;
+  --k-shadow: 0 5px 0 rgba(120,95,70,.16);
+  --k-shadow-hover: 0 9px 0 rgba(120,95,70,.18);
+  --k-pattern-size: 430px;
+}
+
+/* ---------------------------- Copii (alimente) ---------------------------- */
+:root[data-theme="kids"] {
+  --bg: #ffe5c9;  --panel: #fdf6ea;
+  --ink: #3c2f5a; --ink-2: #6c5b96; --ink-3: #9b8cc4;
+  --line: rgba(108,91,150,.26); --line-soft: rgba(108,91,150,.14);
+  --accent: #2288d1; --on-accent: #fff5e4; --k-accent-dark: #16679f;
+  --good: #1fb573; --bad: #ff4d5e; --k-grape: #4f6ac9;
+  --k-card: #fdf6ea; --k-card-soft: #f4ead8; --k-field: #eaf1f8;
+  --k-title: #16847f; --k-header-ink: #157a75;
+  --k-header-a: rgba(22,138,133,.66); --k-header-b: rgba(12,104,100,.7);
+  --k-sheet: rgba(253,246,234,.5);
+  --k-wordmark: " 🥕";
+  --k-pattern: url('/assets/patterns/copii.svg');
+}
+
+/* ---------------------------- Masinute si avioane ---------------------------- */
+:root[data-theme="masini"] {
+  --bg: #d5e9fa;  --panel: #f4f9fe;
+  --ink: #23324a; --ink-2: #53688a; --ink-3: #8698b5;
+  --line: rgba(35,50,74,.24); --line-soft: rgba(35,50,74,.12);
+  --accent: #e0483f; --on-accent: #fff6ec; --k-accent-dark: #ad3129;
+  --good: #1fa86b; --bad: #e0483f; --k-grape: #3f6bb5;
+  --k-card: #f4f9fe; --k-card-soft: #e4eff9; --k-field: #eaf3fb;
+  --k-title: #1f5c96; --k-header-ink: #1b4f83;
+  --k-header-a: rgba(41,108,176,.66); --k-header-b: rgba(24,74,126,.7);
+  --k-sheet: rgba(244,249,254,.5);
+  --k-wordmark: " 🚗";
+  --k-pattern: url('/assets/patterns/masini.svg');
+}
+
+/* ---------------------------- Camioane si tractoare ---------------------------- */
+:root[data-theme="camioane"] {
+  --bg: #e7dfc8;  --panel: #faf5e8;
+  --ink: #3b3523; --ink-2: #6b6247; --ink-3: #9a9174;
+  --line: rgba(59,53,35,.24); --line-soft: rgba(59,53,35,.12);
+  --accent: #cf7420; --on-accent: #fff8ec; --k-accent-dark: #9c5417;
+  --good: #4f8f3a; --bad: #c0442f; --k-grape: #6b7f3a;
+  --k-card: #faf5e8; --k-card-soft: #f0e7d0; --k-field: #f3ecd9;
+  --k-title: #5f7a2e; --k-header-ink: #4f6a26;
+  --k-header-a: rgba(101,124,58,.68); --k-header-b: rgba(72,92,38,.72);
+  --k-sheet: rgba(250,245,232,.5);
+  --k-wordmark: " 🚜";
+  --k-pattern: url('/assets/patterns/camioane.svg');
+}
+
+/* ---------------------------- Ursuleti ---------------------------- */
+:root[data-theme="ursuleti"] {
+  --bg: #f3e2cd;  --panel: #fef8ef;
+  --ink: #4a3526; --ink-2: #7a6048; --ink-3: #a99177;
+  --line: rgba(74,53,38,.24); --line-soft: rgba(74,53,38,.12);
+  --accent: #c2763f; --on-accent: #fff8f0; --k-accent-dark: #935631;
+  --good: #63a05a; --bad: #cf5f52; --k-grape: #9b6b4a;
+  --k-card: #fef8ef; --k-card-soft: #f6e8d6; --k-field: #f7ecdd;
+  --k-title: #9a5f33; --k-header-ink: #8a5330;
+  --k-header-a: rgba(163,112,66,.68); --k-header-b: rgba(124,82,47,.72);
+  --k-sheet: rgba(254,248,239,.5);
+  --k-wordmark: " 🧸";
+  --k-pattern: url('/assets/patterns/ursuleti.svg');
+}
+
+/* ---------------------------- Natura ---------------------------- */
+:root[data-theme="natura"] {
+  --bg: #dcecd9;  --panel: #f5fbf3;
+  --ink: #24402c; --ink-2: #4e6f52; --ink-3: #85a188;
+  --line: rgba(36,64,44,.24); --line-soft: rgba(36,64,44,.12);
+  --accent: #3f8f4f; --on-accent: #f4fbf2; --k-accent-dark: #2d6b3a;
+  --good: #3f8f4f; --bad: #cf5f52; --k-grape: #4a7f7a;
+  --k-card: #f5fbf3; --k-card-soft: #e6f2e2; --k-field: #edf7ea;
+  --k-title: #2f6b3d; --k-header-ink: #2b6237;
+  --k-header-a: rgba(76,140,86,.66); --k-header-b: rgba(46,101,58,.72);
+  --k-sheet: rgba(245,251,243,.5);
+  --k-wordmark: " 🌿";
+  --k-pattern: url('/assets/patterns/natura.svg');
+}
+
+/* ---------------------------- Toamna ---------------------------- */
+:root[data-theme="toamna"] {
+  --bg: #f6ddbc;  --panel: #fef4e5;
+  --ink: #4a2f1d; --ink-2: #7a5437; --ink-3: #a98565;
+  --line: rgba(74,47,29,.24); --line-soft: rgba(74,47,29,.12);
+  --accent: #c25a22; --on-accent: #fff6ea; --k-accent-dark: #934116;
+  --good: #7f8f2a; --bad: #bf3f2f; --k-grape: #8a5a2f;
+  --k-card: #fef4e5; --k-card-soft: #f6e4cb; --k-field: #f8ead6;
+  --k-title: #a8481c; --k-header-ink: #963f18;
+  --k-header-a: rgba(176,82,31,.66); --k-header-b: rgba(134,58,20,.72);
+  --k-sheet: rgba(254,244,229,.5);
+  --k-wordmark: " 🍂";
+  --k-pattern: url('/assets/patterns/toamna.svg');
+}
+
+/* ---------------------------- Iarna ---------------------------- */
+:root[data-theme="iarna"] {
+  --bg: #dbe9f4;  --panel: #f6fafd;
+  --ink: #23384f; --ink-2: #4f6b85; --ink-3: #8ba2b8;
+  --line: rgba(35,56,79,.22); --line-soft: rgba(35,56,79,.11);
+  --accent: #3f7fb5; --on-accent: #f6fbff; --k-accent-dark: #2c5f8c;
+  --good: #3f9f8f; --bad: #cf5f6f; --k-grape: #5f6f9f;
+  --k-card: #f6fafd; --k-card-soft: #e6eff7; --k-field: #eef5fb;
+  --k-title: #2f6390; --k-header-ink: #2b5a84;
+  --k-header-a: rgba(83,131,175,.62); --k-header-b: rgba(51,94,136,.7);
+  --k-sheet: rgba(246,250,253,.5);
+  --k-wordmark: " ❄️";
+  --k-pattern: url('/assets/patterns/iarna.svg');
+}
+
+/* ---------------------------- Primavara ---------------------------- */
+:root[data-theme="primavara"] {
+  --bg: #e5f2d8;  --panel: #fafdf5;
+  --ink: #2e4226; --ink-2: #55704a; --ink-3: #8ba37e;
+  --line: rgba(46,66,38,.24); --line-soft: rgba(46,66,38,.12);
+  --accent: #6aa63f; --on-accent: #fbfef7; --k-accent-dark: #4e8029;
+  --good: #5f9f3f; --bad: #d95f4f; --k-grape: #7f8f3f;
+  --k-card: #fafdf5; --k-card-soft: #ecf6e0; --k-field: #f2f9e9;
+  --k-title: #55893a; --k-header-ink: #4c7c33;
+  --k-header-a: rgba(122,171,79,.64); --k-header-b: rgba(84,131,52,.7);
+  --k-sheet: rgba(250,253,245,.5);
+  --k-wordmark: " 🌷";
+  --k-pattern: url('/assets/patterns/primavara.svg');
+}
+
+/* ---------------------------- Vara ---------------------------- */
+:root[data-theme="vara"] {
+  --bg: #cfeef1;  --panel: #f2fcfd;
+  --ink: #1e414a; --ink-2: #44707a; --ink-3: #7fa5ac;
+  --line: rgba(30,65,74,.24); --line-soft: rgba(30,65,74,.12);
+  --accent: #f0a007; --on-accent: #fffaee; --k-accent-dark: #bd7c04;
+  --good: #1fa88f; --bad: #e0563f; --k-grape: #2f8f9f;
+  --k-card: #f2fcfd; --k-card-soft: #ddf2f5; --k-field: #e7f7f9;
+  --k-title: #0f8494; --k-header-ink: #0d7583;
+  --k-header-a: rgba(28,169,183,.64); --k-header-b: rgba(15,126,140,.7);
+  --k-sheet: rgba(242,252,253,.5);
+  --k-wordmark: " ☀️";
+  --k-pattern: url('/assets/patterns/vara.svg');
+}
+
+/* ============================ Fundal, foaie de continut, header ============================ */
+/* Desenul temei, repetat peste culoarea de baza */
+:root:not([data-theme="classic"]) body {
+  background-color: var(--bg);
+  background-image: var(--k-pattern);
+  background-size: var(--k-pattern-size) var(--k-pattern-size);
+  background-repeat: repeat;
+}
+
+/* Continutul sta pe o foaie translucida, ca textul sa nu cada direct peste desene; desenul
+   ramane vizibil pe margini si transpare usor prin foaie. */
+:root:not([data-theme="classic"]) main {
+  background: var(--k-sheet);
+  border-radius: 28px;
+  margin-top: 18px;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 0 rgba(120,95,70,.10);
+}
+
+:root:not([data-theme="classic"]) header.hero {
+  height: 64px;
+  /* Usor transparent + blur: se ghiceste desenul de dedesubt, dar textul ramane lizibil
+     chiar si cand continutul trece pe sub header la scroll. */
+  background: linear-gradient(100deg, var(--k-header-a) 0%, var(--k-header-b) 100%);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border-bottom: none;
+  border-radius: 0 0 24px 24px;
+  box-shadow: 0 5px 0 rgba(120,95,70,.10), 0 12px 24px rgba(40,60,70,.16);
+}
+:root:not([data-theme="classic"]) header.hero .wordmark strong {
+  color: var(--k-card);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-shadow: 0 2px 0 rgba(0,0,0,.18);
+}
+:root:not([data-theme="classic"]) header.hero .wordmark strong::after { content: var(--k-wordmark, ""); letter-spacing: 0; }
+:root:not([data-theme="classic"]) header.hero .wordmark span { color: rgba(255,255,255,.85); }
+:root:not([data-theme="classic"]) header.hero nav a {
+  color: var(--k-card);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  /* Header-ul e transparent, deci textul poate cadea peste zone deschise - umbra il tine lizibil */
+  text-shadow: 0 1px 2px rgba(0,58,55,.45);
+  transition: background .15s ease, color .15s ease, transform .15s ease;
+}
+:root:not([data-theme="classic"]) header.hero nav a:hover {
+  background: rgba(255,255,255,.26);
+  color: var(--k-card);
+  transform: translateY(-1px);
+}
+:root:not([data-theme="classic"]) header.hero nav a.is-current {
+  background: var(--k-card);
+  color: var(--k-header-ink);
+  text-shadow: none;
+  box-shadow: 0 3px 0 rgba(0,0,0,.13);
+}
+:root:not([data-theme="classic"]) .nav-toggle span { background: var(--k-card); }
+
+@media (max-width: 700px) {
+  :root:not([data-theme="classic"]) header.hero nav {
+    top: 64px;
+    background: var(--k-card);
+    border-bottom: none;
+    border-radius: 0 0 22px 22px;
+    box-shadow: 0 14px 30px rgba(108,91,150,.22);
+    padding: 10px 14px 14px;
+    gap: 4px;
+  }
+  :root:not([data-theme="classic"]) header.hero nav a {
+    color: var(--ink-2);
+    border-bottom: none;
+    padding: 11px 14px;
+  }
+  :root:not([data-theme="classic"]) header.hero nav a.is-current {
+    background: var(--accent);
+    color: var(--k-card);
+    border-bottom-color: transparent;
+  }
+}
+
+/* ============================ TEMA COPII: titluri si text ============================ */
+:root:not([data-theme="classic"]) main h1 {
+  font-family: var(--disp);
+  font-weight: 600;
+  font-size: 2.3rem;
+  letter-spacing: -0.01em;
+  color: var(--k-title);
+}
+:root:not([data-theme="classic"]) main h2,
+:root:not([data-theme="classic"]) main h3 { font-family: var(--disp); font-weight: 600; color: var(--ink); }
+:root:not([data-theme="classic"]) .age-banner {
+  display: inline-block;
+  background: var(--k-card);
+  border: 2px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 7px 18px;
+  box-shadow: var(--k-shadow);
+  font-size: 0.92rem;
+}
+:root:not([data-theme="classic"]) .age-banner strong { color: var(--k-grape); }
+:root:not([data-theme="classic"]) .week-heading { border-bottom: 3px dotted var(--line); }
+:root:not([data-theme="classic"]) .week-label { font-size: 1.05rem; color: var(--k-grape); }
+
+/* ============================ Carduri si randuri ============================ */
+/* Numele de clase se repeta pe tot site-ul (/aris, /docs.php, /cocktails.php, /cs), asa ca
+   aceleasi reguli imbraca randurile din toate listele. */
+:root:not([data-theme="classic"]) .meal-row,
+:root:not([data-theme="classic"]) .food-row,
+:root:not([data-theme="classic"]) .allergen-row,
+:root:not([data-theme="classic"]) .recipe-card,
+:root:not([data-theme="classic"]) .shopping-item,
+:root:not([data-theme="classic"]) .doc-row,
+:root:not([data-theme="classic"]) .task-item,
+:root:not([data-theme="classic"]) .reel-card,
+:root:not([data-theme="classic"]) .stat-card,
+:root:not([data-theme="classic"]) .cocktail-card {
+  background: var(--k-card);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--k-radius);
+  margin-bottom: 8px;
+  padding: 12px 15px;
+  box-shadow: var(--k-shadow);
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+:root:not([data-theme="classic"]) .meal-row:hover,
+:root:not([data-theme="classic"]) .food-row:hover,
+:root:not([data-theme="classic"]) .allergen-row:hover,
+:root:not([data-theme="classic"]) .recipe-card:hover,
+:root:not([data-theme="classic"]) .shopping-item:hover,
+:root:not([data-theme="classic"]) .doc-row:hover,
+:root:not([data-theme="classic"]) .task-item:hover,
+:root:not([data-theme="classic"]) .reel-card:hover,
+:root:not([data-theme="classic"]) .cocktail-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--k-shadow-hover);
+  background: var(--k-card);
+}
+/* Randurile de documente isi pastreaza bara colorata de stare (expirat / expira curand) */
+:root:not([data-theme="classic"]) .doc-row.status-expired {
+  border-left: 7px solid var(--bad);
+  background: #ffe6e4;
+  border-radius: var(--k-radius);
+  padding-left: 15px;
+}
+:root:not([data-theme="classic"]) .doc-row.status-soon {
+  border-left: 7px solid var(--k-tangerine);
+  background: #ffeec6;
+  border-radius: var(--k-radius);
+  padding-left: 15px;
+}
+:root:not([data-theme="classic"]) .meal-row.status-given,
+:root:not([data-theme="classic"]) .allergen-row.is-given {
+  border-left: 7px solid var(--good);
+  background: #ddf5e5;
+  border-radius: var(--k-radius);
+  padding-left: 15px;
+}
+:root:not([data-theme="classic"]) .meal-row.status-planned {
+  border-left: 7px solid var(--k-tangerine);
+  background: #ffeec6;
+  border-radius: var(--k-radius);
+  padding-left: 15px;
+}
+:root:not([data-theme="classic"]) .food-list-head {
+  color: var(--k-grape);
+  font-weight: 700;
+  border-bottom: 3px dotted var(--line);
+}
+/* Panourile de formular (adaugare / editare) - rama in culoarea temei */
+:root:not([data-theme="classic"]) .recipe-form-card,
+:root:not([data-theme="classic"]) .food-edit-row,
+:root:not([data-theme="classic"]) .allergen-edit-row,
+:root:not([data-theme="classic"]) .doc-edit-row,
+:root:not([data-theme="classic"]) .add-card {
+  border: 3px solid var(--accent);
+  border-radius: var(--k-radius);
+  background: var(--k-card);
+  box-shadow: var(--k-shadow);
+}
+/* Panourile simple de continut (/cs) */
+:root:not([data-theme="classic"]) .panel,
+:root:not([data-theme="classic"]) .manage-companies {
+  border: 2px solid var(--line-soft);
+  border-radius: var(--k-radius);
+  background: var(--k-card);
+  box-shadow: var(--k-shadow);
+}
+:root:not([data-theme="classic"]) .empty-state {
+  border: 3px dashed var(--line);
+  border-radius: var(--k-radius);
+  background: var(--k-card);
+  color: var(--ink-2);
+}
+
+/* Pastilele de filtrare - aceleasi pe /docs.php, /cocktails.php si /cs */
+:root:not([data-theme="classic"]) .filter-btn,
+:root:not([data-theme="classic"]) .filter-chip,
+:root:not([data-theme="classic"]) .add-filter-toggle {
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--k-card);
+  color: var(--ink-2);
+  font-family: var(--disp);
+  font-weight: 600;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+:root:not([data-theme="classic"]) .filter-btn:hover:not(.is-active),
+:root:not([data-theme="classic"]) .filter-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+:root:not([data-theme="classic"]) .filter-btn.is-active,
+:root:not([data-theme="classic"]) .add-filter-toggle.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--k-card);
+}
+
+/* Ingredientele din retete - bulinute pastelate, culori pe rand */
+:root:not([data-theme="classic"]) .ingredient-chip {
+  border-radius: 999px;
+  background: #cfe7fb;
+  color: var(--ink);
+  font-weight: 600;
+  padding: 5px 13px;
+}
+:root:not([data-theme="classic"]) .ingredient-chip:nth-child(4n+2) { background: #d5f4dc; }
+:root:not([data-theme="classic"]) .ingredient-chip:nth-child(4n+3) { background: #ffeaad; }
+:root:not([data-theme="classic"]) .ingredient-chip:nth-child(4n+4) { background: #d3eeee; }
+:root:not([data-theme="classic"]) .ingredient-chip .grams { color: var(--ink-2); }
+
+/* ============================ Butoane ============================ */
+/* Butoane principale: pastila groasa cu "umbra de apasare" - se infunda la click. */
+:root:not([data-theme="classic"]) .add-btn,
+:root:not([data-theme="classic"]) .add-row button,
+:root:not([data-theme="classic"]) .search-row button,
+:root:not([data-theme="classic"]) .add-filter-row button,
+:root:not([data-theme="classic"]) .shopping-add-btn,
+:root:not([data-theme="classic"]) .add-ingredient-btn,
+:root:not([data-theme="classic"]) .task-add-btn,
+:root:not([data-theme="classic"]) .save-btn {
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--k-card);
+  font-family: var(--disp);
+  font-weight: 600;
+  box-shadow: 0 4px 0 var(--k-accent-dark);
+  transition: background .18s ease, transform .1s ease, box-shadow .1s ease;
+}
+:root:not([data-theme="classic"]) .add-btn:hover,
+:root:not([data-theme="classic"]) .add-row button:hover,
+:root:not([data-theme="classic"]) .search-row button:hover,
+:root:not([data-theme="classic"]) .add-filter-row button:hover,
+:root:not([data-theme="classic"]) .shopping-add-btn:hover,
+:root:not([data-theme="classic"]) .add-ingredient-btn:hover,
+:root:not([data-theme="classic"]) .task-add-btn:hover,
+:root:not([data-theme="classic"]) .save-btn:hover {
+  /* acelasi accent, doar putin mai deschis - nu o culoare fixa, ca sa mearga pe orice tema */
+  background: color-mix(in srgb, var(--accent) 82%, white);
+  color: var(--k-card);
+}
+:root:not([data-theme="classic"]) .add-btn:active,
+:root:not([data-theme="classic"]) .add-row button:active,
+:root:not([data-theme="classic"]) .search-row button:active,
+:root:not([data-theme="classic"]) .add-filter-row button:active,
+:root:not([data-theme="classic"]) .shopping-add-btn:active,
+:root:not([data-theme="classic"]) .add-ingredient-btn:active,
+:root:not([data-theme="classic"]) .task-add-btn:active,
+:root:not([data-theme="classic"]) .save-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--k-accent-dark);
+}
+
+/* Butoanele mari de deasupra listelor */
+:root:not([data-theme="classic"]) .add-toggle-btn {
+  border: 3px dashed var(--accent);
+  border-radius: var(--k-radius);
+  background: var(--k-card);
+  color: var(--accent);
+  font-family: var(--disp);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 13px 14px;
+}
+:root:not([data-theme="classic"]) .add-toggle-btn:hover {
+  border-color: var(--k-grape);
+  color: var(--k-grape);
+  background: #faf6ff;
+}
+/* Lista de cumparaturi: un rand de tip card, cu cosul intr-un cerc la stanga si numarul de
+   produse ca bulina la dreapta - se distinge de butonul punctat "Adauga masa" de deasupra. */
+:root:not([data-theme="classic"]) .shopping-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  border: 2px solid var(--line-soft);
+  border-radius: var(--k-radius);
+  background: var(--k-card);
+  color: var(--ink);
+  font-family: var(--disp);
+  font-weight: 600;
+  font-size: 0.98rem;
+  padding: 11px 14px;
+  box-shadow: var(--k-shadow);
+  transition: transform .14s ease, box-shadow .14s ease, border-color .18s ease;
+}
+:root:not([data-theme="classic"]) .shopping-toggle-btn::before {
+  content: "🛒";
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--k-field);
+  font-size: 19px;
+  line-height: 1;
+}
+:root:not([data-theme="classic"]) .shopping-toggle-btn:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--k-shadow-hover);
+}
+:root:not([data-theme="classic"]) .shopping-toggle-btn:active { transform: translateY(1px); box-shadow: var(--k-shadow); }
+:root:not([data-theme="classic"]) .shopping-count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  background: var(--accent);
+  color: var(--k-card);
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 0.82rem;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+/* Butoane secundare / iconite */
+:root:not([data-theme="classic"]) .icon-btn,
+:root:not([data-theme="classic"]) .cancel-btn,
+:root:not([data-theme="classic"]) .month-nav a,
+:root:not([data-theme="classic"]) .month-nav .today-link {
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--k-card);
+  color: var(--ink-2);
+  font-family: var(--disp);
+  font-weight: 600;
+}
+:root:not([data-theme="classic"]) .icon-btn:hover,
+:root:not([data-theme="classic"]) .month-nav a:hover,
+:root:not([data-theme="classic"]) .month-nav .today-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #f2fbff;
+}
+:root:not([data-theme="classic"]) .icon-btn.delete-btn:hover,
+:root:not([data-theme="classic"]) .delete-btn:hover { border-color: var(--bad); color: var(--bad); background: #fff3f4; }
+
+/* Comutatoarele AVEM/NU AVEM si "e alergic" */
+:root:not([data-theme="classic"]) .have-toggle,
+:root:not([data-theme="classic"]) .allergic-toggle {
+  border-width: 2px;
+  border-radius: 999px;
+  font-family: var(--disp);
+  font-weight: 700;
+}
+:root:not([data-theme="classic"]) .have-toggle.have-no { background: #ffdfe1; }
+:root:not([data-theme="classic"]) .have-toggle.have-yes { background: #d5f4e2; }
+:root:not([data-theme="classic"]) .allergic-toggle.is-allergic { background: #ffdfe1; }
+
+/* ============================ TEMA COPII: campuri ============================ */
+:root:not([data-theme="classic"]) input,
+:root:not([data-theme="classic"]) select,
+:root:not([data-theme="classic"]) textarea,
+:root:not([data-theme="classic"]) .food-edit-row input,
+:root:not([data-theme="classic"]) .allergen-edit-row input,
+:root:not([data-theme="classic"]) .allergen-edit-row select,
+:root:not([data-theme="classic"]) .ingredient-row input,
+:root:not([data-theme="classic"]) .recipe-name-input,
+:root:not([data-theme="classic"]) .shopping-add-input {
+  border: 2px solid var(--line);
+  border-radius: 13px;
+  background: var(--k-field);
+  color: var(--ink);
+  font-family: var(--disp);
+}
+:root:not([data-theme="classic"]) input:focus,
+:root:not([data-theme="classic"]) select:focus,
+:root:not([data-theme="classic"]) textarea:focus,
+:root:not([data-theme="classic"]) .food-edit-row input:focus,
+:root:not([data-theme="classic"]) .allergen-edit-row input:focus,
+:root:not([data-theme="classic"]) .allergen-edit-row select:focus,
+:root:not([data-theme="classic"]) .ingredient-row input:focus,
+:root:not([data-theme="classic"]) .recipe-name-input:focus,
+:root:not([data-theme="classic"]) .shopping-add-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(76,195,255,.24);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+:root:not([data-theme="classic"]) .given-checkbox { border-radius: 8px; border-width: 2px; }
+:root:not([data-theme="classic"]) .given-checkbox:checked { background: var(--good); border-color: var(--good); }
+
+/* ============================ Popup-uri ============================ */
+:root:not([data-theme="classic"]) .meal-modal-backdrop,
+:root:not([data-theme="classic"]) .shopping-modal-backdrop,
+:root:not([data-theme="classic"]) .add-modal-backdrop,
+:root:not([data-theme="classic"]) .task-modal-overlay {
+  background: rgba(40,32,52,.45);
+  backdrop-filter: blur(3px);
+}
+:root:not([data-theme="classic"]) .meal-modal,
+:root:not([data-theme="classic"]) .shopping-modal,
+:root:not([data-theme="classic"]) .add-modal,
+:root:not([data-theme="classic"]) .task-modal {
+  border: 4px solid var(--k-card-soft);
+  border-radius: 26px;
+  background: var(--k-card);
+  box-shadow: 0 16px 0 rgba(90,70,60,.13), 0 30px 60px rgba(90,70,60,.3);
+}
+:root:not([data-theme="classic"]) .meal-modal-title,
+:root:not([data-theme="classic"]) .shopping-modal h2,
+:root:not([data-theme="classic"]) .add-modal h2,
+:root:not([data-theme="classic"]) .task-modal-header h2 { color: var(--k-grape); font-size: 1.2rem; }
+:root:not([data-theme="classic"]) .meal-modal-close,
+:root:not([data-theme="classic"]) .shopping-modal-close,
+:root:not([data-theme="classic"]) .add-modal-close,
+:root:not([data-theme="classic"]) .task-modal-close {
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--k-card);
+}
+
+/* ============================ TEMA COPII: calendar ============================ */
+:root:not([data-theme="classic"]) .cal-cell {
+  border: 2px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--k-card);
+  box-shadow: 0 3px 0 rgba(108,91,150,.09);
+}
+:root:not([data-theme="classic"]) .cal-cell.is-empty { background: transparent; border-color: transparent; box-shadow: none; }
+:root:not([data-theme="classic"]) .cal-cell.is-today {
+  border-color: var(--k-sun);
+  background: #ffeeb5;
+  box-shadow: 0 3px 0 rgba(224,170,30,.5);
+}
+:root:not([data-theme="classic"]) .cal-cell .day-num { font-weight: 700; }
+:root:not([data-theme="classic"]) .cal-cell.is-today .day-num { color: var(--k-tangerine); }
+:root:not([data-theme="classic"]) .cell-meal {
+  border-radius: 8px;
+  padding: 2px 6px;
+  background: #d5f4dc;
+  font-weight: 600;
+}
+:root:not([data-theme="classic"]) .cell-meal.is-planned { background: #ffe6bd; color: #d97f0c; }
+:root:not([data-theme="classic"]) .weekday-row span { color: var(--k-grape); font-weight: 700; letter-spacing: 0.04em; }
+:root:not([data-theme="classic"]) .month-nav .month-label { color: var(--k-grape); font-size: 1.25rem; }
+
+/* ============================ Footer + selectorul de tema (ambele teme) ============================ */
+.site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 0 24px 48px;
+  margin: 0 auto;
+}
+.site-footer-label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.theme-picker { display: flex; justify-content: center; }
+.theme-select {
+  min-width: 190px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--disp);
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.theme-select:hover { border-color: var(--accent); color: var(--ink); }
+.theme-select:focus { outline: none; border-color: var(--accent); }
+
+/* Pe temele colorate: aceeasi pastila rotunjita ca restul controalelor */
+:root:not([data-theme="classic"]) .theme-select {
+  border: 2px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--k-card);
+  color: var(--ink-2);
+  font-weight: 600;
+  box-shadow: var(--k-shadow);
+}
+:root:not([data-theme="classic"]) .theme-select:hover { border-color: var(--accent); color: var(--ink); }
+
+/* Pe pagina de login (fara header) selectorul sta singur, centrat sub formular */
+.login-theme-picker { margin-top: 22px; align-self: center; }

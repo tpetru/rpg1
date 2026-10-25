@@ -1,0 +1,355 @@
+<?php
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/lang.php';
+ucp_require_login();
+
+// Los Santos city bounds in game coordinates (approximate) - the map shows ONLY this area
+define('LS_MIN_X', -732.0); // -10% (less zoomed out)
+define('LS_MAX_X', 3000.0);
+define('LS_MIN_Y', -3000.0);
+define('LS_MAX_Y', 888.0);  // -10% (less zoomed out)
+
+// Converts game coordinates to percentages on the map (0-100, Y flipped: north = up)
+function ucp_world_to_pct($x, $y) {
+    $px = (((float)$x - LS_MIN_X) / (LS_MAX_X - LS_MIN_X)) * 100.0;
+    $py = 100.0 - (((float)$y - LS_MIN_Y) / (LS_MAX_Y - LS_MIN_Y)) * 100.0;
+    $px = max(0.5, min(99.5, $px));
+    $py = max(0.5, min(99.5, $py));
+    return [$px, $py];
+}
+
+// True if the point falls inside the Los Santos zone defined above
+function ucp_in_los_santos($x, $y) {
+    $x = (float)$x; $y = (float)$y;
+    return $x >= LS_MIN_X && $x <= LS_MAX_X && $y >= LS_MIN_Y && $y <= LS_MAX_Y;
+}
+
+// Calibration for the real map image (sanandreas.jpg = the full San Andreas state map): the image
+// covers the entire game world, -3000..3000 on X/Y. We compute how big the image needs to be
+// rendered (in % of the visible frame) and what offset (left/top, also in %) to show ONLY the
+// Los Santos area, aligned with the transform above (ucp_world_to_pct). We use an absolutely
+// positioned <img> (not background-size) so it's easy to check/debug in the browser.
+define('WORLD_MIN', -3000.0);
+define('WORLD_MAX', 3000.0);
+$worldSpan  = WORLD_MAX - WORLD_MIN;
+$cropWFrac  = (LS_MAX_X - LS_MIN_X) / $worldSpan; // % of the image width that represents Los Santos
+$cropHFrac  = (LS_MAX_Y - LS_MIN_Y) / $worldSpan;
+$mapImgSizeX = round((1 / $cropWFrac) * 100, 2); // image width, in % of the frame (>100% = zoom)
+$mapImgSizeY = round((1 / $cropHFrac) * 100, 2);
+$cropX0Frac = (LS_MIN_X - WORLD_MIN) / $worldSpan;
+$cropY0Frac = (WORLD_MAX - LS_MAX_Y) / $worldSpan; // Y flipped (north = up in the image)
+$mapImgLeft = round((100 - $mapImgSizeX) * $cropX0Frac / (1 - $cropWFrac), 2);
+$mapImgTop  = round((100 - $mapImgSizeY) * $cropY0Frac / (1 - $cropHFrac), 2);
+
+$allBusinesses = ($res = $mysqli->query("SELECT `id`,`name`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `businesses` WHERE `loc_x` != 0 OR `loc_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allShops      = ($res = $mysqli->query("SELECT `shopID`,`shopName`,`shopLocX`,`shopLocY` FROM `shops` WHERE `shopLocX` != 0 OR `shopLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFastfood   = ($res = $mysqli->query("SELECT `ffID`,`ffName`,`ffType`,`ffLocX`,`ffLocY` FROM `fastfood` WHERE `ffLocX` != 0 OR `ffLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFactions   = ($res = $mysqli->query("SELECT `id`,`name`,`lead`,`hq_x`,`hq_y` FROM `factions` WHERE `hq_x` != 0 OR `hq_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allHouses     = ($res = $mysqli->query("SELECT `id`,`type`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `houses` WHERE `loc_x` != 0 OR `loc_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allHotels     = ($res = $mysqli->query("SELECT `id`,`loc_x`,`loc_y`,`owned`,`owner`,`is_for_sale` FROM `hotels` WHERE `loc_x` != 0 OR `loc_y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allAtms       = ($res = $mysqli->query("SELECT `atmID`,`atmLocX`,`atmLocY`,`atmBankOwner` FROM `atms` WHERE `atmLocX` != 0 OR `atmLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFarms      = ($res = $mysqli->query("SELECT `id`,`name`,`x`,`y`,`isOwned`,`owner`,`is_for_sale` FROM `farms` WHERE `x` != 0 OR `y` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allForests    = ($res = $mysqli->query("SELECT `id`,`owner`,`locX`,`locY`,`ownerId`,`isForSale` FROM `forests` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allFuelStations = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `fuelstations` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allClothStores = ($res = $mysqli->query("SELECT `id`,`name`,`locX`,`locY` FROM `clothstores` WHERE `locX` != 0 OR `locY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allAmmuNations = ($res = $mysqli->query("SELECT `amoID`,`amoName`,`amoLocX`,`amoLocY` FROM `ammunations` WHERE `amoLocX` != 0 OR `amoLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+$allLocations  = ($res = $mysqli->query("SELECT `locID`,`locName`,`locX`,`locY`,`locCategory` FROM `locations_admin` WHERE `locForGPS` = 1")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+// `billboards` is created by the gamemode on startup (CREATE TABLE IF NOT EXISTS) - may not exist yet if it hasn't run since this feature was added
+try {
+    $allBillboards = ($res = $mysqli->query("SELECT `bbID`,`bbLocX`,`bbLocY`,`bbRented` FROM `billboards` WHERE `bbLocX` != 0 OR `bbLocY` != 0")) ? $res->fetch_all(MYSQLI_ASSOC) : [];
+} catch (mysqli_sql_exception $e) {
+    $allBillboards = [];
+}
+
+$businesses = array_values(array_filter($allBusinesses, function($b) { return ucp_in_los_santos($b['loc_x'], $b['loc_y']); }));
+$shops      = array_values(array_filter($allShops, function($s) { return ucp_in_los_santos($s['shopLocX'], $s['shopLocY']); }));
+$fastfood   = array_values(array_filter($allFastfood, function($f) { return ucp_in_los_santos($f['ffLocX'], $f['ffLocY']); }));
+$factions   = array_values(array_filter($allFactions, function($fac) { return ucp_in_los_santos($fac['hq_x'], $fac['hq_y']); }));
+$houses     = array_values(array_filter($allHouses, function($h) { return ucp_in_los_santos($h['loc_x'], $h['loc_y']); }));
+$hotels     = array_values(array_filter($allHotels, function($h) { return ucp_in_los_santos($h['loc_x'], $h['loc_y']); }));
+$atms       = array_values(array_filter($allAtms, function($a) { return ucp_in_los_santos($a['atmLocX'], $a['atmLocY']); }));
+$farms      = array_values(array_filter($allFarms, function($f) { return ucp_in_los_santos($f['x'], $f['y']); }));
+$forests    = array_values(array_filter($allForests, function($f) { return ucp_in_los_santos($f['locX'], $f['locY']); }));
+$fuelStations = array_values(array_filter($allFuelStations, function($g) { return ucp_in_los_santos($g['locX'], $g['locY']); }));
+$clothStores = array_values(array_filter($allClothStores, function($c) { return ucp_in_los_santos($c['locX'], $c['locY']); }));
+$ammuNations = array_values(array_filter($allAmmuNations, function($a) { return ucp_in_los_santos($a['amoLocX'], $a['amoLocY']); }));
+$locationsInLS = array_values(array_filter($allLocations, function($l) { return ucp_in_los_santos($l['locX'], $l['locY']); }));
+$jobLocations  = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') === 0; }));
+$locations     = array_values(array_filter($locationsInLS, function($l) { return strcasecmp($l['locCategory'], 'Job') !== 0; }));
+$billboards    = array_values(array_filter($allBillboards, function($bb) { return ucp_in_los_santos($bb['bbLocX'], $bb['bbLocY']); }));
+
+$ffTypeName   = [1 => 'Pizza', 2 => 'Burger', 3 => 'Cluckin Bell', 4 => t('Desert')];
+$houseTypeName = [1 => t('Villa'), 2 => t('City House'), 3 => t('Apartment'), 4 => t('Countryside House')];
+
+// Name of the "bank" business by id (for the ATM tooltips) - looked up in the full, unfiltered list
+$bizNameById = [];
+foreach ($allBusinesses as $b) { $bizNameById[(int)$b['id']] = $b['name']; }
+
+// Renders the "[ ForSale ]" or "[ owner name ]" line - an unowned house/business/hotel/farm
+// is treated as "for sale" (it can be bought with the usual command), same as isForSale explicit
+function ucp_owner_line($owned, $ownerName, $isForSale) {
+    if ($isForSale || !$owned) return '[ ' . t('ForSale') . ' ]';
+    return '[ ' . ucp_escape($ownerName) . ' ]';
+}
+?>
+<!DOCTYPE html>
+<html lang="<?= site_lang_current() ?>">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nostalgia LosSantos | RPG — Los Santos Map</title>
+<link rel="icon" type="image/png" href="<?= UCP_BASE ?>/assets/img/favicon.ico">
+<link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
+<style>
+  main { max-width: 1400px; }
+  .map-wrap { max-width: 1400px; margin: 0 auto; }
+  .map-legend-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+  .map-legend-actions button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 999px; padding: 5px 12px; font-size: 0.8rem; cursor: pointer;
+  }
+  .map-legend-actions button:hover { border-color: var(--accent-soft); color: var(--accent); }
+  .map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+  .map-legend label { display: flex; align-items: center; gap: 7px; font-size: 0.88rem; color: var(--text); cursor: pointer; user-select: none; }
+  .map-legend input { accent-color: var(--accent); }
+  .legend-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255,255,255,0.4); }
+  .dot-biz { background: #ffcc00; }
+  .dot-shop { background: #5b9dff; }
+  .dot-food { background: #ff5d5d; }
+  .dot-faction { background: #3ecf8e; }
+  .dot-house { background: #ff8c42; }
+  .dot-hotel { background: #b46eff; }
+  .dot-atm { background: #14b8a6; }
+  .dot-farm { background: #a3e635; }
+  .dot-forest { background: #22c55e; }
+  .dot-gas { background: #ff6ec7; }
+  .dot-cloth { background: #fbbf24; }
+  .dot-ammo { background: #ef4444; }
+  .dot-loc { background: #f472b6; }
+  .dot-job { background: #000000; }
+  .dot-billboard { background: #ffffff; }
+
+  .map-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background-color: #0a1a2b;
+  }
+  .map-img {
+    position: absolute;
+    max-width: none;
+    max-height: none;
+  }
+  .map-shade {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,20,30,0.15), rgba(10,20,30,0.35));
+    pointer-events: none;
+  }
+  .city-label {
+    position: absolute; transform: translate(-50%, -50%);
+    color: rgba(255,255,255,0.45); font-size: 0.78rem; letter-spacing: 0.5px;
+    pointer-events: none; white-space: nowrap; text-transform: uppercase;
+  }
+  .pin {
+    position: absolute; width: 16px; height: 16px; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(0,0,0,0.35);
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0,0,0,0.6);
+  }
+  .pin:hover { width: 21px; height: 21px; z-index: 5; }
+  .pin-biz { background: #ffcc00; }
+  .pin-shop { background: #5b9dff; }
+  .pin-food { background: #ff5d5d; }
+  .pin-faction { background: #3ecf8e; width: 19px; height: 19px; }
+  .pin-house { background: #ff8c42; }
+  .pin-hotel { background: #b46eff; }
+  .pin-atm { background: #14b8a6; }
+  .pin-farm { background: #a3e635; }
+  .pin-forest { background: #22c55e; }
+  .pin-gas { background: #ff6ec7; }
+  .pin-cloth { background: #fbbf24; }
+  .pin-ammo { background: #ef4444; }
+  .pin-loc { background: #f472b6; }
+  .pin-job { background: #000000; border-color: rgba(255,255,255,0.5); }
+  .pin-billboard { background: #ffffff; border-color: rgba(0,0,0,0.5); }
+
+  .pin-tooltip {
+    position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+    background: #11141b; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 0.76rem; white-space: nowrap;
+    line-height: 1.5; text-align: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.1s;
+  }
+  .pin:hover .pin-tooltip { opacity: 1; }
+
+  .map-note { color: var(--muted); font-size: 0.8rem; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<?php include __DIR__ . '/../includes/header.php'; ?>
+
+<main>
+  <h1>🗺️ <?= t('Los Santos Map') ?></h1>
+
+  <div class="map-wrap">
+    <div class="card">
+      <div class="map-legend-actions">
+        <button type="button" id="checkAllBtn"><?= t('Check All') ?></button>
+        <button type="button" id="uncheckAllBtn"><?= t('Uncheck All') ?></button>
+      </div>
+      <div class="map-legend">
+        <label><input type="checkbox" checked data-cat="biz"><span class="legend-dot dot-biz"></span><?= t('Businesses') ?> (<?= count($businesses) ?>)</label>
+        <label><input type="checkbox" checked data-cat="shop"><span class="legend-dot dot-shop"></span><?= t('Shops') ?> (<?= count($shops) ?>)</label>
+        <label><input type="checkbox" checked data-cat="food"><span class="legend-dot dot-food"></span><?= t('Fast-food') ?> (<?= count($fastfood) ?>)</label>
+        <label><input type="checkbox" checked data-cat="faction"><span class="legend-dot dot-faction"></span><?= t('Factions') ?> (<?= count($factions) ?>)</label>
+        <label><input type="checkbox" checked data-cat="house"><span class="legend-dot dot-house"></span><?= t('Houses') ?> (<?= count($houses) ?>)</label>
+        <label><input type="checkbox" checked data-cat="hotel"><span class="legend-dot dot-hotel"></span><?= t('Hotels') ?> (<?= count($hotels) ?>)</label>
+        <label><input type="checkbox" checked data-cat="atm"><span class="legend-dot dot-atm"></span>ATMs (<?= count($atms) ?>)</label>
+        <label><input type="checkbox" checked data-cat="farm"><span class="legend-dot dot-farm"></span><?= t('Farms') ?> (<?= count($farms) ?>)</label>
+        <label><input type="checkbox" checked data-cat="forest"><span class="legend-dot dot-forest"></span><?= t('Forests') ?> (<?= count($forests) ?>)</label>
+        <label><input type="checkbox" checked data-cat="gas"><span class="legend-dot dot-gas"></span><?= t('Fuel Stations') ?> (<?= count($fuelStations) ?>)</label>
+        <label><input type="checkbox" checked data-cat="cloth"><span class="legend-dot dot-cloth"></span><?= t('Cloth Stores') ?> (<?= count($clothStores) ?>)</label>
+        <label><input type="checkbox" checked data-cat="ammo"><span class="legend-dot dot-ammo"></span>AmmuNations (<?= count($ammuNations) ?>)</label>
+        <label><input type="checkbox" checked data-cat="loc"><span class="legend-dot dot-loc"></span><?= t('Locations') ?> (<?= count($locations) ?>)</label>
+        <label><input type="checkbox" checked data-cat="job"><span class="legend-dot dot-job"></span><?= t('Jobs') ?> (<?= count($jobLocations) ?>)</label>
+        <label><input type="checkbox" checked data-cat="billboard"><span class="legend-dot dot-billboard"></span><?= t('Billboards') ?> (<?= count($billboards) ?>)</label>
+      </div>
+
+      <div class="map-frame" id="mapFrame">
+        <img class="map-img" src="assets/img/maps/sanandreas.jpg?v=1" alt="San Andreas Map"
+             style="width:<?= $mapImgSizeX ?>%; height:<?= $mapImgSizeY ?>%; left:<?= $mapImgLeft ?>%; top:<?= $mapImgTop ?>%;">
+        <div class="map-shade"></div>
+
+        <?php foreach ($businesses as $b): [$px, $py] = ucp_world_to_pct($b['loc_x'], $b['loc_y']); ?>
+          <div class="pin pin-biz" data-cat="biz" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Business') ?> #<?= (int)$b['id'] ?> ]<br>[ <?= ucp_escape($b['name']) ?> ]<br><?= ucp_owner_line($b['owned'], $b['owner'], $b['is_for_sale']) ?></div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($shops as $s): [$px, $py] = ucp_world_to_pct($s['shopLocX'], $s['shopLocY']); ?>
+          <div class="pin pin-shop" data-cat="shop" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Shop') ?> #<?= (int)$s['shopID'] ?> ]<br>[ <?= ucp_escape($s['shopName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($fastfood as $f): [$px, $py] = ucp_world_to_pct($f['ffLocX'], $f['ffLocY']); ?>
+          <div class="pin pin-food" data-cat="food" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('FastFood') ?> #<?= (int)$f['ffID'] ?> ]<br>[ <?= ucp_escape($ffTypeName[(int)$f['ffType']] ?? '?') ?> ]<br>[ <?= ucp_escape($f['ffName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($factions as $fac): [$px, $py] = ucp_world_to_pct($fac['hq_x'], $fac['hq_y']); ?>
+          <div class="pin pin-faction" data-cat="faction" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ HQ #<?= (int)$fac['id'] ?> ]<br>[ <?= ucp_escape($fac['name']) ?> ]<br>[ <?= $fac['lead'] !== '' ? t('Lead:') . ' ' . ucp_escape($fac['lead']) : '-' ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($houses as $h): [$px, $py] = ucp_world_to_pct($h['loc_x'], $h['loc_y']); ?>
+          <div class="pin pin-house" data-cat="house" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('House') ?> #<?= (int)$h['id'] ?> ]<br>[ <?= ucp_escape($houseTypeName[(int)$h['type']] ?? t('Unknown')) ?> ]<br><?= ucp_owner_line($h['owned'], $h['owner'], $h['is_for_sale']) ?></div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($hotels as $htl): [$px, $py] = ucp_world_to_pct($htl['loc_x'], $htl['loc_y']); ?>
+          <div class="pin pin-hotel" data-cat="hotel" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Hotel') ?> #<?= (int)$htl['id'] ?> ]<br><?= ucp_owner_line($htl['owned'], $htl['owner'], $htl['is_for_sale']) ?></div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($atms as $a): [$px, $py] = ucp_world_to_pct($a['atmLocX'], $a['atmLocY']); ?>
+          <div class="pin pin-atm" data-cat="atm" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ ATM #<?= (int)$a['atmID'] ?> ]<br>[ <?= t('Bank:') ?> <?= ucp_escape($bizNameById[(int)$a['atmBankOwner']] ?? t('Unknown')) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($farms as $f): [$px, $py] = ucp_world_to_pct($f['x'], $f['y']); ?>
+          <div class="pin pin-farm" data-cat="farm" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Farm') ?> #<?= (int)$f['id'] ?> ]<br>[ <?= ucp_escape($f['name']) ?> ]<br><?= ucp_owner_line($f['isOwned'], $f['owner'], $f['is_for_sale']) ?></div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($forests as $f): [$px, $py] = ucp_world_to_pct($f['locX'], $f['locY']); ?>
+          <div class="pin pin-forest" data-cat="forest" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Forest') ?> #<?= (int)$f['id'] ?> ]<br>[ <?= ucp_escape($f['owner']) ?> ]<br><?= ucp_owner_line((int)$f['ownerId'] !== 0, $f['owner'], $f['isForSale']) ?></div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($locations as $l): [$px, $py] = ucp_world_to_pct($l['locX'], $l['locY']); ?>
+          <div class="pin pin-loc" data-cat="loc" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Location') ?> ]<br>[ <?= ucp_escape($l['locName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($jobLocations as $l): [$px, $py] = ucp_world_to_pct($l['locX'], $l['locY']); ?>
+          <div class="pin pin-job" data-cat="job" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Job') ?> ]<br>[ <?= ucp_escape($l['locName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($fuelStations as $g): [$px, $py] = ucp_world_to_pct($g['locX'], $g['locY']); ?>
+          <div class="pin pin-gas" data-cat="gas" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Fuel Station') ?> #<?= (int)$g['id'] ?> ]<br>[ <?= ucp_escape($g['name']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($clothStores as $c): [$px, $py] = ucp_world_to_pct($c['locX'], $c['locY']); ?>
+          <div class="pin pin-cloth" data-cat="cloth" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Cloth Store') ?> #<?= (int)$c['id'] ?> ]<br>[ <?= ucp_escape($c['name']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($ammuNations as $a): [$px, $py] = ucp_world_to_pct($a['amoLocX'], $a['amoLocY']); ?>
+          <div class="pin pin-ammo" data-cat="ammo" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ AmmuNations #<?= (int)$a['amoID'] ?> ]<br>[ <?= ucp_escape($a['amoName']) ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php foreach ($billboards as $bb): [$px, $py] = ucp_world_to_pct($bb['bbLocX'], $bb['bbLocY']); ?>
+          <div class="pin pin-billboard" data-cat="billboard" style="left:<?= $px ?>%; top:<?= $py ?>%">
+            <div class="pin-tooltip">[ <?= t('Billboard') ?> #<?= (int)$bb['bbID'] ?> ]<br>[ <?= $bb['bbRented'] ? t('Rented') : t('Unrented') ?> ]</div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+
+      <p class="map-note"><?= t('San Andreas map, zoomed in on the Los Santos area. Alignment is approximate (calibrated against the standard game world limits, -3000..3000); points outside the city are not shown. Hover over a point for details.') ?></p>
+    </div>
+  </div>
+</main>
+
+<?php include __DIR__ . '/../includes/footer.php'; ?>
+
+<script>
+document.querySelectorAll('.map-legend input[type=checkbox]').forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    var cat = this.dataset.cat;
+    var show = this.checked;
+    document.querySelectorAll('.pin[data-cat="' + cat + '"]').forEach(function(pin) {
+      pin.style.display = show ? '' : 'none';
+    });
+  });
+});
+
+document.getElementById('checkAllBtn').addEventListener('click', function() {
+  document.querySelectorAll('.map-legend input[type=checkbox]').forEach(function(cb) {
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  });
+});
+document.getElementById('uncheckAllBtn').addEventListener('click', function() {
+  document.querySelectorAll('.map-legend input[type=checkbox]').forEach(function(cb) {
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+  });
+});
+</script>
+
+</body>
+</html>

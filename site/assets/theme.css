@@ -1,0 +1,145 @@
+/* Shared chrome for /cs and /cocktails - same visual system as /casa (charcoal + brass, Archivo +
+   JetBrains Mono, flat nav with a brass underline for the current page, no sci-fi decoration).
+   Define tokens/fonts/base/nav once here; each page keeps its own component CSS locally. */
+:root {
+  --bg:        #12110f;
+  --panel:     #1b1a17;
+  --ink:       #f0ece4;
+  --ink-2:     #968f82;
+  --ink-3:     #8e8677;
+  --line:      rgba(240,236,228,.14);
+  --line-soft: rgba(240,236,228,.07);
+  --accent:    #d9a441;
+  --on-accent: #17140d;
+  --good:      #9dbf7a;
+  --bad:       #d2694f;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --disp: 'Archivo', system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--disp);
+  line-height: 1.6;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--ink); }
+
+header.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  height: 56px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+header.hero .brand {
+  display: flex;
+  align-items: baseline;
+  gap: 34px;
+}
+
+header.hero .wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+header.hero .wordmark strong {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .14em;
+  color: var(--ink);
+}
+
+header.hero .wordmark span {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+header.hero nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+header.hero nav a {
+  font-family: var(--disp);
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: none;
+  padding-bottom: 18px;
+  transition: color .15s ease;
+}
+
+header.hero nav a:hover { color: var(--ink); }
+
+header.hero nav a.is-current {
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: 0 12px 0 -10px var(--accent);
+}
+
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nav-toggle span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--ink);
+  transition: transform .2s ease, opacity .2s ease;
+}
+
+.nav-toggle.is-open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-toggle.is-open span:nth-child(2) { opacity: 0; }
+.nav-toggle.is-open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+@media (max-width: 700px) {
+  .nav-toggle { display: flex; }
+  header.hero nav {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 6px 20px 14px;
+    display: none;
+  }
+  header.hero nav.is-open { display: flex; }
+  header.hero nav a {
+    width: 100%;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  header.hero nav a.is-current { box-shadow: none; border-bottom-color: var(--accent); }
+}
+
+/* Standalone pages with no nav (e.g. /cocktails.php) - just the wordmark, centered. */
+header.hero.no-nav { justify-content: center; }

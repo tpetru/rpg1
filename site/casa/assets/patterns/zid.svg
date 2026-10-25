@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80" viewBox="0 0 160 80">
+  <!-- Zid in opus pentru zona de continut a temei "Șantier". Caroul e de 160x80 = doua randuri de
+       caramizi de 80x40, decalate cu o jumatate de caramida.
+
+       Nu desenam rosturile, ci fetele caramizilor: mortarul e chiar fundalul care ramane
+       neacoperit. De aceea arata mai putin a desen tehnic - fiecare caramida are nuanta ei, o
+       muchie luminata sus si o umbra in rostul de dedesubt, deci zidul capata relief.
+
+       Caramizile de la marginile caroului sunt taiate intentionat: jumatatea din dreapta si cea
+       din stanga se continua una pe alta la repetare, formand o caramida intreaga. -->
+
+  <!-- O singura manetă pentru cat de vizibil e zidul, pastrand raporturile dintre nuante. -->
+  <g opacity="0.5">
+
+  <!-- ================= randul de jos (y 0-40): caramizi intregi ================= -->
+  <g>
+    <rect x="1.5" y="1.5" width="77" height="37" rx="1" fill="#8f8577" fill-opacity="0.075"/>
+    <rect x="1.5" y="1.5" width="77" height="1" fill="#ffffff" fill-opacity="0.18"/>
+    <rect x="1.5" y="37.5" width="77" height="1" fill="#4a4238" fill-opacity="0.07"/>
+  </g>
+  <g>
+    <rect x="81.5" y="1.5" width="77" height="37" rx="1" fill="#8f8577" fill-opacity="0.05"/>
+    <rect x="81.5" y="1.5" width="77" height="1" fill="#ffffff" fill-opacity="0.15"/>
+    <rect x="81.5" y="37.5" width="77" height="1" fill="#4a4238" fill-opacity="0.06"/>
+  </g>
+
+  <!-- ============ randul de sus (y 40-80): decalat cu jumatate de caramida ============ -->
+  <!-- jumatatea din stanga: continuarea caramizii taiate la marginea din dreapta -->
+  <g>
+    <rect x="0" y="41.5" width="38.5" height="37" fill="#8f8577" fill-opacity="0.085"/>
+    <rect x="0" y="41.5" width="38.5" height="1" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="0" y="77.5" width="38.5" height="1" fill="#4a4238" fill-opacity="0.075"/>
+  </g>
+  <!-- caramida intreaga din mijloc -->
+  <g>
+    <rect x="41.5" y="41.5" width="77" height="37" rx="1" fill="#8f8577" fill-opacity="0.06"/>
+    <rect x="41.5" y="41.5" width="77" height="1" fill="#ffffff" fill-opacity="0.17"/>
+    <rect x="41.5" y="77.5" width="77" height="1" fill="#4a4238" fill-opacity="0.065"/>
+  </g>
+  <!-- jumatatea din dreapta: se continua in caroul urmator -->
+  <g>
+    <rect x="121.5" y="41.5" width="38.5" height="37" fill="#8f8577" fill-opacity="0.07"/>
+    <rect x="121.5" y="41.5" width="38.5" height="1" fill="#ffffff" fill-opacity="0.15"/>
+    <rect x="121.5" y="77.5" width="38.5" height="1" fill="#4a4238" fill-opacity="0.07"/>
+  </g>
+  </g>
+</svg>

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <!-- Fundal pentru tema "Ursuleti". -->
+  <defs>
+    <g id="u-bear">
+      <circle cx="9.5" cy="11" r="6" fill="#b57a4a"/>
+      <circle cx="30.5" cy="11" r="6" fill="#b57a4a"/>
+      <circle cx="9.5" cy="11" r="2.9" fill="#e3bc93"/>
+      <circle cx="30.5" cy="11" r="2.9" fill="#e3bc93"/>
+      <circle cx="20" cy="23" r="13" fill="#c98a56"/>
+      <ellipse cx="20" cy="27.5" rx="7.2" ry="5.6" fill="#f2dcc2"/>
+      <ellipse cx="20" cy="24.5" rx="2.6" ry="2.1" fill="#5a3b21"/>
+      <path d="M20 26.5 L20 29.5" stroke="#5a3b21" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="14.6" cy="19" r="1.9" fill="#5a3b21"/>
+      <circle cx="25.4" cy="19" r="1.9" fill="#5a3b21"/>
+    </g>
+    <g id="u-heart">
+      <path d="M20 35 C7.5 26.5 5 18.5 9.5 14 C13.5 10 18.5 12.5 20 15.5 C21.5 12.5 26.5 10 30.5 14 C35 18.5 32.5 26.5 20 35 Z" fill="#d97a72"/>
+    </g>
+    <g id="u-star">
+      <path d="M20 4 L24.5 15.5 L37 16.5 L27.5 24.5 L30.5 36.5 L20 30 L9.5 36.5 L12.5 24.5 L3 16.5 L15.5 15.5 Z" fill="#e8bb5a"/>
+    </g>
+    <g id="u-honey">
+      <path d="M10 18 L30 18 L27.5 34 C27.5 36.5 12.5 36.5 12.5 34 Z" fill="#c98a56"/>
+      <rect x="7.5" y="13.5" width="25" height="5.5" rx="2.6" fill="#e3bc93"/>
+      <path d="M16 23 Q20 27 24 23 Q22 30 20 31 Q18 30 16 23 Z" fill="#eec26a"/>
+    </g>
+    <g id="u-paw">
+      <ellipse cx="20" cy="27" rx="9" ry="7.5" fill="#b57a4a"/>
+      <circle cx="11" cy="16.5" r="3.6" fill="#b57a4a"/>
+      <circle cx="17" cy="13" r="3.8" fill="#b57a4a"/>
+      <circle cx="24" cy="13" r="3.8" fill="#b57a4a"/>
+      <circle cx="29.5" cy="16.5" r="3.6" fill="#b57a4a"/>
+    </g>
+    <g id="u-balloon">
+      <ellipse cx="20" cy="16" rx="9.5" ry="11.5" fill="#cf8f5f"/>
+      <ellipse cx="16.5" cy="12" rx="2.6" ry="3.4" fill="#e8bd94" opacity=".8"/>
+      <path d="M20 27.5 L18.5 30 L21.5 30 Z" fill="#a5703f"/>
+      <path d="M20 30 C23 33 17 35 20 38" stroke="#a5703f" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <g opacity="0.3">
+    <use href="#u-bear"    transform="translate(28 42) rotate(-6) scale(1.5)"/>
+    <use href="#u-heart"   transform="translate(108 46) rotate(8) scale(1.25)"/>
+    <use href="#u-star"    transform="translate(168 26) rotate(-10) scale(1.3)"/>
+    <use href="#u-honey"   transform="translate(240 36) rotate(5) scale(1.3)"/>
+    <use href="#u-bear"    transform="translate(294 52) rotate(7) scale(1.45)"/>
+
+    <use href="#u-paw"     transform="translate(24 150) rotate(-14) scale(1.3)"/>
+    <use href="#u-balloon" transform="translate(86 164) rotate(6) scale(1.45)"/>
+    <use href="#u-bear"    transform="translate(226 144) rotate(-8) scale(1.45)"/>
+    <use href="#u-star"    transform="translate(302 126) rotate(14) scale(1.2)"/>
+    <use href="#u-heart"   transform="translate(336 192) rotate(-6) scale(1.25)"/>
+    <use href="#u-honey"   transform="translate(158 232) rotate(-5) scale(1.35)"/>
+
+    <use href="#u-paw"     transform="translate(252 250) rotate(16) scale(1.3)"/>
+    <use href="#u-bear"    transform="translate(28 282) rotate(4) scale(1.45)"/>
+    <use href="#u-balloon" transform="translate(172 300) rotate(-9) scale(1.4)"/>
+    <use href="#u-star"    transform="translate(310 318) rotate(9) scale(1.25)"/>
+    <use href="#u-heart"   transform="translate(102 350) rotate(-4) scale(1.15)"/>
+
+    <g>
+      <circle cx="196" cy="98" r="4" fill="#d9a06a"/>
+      <circle cx="12" cy="118" r="3.5" fill="#e8bb5a"/>
+      <circle cx="370" cy="62" r="3.5" fill="#d97a72"/>
+      <circle cx="60" cy="242" r="4" fill="#d9a06a"/>
+      <circle cx="296" cy="214" r="3.5" fill="#e8bb5a"/>
+      <circle cx="130" cy="300" r="4" fill="#d97a72"/>
+      <circle cx="374" cy="288" r="3.5" fill="#d9a06a"/>
+      <circle cx="244" cy="374" r="4" fill="#e8bb5a"/>
+      <circle cx="58" cy="380" r="3.5" fill="#d9a06a"/>
+    </g>
+  </g>
+</svg>

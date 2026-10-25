@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <!-- Fundal pentru tema "Primavara". -->
+  <defs>
+    <g id="p-tulip">
+      <path d="M20 26 L20 38" stroke="#5f9f3f" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M20 31 C14 27 10 29 8.5 31.5 C12 34.5 17 34.5 20 31 Z" fill="#5f9f3f"/>
+      <path d="M20 33 C26 29 30 31 31.5 33.5 C28 36 23 36 20 33 Z" fill="#6aa63f"/>
+      <path d="M20 26 C11 26 9 14 11 8 C15.5 13 18 8.5 20 6 C22 8.5 24.5 13 29 8 C31 14 29 26 20 26 Z" fill="#e8a020"/>
+      <path d="M20 7 L20 25" stroke="#cf8a12" stroke-width="1.4" stroke-linecap="round" opacity=".8"/>
+    </g>
+    <g id="p-daisy">
+      <path d="M20 26 L20 38" stroke="#5f9f3f" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M20 32 C15 29 12 31 11 33 C14 35.5 18 35 20 32 Z" fill="#5f9f3f"/>
+      <g fill="#fbfbf2">
+        <ellipse cx="20" cy="8.5" rx="4.2" ry="6"/>
+        <ellipse cx="28.5" cy="14.5" rx="4.2" ry="6" transform="rotate(60 28.5 14.5)"/>
+        <ellipse cx="25.5" cy="23.5" rx="4.2" ry="6" transform="rotate(120 25.5 23.5)"/>
+        <ellipse cx="14.5" cy="23.5" rx="4.2" ry="6" transform="rotate(-120 14.5 23.5)"/>
+        <ellipse cx="11.5" cy="14.5" rx="4.2" ry="6" transform="rotate(-60 11.5 14.5)"/>
+      </g>
+      <circle cx="20" cy="16.5" r="4.4" fill="#f5c542"/>
+    </g>
+    <g id="p-bee">
+      <ellipse cx="20" cy="24" rx="10" ry="7.5" fill="#f5c542"/>
+      <path d="M17 17.2 L17 30.8 M22.5 17.8 L22.5 30.2" stroke="#4a3b1a" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="29.5" cy="22" r="4" fill="#4a3b1a"/>
+      <ellipse cx="16" cy="14.5" rx="6" ry="4" transform="rotate(-24 16 14.5)" fill="#d8eef7" opacity=".9"/>
+      <ellipse cx="24" cy="14" rx="5" ry="3.4" transform="rotate(16 24 14)" fill="#d8eef7" opacity=".9"/>
+      <path d="M31 19 L33.5 15.5 M32.5 22 L36 21" stroke="#4a3b1a" stroke-width="1.4" stroke-linecap="round"/>
+    </g>
+    <g id="p-sprout">
+      <path d="M20 38 L20 18" stroke="#5f9f3f" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M20 22 C12 22 8 16 8 10 C16 10 20 15 20 22 Z" fill="#7dc24a"/>
+      <path d="M20 26 C28 26 32 20 32 14 C24 14 20 19 20 26 Z" fill="#5f9f3f"/>
+    </g>
+    <g id="p-butterfly">
+      <path d="M20 20 C13 9 4 10 4 17 C4 24 13 25 20 20 Z" fill="#e8a020"/>
+      <path d="M20 20 C27 9 36 10 36 17 C36 24 27 25 20 20 Z" fill="#e8a020"/>
+      <path d="M20 20 C14 25 8 28 9 33 C10 37 17 35 20 20 Z" fill="#f5c542"/>
+      <path d="M20 20 C26 25 32 28 31 33 C30 37 23 35 20 20 Z" fill="#f5c542"/>
+      <ellipse cx="20" cy="21" rx="2" ry="8" fill="#6b5233"/>
+      <path d="M20 14 L16 8 M20 14 L24 8" stroke="#6b5233" stroke-width="1.4" stroke-linecap="round"/>
+    </g>
+    <g id="p-ladybug">
+      <ellipse cx="20" cy="23" rx="11.5" ry="10" fill="#d9503f"/>
+      <path d="M20 13 L20 33" stroke="#3a2a22" stroke-width="1.8"/>
+      <path d="M8.5 23 C8.5 16 13 13 20 13 C20 13 16 16 16 23 C16 30 20 33 20 33 C13 33 8.5 30 8.5 23 Z" fill="#c2432f" opacity=".4"/>
+      <circle cx="20" cy="12.5" r="5" fill="#3a2a22"/>
+      <g fill="#3a2a22">
+        <circle cx="14.5" cy="20" r="2.2"/><circle cx="25.5" cy="20" r="2.2"/>
+        <circle cx="15.5" cy="27" r="1.9"/><circle cx="24.5" cy="27" r="1.9"/>
+      </g>
+    </g>
+  </defs>
+
+  <g opacity="0.3">
+    <use href="#p-tulip"     transform="translate(28 42) rotate(-5) scale(1.45)"/>
+    <use href="#p-bee"       transform="translate(110 44) rotate(10) scale(1.3)"/>
+    <use href="#p-daisy"     transform="translate(166 26) rotate(3) scale(1.4)"/>
+    <use href="#p-sprout"    transform="translate(242 38) rotate(-6) scale(1.3)"/>
+    <use href="#p-butterfly" transform="translate(294 52) rotate(-14) scale(1.4)"/>
+
+    <use href="#p-ladybug"   transform="translate(24 150) rotate(12) scale(1.3)"/>
+    <use href="#p-tulip"     transform="translate(86 164) rotate(6) scale(1.45)"/>
+    <use href="#p-daisy"     transform="translate(226 146) rotate(-4) scale(1.35)"/>
+    <use href="#p-bee"       transform="translate(302 124) rotate(-18) scale(1.25)"/>
+    <use href="#p-sprout"    transform="translate(336 192) rotate(8) scale(1.3)"/>
+    <use href="#p-butterfly" transform="translate(158 232) rotate(18) scale(1.35)"/>
+
+    <use href="#p-ladybug"   transform="translate(252 250) rotate(-10) scale(1.3)"/>
+    <use href="#p-daisy"     transform="translate(28 282) rotate(-3) scale(1.4)"/>
+    <use href="#p-tulip"     transform="translate(172 300) rotate(7) scale(1.4)"/>
+    <use href="#p-bee"       transform="translate(310 318) rotate(14) scale(1.25)"/>
+    <use href="#p-sprout"    transform="translate(100 348) rotate(-8) scale(1.2)"/>
+
+    <g>
+      <circle cx="196" cy="98" r="4" fill="#7dc24a"/>
+      <circle cx="12" cy="118" r="3.5" fill="#f5c542"/>
+      <circle cx="370" cy="62" r="3.5" fill="#c98ad9"/>
+      <circle cx="60" cy="242" r="4" fill="#7dc24a"/>
+      <circle cx="296" cy="214" r="3.5" fill="#f5c542"/>
+      <circle cx="130" cy="300" r="4" fill="#c98ad9"/>
+      <circle cx="374" cy="288" r="3.5" fill="#7dc24a"/>
+      <circle cx="244" cy="374" r="4" fill="#f5c542"/>
+      <circle cx="58" cy="380" r="3.5" fill="#7dc24a"/>
+    </g>
+  </g>
+</svg>
