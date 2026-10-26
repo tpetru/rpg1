@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ServerMessage } from '@geowars/rules';
 
-const intFormat = new Intl.NumberFormat('en-US');
-
-export function fmtInt(n: number): string {
-  return intFormat.format(Math.floor(n));
-}
+export { fmtInt } from './i18n';
 
 export function fmtDuration(totalSec: number): string {
   const s = Math.max(0, Math.ceil(totalSec));
@@ -75,4 +71,15 @@ export function useServerEvents(worldId: number, onMessage: (msg: ServerMessage)
       socket?.close();
     };
   }, [worldId]);
+}
+
+/** Duration as the Build hub shows it: "5m 02s", "1h 40m", "45s". */
+export function fmtBuildTime(totalSec: number): string {
+  const s = Math.max(0, Math.round(totalSec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
+  return `${sec}s`;
 }

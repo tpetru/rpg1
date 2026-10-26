@@ -77,9 +77,25 @@ export interface BuildState {
   stock: ResourceBag;
 }
 
+/** Why a building level cannot be queued. Clients translate the code; `reason` is the English text. */
+export type BuildBlock = 'max_level' | 'requires' | 'queue_full' | 'warehouse' | 'housing' | 'resources';
+
+export type BuildBlockParams = {
+  building?: BuildingId;
+  level?: number;
+};
+
 export type BuildCheck =
   | { ok: true; targetLevel: number; cost: ResourceBag; timeSec: number }
-  | { ok: false; reason: string; targetLevel: number; cost?: ResourceBag; timeSec?: number };
+  | {
+      ok: false;
+      code: BuildBlock;
+      params?: BuildBlockParams;
+      reason: string;
+      targetLevel: number;
+      cost?: ResourceBag;
+      timeSec?: number;
+    };
 
 /** Validates queueing the next level of a building. Used by the server to enforce and by the client to preview. */
 export function checkBuild(state: BuildState, id: BuildingId, settings: WorldSettings): BuildCheck {
@@ -87,27 +103,33 @@ export function checkBuild(state: BuildState, id: BuildingId, settings: WorldSet
   const planned = plannedLevels(state.levels, state.queue);
   const targetLevel = planned[id] + 1;
 
-  if (targetLevel > def.maxLevel) return { ok: false, reason: 'Maximum level reached', targetLevel };
+  if (targetLevel > def.maxLevel) return { ok: false, code: 'max_level', reason: 'Maximum level reached', targetLevel };
 
   for (const [req, level] of Object.entries(def.requires) as [BuildingId, number][]) {
     if (state.levels[req] < level) {
-      return { ok: false, reason: `Requires ${BUILDINGS[req].name} level ${level}`, targetLevel };
+      return {
+        ok: false,
+        code: 'requires',
+        params: { building: req, level },
+        reason: `Requires ${BUILDINGS[req].name} level ${level}`,
+        targetLevel,
+      };
     }
   }
 
   const cost = levelCost(def, targetLevel);
   const timeSec = buildTimeSec(def, targetLevel, state.levels.cityhall, settings.speed);
-  const fail = (reason: string): BuildCheck => ({ ok: false, reason, targetLevel, cost, timeSec });
+  const fail = (code: BuildBlock, reason: string): BuildCheck => ({ ok: false, code, reason, targetLevel, cost, timeSec });
 
-  if (state.queue.length >= settings.buildQueueSlots) return fail('Build queue is full');
-  if (RESOURCES.some((r) => cost[r] > warehouseCapacity(state.levels.warehouse))) return fail('Warehouse too small');
+  if (state.queue.length >= settings.buildQueueSlots) return fail('queue_full', 'Build queue is full');
+  if (RESOURCES.some((r) => cost[r] > warehouseCapacity(state.levels.warehouse))) return fail('warehouse', 'Warehouse too small');
 
   const extraPop = buildingPop(def, targetLevel) - buildingPop(def, targetLevel - 1);
   if (extraPop > 0 && populationUsed(planned) + extraPop > housingCapacity(state.levels.housing)) {
-    return fail('Not enough housing');
+    return fail('housing', 'Not enough housing');
   }
 
-  if (!canAfford(state.stock, cost)) return fail('Not enough resources');
+  if (!canAfford(state.stock, cost)) return fail('resources', 'Not enough resources');
 
   return { ok: true, targetLevel, cost, timeSec };
 }

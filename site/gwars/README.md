@@ -7,7 +7,8 @@ army, conquer your neighbours and organise into alliances.
 
 Players create one account, then pick a **world** (World 0, World 1, …). Each world is a separate
 round with its own map, players and settings. In each world the player founds a nation with a name
-of their own (letters and digits, starting with a letter) and starts on a random free hex.
+of their own (letters, digits, spaces and hyphens, starting with a letter, at most 2 spaces and
+2 hyphens) and starts on a random free hex.
 
 ## Stack
 

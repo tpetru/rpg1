@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { NATION_NAME_MAX, nationNameError, type WorldInfo } from '@geowars/rules';
+import { NATION_NAME_MAX, NATION_NAME_MIN, nationNameIssue, type WorldInfo } from '@geowars/rules';
 import { api } from '../api';
+import { NationEmblem, NationFlag } from '../art/nation';
+import { useI18n } from '../i18n';
+import { LanguageSwitch } from './LanguageSwitch';
+import { ThemeToggle } from './ThemeToggle';
 
 interface Props {
   world: WorldInfo;
@@ -9,22 +13,23 @@ interface Props {
 }
 
 export function NationScreen({ world, onJoined, onBack }: Props) {
+  const { t, codeText, errorText } = useI18n();
   const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
-  const invalid = name.length > 0 ? nationNameError(name) : null;
+  const issue = name.length > 0 ? nationNameIssue(name) : null;
+  const issueText = issue && codeText(issue, { min: NATION_NAME_MIN, max: NATION_NAME_MAX });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const problem = nationNameError(name);
-    if (problem) return setError(problem);
+    if (nationNameIssue(name)) return;
     setBusy(true);
     setError(null);
     try {
       await api.join(world.id, name);
       onJoined();
     } catch (err) {
-      setError((err as Error).message);
+      setError(err);
       setBusy(false);
     }
   };
@@ -32,12 +37,27 @@ export function NationScreen({ world, onJoined, onBack }: Props) {
   return (
     <div className="auth">
       <div className="auth-card">
+        <div className="auth-tools">
+          <LanguageSwitch />
+          <ThemeToggle />
+        </div>
         <h1 className="logo">{world.name}</h1>
-        <p className="tagline">Found your nation. You start with one settlement somewhere in the world.</p>
+        <p className="tagline">{t('nation.tagline')}</p>
+
+        <div className="nation-preview" aria-hidden={issue ? true : undefined}>
+          {name.length > 0 && !issue ? (
+            <>
+              <NationEmblem name={name} size={96} />
+              <NationFlag name={name} width={132} />
+            </>
+          ) : (
+            <span className="muted small">{t('nation.previewHint')}</span>
+          )}
+        </div>
 
         <form onSubmit={submit}>
           <label>
-            Nation name
+            {t('nation.label')}
             <input
               value={name}
               onChange={(e) => {
@@ -45,18 +65,18 @@ export function NationScreen({ world, onJoined, onBack }: Props) {
                 setError(null);
               }}
               maxLength={NATION_NAME_MAX}
-              placeholder="e.g. Dacia"
+              placeholder={t('nation.placeholder')}
               autoFocus
               required
             />
           </label>
-          <div className={`hint small ${invalid ? 'bad' : ''}`}>{invalid ?? 'Letters and digits only, starting with a letter.'}</div>
-          {error && <div className="error">{error}</div>}
-          <button className="primary" disabled={busy || !!invalid || name.length === 0}>
-            Found nation
+          <div className={`hint small ${issue ? 'bad' : ''}`}>{issueText ?? t('nation.hint')}</div>
+          {error != null && <div className="error">{errorText(error)}</div>}
+          <button className="primary" disabled={busy || !!issue || name.length === 0}>
+            {t('nation.found')}
           </button>
           <button type="button" onClick={onBack}>
-            Back to worlds
+            {t('nation.back')}
           </button>
         </form>
       </div>

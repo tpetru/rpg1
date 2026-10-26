@@ -1,46 +1,60 @@
-import type { HexRow } from '@geowars/rules';
-import { fmtInt } from '../util';
+import type { CountryRef, HexRow } from '@geowars/rules';
+import { NationEmblem } from '../art/nation';
+import { fmtInt, useI18n } from '../i18n';
 import type { HexOwner } from './MapView';
 import { Multiplier } from './Multiplier';
 
 interface Props {
   hex: HexRow;
-  countries: Record<string, string>;
+  countries: Record<string, CountryRef>;
   owner: HexOwner | undefined;
   players: Record<number, string>;
 }
 
 export function HexPanel({ hex, countries, owner, players }: Props) {
-  const [, country, name, food, steel, oil, rare, uranium] = hex;
+  const { t, hexName, countryName } = useI18n();
+  const [, country, , food, steel, oil, rare, uranium] = hex;
   return (
     <div className="stack">
       <div>
-        <h2>{name}</h2>
-        <div className="muted">{countries[country] ?? country}</div>
+        <h2>{hexName(hex, countries)}</h2>
+        <div className="muted">{countryName(country, countries)}</div>
       </div>
 
       <section className="card">
         {owner ? (
-          <>
+          <div className="with-icon">
+            {owner.ownerId && players[owner.ownerId] && <NationEmblem name={players[owner.ownerId]} size={44} />}
             <div>
-              Ruled by <strong>{owner.ownerId ? (players[owner.ownerId] ?? 'Unknown nation') : 'Independent'}</strong>
+              <div>
+                {t('hex.ruledBy')}{' '}
+                <strong>{owner.ownerId ? (players[owner.ownerId] ?? t('map.unknownNation')) : t('map.independent')}</strong>
+              </div>
+              <div className="muted">{t('points', { n: fmtInt(owner.points) })}</div>
             </div>
-            <div className="muted">{fmtInt(owner.points)} points</div>
-          </>
+          </div>
         ) : (
-          <div className="muted">Unclaimed land. Governors will be able to settle or conquer hexes in a later milestone.</div>
+          <div className="muted">{t('hex.unclaimedInfo')}</div>
         )}
       </section>
 
       <section className="card">
-        <h3>Land</h3>
-        <Multiplier label="Food" value={food} kind="food" />
-        <Multiplier label="Steel" value={steel} kind="steel" />
-        <Multiplier label="Oil" value={oil} kind="oil" />
+        <h3>{t('panel.land')}</h3>
+        <Multiplier resource="food" value={food} />
+        <Multiplier resource="steel" value={steel} />
+        <Multiplier resource="oil" value={oil} />
         <div className="badges">
-          {rare > 0 && <span className="badge rare">Rare earths ×{rare.toFixed(2)}</span>}
-          {uranium > 0 && <span className="badge uranium">Uranium ×{uranium.toFixed(2)}</span>}
-          {rare === 0 && uranium === 0 && <span className="muted small">No strategic resources</span>}
+          {rare > 0 && (
+            <span className="badge rare">
+              {t('res.rare')} ×{rare.toFixed(2)}
+            </span>
+          )}
+          {uranium > 0 && (
+            <span className="badge uranium">
+              {t('res.uranium')} ×{uranium.toFixed(2)}
+            </span>
+          )}
+          {rare === 0 && uranium === 0 && <span className="muted small">{t('hex.noStrategic')}</span>}
         </div>
       </section>
     </div>

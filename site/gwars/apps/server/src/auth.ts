@@ -68,9 +68,9 @@ async function sessionAccount(request: FastifyRequest): Promise<{ id: number; us
 
 /** preHandler: rejects the request unless it carries a valid session cookie. */
 export async function requireAuth(request: FastifyRequest): Promise<void> {
-  if (!request.cookies[SESSION_COOKIE]) throw new GameError('Not logged in', 401);
+  if (!request.cookies[SESSION_COOKIE]) throw new GameError('Not logged in', 401, 'not_logged_in');
   const account = await sessionAccount(request);
-  if (!account) throw new GameError('Session expired', 401);
+  if (!account) throw new GameError('Session expired', 401, 'session_expired');
   request.account = account;
 }
 

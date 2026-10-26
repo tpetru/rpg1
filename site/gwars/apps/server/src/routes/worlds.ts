@@ -1,6 +1,9 @@
 import {
+  NATION_NAME_MAX,
+  NATION_NAME_MIN,
   STARTING_LEVELS,
   nationNameError,
+  nationNameIssue,
   settlementPoints,
   type PlayerInfo,
   type WorldMeResponse,
@@ -59,14 +62,14 @@ export function registerWorldRoutes(app: FastifyInstance, ctx: AppContext): void
     const { info } = worldFrom(ctx, req.params);
     const account = req.account!;
     const { nation } = JoinBody.parse(req.body);
-    const invalid = nationNameError(nation);
-    if (invalid) throw new GameError(invalid);
+    const issue = nationNameIssue(nation);
+    if (issue) throw new GameError(nationNameError(nation)!, 400, issue, { min: NATION_NAME_MIN, max: NATION_NAME_MAX });
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const spawned = await tx(async (c) => {
           const joined = await one(c, 'SELECT 1 FROM world_players WHERE world_id = ? AND account_id = ?', [info.id, account.id]);
-          if (joined) throw new GameError('You already play in this world', 409);
+          if (joined) throw new GameError('You already play in this world', 409, 'already_joined');
 
           const free = await rows<{ h3: string; idx: number; name: string }>(
             c,
@@ -75,7 +78,7 @@ export function registerWorldRoutes(app: FastifyInstance, ctx: AppContext): void
              WHERE h.world_id = ? AND s.id IS NULL`,
             [info.id],
           );
-          if (free.length === 0) throw new GameError('This world is full', 409);
+          if (free.length === 0) throw new GameError('This world is full', 409, 'world_full');
 
           const taken = new Set((await rows<{ h3: string }>(c, 'SELECT h3 FROM settlements WHERE world_id = ?', [info.id])).map((r) => r.h3));
           const isolated = free.filter((h) => gridDisk(h.h3, 1).every((n) => !taken.has(n)));
@@ -105,7 +108,7 @@ export function registerWorldRoutes(app: FastifyInstance, ctx: AppContext): void
       } catch (err) {
         if (isDuplicateKey(err)) {
           if (String((err as Error).message).includes('uq_wp_nation')) {
-            throw new GameError('This nation name is already taken in this world', 409);
+            throw new GameError('This nation name is already taken in this world', 409, 'nation_taken');
           }
           // Someone grabbed the same hex at the same moment; pick again.
           if (attempt < 2) continue;
@@ -113,6 +116,6 @@ export function registerWorldRoutes(app: FastifyInstance, ctx: AppContext): void
         throw err;
       }
     }
-    throw new GameError('Could not find a free hex, try again', 503);
+    throw new GameError('Could not find a free hex, try again', 503, 'spawn_failed');
   });
 }

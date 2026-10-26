@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { MapHexesResponse, MeResponse, OwnSettlementDto, PlayerInfo, ServerMessage, WorldInfo } from '@geowars/rules';
 import { api } from '../api';
-import { fmtInt, useServerEvents } from '../util';
+import { NationEmblem } from '../art/nation';
+import { fmtInt, useI18n } from '../i18n';
+import { prefs, useServerEvents } from '../util';
 import { HexPanel } from './HexPanel';
-import { MapView, type HexOwner } from './MapView';
+import { LanguageSwitch } from './LanguageSwitch';
+import { ThemeToggle } from './ThemeToggle';
+import { MapControls, type SearchTarget } from './MapControls';
+import { MapView, type HexOwner, type MapMode } from './MapView';
 import { SettlementPanel } from './SettlementPanel';
+
+const MAP_MODES: MapMode[] = ['owners', 'countries', 'food', 'steel', 'oil', 'rare', 'uranium'];
 
 interface Props {
   world: WorldInfo;
@@ -16,19 +23,30 @@ interface Props {
 }
 
 export function GameScreen({ world, player, account, clockOffset, onLeave, onLogout }: Props) {
+  const { t, errorText, hexName, countryName } = useI18n();
   const [map, setMap] = useState<MapHexesResponse | null>(null);
   const [owners, setOwners] = useState(new Map<number, HexOwner>());
   const [players, setPlayers] = useState<Record<number, string>>({});
   const [mine, setMine] = useState<OwnSettlementDto[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [focus, setFocus] = useState<{ idx: number; seq: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [mode, setModeState] = useState<MapMode>(() => (MAP_MODES.includes(prefs.get('gw.mapmode') as MapMode) ? (prefs.get('gw.mapmode') as MapMode) : 'owners'));
+  const setMode = useCallback((next: MapMode) => {
+    prefs.set('gw.mapmode', next);
+    setModeState(next);
+  }, []);
+  const pickTarget = useCallback((target: SearchTarget) => {
+    if (target.select) setSelected(target.idx);
+    setFocus({ idx: target.idx, seq: Date.now() });
+  }, []);
 
   const loadMine = useCallback(async () => {
     try {
       setMine(await api.mySettlements(world.id));
     } catch (err) {
-      setError((err as Error).message);
+      setError(err);
     }
   }, [world.id]);
 
@@ -44,7 +62,7 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
           setFocus({ idx: own[0].idx, seq: Date.now() });
         }
       },
-      (err: Error) => setError(err.message),
+      setError,
     );
   }, [world.id]);
 
@@ -67,20 +85,22 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
     setMine((prev) => prev.map((x) => (x.id === s.id ? s : x)));
   }, []);
 
+  const customNames = useMemo(() => mine.flatMap((s) => (s.customName ? [{ idx: s.idx, name: s.customName }] : [])), [mine]);
   const totalPoints = useMemo(() => mine.reduce((sum, s) => sum + s.points, 0), [mine]);
   const selectedOwn = mine.find((s) => s.idx === selected);
 
-  if (error && !map) return <div className="splash">Could not load the world: {error}</div>;
-  if (!map) return <div className="splash">Loading world…</div>;
+  if (error != null && !map) return <div className="splash">{t('app.worldLoadError', { message: errorText(error) })}</div>;
+  if (!map) return <div className="splash">{t('app.loadingWorld')}</div>;
 
   return (
-    <div className="game">
+    <div className={`game ${panelOpen ? '' : 'panel-closed'}`}>
       <header className="topbar">
-        <span className="logo small">GeoWars</span>
-        <button onClick={onLeave} title="Switch world">
+        <span className="wordmark">GeoWars</span>
+        <button className="world-button" onClick={onLeave} title={t('game.switchWorld')}>
           {world.name}
         </button>
-        <div className="settlement-tabs">
+        <span className="topbar-sep" />
+        <nav className="settlement-tabs">
           {mine.map((s) => (
             <button
               key={s.id}
@@ -90,15 +110,25 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
                 setFocus({ idx: s.idx, seq: Date.now() });
               }}
             >
-              {s.name}
+              {s.customName ?? hexName(map.hexes[s.idx], map.countries)}
             </button>
           ))}
-        </div>
+        </nav>
         <span className="spacer" />
-        <span>
-          <strong>{player.nation}</strong> <span className="muted">({account.username})</span> · {fmtInt(totalPoints)} points
-        </span>
-        <button onClick={onLogout}>Log out</button>
+        <div className="account">
+          <NationEmblem name={player.nation} size={34} title={player.nation} />
+          <div className="account-text">
+            <strong>{player.nation}</strong>
+            <span>{account.username}</span>
+          </div>
+          <span className="points mono">{t('points', { n: fmtInt(totalPoints) })}</span>
+        </div>
+        <span className="topbar-sep" />
+        <LanguageSwitch />
+        <ThemeToggle />
+        <button className="link" onClick={onLogout}>
+          {t('auth.logout')}
+        </button>
       </header>
 
       <MapView
@@ -106,11 +136,28 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
         countries={map.countries}
         owners={owners}
         players={players}
+        mode={mode}
         myId={account.id}
         selected={selected}
         focus={focus}
         onSelect={setSelected}
-      />
+      >
+        <MapControls
+          mode={mode}
+          onMode={setMode}
+          hexes={map.hexes}
+          countries={map.countries}
+          owners={owners}
+          players={players}
+          customNames={customNames}
+          onPick={pickTarget}
+        />
+        {!panelOpen && (
+          <button className="panel-open-button" onClick={() => setPanelOpen(true)}>
+            {t('panel.open')} ›
+          </button>
+        )}
+      </MapView>
 
       <aside className="panel">
         {selectedOwn ? (
@@ -118,16 +165,18 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
             key={selectedOwn.id}
             worldId={world.id}
             settlement={selectedOwn}
-            countryName={map.countries[selectedOwn.countryCode] ?? selectedOwn.countryCode}
+            defaultName={hexName(map.hexes[selectedOwn.idx], map.countries)}
+            countryName={countryName(selectedOwn.countryCode, map.countries)}
             settings={world.settings}
             clockOffset={clockOffset}
             onUpdate={updateSettlement}
             onStale={loadMine}
+            onCollapse={() => setPanelOpen(false)}
           />
         ) : selected !== null ? (
           <HexPanel hex={map.hexes[selected]} countries={map.countries} owner={owners.get(selected)} players={players} />
         ) : (
-          <div className="muted">Click a hex on the map.</div>
+          <div className="muted">{t('game.clickHex')}</div>
         )}
       </aside>
     </div>

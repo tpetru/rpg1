@@ -1,6 +1,7 @@
 import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
+import type { ApiErrorBody } from '@geowars/rules';
 import Fastify from 'fastify';
 import { ZodError } from 'zod';
 import { requireAuth } from './auth';
@@ -8,7 +9,7 @@ import { config } from './config';
 import { loadActiveWorlds, type AppContext, type WorldRuntime } from './context';
 import { pool } from './db';
 import { Engine } from './engine/engine';
-import { GameError } from './errors';
+import { GameError, VALIDATION_MESSAGES } from './errors';
 import { Realtime } from './realtime';
 import { registerAuthRoutes } from './routes/auth';
 import { registerMapRoutes } from './routes/map';
@@ -21,10 +22,20 @@ await app.register(compress);
 await app.register(websocket);
 
 app.setErrorHandler((err, req, reply) => {
-  if (err instanceof GameError) return reply.status(err.status).send({ error: err.message });
-  if (err instanceof ZodError) return reply.status(400).send({ error: err.issues[0]?.message ?? 'Invalid request' });
+  let body: ApiErrorBody;
+  if (err instanceof GameError) {
+    body = { error: err.message, code: err.code, params: err.params };
+    return reply.status(err.status).send(body);
+  }
+  if (err instanceof ZodError) {
+    const message = err.issues[0]?.message ?? '';
+    const known = message in VALIDATION_MESSAGES;
+    body = { error: known ? VALIDATION_MESSAGES[message] : 'Invalid request', code: known ? message : 'invalid_request' };
+    return reply.status(400).send(body);
+  }
   req.log.error(err);
-  return reply.status(500).send({ error: 'Internal server error' });
+  body = { error: 'Internal server error', code: 'internal' };
+  return reply.status(500).send(body);
 });
 
 const realtime = new Realtime();

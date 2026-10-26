@@ -1,4 +1,4 @@
-import type { MeResponse } from '@geowars/rules';
+import { PASSWORD_MIN, USERNAME_PATTERN, type MeResponse } from '@geowars/rules';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { endSession, hashPassword, requireAuth, startSession, verifyPassword } from '../auth';
@@ -6,9 +6,9 @@ import { exec, isDuplicateKey, one, pool } from '../db';
 import { GameError } from '../errors';
 
 const RegisterBody = z.object({
-  username: z.string().regex(/^[A-Za-z0-9_]{3,24}$/, 'Username: 3-24 letters, digits or _'),
-  email: z.email().max(190),
-  password: z.string().min(8, 'Password must have at least 8 characters').max(200),
+  username: z.string().regex(USERNAME_PATTERN, 'username_invalid'),
+  email: z.email('email_invalid').max(190, 'email_invalid'),
+  password: z.string().min(PASSWORD_MIN, 'password_short').max(200),
 });
 
 const LoginBody = z.object({
@@ -28,7 +28,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       ]);
       id = result.insertId;
     } catch (err) {
-      if (isDuplicateKey(err)) throw new GameError('Username or email already in use', 409);
+      if (isDuplicateKey(err)) throw new GameError('Username or email already in use', 409, 'account_taken');
       throw err;
     }
     await startSession(reply, id);
@@ -43,7 +43,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       [body.login, body.login.toLowerCase()],
     );
     if (!account || !(await verifyPassword(body.password, account.password_hash))) {
-      throw new GameError('Wrong username or password', 401);
+      throw new GameError('Wrong username or password', 401, 'wrong_login');
     }
     await startSession(reply, account.id);
     return { ok: true };

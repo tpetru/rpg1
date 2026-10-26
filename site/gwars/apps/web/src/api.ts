@@ -1,4 +1,5 @@
 import type {
+  ApiErrorBody,
   BuildingId,
   MapHexesResponse,
   MapSettlementsResponse,
@@ -13,6 +14,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** Full error response; the UI translates it by `body.code`. */
+    public body?: ApiErrorBody,
   ) {
     super(message);
   }
@@ -26,7 +29,10 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError((data as { error?: string }).error ?? res.statusText, res.status);
+  if (!res.ok) {
+    const body = data as Partial<ApiErrorBody>;
+    throw new ApiError(body.error ?? res.statusText, res.status, body.error ? (body as ApiErrorBody) : undefined);
+  }
   return data as T;
 }
 
@@ -49,6 +55,9 @@ export const api = {
   settlement: (worldId: number, id: number) => request<OwnSettlementDto | PublicSettlementDto>('GET', `${w(worldId)}/settlements/${id}`),
   build: (worldId: number, id: number, building: BuildingId) =>
     request<OwnSettlementDto>('POST', `${w(worldId)}/settlements/${id}/build`, { building }),
+  /** name = null resets to the map's default name. */
+  renameSettlement: (worldId: number, id: number, name: string | null) =>
+    request<OwnSettlementDto>('PATCH', `${w(worldId)}/settlements/${id}/name`, { name }),
   cancelBuild: (worldId: number, id: number, queueId: number) =>
     request<OwnSettlementDto>('DELETE', `${w(worldId)}/settlements/${id}/queue/${queueId}`),
 };

@@ -48,6 +48,7 @@ interface Country {
   code: string;
   name: string;
   continent: string;
+  a2: string | null;
   pop: number;
   label: Position;
   polys: IndexedPolygon[];
@@ -59,6 +60,7 @@ interface Cell {
   country: Country;
   landmass: number;
   name: string;
+  nameKey: string | null;
 }
 interface City {
   name: string;
@@ -143,9 +145,18 @@ function hash01(s: string, salt: number): number {
 const round2 = (x: number) => Math.round(x * 100) / 100;
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
-const COMPASS = ['East', 'Northeast', 'North', 'Northwest', 'West', 'Southwest', 'South', 'Southeast'];
+const COMPASS = [
+  ['E', 'East'],
+  ['NE', 'Northeast'],
+  ['N', 'North'],
+  ['NW', 'Northwest'],
+  ['W', 'West'],
+  ['SW', 'Southwest'],
+  ['S', 'South'],
+  ['SE', 'Southeast'],
+] as const;
 
-function compass(from: City, to: Cell): string {
+function compass(from: City, to: Cell): (typeof COMPASS)[number] {
   let dLng = to.lng - from.lng;
   if (dLng > 180) dLng -= 360;
   if (dLng < -180) dLng += 360;
@@ -186,10 +197,12 @@ async function main() {
       existing.polys.push(...polys);
       continue;
     }
+    const a2 = String(f.properties.ISO_A2_EH ?? '');
     byCode.set(code, {
       code,
       name: String(f.properties.NAME),
       continent: String(f.properties.CONTINENT),
+      a2: /^[A-Z]{2}$/.test(a2) ? a2 : null,
       pop: Number(f.properties.POP_EST ?? 0),
       label: [Number(f.properties.LABEL_X), Number(f.properties.LABEL_Y)],
       polys,
@@ -211,7 +224,7 @@ async function main() {
       const country = countries.find((c) => c.polys.some((p) => inPolygon(lng, lat, p)));
       if (!country) continue;
       const landmass = landPolys.findIndex((p) => inPolygon(lng, lat, p));
-      cells.set(h, { h, lat, lng, country, landmass, name: '' });
+      cells.set(h, { h, lat, lng, country, landmass, name: '', nameKey: null });
     }
   }
 
@@ -229,7 +242,7 @@ async function main() {
       existing.country = c;
     } else {
       const [lat, lng] = cellToLatLng(h);
-      cells.set(h, { h, lat, lng, country: c, landmass: -1, name: '' });
+      cells.set(h, { h, lat, lng, country: c, landmass: -1, name: '', nameKey: null });
     }
     perCountry.set(c.code, 1);
     microstates.push(c.name);
@@ -274,11 +287,14 @@ async function main() {
       .filter((c): c is City => !!c)
       .sort((a, b) => b.pop - a.pop)[0];
     if (near) {
-      cell.name = `${compass(near, cell)} ${near.name}`;
+      const [dir, word] = compass(near, cell);
+      cell.name = `${word} ${near.name}`;
+      cell.nameKey = `dir:${dir}:${near.name}`;
     } else {
       const n = (frontierCount.get(cell.country.code) ?? 0) + 1;
       frontierCount.set(cell.country.code, n);
       cell.name = `${cell.country.name} Frontier ${n}`;
+      cell.nameKey = `frontier:${n}`;
     }
   }
 
@@ -307,7 +323,7 @@ async function main() {
     sources: SOURCES,
     countries: countries
       .filter((c) => usedCodes.has(c.code))
-      .map(({ code, name, continent }) => ({ code, name, continent }))
+      .map(({ code, name, continent, a2 }) => ({ code, name, continent, a2 }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     hexes: sorted.map((c) => ({
       h: c.h,
@@ -316,6 +332,7 @@ async function main() {
       c: c.country.code,
       lm: c.landmass,
       n: c.name,
+      k: c.nameKey,
       p: profile(c),
     })),
   };

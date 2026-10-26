@@ -36,13 +36,31 @@ export interface WorldMeResponse {
   serverTime: number;
 }
 
-/** Row index = hex idx. [h3, countryCode, name, food, steel, oil, rare, uranium] */
-export type HexRow = [string, string, string, number, number, number, number, number];
+/**
+ * Row index = hex idx. [h3, countryCode, name, food, steel, oil, rare, uranium, nameKey]
+ * `name` is English. `nameKey` describes generated names so clients can translate them:
+ * null = real city name, "dir:NE:Paris" = area next to a city, "frontier:3" = numbered frontier hex.
+ */
+export type HexRow = [string, string, string, number, number, number, number, number, string | null];
+
+export interface CountryRef {
+  /** English name */
+  name: string;
+  /** ISO 3166-1 alpha-2, for localized names (Intl.DisplayNames); null when there is none. */
+  a2: string | null;
+}
 
 export interface MapHexesResponse {
   res: number;
-  countries: Record<string, string>;
+  countries: Record<string, CountryRef>;
   hexes: HexRow[];
+}
+
+/** Body of every error response. Clients translate `code` (with `params`) and fall back to `error`. */
+export interface ApiErrorBody {
+  error: string;
+  code?: string;
+  params?: Record<string, string | number>;
 }
 
 /** [hexIdx, settlementId, ownerId (0 = none), points] */
@@ -66,7 +84,10 @@ export interface OwnSettlementDto {
   id: number;
   idx: number;
   h3: string;
+  /** Default name from the map (English). */
   name: string;
+  /** Name chosen by the owner; null = use the map's name. */
+  customName: string | null;
   countryCode: string;
   points: number;
   loyalty: number;
@@ -82,6 +103,7 @@ export interface PublicSettlementDto {
   idx: number;
   h3: string;
   name: string;
+  customName: string | null;
   countryCode: string;
   ownerId: number | null;
   /** Owner's nation name in this world. */

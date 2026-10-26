@@ -46,6 +46,7 @@ test('checkBuild enforces requirements, queue slots and cost', () => {
   const barracks = checkBuild(base, 'barracks', DEFAULT_WORLD_SETTINGS);
   assert.equal(barracks.ok, false);
   assert.equal(!barracks.ok && barracks.reason, 'Requires City Hall level 3');
+  assert.deepEqual(!barracks.ok && [barracks.code, barracks.params], ['requires', { building: 'cityhall', level: 3 }]);
 
   const farm = checkBuild(base, 'farm', DEFAULT_WORLD_SETTINGS);
   assert.ok(farm.ok);

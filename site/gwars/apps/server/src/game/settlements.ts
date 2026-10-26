@@ -20,6 +20,7 @@ export interface Settlement {
   h3: string;
   idx: number;
   name: string;
+  customName: string | null;
   countryCode: string;
   ownerId: number | null;
   levels: BuildingLevels;
@@ -36,6 +37,7 @@ interface SettlementRow {
   h3: string;
   idx: number;
   name: string;
+  custom_name: string | null;
   country_code: string;
   owner_id: number | null;
   buildings: string;
@@ -69,7 +71,7 @@ export interface QueueItem extends QueueItemDto {
 }
 
 const SELECT_SETTLEMENT = `
-  SELECT s.id, s.world_id, s.h3, s.name, s.owner_id, s.buildings, s.food, s.steel, s.oil,
+  SELECT s.id, s.world_id, s.h3, s.name, s.custom_name, s.owner_id, s.buildings, s.food, s.steel, s.oil,
          s.resources_at, s.points, s.loyalty, h.idx, h.country_code,
          h.food_mult, h.steel_mult, h.oil_mult, h.rare_mult, h.uranium_mult
   FROM settlements s JOIN hexes h ON h.world_id = s.world_id AND h.h3 = s.h3`;
@@ -81,6 +83,7 @@ function fromRow(r: SettlementRow): Settlement {
     h3: r.h3,
     idx: r.idx,
     name: r.name,
+    customName: r.custom_name,
     countryCode: r.country_code,
     ownerId: r.owner_id,
     levels: normalizeLevels(JSON.parse(r.buildings)),
@@ -155,6 +158,7 @@ export function toOwnDto(s: Settlement, queue: QueueItem[]): OwnSettlementDto {
     idx: s.idx,
     h3: s.h3,
     name: s.name,
+    customName: s.customName,
     countryCode: s.countryCode,
     points: s.points,
     loyalty: s.loyalty,
@@ -167,5 +171,5 @@ export function toOwnDto(s: Settlement, queue: QueueItem[]): OwnSettlementDto {
 }
 
 export function toPublicDto(s: Settlement, ownerName: string | null): PublicSettlementDto {
-  return { id: s.id, idx: s.idx, h3: s.h3, name: s.name, countryCode: s.countryCode, ownerId: s.ownerId, ownerName, points: s.points };
+  return { id: s.id, idx: s.idx, h3: s.h3, name: s.name, customName: s.customName, countryCode: s.countryCode, ownerId: s.ownerId, ownerName, points: s.points };
 }

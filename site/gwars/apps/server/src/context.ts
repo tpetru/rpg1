@@ -36,6 +36,6 @@ const WorldParams = z.object({ worldId: z.coerce.number().int().nonnegative() })
 export function worldFrom(ctx: AppContext, params: unknown): WorldRuntime {
   const { worldId } = WorldParams.parse(params);
   const world = ctx.worlds.get(worldId);
-  if (!world) throw new GameError('World not found', 404);
+  if (!world) throw new GameError('World not found', 404, 'world_not_found');
   return world;
 }
