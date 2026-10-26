@@ -114,3 +114,31 @@ export interface PublicSettlementDto {
 export type ServerMessage =
   | { t: 'settlement'; id: number }
   | { t: 'map'; row: MapSettlementRow; ownerName: string | null };
+
+// Admin page. Everything here is only served to a logged-in admin session.
+export interface AdminPlayerDto {
+  accountId: number;
+  username: string;
+  nation: string;
+  points: number;
+}
+
+export interface AdminSettlementDto {
+  id: number;
+  idx: number;
+  /** Default name from the map (English) */
+  name: string;
+  customName: string | null;
+  countryCode: string;
+  ownerId: number | null;
+  ownerUsername: string | null;
+  ownerNation: string | null;
+  points: number;
+  levels: BuildingLevels;
+}
+
+export interface AdminWorldDto {
+  id: number;
+  number: number;
+  name: string;
+}

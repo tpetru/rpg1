@@ -38,12 +38,14 @@ interface Props {
   /** Names the player gave to their own settlements. */
   customNames: { idx: number; name: string }[];
   onPick: (target: SearchTarget) => void;
+  /** False on screens where nobody is "you" (the admin map): hides the "your settlements" legend entry. */
+  showMine?: boolean;
 }
 
 const MAX_RESULTS = 8;
 const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
-export function MapControls({ mode, onMode, hexes, countries, owners, players, customNames, onPick }: Props) {
+export function MapControls({ mode, onMode, hexes, countries, owners, players, customNames, onPick, showMine = true }: Props) {
   const { t, hexName, countryName } = useI18n();
   const { theme } = useTheme();
   const palette = MAP_PALETTES[theme];
@@ -137,7 +139,7 @@ export function MapControls({ mode, onMode, hexes, countries, owners, players, c
           <div className="legend">
             {mode === 'owners' && (
               <>
-                <span><i style={{ background: palette.mine }} />{t('map.legend.mine')}</span>
+                {showMine && <span><i style={{ background: palette.mine }} />{t('map.legend.mine')}</span>}
                 <span><i style={{ background: palette.player }} />{t('map.legend.player')}</span>
                 <span><i style={{ background: palette.independent }} />{t('map.independent')}</span>
                 <span><i style={{ background: palette.free }} />{t('map.unclaimed')}</span>

@@ -208,6 +208,8 @@ export function MapView({ hexes, countries, owners, players, mode, myId, selecte
     });
 
     return () => {
+      // A rebuilt map starts with no style: effects that paint must wait for its own "load".
+      setReady(false);
       map.remove();
       mapRef.current = null;
       kinds.current.clear();

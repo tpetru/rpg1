@@ -11,12 +11,14 @@ import { pool } from './db';
 import { Engine } from './engine/engine';
 import { GameError, VALIDATION_MESSAGES } from './errors';
 import { Realtime } from './realtime';
+import { registerAdminRoutes } from './routes/admin';
 import { registerAuthRoutes } from './routes/auth';
 import { registerMapRoutes } from './routes/map';
 import { registerSettlementRoutes } from './routes/settlements';
 import { registerWorldRoutes } from './routes/worlds';
 
-const app = Fastify({ logger: { level: 'info' } });
+// The server only listens on 127.0.0.1 behind Apache, so the forwarded client address can be trusted.
+const app = Fastify({ logger: { level: 'info' }, trustProxy: true });
 await app.register(cookie);
 await app.register(compress);
 await app.register(websocket);
@@ -46,6 +48,7 @@ for (const info of await loadActiveWorlds()) worlds.set(info.id, { info, engine:
 const ctx: AppContext = { worlds, realtime };
 
 registerAuthRoutes(app);
+registerAdminRoutes(app, ctx);
 registerWorldRoutes(app, ctx);
 registerMapRoutes(app, ctx);
 registerSettlementRoutes(app, ctx);

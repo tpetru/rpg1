@@ -14,6 +14,8 @@ function env(name: string, fallback?: string): string {
 export const config = {
   port: Number(env('PORT', '3000')),
   cookieSecure: env('COOKIE_SECURE', 'false') === 'true',
+  /** Password of the admin page. Empty = the admin page is switched off. Never commit it. */
+  adminPassword: process.env.ADMIN_PASSWORD ?? '',
   db: {
     host: env('DB_HOST', '127.0.0.1'),
     port: Number(env('DB_PORT', '3306')),
