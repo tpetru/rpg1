@@ -36,6 +36,8 @@ interface Props {
   countryName: string;
   settings: WorldSettings;
   clockOffset: number;
+  /** A building picked elsewhere (a parcel on the city plan); the hub opens on it. */
+  focusBuilding?: { id: BuildingId; seq: number } | null;
   onUpdate: (s: OwnSettlementDto) => void;
   /** Called when local state is known to be out of date (a build should have finished). */
   onStale: () => void;
@@ -65,6 +67,7 @@ export function SettlementPanel({
   countryName,
   settings,
   clockOffset,
+  focusBuilding,
   onUpdate,
   onStale,
   onCollapse,
@@ -79,6 +82,11 @@ export function SettlementPanel({
   const [error, setError] = useState<unknown>(null);
   const lastStale = useRef(0);
   const draftIssue = draft.length > 0 ? settlementNameIssue(draft) : null;
+
+  // Picking a parcel on the city plan hands the hub that building; a new seq means a new pick.
+  useEffect(() => {
+    if (focusBuilding) setSelected(focusBuilding.id);
+  }, [focusBuilding]);
 
   // Same formulas as the server, so the numbers tick locally without polling.
   const rates = productionRates(s.levels, s.profile, settings.speed);

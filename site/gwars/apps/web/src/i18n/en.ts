@@ -107,6 +107,26 @@ export const en = {
   'theme.toLight': 'Light theme',
   'theme.toDark': 'Dark theme',
 
+  // Country view
+  'view.map': 'Map',
+  'view.overview': 'Overview',
+  'country.settlements': '{n} settlements',
+  'country.totals': 'Buildings across the nation',
+  'country.totalOf': '{levels} levels in {n} settlements',
+  'country.cellTitle': '{building}, level {n}',
+  'country.open': 'Open {name} in the map view',
+  'country.empty': 'Your nation holds no settlements yet.',
+
+  // City view
+  'view.city': 'Settlement',
+  'city.built': '{n} of {total} building types built',
+  'city.sharedPlan':
+    'Every settlement uses this plan, so a building keeps its place. Select a parcel to open it in the settlement hub.',
+  'city.notBuilt': 'Not built',
+  'city.openHint': 'Open in settlement hub',
+  'city.empty': 'Pick one of your settlements above to see its town plan.',
+  'city.scroll': 'Scroll sideways to see the whole town.',
+
   // Resources
   'res.food': 'Food',
   'res.steel': 'Steel',

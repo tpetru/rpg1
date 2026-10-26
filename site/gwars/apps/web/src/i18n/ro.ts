@@ -107,6 +107,26 @@ export const ro: Dictionary = {
   'theme.toLight': 'Temă luminoasă',
   'theme.toDark': 'Temă închisă',
 
+  // Country view
+  'view.map': 'Hartă',
+  'view.overview': 'Privire generală',
+  'country.settlements': '{n} așezări',
+  'country.totals': 'Clădiri în toată națiunea',
+  'country.totalOf': '{levels} niveluri în {n} așezări',
+  'country.cellTitle': '{building}, nivel {n}',
+  'country.open': 'Deschide {name} pe hartă',
+  'country.empty': 'Națiunea ta nu are încă nicio așezare.',
+
+  // City view
+  'view.city': 'Așezare',
+  'city.built': '{n} din {total} tipuri de clădiri construite',
+  'city.sharedPlan':
+    'Toate așezările folosesc acest plan, așa că fiecare clădire își păstrează locul. Alege un parcelar ca să îl deschizi în panoul așezării.',
+  'city.notBuilt': 'Neconstruită',
+  'city.openHint': 'Deschide în panoul așezării',
+  'city.empty': 'Alege una dintre așezările tale ca să vezi planul orașului.',
+  'city.scroll': 'Derulează lateral pentru a vedea tot orașul.',
+
   // Resources
   'res.food': 'Hrană',
   'res.steel': 'Oțel',

@@ -224,7 +224,7 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 }
 .logo.small { font-size: 22px; }
 /* Cormorant's default digits are old-style ("0" looks like an "o"); titles use lining figures. */
-.logo, .wordmark, .settlement-name, .inspector-title, .world-head h2 {
+.logo, .wordmark, .settlement-name, .inspector-title, .world-head h2, .country-name, .settle-name {
   font-variant-numeric: lining-nums;
   font-feature-settings: 'lnum' 1;
 }
@@ -326,11 +326,13 @@ svg.unbuilt { filter: grayscale(0.9); opacity: 0.55; }
 .world-button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .world-button::after { content: '⌄'; color: var(--faint); line-height: 1; transform: translateY(-2px); }
 .topbar-sep { width: 1px; align-self: stretch; margin: 12px 0; background: var(--border); flex: none; }
-.settlement-tabs { display: flex; gap: 4px; }
+.topbar > :not(.settlement-tabs) { flex-shrink: 0; }
+.settlement-tabs { display: flex; gap: 4px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.settlement-tabs::-webkit-scrollbar { display: none; }
 .settlement-tabs button { border-color: transparent; white-space: nowrap; color: var(--muted); }
 .settlement-tabs button.active { background: var(--surface-2); color: var(--text); border-color: transparent; }
-.spacer { flex: 1; }
-.account { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.spacer { flex: 0 1 0; }
+.account { display: flex; align-items: center; gap: 10px; white-space: nowrap; flex: none; }
 .account-text { display: flex; flex-direction: column; line-height: 1.2; }
 .account-text strong { font-weight: 500; }
 .account-text span { font-size: 11px; color: var(--faint); }
@@ -495,4 +497,183 @@ svg.unbuilt { filter: grayscale(0.9); opacity: 0.55; }
   .panel { border-left: none; border-top: 1px solid var(--border); padding: 10px 16px 28px; }
   .panel-top { display: none; }
   .panel-open-button { display: none; }
+}
+
+/* Full-width views (country, city): the map and its panel step aside. */
+.game.view-open {
+  grid-template-columns: 1fr;
+  grid-template-rows: 56px 1fr;
+  grid-template-areas: 'top' 'view';
+}
+.view-switch { display: flex; gap: 2px; padding: 2px; background: var(--surface-2); border-radius: 8px; flex: none; }
+.view-switch button { border: none; background: none; padding: 4px 10px; border-radius: 6px; font-size: 12.5px; color: var(--muted); }
+.view-switch button:hover:not(:disabled) { color: var(--text); border-color: transparent; }
+.view-switch button.active { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+
+.country { grid-area: view; overflow-y: auto; padding: 20px 24px 32px; background: var(--bg); }
+.country-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.country-id { display: flex; align-items: flex-start; gap: 14px; }
+.country-name { font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.05; }
+.country-rates { display: flex; gap: 26px; padding-top: 4px; }
+.country-rate { display: flex; flex-direction: column; gap: 1px; }
+.country-rate .meter-value { font-size: 17px; }
+.country-groups { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.country-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--border); font-size: 12px; color: var(--muted);
+}
+.country-chip .mono { color: var(--text-2); }
+.country-empty { color: var(--muted); margin-top: 24px; }
+
+.country-schematic {
+  position: relative; width: 100%; margin-top: 16px;
+  border: 1px solid var(--border); border-radius: 16px; background-color: var(--surface);
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px); background-size: 22px 22px;
+  overflow: hidden;
+}
+.country-links { position: absolute; inset: 0; width: 100%; height: 100%; }
+.country-links line { stroke: var(--border-strong); stroke-width: 1.5; stroke-dasharray: 4 5; }
+
+.settle-card {
+  position: absolute; width: 236px; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 5px; text-align: left;
+  padding: 10px 12px 11px; border: 1px solid var(--border-strong); border-radius: 12px;
+  background: var(--surface-2); color: var(--text);
+}
+.settle-card:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-3); }
+.settle-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settle-head { display: flex; align-items: baseline; gap: 8px; }
+.settle-name {
+  font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.settle-pts { margin-left: auto; flex: none; font-size: 11px; color: var(--muted); }
+.settle-busy { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; align-self: center; }
+.settle-meta { display: flex; align-items: baseline; gap: 5px; font-size: 11.5px; color: var(--muted); }
+.settle-meta .sep { color: var(--border-strong); }
+.settle-meta .mono { color: var(--text-2); }
+.settle-go { margin-left: auto; color: var(--faint); }
+.settle-card:hover .settle-go { color: var(--accent); }
+.settle-buildings { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px 2px; margin-top: 1px; }
+.bp { display: flex; flex-direction: column; align-items: center; padding-top: 1px; border-radius: 4px; }
+.bp.off { opacity: 0.62; }
+.bp-level { font-size: 10.5px; line-height: 1.25; color: var(--faint); }
+.bp:not(.off) .bp-level { color: var(--text-2); }
+
+.country-totals { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); }
+.country-totals h3 { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.totals-grid { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+.tot { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tot.off { opacity: 0.45; }
+.tot-level { font-size: 11px; color: var(--text-2); }
+
+@media (max-width: 1150px) {
+  .totals-grid { grid-template-columns: repeat(9, minmax(0, 1fr)); row-gap: 10px; }
+}
+/* Three 236px cards plus their gaps need ~990px; below that, stack them instead of letting the
+   lattice collide. */
+@media (max-width: 1020px) {
+  .country { padding: 16px 16px 28px; }
+  .country-schematic {
+    height: auto !important; overflow: visible; padding: 12px; background-image: none;
+    display: grid; grid-template-columns: repeat(auto-fill, 236px); justify-content: center; gap: 12px;
+  }
+  .country-links { display: none; }
+  .settle-card { position: static; transform: none; width: auto; }
+}
+
+/* City view: one settlement drawn as a town plan. Every settlement shares this single authored
+   sheet, so a building's address is learned once. Geometry lives in cityPlan.ts. */
+.city {
+  grid-area: view;
+  overflow-y: auto;
+  padding: 18px 24px 22px;
+  background: var(--bg);
+}
+.city-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 20px 28px;
+  flex-wrap: wrap; max-width: 1320px; margin: 0 auto 12px;
+}
+.city-name { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.05; }
+.city-note { margin: 0; max-width: 42ch; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.city-empty { max-width: 1320px; margin: 24px auto; color: var(--muted); }
+
+.city-scroll { max-width: 1320px; margin: 0 auto; overflow-x: auto; overscroll-behavior-x: contain; }
+.city-plan {
+  position: relative; width: 100%; min-width: 1120px; aspect-ratio: 1240 / 664;
+  container-type: inline-size;
+  border: 1px solid var(--border); border-radius: 14px;
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border) 45%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.city-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.city-road { fill: var(--surface-2); stroke: var(--faint); stroke-width: 1; }
+.city-plaza { fill: var(--surface-2); stroke: var(--faint); stroke-width: 1; stroke-dasharray: 4 4; }
+.city-plaza-floor { stroke: none; }
+.city-paving-dot { fill: var(--border-strong); opacity: 0.55; }
+.city-axis { fill: none; stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 8 8; }
+/* Footpaths read as dotted pedestrian lines, never as small roads. */
+.city-foot { fill: none; stroke: var(--faint); stroke-width: 2; stroke-dasharray: 1.5 5; stroke-linecap: round; opacity: 0.85; }
+
+/* A parcel is the interactive unit: the whole plot, not just the elevation standing on it. */
+.plot {
+  position: absolute; margin: 0; padding: 0; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  border: 1px solid var(--border); border-radius: 3px; background: transparent;
+}
+.plot.reserved {
+  border-style: dashed; border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+}
+.plot:hover:not(:disabled), .plot:focus-visible, .plot.active {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.plot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.plot-lv {
+  position: absolute; top: 0; right: -9%;
+  display: inline-flex; gap: 0.3cqw;
+  font-size: 1.05cqw; line-height: 1.35; color: var(--faint);
+}
+.plot.built .plot-lv { color: var(--text-2); }
+.plot-lv-next { color: var(--accent); }
+
+.plot-art { position: relative; display: block; width: 58%; aspect-ratio: 1; margin-bottom: 1%; }
+.plot-art svg { display: block; width: 100%; height: 100%; }
+.plot-name {
+  max-width: 92%; margin-bottom: 4%;
+  font-size: 1.06cqw; line-height: 1.25; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.plot.built .plot-name { color: var(--text-2); }
+.plot:hover .plot-name, .plot:focus-visible .plot-name { color: var(--text); }
+
+/* Hover and focus raise the same card: a name must never be a mouse-only affordance. */
+.plot-tip {
+  position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 1px;
+  padding: 7px 10px 8px; white-space: nowrap; pointer-events: none;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-border); border-radius: 8px;
+  color: var(--overlay-text); font-size: 12.5px; line-height: 1.35;
+}
+.plot-tip.tip-above { transform: translate(-50%, calc(-100% - 6px)); }
+.plot-tip.tip-below { transform: translate(-50%, 6px); }
+.plot-tip.tip-above.tip-left { transform: translate(-16%, calc(-100% - 6px)); }
+.plot-tip.tip-below.tip-left { transform: translate(-16%, 6px); }
+.plot-tip.tip-above.tip-right { transform: translate(-84%, calc(-100% - 6px)); }
+.plot-tip.tip-below.tip-right { transform: translate(-84%, 6px); }
+.plot-tip-name { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+.plot-tip-meta { color: var(--overlay-muted); font-size: 12px; }
+.plot-tip-queued { color: var(--overlay-text); font-size: 12px; }
+.plot-tip-go { margin-top: 3px; color: var(--overlay-muted); font-size: 11.5px; }
+
+.city-scrollnote { display: none; max-width: 1320px; margin: 8px auto 0; font-size: 12.5px; color: var(--faint); }
+
+@media (max-width: 1180px) {
+  .city { padding: 14px 16px 18px; }
+  .city-scrollnote { display: block; }
 }

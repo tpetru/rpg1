@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { MapHexesResponse, MeResponse, OwnSettlementDto, PlayerInfo, ServerMessage, WorldInfo } from '@geowars/rules';
+import type { BuildingId, MapHexesResponse, MeResponse, OwnSettlementDto, PlayerInfo, ServerMessage, WorldInfo } from '@geowars/rules';
 import { api } from '../api';
 import { NationEmblem } from '../art/nation';
 import { fmtInt, useI18n } from '../i18n';
 import { prefs, useServerEvents } from '../util';
+import { CityView } from './CityView';
+import { CountryView } from './CountryView';
 import { HexPanel } from './HexPanel';
 import { LanguageSwitch } from './LanguageSwitch';
 import { ThemeToggle } from './ThemeToggle';
@@ -12,6 +14,9 @@ import { MapView, type HexOwner, type MapMode } from './MapView';
 import { SettlementPanel } from './SettlementPanel';
 
 const MAP_MODES: MapMode[] = ['owners', 'countries', 'food', 'steel', 'oil', 'rare', 'uranium'];
+
+/** Three ways to look at the world: the hex map, the nation at once, or one settlement as a plan. */
+type View = 'map' | 'country' | 'city';
 
 interface Props {
   world: WorldInfo;
@@ -32,6 +37,16 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
   const [focus, setFocus] = useState<{ idx: number; seq: number } | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  /** Set when a parcel on the city plan is picked: the hub opens on that building. */
+  const [focusBuilding, setFocusBuilding] = useState<{ id: BuildingId; seq: number } | null>(null);
+  const [view, setViewState] = useState<View>(() => {
+    const saved = prefs.get('gw.view');
+    return saved === 'country' || saved === 'city' ? saved : 'map';
+  });
+  const setView = useCallback((next: View) => {
+    prefs.set('gw.view', next);
+    setViewState(next);
+  }, []);
   const [mode, setModeState] = useState<MapMode>(() => (MAP_MODES.includes(prefs.get('gw.mapmode') as MapMode) ? (prefs.get('gw.mapmode') as MapMode) : 'owners'));
   const setMode = useCallback((next: MapMode) => {
     prefs.set('gw.mapmode', next);
@@ -93,13 +108,24 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
   if (!map) return <div className="splash">{t('app.loadingWorld')}</div>;
 
   return (
-    <div className={`game ${panelOpen ? '' : 'panel-closed'}`}>
+    <div className={`game ${panelOpen ? '' : 'panel-closed'} ${view === 'map' ? '' : 'view-open'}`}>
       <header className="topbar">
         <span className="wordmark">GeoWars</span>
         <button className="world-button" onClick={onLeave} title={t('game.switchWorld')}>
           {world.name}
         </button>
         <span className="topbar-sep" />
+        <div className="view-switch" role="group" aria-label={t('view.map')}>
+          <button className={view === 'map' ? 'active' : ''} aria-pressed={view === 'map'} onClick={() => setView('map')}>
+            {t('view.map')}
+          </button>
+          <button className={view === 'country' ? 'active' : ''} aria-pressed={view === 'country'} onClick={() => setView('country')}>
+            {t('view.overview')}
+          </button>
+          <button className={view === 'city' ? 'active' : ''} aria-pressed={view === 'city'} onClick={() => setView('city')}>
+            {t('view.city')}
+          </button>
+        </div>
         <nav className="settlement-tabs">
           {mine.map((s) => (
             <button
@@ -108,6 +134,8 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
               onClick={() => {
                 setSelected(s.idx);
                 setFocus({ idx: s.idx, seq: Date.now() });
+                // In the city view, a tab switches the town being looked at rather than leaving it.
+                setView(view === 'city' ? 'city' : 'map');
               }}
             >
               {s.customName ?? hexName(map.hexes[s.idx], map.countries)}
@@ -131,54 +159,90 @@ export function GameScreen({ world, player, account, clockOffset, onLeave, onLog
         </button>
       </header>
 
-      <MapView
-        hexes={map.hexes}
-        countries={map.countries}
-        owners={owners}
-        players={players}
-        mode={mode}
-        myId={account.id}
-        selected={selected}
-        focus={focus}
-        onSelect={setSelected}
-      >
-        <MapControls
-          mode={mode}
-          onMode={setMode}
+      {view === 'country' ? (
+        <CountryView
+          nation={player.nation}
+          settlements={mine}
           hexes={map.hexes}
           countries={map.countries}
-          owners={owners}
-          players={players}
-          customNames={customNames}
-          onPick={pickTarget}
+          settings={world.settings}
+          onOpen={(s) => {
+            setSelected(s.idx);
+            setFocus({ idx: s.idx, seq: Date.now() });
+            setView('map');
+          }}
         />
-        {!panelOpen && (
-          <button className="panel-open-button" onClick={() => setPanelOpen(true)}>
-            {t('panel.open')} ›
-          </button>
-        )}
-      </MapView>
-
-      <aside className="panel">
-        {selectedOwn ? (
-          <SettlementPanel
-            key={selectedOwn.id}
-            worldId={world.id}
+      ) : view === 'city' ? (
+        selectedOwn ? (
+          <CityView
             settlement={selectedOwn}
             defaultName={hexName(map.hexes[selectedOwn.idx], map.countries)}
             countryName={countryName(selectedOwn.countryCode, map.countries)}
-            settings={world.settings}
-            clockOffset={clockOffset}
-            onUpdate={updateSettlement}
-            onStale={loadMine}
-            onCollapse={() => setPanelOpen(false)}
+            onOpenBuilding={(id) => {
+              setFocusBuilding({ id, seq: Date.now() });
+              setSelected(selectedOwn.idx);
+              setPanelOpen(true);
+              setView('map');
+            }}
           />
-        ) : selected !== null ? (
-          <HexPanel hex={map.hexes[selected]} countries={map.countries} owner={owners.get(selected)} players={players} />
         ) : (
-          <div className="muted">{t('game.clickHex')}</div>
-        )}
-      </aside>
+          <div className="city">
+            <p className="city-empty">{t('city.empty')}</p>
+          </div>
+        )
+      ) : (
+        <>
+          <MapView
+            hexes={map.hexes}
+            countries={map.countries}
+            owners={owners}
+            players={players}
+            mode={mode}
+            myId={account.id}
+            selected={selected}
+            focus={focus}
+            onSelect={setSelected}
+          >
+            <MapControls
+              mode={mode}
+              onMode={setMode}
+              hexes={map.hexes}
+              countries={map.countries}
+              owners={owners}
+              players={players}
+              customNames={customNames}
+              onPick={pickTarget}
+            />
+            {!panelOpen && (
+              <button className="panel-open-button" onClick={() => setPanelOpen(true)}>
+                {t('panel.open')} ›
+              </button>
+            )}
+          </MapView>
+
+          <aside className="panel">
+            {selectedOwn ? (
+              <SettlementPanel
+                key={selectedOwn.id}
+                worldId={world.id}
+                settlement={selectedOwn}
+                defaultName={hexName(map.hexes[selectedOwn.idx], map.countries)}
+                countryName={countryName(selectedOwn.countryCode, map.countries)}
+                settings={world.settings}
+                clockOffset={clockOffset}
+                focusBuilding={focusBuilding}
+                onUpdate={updateSettlement}
+                onStale={loadMine}
+                onCollapse={() => setPanelOpen(false)}
+              />
+            ) : selected !== null ? (
+              <HexPanel hex={map.hexes[selected]} countries={map.countries} owner={owners.get(selected)} players={players} />
+            ) : (
+              <div className="muted">{t('game.clickHex')}</div>
+            )}
+          </aside>
+        </>
+      )}
     </div>
   );
 }
