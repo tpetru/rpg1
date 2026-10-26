@@ -23,7 +23,7 @@ export function HexPanel({ hex, countries, owner, players }: Props) {
         {owner ? (
           <>
             <div>
-              Ruled by <strong>{owner.ownerId ? (players[owner.ownerId] ?? 'Unknown') : 'Independent'}</strong>
+              Ruled by <strong>{owner.ownerId ? (players[owner.ownerId] ?? 'Unknown nation') : 'Independent'}</strong>
             </div>
             <div className="muted">{fmtInt(owner.points)} points</div>
           </>

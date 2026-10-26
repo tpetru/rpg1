@@ -20,6 +20,7 @@ import { fmtDuration, fmtInt, useNow } from '../util';
 import { Multiplier } from './Multiplier';
 
 interface Props {
+  worldId: number;
   settlement: OwnSettlementDto;
   countryName: string;
   settings: WorldSettings;
@@ -29,7 +30,7 @@ interface Props {
   onStale: () => void;
 }
 
-export function SettlementPanel({ settlement: s, countryName, settings, clockOffset, onUpdate, onStale }: Props) {
+export function SettlementPanel({ worldId, settlement: s, countryName, settings, clockOffset, onUpdate, onStale }: Props) {
   const now = useNow(1000) + clockOffset;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export function SettlementPanel({ settlement: s, countryName, settings, clockOff
                   </span>
                   <span className="mono">{fmtDuration((q.finishesAt - now) / 1000)}</span>
                   {i === s.queue.length - 1 && (
-                    <button className="link" disabled={busy} onClick={() => run(() => api.cancelBuild(s.id, q.id))}>
+                    <button className="link" disabled={busy} onClick={() => run(() => api.cancelBuild(worldId, s.id, q.id))}>
                       Cancel
                     </button>
                   )}
@@ -147,7 +148,7 @@ export function SettlementPanel({ settlement: s, countryName, settings, clockOff
                   className="primary small"
                   disabled={busy || !check.ok}
                   title={check.ok ? undefined : check.reason}
-                  onClick={() => run(() => api.build(s.id, id))}
+                  onClick={() => run(() => api.build(worldId, s.id, id))}
                 >
                   {check.targetLevel > def.maxLevel ? 'Max' : `→ ${check.targetLevel}`}
                 </button>

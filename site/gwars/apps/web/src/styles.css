@@ -147,26 +147,39 @@ input, select {
 .tabs button { flex: 1; }
 .tabs button.active { border-color: var(--accent); color: var(--accent); }
 
-/* Join */
-.join { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
-.join-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.join-tools { display: flex; gap: 8px; margin: 20px 0 12px; flex-wrap: wrap; }
-.join-tools input { flex: 1; min-width: 180px; }
-.country-grid {
+/* World list */
+.lobby { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+.lobby-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+.world-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
 }
-.country-card {
-  text-align: left;
+.world-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
 }
-.country-name { font-weight: 600; font-size: 15px; }
-.country-res { display: flex; flex-direction: column; gap: 3px; }
+.world-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.world-facts { display: flex; gap: 14px; }
+.status {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.status.ended { border-color: var(--muted); color: var(--muted); }
+
+/* Nation form */
+.hint { color: var(--muted); margin-top: -6px; }
+.hint.bad { color: var(--oil); }
 
 /* Multiplier bars and badges */
 .mult { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; font-size: 12px; }

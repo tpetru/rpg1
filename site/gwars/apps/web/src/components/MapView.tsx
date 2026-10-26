@@ -17,6 +17,8 @@ interface Props {
   hexes: HexRow[];
   countries: Record<string, string>;
   owners: Map<number, HexOwner>;
+  /** ownerId -> nation name */
+  players: Record<number, string>;
   myId: number;
   selected: number | null;
   focus: { idx: number; seq: number } | null;
@@ -42,7 +44,7 @@ function kindOf(owner: HexOwner | undefined, myId: number): number {
   return owner.ownerId ? KIND.player : KIND.independent;
 }
 
-export function MapView({ hexes, countries, owners, myId, selected, focus, onSelect }: Props) {
+export function MapView({ hexes, countries, owners, players, myId, selected, focus, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const kinds = useRef(new Map<number, number>());
@@ -182,7 +184,11 @@ export function MapView({ hexes, countries, owners, myId, selected, focus, onSel
         <div className="map-tooltip" style={{ left: hover.x + 14, top: hover.y + 14 }}>
           <strong>{hoverHex[2]}</strong>
           <span>{countries[hoverHex[1]] ?? hoverHex[1]}</span>
-          <span className="muted">{hoverOwner ? `${hoverOwner.points} points` : 'Unclaimed'}</span>
+          <span className="muted">
+            {hoverOwner
+              ? `${hoverOwner.ownerId ? (players[hoverOwner.ownerId] ?? 'Unknown nation') : 'Independent'} · ${hoverOwner.points} points`
+              : 'Unclaimed'}
+          </span>
         </div>
       )}
     </div>

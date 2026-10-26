@@ -13,7 +13,6 @@ function env(name: string, fallback?: string): string {
 
 export const config = {
   port: Number(env('PORT', '3000')),
-  worldId: Number(env('WORLD_ID', '1')),
   cookieSecure: env('COOKIE_SECURE', 'false') === 'true',
   db: {
     host: env('DB_HOST', '127.0.0.1'),

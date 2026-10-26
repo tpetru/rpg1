@@ -2,7 +2,6 @@ import type { MeResponse } from '@geowars/rules';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { endSession, hashPassword, requireAuth, startSession, verifyPassword } from '../auth';
-import type { AppContext } from '../context';
 import { exec, isDuplicateKey, one, pool } from '../db';
 import { GameError } from '../errors';
 
@@ -17,7 +16,7 @@ const LoginBody = z.object({
   password: z.string().min(1).max(200),
 });
 
-export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void {
+export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/api/auth/register', async (req, reply) => {
     const body = RegisterBody.parse(req.body);
     let id: number;
@@ -56,12 +55,6 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
   });
 
   app.get('/api/auth/me', { preHandler: requireAuth }, async (req): Promise<MeResponse> => {
-    const account = req.account!;
-    const player = await one<{ nationality: string; points: number }>(
-      pool,
-      'SELECT nationality, points FROM world_players WHERE world_id = ? AND account_id = ?',
-      [ctx.world.id, account.id],
-    );
-    return { account, world: ctx.world, player: player ?? null, serverTime: Date.now() };
+    return { account: req.account! };
   });
 }

@@ -5,31 +5,35 @@ import type { WorldSettings } from './world';
 
 export interface WorldInfo {
   id: number;
+  /** Public number: "World 0", "World 1", ... */
+  number: number;
   name: string;
   h3Res: number;
   settings: WorldSettings;
 }
 
-export interface MeResponse {
-  account: { id: number; username: string };
-  world: WorldInfo;
-  player: { nationality: string; points: number } | null;
-  serverTime: number;
+export type WorldStatus = 'open' | 'running' | 'ended';
+
+export interface PlayerInfo {
+  nation: string;
+  points: number;
 }
 
-export interface CountryInfo {
-  code: string;
-  name: string;
-  continent: string;
-  hexes: number;
-  free: number;
-  /** Average multipliers over the country's hexes. */
-  food: number;
-  steel: number;
-  oil: number;
-  /** Share of hexes (0..1) holding the strategic resource. */
-  rareShare: number;
-  uraniumShare: number;
+export interface WorldSummary extends WorldInfo {
+  status: WorldStatus;
+  players: number;
+  /** The logged-in account's nation in this world, if it joined. */
+  you: PlayerInfo | null;
+}
+
+export interface MeResponse {
+  account: { id: number; username: string };
+}
+
+export interface WorldMeResponse {
+  world: WorldInfo;
+  player: PlayerInfo | null;
+  serverTime: number;
 }
 
 /** Row index = hex idx. [h3, countryCode, name, food, steel, oil, rare, uranium] */
@@ -46,6 +50,7 @@ export type MapSettlementRow = [number, number, number, number];
 
 export interface MapSettlementsResponse {
   settlements: MapSettlementRow[];
+  /** ownerId -> nation name */
   players: Record<number, string>;
 }
 
@@ -79,6 +84,7 @@ export interface PublicSettlementDto {
   name: string;
   countryCode: string;
   ownerId: number | null;
+  /** Owner's nation name in this world. */
   ownerName: string | null;
   points: number;
 }

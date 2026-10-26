@@ -2,29 +2,32 @@ import type { ServerMessage } from '@geowars/rules';
 import type { WebSocket } from 'ws';
 
 /**
- * In-process fan-out of server events to connected players.
- * When the API and engine run as separate processes this becomes a Redis pub/sub bridge.
+ * In-process fan-out of server events to connected players, scoped per world.
+ * When the API and engines run as separate processes this becomes a Redis pub/sub bridge.
  */
 export class Realtime {
-  private sockets = new Map<number, Set<WebSocket>>();
+  /** worldId -> accountId -> sockets */
+  private worlds = new Map<number, Map<number, Set<WebSocket>>>();
 
-  add(accountId: number, socket: WebSocket): void {
-    let set = this.sockets.get(accountId);
-    if (!set) this.sockets.set(accountId, (set = new Set()));
+  add(worldId: number, accountId: number, socket: WebSocket): void {
+    let accounts = this.worlds.get(worldId);
+    if (!accounts) this.worlds.set(worldId, (accounts = new Map()));
+    let set = accounts.get(accountId);
+    if (!set) accounts.set(accountId, (set = new Set()));
     set.add(socket);
     socket.on('close', () => {
       set.delete(socket);
-      if (set.size === 0) this.sockets.delete(accountId);
+      if (set.size === 0) accounts.delete(accountId);
     });
   }
 
-  sendTo(accountId: number, msg: ServerMessage): void {
+  sendTo(worldId: number, accountId: number, msg: ServerMessage): void {
     const data = JSON.stringify(msg);
-    for (const socket of this.sockets.get(accountId) ?? []) socket.send(data);
+    for (const socket of this.worlds.get(worldId)?.get(accountId) ?? []) socket.send(data);
   }
 
-  broadcast(msg: ServerMessage): void {
+  broadcast(worldId: number, msg: ServerMessage): void {
     const data = JSON.stringify(msg);
-    for (const set of this.sockets.values()) for (const socket of set) socket.send(data);
+    for (const set of this.worlds.get(worldId)?.values() ?? []) for (const socket of set) socket.send(data);
   }
 }

@@ -26,8 +26,27 @@ export function useNow(intervalMs = 1000): number {
   return now;
 }
 
-/** Keeps a WebSocket to the server open, reconnecting with backoff. */
-export function useServerEvents(onMessage: (msg: ServerMessage) => void): void {
+/** Remembers small per-browser preferences; storage can be unavailable (private mode), so failures are ignored. */
+export const prefs = {
+  get(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string | null): void {
+    try {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch {
+      // ignore
+    }
+  },
+};
+
+/** Keeps a WebSocket to the world's event stream open, reconnecting with backoff. */
+export function useServerEvents(worldId: number, onMessage: (msg: ServerMessage) => void): void {
   const handler = useRef(onMessage);
   handler.current = onMessage;
 
@@ -39,7 +58,7 @@ export function useServerEvents(onMessage: (msg: ServerMessage) => void): void {
 
     const connect = () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      socket = new WebSocket(`${proto}://${location.host}/api/ws`);
+      socket = new WebSocket(`${proto}://${location.host}/api/w/${worldId}/ws`);
       socket.onopen = () => (delay = 1000);
       socket.onmessage = (e) => handler.current(JSON.parse(e.data) as ServerMessage);
       socket.onclose = () => {
@@ -55,5 +74,5 @@ export function useServerEvents(onMessage: (msg: ServerMessage) => void): void {
       clearTimeout(retry);
       socket?.close();
     };
-  }, []);
+  }, [worldId]);
 }

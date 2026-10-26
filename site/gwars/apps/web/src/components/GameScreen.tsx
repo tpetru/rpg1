@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { MapHexesResponse, MeResponse, OwnSettlementDto, ServerMessage } from '@geowars/rules';
+import type { MapHexesResponse, MeResponse, OwnSettlementDto, PlayerInfo, ServerMessage, WorldInfo } from '@geowars/rules';
 import { api } from '../api';
 import { fmtInt, useServerEvents } from '../util';
 import { HexPanel } from './HexPanel';
@@ -7,12 +7,15 @@ import { MapView, type HexOwner } from './MapView';
 import { SettlementPanel } from './SettlementPanel';
 
 interface Props {
-  me: MeResponse;
+  world: WorldInfo;
+  player: PlayerInfo;
+  account: MeResponse['account'];
   clockOffset: number;
+  onLeave: () => void;
   onLogout: () => void;
 }
 
-export function GameScreen({ me, clockOffset, onLogout }: Props) {
+export function GameScreen({ world, player, account, clockOffset, onLeave, onLogout }: Props) {
   const [map, setMap] = useState<MapHexesResponse | null>(null);
   const [owners, setOwners] = useState(new Map<number, HexOwner>());
   const [players, setPlayers] = useState<Record<number, string>>({});
@@ -23,14 +26,14 @@ export function GameScreen({ me, clockOffset, onLogout }: Props) {
 
   const loadMine = useCallback(async () => {
     try {
-      setMine(await api.mySettlements());
+      setMine(await api.mySettlements(world.id));
     } catch (err) {
       setError((err as Error).message);
     }
-  }, []);
+  }, [world.id]);
 
   useEffect(() => {
-    Promise.all([api.hexes(), api.mapSettlements(), api.mySettlements()]).then(
+    Promise.all([api.hexes(world.id), api.mapSettlements(world.id), api.mySettlements(world.id)]).then(
       ([hexes, settlements, own]) => {
         setMap(hexes);
         setOwners(new Map(settlements.settlements.map(([idx, id, ownerId, points]) => [idx, { settlementId: id, ownerId, points }])));
@@ -43,9 +46,10 @@ export function GameScreen({ me, clockOffset, onLogout }: Props) {
       },
       (err: Error) => setError(err.message),
     );
-  }, []);
+  }, [world.id]);
 
   useServerEvents(
+    world.id,
     useCallback(
       (msg: ServerMessage) => {
         if (msg.t === 'settlement') void loadMine();
@@ -73,7 +77,9 @@ export function GameScreen({ me, clockOffset, onLogout }: Props) {
     <div className="game">
       <header className="topbar">
         <span className="logo small">GeoWars</span>
-        <span className="muted">{me.world.name}</span>
+        <button onClick={onLeave} title="Switch world">
+          {world.name}
+        </button>
         <div className="settlement-tabs">
           {mine.map((s) => (
             <button
@@ -90,7 +96,7 @@ export function GameScreen({ me, clockOffset, onLogout }: Props) {
         </div>
         <span className="spacer" />
         <span>
-          <strong>{me.account.username}</strong> · {fmtInt(totalPoints)} points
+          <strong>{player.nation}</strong> <span className="muted">({account.username})</span> · {fmtInt(totalPoints)} points
         </span>
         <button onClick={onLogout}>Log out</button>
       </header>
@@ -99,7 +105,8 @@ export function GameScreen({ me, clockOffset, onLogout }: Props) {
         hexes={map.hexes}
         countries={map.countries}
         owners={owners}
-        myId={me.account.id}
+        players={players}
+        myId={account.id}
         selected={selected}
         focus={focus}
         onSelect={setSelected}
@@ -109,9 +116,10 @@ export function GameScreen({ me, clockOffset, onLogout }: Props) {
         {selectedOwn ? (
           <SettlementPanel
             key={selectedOwn.id}
+            worldId={world.id}
             settlement={selectedOwn}
             countryName={map.countries[selectedOwn.countryCode] ?? selectedOwn.countryCode}
-            settings={me.world.settings}
+            settings={world.settings}
             clockOffset={clockOffset}
             onUpdate={updateSettlement}
             onStale={loadMine}

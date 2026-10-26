@@ -45,8 +45,8 @@ const buildComplete: EventHandler = async (conn, ev, { world, realtime }) => {
   if (s.ownerId) await refreshPlayerPoints(conn, s.worldId, s.ownerId);
 
   return () => {
-    if (s.ownerId) realtime.sendTo(s.ownerId, { t: 'settlement', id: s.id });
-    realtime.broadcast({ t: 'map', row: [s.idx, s.id, s.ownerId ?? 0, s.points], ownerName: null });
+    if (s.ownerId) realtime.sendTo(world.id, s.ownerId, { t: 'settlement', id: s.id });
+    realtime.broadcast(world.id, { t: 'map', row: [s.idx, s.id, s.ownerId ?? 0, s.points], ownerName: null });
   };
 };
 

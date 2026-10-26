@@ -55,16 +55,26 @@ export async function endSession(request: FastifyRequest, reply: FastifyReply): 
   reply.clearCookie(SESSION_COOKIE, { path: '/' });
 }
 
-/** preHandler: rejects the request unless it carries a valid session cookie. */
-export async function requireAuth(request: FastifyRequest): Promise<void> {
+async function sessionAccount(request: FastifyRequest): Promise<{ id: number; username: string } | undefined> {
   const token = request.cookies[SESSION_COOKIE];
-  if (!token) throw new GameError('Not logged in', 401);
-  const account = await one<{ id: number; username: string }>(
+  if (!token) return undefined;
+  return one<{ id: number; username: string }>(
     pool,
     `SELECT a.id, a.username FROM sessions s JOIN accounts a ON a.id = s.account_id
      WHERE s.token_hash = ? AND s.expires_at > ?`,
     [sha256(token), Date.now()],
   );
+}
+
+/** preHandler: rejects the request unless it carries a valid session cookie. */
+export async function requireAuth(request: FastifyRequest): Promise<void> {
+  if (!request.cookies[SESSION_COOKIE]) throw new GameError('Not logged in', 401);
+  const account = await sessionAccount(request);
   if (!account) throw new GameError('Session expired', 401);
   request.account = account;
+}
+
+/** preHandler: sets request.account when logged in, without rejecting guests. */
+export async function optionalAuth(request: FastifyRequest): Promise<void> {
+  request.account = await sessionAccount(request);
 }

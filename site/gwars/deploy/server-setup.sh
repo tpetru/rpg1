@@ -37,7 +37,6 @@ DB_USER=geowars
 DB_PASSWORD=$DB_PASS
 DB_NAME=geowars
 PORT=3000
-WORLD_ID=1
 COOKIE_SECURE=true
 ENV
   chown root:gwars "$APP_DIR/.env"

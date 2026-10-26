@@ -1,11 +1,12 @@
 import type {
   BuildingId,
-  CountryInfo,
   MapHexesResponse,
   MapSettlementsResponse,
   MeResponse,
   OwnSettlementDto,
   PublicSettlementDto,
+  WorldMeResponse,
+  WorldSummary,
 } from '@geowars/rules';
 
 export class ApiError extends Error {
@@ -29,20 +30,25 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   return data as T;
 }
 
+const w = (worldId: number) => `/api/w/${worldId}`;
+
 export const api = {
   me: () => request<MeResponse>('GET', '/api/auth/me'),
   login: (login: string, password: string) => request('POST', '/api/auth/login', { login, password }),
   register: (username: string, email: string, password: string) => request('POST', '/api/auth/register', { username, email, password }),
   logout: () => request('POST', '/api/auth/logout'),
 
-  countries: () => request<CountryInfo[]>('GET', '/api/world/countries'),
-  join: (country: string) => request<{ settlementId: number }>('POST', '/api/world/join', { country }),
+  worlds: () => request<WorldSummary[]>('GET', '/api/worlds'),
+  worldMe: (worldId: number) => request<WorldMeResponse>('GET', `${w(worldId)}/me`),
+  join: (worldId: number, nation: string) => request<{ settlementId: number }>('POST', `${w(worldId)}/join`, { nation }),
 
-  hexes: () => request<MapHexesResponse>('GET', '/api/map/hexes'),
-  mapSettlements: () => request<MapSettlementsResponse>('GET', '/api/map/settlements'),
+  hexes: (worldId: number) => request<MapHexesResponse>('GET', `${w(worldId)}/map/hexes`),
+  mapSettlements: (worldId: number) => request<MapSettlementsResponse>('GET', `${w(worldId)}/map/settlements`),
 
-  mySettlements: () => request<OwnSettlementDto[]>('GET', '/api/settlements/mine'),
-  settlement: (id: number) => request<OwnSettlementDto | PublicSettlementDto>('GET', `/api/settlements/${id}`),
-  build: (id: number, building: BuildingId) => request<OwnSettlementDto>('POST', `/api/settlements/${id}/build`, { building }),
-  cancelBuild: (id: number, queueId: number) => request<OwnSettlementDto>('DELETE', `/api/settlements/${id}/queue/${queueId}`),
+  mySettlements: (worldId: number) => request<OwnSettlementDto[]>('GET', `${w(worldId)}/settlements/mine`),
+  settlement: (worldId: number, id: number) => request<OwnSettlementDto | PublicSettlementDto>('GET', `${w(worldId)}/settlements/${id}`),
+  build: (worldId: number, id: number, building: BuildingId) =>
+    request<OwnSettlementDto>('POST', `${w(worldId)}/settlements/${id}/build`, { building }),
+  cancelBuild: (worldId: number, id: number, queueId: number) =>
+    request<OwnSettlementDto>('DELETE', `${w(worldId)}/settlements/${id}/queue/${queueId}`),
 };
