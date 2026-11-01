@@ -26,6 +26,7 @@ export function AdminMap({ worldId, players, notify, onChanged, onOpenInList }: 
   const [selected, setSelected] = useState<number | null>(null);
   const [focus, setFocus] = useState<{ idx: number; seq: number } | null>(null);
   const [chosen, setChosen] = useState('');
+  const [size, setSize] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
 
   /** Who holds which hex. Cheap, so it is refreshed after every claim. */
@@ -80,6 +81,23 @@ export function AdminMap({ worldId, players, notify, onChanged, onOpenInList }: 
     }
   };
 
+  const createAbandoned = async () => {
+    if (!map || selected === null || !hex) return;
+    const label = hexName(hex, map.countries);
+    setBusy(true);
+    try {
+      const { settlementId } = await adminApi.createAbandoned(worldId, selected, size);
+      setOwners((prev) => new Map(prev).set(selected, { settlementId, ownerId: 0, points: 0 }));
+      notify({ kind: 'ok', text: t('admin.abandonedCreated', { hex: label }) });
+      onChanged();
+      void refreshOwners();
+    } catch (err) {
+      notify({ kind: 'error', text: errorText(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!map) return <div className="muted">{t('app.loadingWorld')}</div>;
 
   return (
@@ -121,7 +139,7 @@ export function AdminMap({ worldId, players, notify, onChanged, onOpenInList }: 
               <h3>{t('admin.hex')}</h3>
               {owner ? (
                 <>
-                  <div>{t('admin.claimedBy', { owner: ownerLabel ?? '' })}</div>
+                  <div>{owner.ownerId === 0 ? t('attack.title') : t('admin.claimedBy', { owner: ownerLabel ?? '' })}</div>
                   <div className="muted small mono">
                     #{owner.settlementId} · {t('points', { n: fmtInt(owner.points) })}
                   </div>
@@ -147,6 +165,20 @@ export function AdminMap({ worldId, players, notify, onChanged, onOpenInList }: 
                     {t('admin.claim')}
                   </button>
                   <p className="muted small">{t('admin.claimNote')}</p>
+
+                  <hr className="admin-sep" />
+                  <label className="admin-owner">
+                    <span className="muted small">{t('admin.abandonedSize')}</span>
+                    <select value={size} onChange={(e) => setSize(Number(e.target.value) as 1 | 2 | 3)}>
+                      <option value={1}>{t('admin.sizeSmall')}</option>
+                      <option value={2}>{t('admin.sizeMedium')}</option>
+                      <option value={3}>{t('admin.sizeLarge')}</option>
+                    </select>
+                  </label>
+                  <button style={{ marginTop: 10 }} disabled={busy} onClick={() => void createAbandoned()}>
+                    {t('admin.createAbandoned')}
+                  </button>
+                  <p className="muted small">{t('admin.abandonedNote')}</p>
                 </>
               )}
             </section>

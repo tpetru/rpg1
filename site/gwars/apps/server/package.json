@@ -7,7 +7,10 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "migrate": "tsx src/migrate.ts",
-    "seed": "tsx src/seed-world.ts"
+    "seed": "tsx src/seed-world.ts",
+    "seed-demo": "tsx src/seed-demo.ts",
+    "seed-demo-homes": "tsx src/seed-demo-homes.ts",
+    "recalc-points": "tsx src/recalc-points.ts"
   },
   "dependencies": {
     "@fastify/compress": "^9.2.2",

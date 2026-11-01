@@ -33,6 +33,14 @@ npm run db:seed -- --number 0 --speed 50   # creates "World 0" (skips worlds tha
 npm run dev                       # API on :3000, web on http://localhost:5173
 ```
 
+
+New worlds get abandoned settlements on 8% of their hexes. To add them to a world that already exists
+(it tops the world up to that share and does nothing when it is already there):
+
+```sh
+npm run db:seed -- --number 0 --abandoned 8
+```
+
 Other scripts: `npm test` (rules unit tests), `npm run typecheck`.
 
 ## Architecture notes
@@ -52,7 +60,7 @@ Other scripts: `npm test` (rules unit tests), `npm run typecheck`.
 ## Roadmap
 
 1. ~~Map, accounts, worlds, nation founding, buildings, resources~~
-2. Units, attack/support commands, combat, reports, independent towns
+2. ~~Units, training, attacks with travel time, combat, reports, abandoned settlements~~ (support commands and attacks between players are next)
 3. Governors, loyalty and conquest, rankings
 4. Alliances, diplomacy, chat, incoming-attack feed
 5. Research: Technology, Medicine, Education, Weapons, Politics; alliance projects

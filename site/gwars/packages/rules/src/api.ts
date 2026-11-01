@@ -1,5 +1,6 @@
 // HTTP and WebSocket contract between apps/server and apps/web.
 import type { BuildingId, BuildingLevels } from './buildings';
+import type { UnitCounts, UnitId } from './units';
 import type { ResourceBag, ResourceProfile } from './resources';
 import type { WorldSettings } from './world';
 
@@ -48,6 +49,8 @@ export interface CountryRef {
   name: string;
   /** ISO 3166-1 alpha-2, for localized names (Intl.DisplayNames); null when there is none. */
   a2: string | null;
+  /** Natural Earth continent, e.g. 'Europe' — the same string the continent ranking uses. */
+  continent: string;
 }
 
 export interface MapHexesResponse {
@@ -80,6 +83,25 @@ export interface QueueItemDto {
   finishesAt: number;
 }
 
+export interface TrainItemDto {
+  id: number;
+  unit: UnitId;
+  /** Units still to come; each one joins the garrison as soon as it is trained. */
+  count: number;
+  /** Units ordered in this batch. */
+  total: number;
+  startsAt: number;
+  /** When the last unit of the batch is done. */
+  finishesAt: number;
+}
+
+export interface ResearchItemDto {
+  id: number;
+  unit: UnitId;
+  startsAt: number;
+  finishesAt: number;
+}
+
 export interface OwnSettlementDto {
   id: number;
   idx: number;
@@ -95,7 +117,19 @@ export interface OwnSettlementDto {
   stock: ResourceBag;
   resourcesAt: number;
   profile: ResourceProfile;
+  /** The hex borders the sea (a Port can only be built on the coast). */
+  coastal: boolean;
   queue: QueueItemDto[];
+  /** Troops standing in the settlement right now. */
+  units: UnitCounts;
+  /** Units being trained, in order. */
+  training: TrainItemDto[];
+  /** Population all of this settlement's troops take (home, training and away). */
+  troopPop: number;
+  /** Units researched in this settlement's Research Center: only these can be trained here. */
+  researched: UnitId[];
+  /** The research in progress (one at a time), or null. */
+  researching: ResearchItemDto | null;
 }
 
 export interface PublicSettlementDto {
@@ -111,8 +145,107 @@ export interface PublicSettlementDto {
   points: number;
 }
 
+/** An army on the move. Only attacks on abandoned settlements exist so far. */
+export interface CommandDto {
+  id: number;
+  type: 'attack' | 'return';
+  originId: number;
+  originIdx: number;
+  targetId: number;
+  targetIdx: number;
+  units: UnitCounts;
+  sentAt: number;
+  arrivesAt: number;
+}
+
+/** An enemy army heading for one of the player's settlements. */
+export interface IncomingCommandDto extends CommandDto {
+  attackerName: string | null;
+  /** The target has no Radar, so the units are not known (and `units` is all zeros). */
+  unitsHidden: boolean;
+  /** The Radar is too weak to tell when it arrives from that far away; `sentAt` and `arrivesAt` are 0. */
+  timeHidden: boolean;
+}
+
+/** What sending an army would take, computed by the server so the player sees the real figures. */
+export interface AttackPreviewDto {
+  distanceKm: number;
+  /** null until at least one unit is chosen */
+  travelMs: number | null;
+  overseas: boolean;
+  /** Crossing water needs a Port at the origin and it has none. */
+  needsPort: boolean;
+}
+
+export interface BattleReportData {
+  /** conquered: won and took the settlement. defeat: lost the army. fizzled: the target had become the attacker's own, the army went home. */
+  outcome: 'conquered' | 'victory' | 'defeat' | 'fizzled' | 'air';
+  originId: number;
+  originIdx: number;
+  targetId: number;
+  targetIdx: number;
+  attackers: UnitCounts;
+  attackerLosses: UnitCounts;
+  defenders: UnitCounts;
+  defenderLosses: UnitCounts;
+  attackPower: number;
+  defensePower: number;
+  luck: number;
+  fortificationLevel: number;
+  /** The nation that held the target; none when it was abandoned. */
+  defenderName?: string | null;
+  /** The nation that sent the army. */
+  attackerName?: string | null;
+  /** Bombers brought down by the target's Defence Drones before they could bomb. */
+  bombersShot?: number;
+  /** Tanks that survived a won battle pulled the Fortifications down: level before and after. */
+  wallsDown?: { from: number; to: number } | null;
+  /** This copy of the report is the defender's: the attacker's own report has it unset. */
+  asDefender?: boolean;
+  /** Spies were with the army: the buildings of the town when it arrived. */
+  intel?: BuildingLevels | null;
+  /** Bombers were with the army: the building they hit and its level before and after. */
+  bombed?: { building: BuildingId; from: number; to: number } | null;
+}
+
+export interface ReportDto {
+  id: number;
+  createdAt: number;
+  read: boolean;
+  type: 'battle';
+  data: BattleReportData;
+}
+
+export type RankingType = 'points' | 'cities' | 'continent';
+
+export interface RankingRow {
+  /** Place in the whole ranking (not in the page). */
+  rank: number;
+  accountId: number;
+  nation: string;
+  /** Points: all of the player's, or only those of the settlements on the chosen continent. */
+  points: number;
+  /** Settlements: all of the player's, or only those on the chosen continent. */
+  cities: number;
+  /** In the settlements ranking each row is one settlement: its name. */
+  settlement?: string;
+}
+
+export interface RankingResponse {
+  type: RankingType;
+  continent: string | null;
+  /** Every continent with land in this world, for the continent ranking. */
+  continents: string[];
+  page: number;
+  pages: number;
+  total: number;
+  rows: RankingRow[];
+}
+
 export type ServerMessage =
   | { t: 'settlement'; id: number }
+  | { t: 'command' }
+  | { t: 'report'; id: number }
   | { t: 'map'; row: MapSettlementRow; ownerName: string | null };
 
 // Admin page. Everything here is only served to a logged-in admin session.
@@ -141,4 +274,5 @@ export interface AdminWorldDto {
   id: number;
   number: number;
   name: string;
+  settings: WorldSettings;
 }

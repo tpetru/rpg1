@@ -3,6 +3,7 @@ import {
   BUILDINGS,
   BUILDING_IDS,
   RESOURCES,
+  UNIT_IDS,
   SETTLEMENT_NAME_MAX,
   SETTLEMENT_NAME_MIN,
   buildingPop,
@@ -22,11 +23,13 @@ import {
 } from '@geowars/rules';
 import { api } from '../api';
 import { BuildingIcon } from '../art/buildings';
+import { UnitIcon } from '../art/units';
 import { CATALOGUE } from '../catalogue';
 import { fmtInt, useI18n } from '../i18n';
 import type { TextKey } from '../i18n/en';
 import { fmtBuildTime, fmtDuration, useNow } from '../util';
 import { Multiplier } from './Multiplier';
+import { TroopsSection } from './TroopsSection';
 
 interface Props {
   worldId: number;
@@ -42,12 +45,11 @@ interface Props {
   /** Called when local state is known to be out of date (a build should have finished). */
   onStale: () => void;
   /** Hides the panel so the map takes the whole screen. */
-  onCollapse: () => void;
 }
 
 const COST_ORDER = RESOURCES;
 
-function Costs({ cost, stock }: { cost: ResourceBag; stock: ResourceBag }) {
+export function Costs({ cost, stock }: { cost: ResourceBag; stock: ResourceBag }) {
   return (
     <>
       {COST_ORDER.map((r) => (
@@ -70,7 +72,6 @@ export function SettlementPanel({
   focusBuilding,
   onUpdate,
   onStale,
-  onCollapse,
 }: Props) {
   const { t, codeText, errorText, buildingName } = useI18n();
   const now = useNow(1000) + clockOffset;
@@ -92,7 +93,7 @@ export function SettlementPanel({
   const rates = productionRates(s.levels, s.profile, settings.speed);
   const cap = warehouseCapacity(s.levels.warehouse);
   const stock = materialize(s.stock, rates, cap, s.resourcesAt, now);
-  const popUsed = populationUsed(plannedLevels(s.levels, s.queue));
+  const popUsed = populationUsed(plannedLevels(s.levels, s.queue)) + s.troopPop;
   const popCap = housingCapacity(s.levels.housing);
 
   // The server pushes completions over WebSocket; this is the fallback if a message was missed.
@@ -122,7 +123,7 @@ export function SettlementPanel({
     if (await run(() => api.renameSettlement(worldId, s.id, newName))) setEditing(false);
   };
 
-  const checks = Object.fromEntries(BUILDING_IDS.map((id) => [id, checkBuild({ levels: s.levels, queue: s.queue, stock }, id, settings)])) as Record<
+  const checks = Object.fromEntries(BUILDING_IDS.map((id) => [id, checkBuild({ levels: s.levels, queue: s.queue, stock, troopPop: s.troopPop, coastal: s.coastal }, id, settings)])) as Record<
     BuildingId,
     BuildCheck
   >;
@@ -143,11 +144,6 @@ export function SettlementPanel({
 
   return (
     <div>
-      <div className="panel-top">
-        <button className="link" onClick={onCollapse}>
-          ‹ {t('panel.collapse')}
-        </button>
-      </div>
 
       <header>
         {editing ? (
@@ -241,6 +237,23 @@ export function SettlementPanel({
           </div>
         </section>
 
+        <section className="troops-block">
+          <h3>{t('panel.troops')}</h3>
+          {UNIT_IDS.every((u) => s.units[u] === 0) ? (
+            <p className="muted small">{t('panel.troopsEmpty')}</p>
+          ) : (
+            <ul className="troop-list">
+              {UNIT_IDS.filter((u) => s.units[u] > 0).map((u) => (
+                <li key={u}>
+                  <UnitIcon unit={u} size={22} />
+                  <span>{t(`unit.${u}.name` as TextKey)}</span>
+                  <span className="mono">{fmtInt(s.units[u])}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section className="queue-card" aria-label={t('panel.queue')}>
           <div className="queue-head">
             <span>{t('panel.queue')}</span>
@@ -295,105 +308,6 @@ export function SettlementPanel({
         </section>
 
         {error != null && <div className="error">{errorText(error)}</div>}
-
-        <section className="inspector" aria-live="polite">
-          <div className="inspector-head">
-            <BuildingIcon id={selected} size={92} />
-            <div>
-              <h2 className="inspector-title">{buildingName(selected)}</h2>
-              <div className="inspector-meta">
-                <span className="mono">{t('panel.levelOf', { n: s.levels[selected], max: def.maxLevel })}</span>
-                <span className="sep">/</span>
-                <span>{selectedQueued ? t('panel.queuedTo', { n: selectedQueued }) : t('panel.notInQueue')}</span>
-              </div>
-              <p className="inspector-desc">{t(`building.${selected}.desc` as TextKey)}</p>
-            </div>
-          </div>
-          <div className="inspector-foot">
-            <div>
-              {check.cost && (
-                <div className="costs">
-                  <Costs cost={check.cost} stock={stock} />
-                </div>
-              )}
-              <div className={`build-note ${blockReason && !check.cost ? 'blocked' : ''}`}>
-                {selectedLocked
-                  ? requirementText(selected)
-                  : selectedMaxed
-                    ? t('panel.maxLevelOf', { n: def.maxLevel })
-                    : [
-                        t('panel.toBuild', { time: fmtBuildTime(check.timeSec ?? 0) }),
-                        extraPop > 0 ? t('panel.popNeeded', { n: extraPop }) : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                {blockReason && !selectedLocked && !selectedMaxed && <div className="blocked">{blockReason}</div>}
-              </div>
-            </div>
-            {!selectedMaxed && (
-              <button className="primary" disabled={busy || !check.ok} title={blockReason} onClick={() => run(() => api.build(worldId, s.id, selected))}>
-                {check.targetLevel === 1 ? t('panel.build') : t('panel.upgradeTo', { n: check.targetLevel })}
-              </button>
-            )}
-          </div>
-        </section>
-
-        <section>
-          <div className="catalogue-head">
-            <h3>{t('panel.allBuildings')}</h3>
-            <span className="faint small">{t('panel.buildable', { n: buildable, total: BUILDING_IDS.length })}</span>
-          </div>
-          {CATALOGUE.map((group) => (
-            <div key={group.title} className="cat-group">
-              <div className="cat-label">
-                <h4>{t(group.title)}</h4>
-              </div>
-              <div className="cat-grid">
-                {group.ids.map((id) => {
-                  const c = checks[id];
-                  const locked = unmet(id).length > 0;
-                  const maxed = !c.ok && c.code === 'max_level';
-                  const queued = queuedTo(id);
-                  const built = s.levels[id];
-                  return (
-                    <button
-                      key={id}
-                      className={`cat-item ${selected === id ? 'selected' : ''} ${queued ? 'queued' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => setSelected(id)}
-                      aria-pressed={selected === id}
-                    >
-                      <BuildingIcon id={id} size={44} className={built > 0 ? '' : 'unbuilt'} />
-                      <span className="cat-text">
-                        <span className="cat-title">
-                          <span className="cat-name">{buildingName(id)}</span>
-                          {locked ? <span className="lock-icon">🔒︎</span> : built > 0 && <span className="cat-level">{built}</span>}
-                          {!locked && !maxed && c.timeSec != null && (
-                            <span className="cat-time">
-                              {queued ? fmtDuration(((s.queue.find((q) => q.building === id)?.finishesAt ?? now) - now) / 1000) : fmtBuildTime(c.timeSec)}
-                            </span>
-                          )}
-                        </span>
-                        {locked ? (
-                          <span className="cat-sub">{requirementText(id)}</span>
-                        ) : maxed ? (
-                          <span className="cat-sub">{t('panel.maxLevelOf', { n: BUILDINGS[id].maxLevel })}</span>
-                        ) : queued ? (
-                          <span className="cat-sub">{t('panel.queuedTo', { n: queued })}</span>
-                        ) : (
-                          c.cost && (
-                            <span className="cat-costs">
-                              <Costs cost={c.cost} stock={stock} />
-                            </span>
-                          )
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </section>
 
         <section className="land-block">
           <h3>{t('panel.land')}</h3>

@@ -31,6 +31,8 @@ export interface MapPalette {
   /** Hexes nobody holds */
   free: string;
   mine: string;
+  /** The settlement being looked at */
+  current: string;
   player: string;
   independent: string;
   selected: string;
@@ -43,10 +45,11 @@ export const MAP_PALETTES: Record<Theme, MapPalette> = {
     hexLine: '#5b5346',
     countryLine: '#a89c85',
     free: '#2d2924',
-    mine: '#cc785c',
-    player: '#5f9a8f',
-    independent: '#a09d96',
-    selected: '#faf9f5',
+    mine: '#f5c518',
+    current: '#ffffff',
+    player: '#b5726e',
+    independent: '#9a9a9a',
+    selected: '#ffffff',
   },
   dark: {
     ocean: '#0a1724',
@@ -54,10 +57,11 @@ export const MAP_PALETTES: Record<Theme, MapPalette> = {
     hexLine: '#4d6b86',
     countryLine: '#8fb3d1',
     free: '#2a4157',
-    mine: '#3ddc84',
-    player: '#e8644f',
-    independent: '#9aa5b1',
-    selected: '#ffd54a',
+    mine: '#f5c518',
+    current: '#ffffff',
+    player: '#b5726e',
+    independent: '#9a9a9a',
+    selected: '#ffffff',
   },
 };
 

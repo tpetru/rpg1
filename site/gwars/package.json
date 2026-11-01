@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "concurrently -n server,web -c blue,magenta \"npm run dev -w @geowars/server\" \"npm run dev -w @geowars/web\"",
     "geo:build": "npm run build -w @geowars/geo --",
+    "assets:city": "node scripts/slice-city-sprites.mjs",
     "db:migrate": "npm run migrate -w @geowars/server",
     "db:seed": "npm run seed -w @geowars/server --",
     "typecheck": "tsc -p packages/rules && tsc -p packages/geo && tsc -p apps/server && tsc -p apps/web",
@@ -17,6 +18,7 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "concurrently": "^10.0.6",
+    "sharp": "^0.35.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

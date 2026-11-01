@@ -3,7 +3,7 @@ import type { BuildingId } from '@geowars/rules';
 import { useTheme } from '../theme';
 import { LIGHT_SPRITES } from './sprites-light';
 
-// Building illustrations: one drafting-plate system for all 18.
+// Building illustrations: one drafting-plate system for all of them.
 //
 // Every building is a flat front elevation on a 96x96 canvas with its ground line at y = 84. The
 // masses are monochrome and lit from the upper left (pale lit face, mid wall, deep recess) and a
@@ -191,22 +191,6 @@ const ART: Record<BuildingId, () => ReactNode> = {
 
   // Tiered block with a mast: the only silhouette with something above the roofline that is not a
   // stack, a dome or a dish.
-  commandcenter: () => (
-    <>
-      <Ground />
-      <g stroke={C.ink} strokeLinejoin="round" strokeWidth={STROKE}>
-        <rect x="8" y="54" width="80" height="30" fill={C.shell} />
-        <rect x="24" y="42" width="48" height="12" fill={C.face} />
-      </g>
-      <path d="M43.5 42L46.5 13M52.5 42L49.5 13" stroke={C.wall} strokeWidth="1.8" />
-      <path d="M44.6 34h6.8M45.6 25h4.8M46.6 18h2.8" stroke={C.wall} strokeWidth="1.6" />
-      <circle cx="48" cy="10" r="3" fill={C.accent} />
-      <ellipse cx="72" cy="46" rx="10" ry="5" transform="rotate(-24 72 46)" fill={C.deep} stroke={C.ink} strokeWidth="2" />
-      <rect x="16" y="62" width="26" height="8" fill={C.deep} />
-      <rect x="54" y="68" width="10" height="16" fill={C.ink} />
-      <path d="M16 74h26" stroke={C.wall} strokeWidth="1.6" />
-    </>
-  ),
 
   // Two dormitory sheds behind a parade door — pitched roofs with no wall above them.
   barracks: () => (
@@ -291,20 +275,21 @@ const ART: Record<BuildingId, () => ReactNode> = {
     </>
   ),
 
-  // Ward block with a plain cross sign on a plate: the only cross in the set.
-  hospital: () => (
+  // Flat-roofed operations block under a mast and dish, with a lit map window.
+  commandcenter: () => (
     <>
       <Ground />
       <g stroke={C.ink} strokeLinejoin="round" strokeWidth={STROKE}>
-        <rect x="14" y="50" width="68" height="34" fill={C.shell} />
-        <rect x="10" y="46" width="76" height="4" fill={C.face} />
+        <rect x="14" y="52" width="68" height="32" fill={C.shell} />
+        <rect x="10" y="48" width="76" height="4" fill={C.face} />
       </g>
-      <rect x="45" y="54" width="6" height="20" fill={C.accent} />
-      <rect x="38" y="61" width="20" height="6" fill={C.accent} />
-      <rect x="20" y="58" width="12" height="10" fill={C.deep} />
-      <rect x="64" y="58" width="12" height="10" fill={C.deep} />
-      <rect x="44" y="74" width="8" height="10" fill={C.ink} />
-      <path d="M40 76h16" stroke={C.accent} strokeWidth="2" />
+      <rect x="46" y="26" width="4" height="22" fill={C.ink} />
+      <circle cx="48" cy="24" r="4" fill={C.accent} />
+      <path d="M38 32q10-12 20 0" fill="none" stroke={C.ink} strokeWidth="2" />
+      <rect x="20" y="58" width="16" height="10" fill={C.deep} />
+      <rect x="23" y="61" width="9" height="3" fill={C.accent} />
+      <rect x="60" y="58" width="16" height="10" fill={C.deep} />
+      <rect x="44" y="72" width="8" height="12" fill={C.ink} />
     </>
   ),
 
@@ -387,27 +372,6 @@ const ART: Record<BuildingId, () => ReactNode> = {
   ),
 
   // Domed chamber with symmetrical wings: monumental but still a different roofline to City Hall.
-  parliament: () => (
-    <>
-      <Ground />
-      <g stroke={C.ink} strokeLinejoin="round" strokeWidth={STROKE}>
-        <rect x="8" y="80" width="80" height="4" fill={C.wall} />
-        <rect x="2" y="60" width="24" height="20" fill={C.face} />
-        <rect x="70" y="60" width="24" height="20" fill={C.wall} />
-        <rect x="26" y="52" width="44" height="28" fill={C.shell} />
-        <rect x="34" y="44" width="28" height="8" fill={C.face} />
-        <path d="M32 44a16 14 0 0 1 32 0z" fill={C.face} />
-      </g>
-      <path d="M32 44a16 14 0 0 1 16 14V44z" fill={C.shell} opacity=".5" />
-      <path d="M48 30V20" stroke={C.wall} strokeWidth="2" />
-      <circle cx="48" cy="18" r="3" fill={C.accent} />
-      {[32, 42, 54, 64].map((x) => (
-        <rect key={x} x={x} y="58" width="4" height="22" fill={C.face} />
-      ))}
-      <rect x="16" y="66" width="7" height="9" fill={C.deep} />
-      <rect x="73" y="66" width="7" height="9" fill={C.deep} />
-    </>
-  ),
 };
 
 interface Props {

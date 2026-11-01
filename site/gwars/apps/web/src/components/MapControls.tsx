@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { CountryRef, HexRow } from '@geowars/rules';
+import { MarkerGlyph } from '../art/mapMarkers';
 import { useI18n } from '../i18n';
 import type { TextKey } from '../i18n/en';
 import { MAP_PALETTES, useTheme } from '../theme';
@@ -139,6 +140,7 @@ export function MapControls({ mode, onMode, hexes, countries, owners, players, c
           <div className="legend">
             {mode === 'owners' && (
               <>
+                {showMine && <span><i style={{ background: palette.current }} />{t('map.legend.current')}</span>}
                 {showMine && <span><i style={{ background: palette.mine }} />{t('map.legend.mine')}</span>}
                 <span><i style={{ background: palette.player }} />{t('map.legend.player')}</span>
                 <span><i style={{ background: palette.independent }} />{t('map.independent')}</span>
@@ -155,6 +157,12 @@ export function MapControls({ mode, onMode, hexes, countries, owners, players, c
                 </div>
               </div>
             )}
+            <div className="legend-sizes" title={t('map.legend.sizes')}>
+              <span className="legend-size"><MarkerGlyph tier={1} size={16} />≤10%</span>
+              <span className="legend-size"><MarkerGlyph tier={2} size={16} />≤50%</span>
+              <span className="legend-size"><MarkerGlyph tier={3} size={16} />≤80%</span>
+              <span className="legend-size"><MarkerGlyph tier={4} size={16} />≤100%</span>
+            </div>
           </div>
         </>
       )}

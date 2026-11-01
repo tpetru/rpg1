@@ -1,159 +1,127 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { cellToLatLng } from 'h3-js';
 import {
-  BUILDING_IDS,
-  RESOURCES,
-  housingCapacity,
-  plannedLevels,
-  populationUsed,
-  productionRates,
-  type BuildingLevels,
+  UNIT_IDS,
+  unitTotal,
+  type CommandDto,
   type CountryRef,
   type HexRow,
   type OwnSettlementDto,
-  type ResourceBag,
+  type UnitId,
   type WorldSettings,
 } from '@geowars/rules';
-import { BuildingIcon } from '../art/buildings';
+import { UnitIcon } from '../art/units';
 import { NationEmblem } from '../art/nation';
 import { fmtInt, useI18n } from '../i18n';
 import type { TextKey } from '../i18n/en';
+import { fmtDuration } from '../util';
 
-// The country view: every settlement the nation holds, laid out as a schematic of where they
-// actually are. Each card carries the whole building set at a glance (all 18, unbuilt dimmed), so
-// the screen answers "what does my nation own and what is built where" without opening settlements
-// one at a time. It is read-only: a card opens that settlement in the map view.
+// The order of battle: how the nation's army reads on a muster sheet. The strength return sits
+// at the top — one column per branch, each total split into garrison / field / training. Below
+// it the settlements keep their geographic lattice, but every card now lists its garrison.
+// The bottom band is what moves: armies on the road and recruits still being trained. Read-only:
+// a card opens that settlement on the map.
 
-const BOX_W = 1060;
-const CARD_W = 236;
-/** Nominal card height, used to space rows. Cards are allowed to grow a little taller. */
-const CARD_H = 186;
-const ROW_GAP = 30;
-const BOX_PAD_TOP = 30;
-
-interface Node {
-  settlement: OwnSettlementDto;
-  /** Horizontal position inside the padded box, 0..1. */
-  fx: number;
-  /** Vertical position in pixels: the top of the card. */
-  top: number;
-  /** Card centre in pixels, used to draw the neighbour links. */
-  cy: number;
+/** North to south, west to east: the geographic reading order inside a group. */
+function geoOrder(a: OwnSettlementDto, b: OwnSettlementDto): number {
+  const [latA, lngA] = cellToLatLng(a.h3);
+  const [latB, lngB] = cellToLatLng(b.h3);
+  return latB - latA || lngA - lngB;
 }
-
-interface Schematic {
-  nodes: Node[];
-  edges: [Node, Node][];
-  height: number;
-}
-
-/**
- * Places each settlement by where it actually is: rows run north to south, and inside a row
- * settlements run west to east. Cards are far bigger than a hex, so a literal projection would pile
- * neighbours on top of each other and push the edge ones out of the box; a geographic lattice keeps
- * the reading of a map and guarantees that no card overlaps another.
- */
-function buildSchematic(settlements: OwnSettlementDto[]): Schematic {
-  const count = settlements.length;
-  if (count === 0) return { nodes: [], edges: [], height: 0 };
-
-  const cols = Math.min(3, count);
-  const rows = Math.max(1, Math.ceil(count / cols));
-
-  const geo = settlements.map((settlement) => {
-    const [lat, lng] = cellToLatLng(settlement.h3);
-    return { settlement, lat, lng };
-  });
-
-  // Reading order: northernmost first, westernmost first inside each row.
-  const ordered = [...geo].sort((a, b) => b.lat - a.lat || a.lng - b.lng);
-
-  const nodes: Node[] = [];
-  for (let row = 0; row < rows; row++) {
-    const inRow = ordered.slice(row * cols, row * cols + cols);
-    // A short last row is centred under the full rows above it.
-    const offset = (cols - inRow.length) / 2;
-    const top = BOX_PAD_TOP + row * (CARD_H + ROW_GAP);
-    inRow.forEach((item, col) => {
-      nodes.push({
-        settlement: item.settlement,
-        fx: (offset + col + 0.5) / cols,
-        top,
-        cy: top + CARD_H / 2,
-      });
-    });
-  }
-
-  // Nearest-neighbour spanning tree: which settlements are neighbours is worth seeing.
-  const edges: [Node, Node][] = [];
-  if (nodes.length > 1) {
-    const linked = new Set<number>([0]);
-    while (linked.size < nodes.length) {
-      let best: { d: number; from: number; to: number } | null = null;
-      for (const from of linked) {
-        for (let to = 0; to < nodes.length; to++) {
-          if (linked.has(to)) continue;
-          const a = nodes[from];
-          const b = nodes[to];
-          const d = Math.hypot((b.fx - a.fx) * BOX_W, b.cy - a.cy);
-          if (!best || d < best.d) best = { d, from, to };
-        }
-      }
-      if (!best) break;
-      edges.push([nodes[best.from], nodes[best.to]]);
-      linked.add(best.to);
-    }
-  }
-
-  return { nodes, edges, height: BOX_PAD_TOP * 2 + rows * CARD_H + (rows - 1) * ROW_GAP };
-}
-
-/** Fixed half-card inset, so a card in a corner always stays inside the box. */
-const placeX = (fx: number) => `calc(${CARD_W / 2 + 6}px + (100% - ${CARD_W + 12}px) * ${fx.toFixed(5)})`;
 
 interface Props {
   nation: string;
   settlements: OwnSettlementDto[];
+  /** My armies on the road, attack and return alike. */
+  commands: CommandDto[];
   hexes: HexRow[];
   countries: Record<string, CountryRef>;
   settings: WorldSettings;
+  clockOffset: number;
   onOpen: (settlement: OwnSettlementDto) => void;
 }
 
-export function CountryView({ nation, settlements, hexes, countries, settings, onOpen }: Props) {
-  const { t, buildingName, countryName, hexName } = useI18n();
+export function CountryView({ nation, settlements, commands, hexes, countries, clockOffset, onOpen }: Props) {
+  const { t, countryName, hexName } = useI18n();
+  /** The branch hovered in the muster row: the whole lattice answers by dimming the others. */
+  const [unitHot, setUnitHot] = useState<UnitId | null>(null);
 
-  const schematic = useMemo(() => buildSchematic(settlements), [settlements]);
+  const now = Date.now() + clockOffset;
 
-  /** Per-settlement and nation-wide figures, using the same rules the server enforces. */
-  const stats = useMemo(() => {
-    let points = 0;
-    let popUsed = 0;
-    let popCap = 0;
-    const rates: ResourceBag = { food: 0, steel: 0, oil: 0 };
-    const levels = Object.fromEntries(BUILDING_IDS.map((id) => [id, 0])) as BuildingLevels;
-    const holders = Object.fromEntries(BUILDING_IDS.map((id) => [id, 0])) as Record<string, number>;
+  const nameOf = (s: OwnSettlementDto) => s.customName ?? (hexes[s.idx] ? hexName(hexes[s.idx], countries) : s.name);
+  /** A point on a march: the name the owner gave it, or the map's. */
+  const placeOf = (idx: number) => {
+    const own = settlements.find((s) => s.idx === idx);
+    return own ? nameOf(own) : hexes[idx] ? hexName(hexes[idx], countries) : '?';
+  };
+  const homeOf = (s: OwnSettlementDto, u: UnitId) => s.units[u] ?? 0;
+  const awayFrom = (id: number) => commands.filter((c) => c.originId === id);
 
+  /** The strength return: one row per branch, counted from the same data the cards show. */
+  const muster = useMemo(
+    () =>
+      UNIT_IDS.map((u) => {
+        let home = 0;
+        let training = 0;
+        for (const s of settlements) {
+          home += s.units[u] ?? 0;
+          training += s.training.reduce((n, item) => n + (item.unit === u ? item.count : 0), 0);
+        }
+        let away = 0;
+        for (const c of commands) away += c.units[u] ?? 0;
+        return { u, home, away, training };
+      }),
+    [settlements, commands],
+  );
+  const totals = useMemo(
+    () =>
+      muster.reduce(
+        (acc, m) => ({ home: acc.home + m.home, away: acc.away + m.away, training: acc.training + m.training }),
+        { home: 0, away: 0, training: 0 },
+      ),
+    [muster],
+  );
+
+  const points = useMemo(() => settlements.reduce((sum, s) => sum + s.points, 0), [settlements]);
+  const troopPop = useMemo(() => settlements.reduce((sum, s) => sum + s.troopPop, 0), [settlements]);
+
+  /** The whole army of one settlement: standing at home plus on the road. */
+  const armyOf = (s: OwnSettlementDto) => unitTotal(s.units) + awayFrom(s.id).reduce((n, c) => n + unitTotal(c.units), 0);
+
+  /** Settlements grouped continent over country, each group read north to south, west to east. */
+  const groups = useMemo(() => {
+    const byContinent = new Map<string, Map<string, OwnSettlementDto[]>>();
     for (const s of settlements) {
-      points += s.points;
-      popUsed += populationUsed(plannedLevels(s.levels, s.queue));
-      popCap += housingCapacity(s.levels.housing);
-      const r = productionRates(s.levels, s.profile, settings.speed);
-      for (const resource of RESOURCES) rates[resource] += r[resource];
-      for (const id of BUILDING_IDS) {
-        levels[id] += s.levels[id];
-        if (s.levels[id] > 0) holders[id] += 1;
-      }
+      const cont = countries[s.countryCode]?.continent ?? '?';
+      const inner = byContinent.get(cont) ?? new Map<string, OwnSettlementDto[]>();
+      inner.set(s.countryCode, [...(inner.get(s.countryCode) ?? []), s]);
+      byContinent.set(cont, inner);
     }
+    // Biggest continent first: the one with the most settlements.
+    const count = (inner: Map<string, OwnSettlementDto[]>) => [...inner.values()].reduce((n, l) => n + l.length, 0);
+    return [...byContinent.entries()]
+      .sort((a, b) => count(b[1]) - count(a[1]) || a[0].localeCompare(b[0]))
+      .map(([continent, inner]) => ({
+        continent,
+        countries: [...inner.entries()]
+          .map(([code, list]) => ({ code, name: countryName(code, countries), settlements: list.sort(geoOrder) }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+  }, [settlements, countries, countryName]);
 
-    return { points, popUsed, popCap, rates, levels, holders };
-  }, [settlements, settings.speed]);
+  /** Armies on the road, soonest arrival first. */
+  const marches = useMemo(() => [...commands].sort((a, b) => a.arrivesAt - b.arrivesAt), [commands]);
+  /** Recruits still forming, soonest finish first. */
+  const forming = useMemo(
+    () =>
+      settlements
+        .flatMap((s) => s.training.map((item) => ({ settlement: s, item })))
+        .sort((a, b) => a.item.finishesAt - b.item.finishesAt),
+    [settlements],
+  );
 
-  const byCountry = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const s of settlements) map.set(s.countryCode, (map.get(s.countryCode) ?? 0) + 1);
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
-  }, [settlements]);
+  const chipClass = (u: UnitId, extra = '') =>
+    `g-chip${extra}${unitHot && unitHot !== u ? ' cold' : ''}${unitHot === u ? ' hot' : ''}`;
 
   return (
     <section className="country" aria-label={t('view.overview')}>
@@ -165,125 +133,199 @@ export function CountryView({ nation, settlements, hexes, countries, settings, o
             <div className="meta-row">
               <span>{t('country.settlements', { n: settlements.length })}</span>
               <span className="sep">/</span>
-              <span className="mono">{t('points', { n: fmtInt(stats.points) })}</span>
+              <span className="mono">{t('points', { n: fmtInt(points) })}</span>
               <span className="sep">/</span>
               <span>
-                {t('panel.population')}{' '}
-                <span className="mono">
-                  {fmtInt(stats.popUsed)} / {fmtInt(stats.popCap)}
-                </span>
+                {t('panel.population')} <span className="mono">{fmtInt(troopPop)}</span>
               </span>
             </div>
           </div>
         </div>
 
-        <div className="country-rates">
-          {RESOURCES.map((r) => (
-            <div key={r} className="country-rate">
-              <span className="meter-label">
-                <span className={`dot ${r}`} />
-                {t(`res.${r}` as TextKey)}
-              </span>
-              <span className="meter-value">{t('panel.perHour', { n: fmtInt(stats.rates[r]) })}</span>
-            </div>
-          ))}
+        <div className="country-army">
+          <div className="ca-split">
+            <span>
+              <i className="dotseg home" />
+              {t('country.garrison')} <span className="mono">{fmtInt(totals.home)}</span>
+            </span>
+            <span>
+              <i className="dotseg away" />
+              {t('country.inField')} <span className="mono">{fmtInt(totals.away)}</span>
+            </span>
+            <span>
+              <i className="dotseg train" />
+              {t('troops.training')} <span className="mono">{fmtInt(totals.training)}</span>
+            </span>
+          </div>
+          <div className="ca-total">
+            <span className="mono">{fmtInt(totals.home + totals.away)}</span>
+            <span className="ca-cap">{t('country.statArmy')}</span>
+          </div>
         </div>
       </header>
 
-      {byCountry.length > 1 && (
-        <div className="country-groups">
-          {byCountry.map(([code, count]) => (
-            <span key={code} className="country-chip">
-              {countryName(code, countries)} <span className="mono">{count}</span>
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="muster" role="group" aria-label={t('country.muster')}>
+        {muster.map(({ u, home, away, training }) => {
+          const sum = home + away + training;
+          const pct = (n: number) => (sum > 0 ? (n / sum) * 100 : 0);
+          return (
+            <button
+              type="button"
+              key={u}
+              className={`muster-unit${sum === 0 ? ' off' : ''}${unitHot === u ? ' hot' : ''}`}
+              title={t('country.musterTitle', { name: t(`unit.${u}.name` as TextKey), home, away, training })}
+              onMouseEnter={() => setUnitHot(u)}
+              onMouseLeave={() => setUnitHot(null)}
+              onFocus={() => setUnitHot(u)}
+              onBlur={() => setUnitHot(null)}
+            >
+              <UnitIcon unit={u} size={20} />
+              <span className="mono muster-n">{fmtInt(home + away)}</span>
+              <span className="muster-bar" aria-hidden="true">
+                <i className="seg home" style={{ width: `${pct(home)}%` }} />
+                <i className="seg away" style={{ width: `${pct(away)}%` }} />
+                <i className="seg train" style={{ width: `${pct(training)}%` }} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {settlements.length === 0 ? (
         <p className="country-empty">{t('country.empty')}</p>
       ) : (
-        <div className="country-schematic" style={{ height: schematic.height }}>
-          <svg className="country-links" aria-hidden="true" focusable="false">
-            {schematic.edges.map(([a, b]) => (
-              <line
-                key={`${a.settlement.id}-${b.settlement.id}`}
-                x1={`${a.fx * 100}%`}
-                y1={a.cy}
-                x2={`${b.fx * 100}%`}
-                y2={b.cy}
-              />
-            ))}
-          </svg>
-
-          {schematic.nodes.map(({ settlement: s, fx, top }) => {
-            const hex = hexes[s.idx];
-            const name = s.customName ?? (hex ? hexName(hex, countries) : s.name);
-            const popUsed = populationUsed(plannedLevels(s.levels, s.queue));
-            const popCap = housingCapacity(s.levels.housing);
-            return (
-              <button
-                key={s.id}
-                className="settle-card"
-                style={{ left: placeX(fx), top }}
-                onClick={() => onOpen(s)}
-                title={t('country.open', { name })}
-              >
+        groups.map((g) => {
+          const inContinent = g.countries.reduce((n, c) => n + c.settlements.length, 0);
+          const continentArmy = g.countries.reduce((n, c) => n + c.settlements.reduce((m, s) => m + armyOf(s), 0), 0);
+          return (
+            <section key={g.continent} className="country-continent">
+              <h2 className="cont-head">
+                {t(`continent.${g.continent}` as TextKey)}
+                <span className="cont-meta mono">
+                  {t('country.settlements', { n: fmtInt(inContinent) })} · {fmtInt(continentArmy)} {t('country.armyOf')}
+                </span>
+              </h2>
+              {g.countries.map((c) => (
+                <div key={c.code} className="country-block">
+                  <div className="block-head">
+                    <span className="block-name">{c.name}</span>
+                    <span className="mono">{c.settlements.length}</span>
+                    <span className="sep">/</span>
+                    <span className="mono">{fmtInt(c.settlements.reduce((n, s) => n + armyOf(s), 0))}</span>
+                  </div>
+                  <div className="settle-grid">
+                    {c.settlements.map((s) => {
+                      const garrison = UNIT_IDS.filter((u) => homeOf(s, u) > 0);
+                      const gTotal = unitTotal(s.units);
+                      const away = awayFrom(s.id).reduce((n, c) => n + unitTotal(c.units), 0);
+                      const training = s.training.reduce((n, item) => n + item.count, 0);
+                      return (
+                        <button key={s.id} className="settle-card" onClick={() => onOpen(s)} title={t('country.open', { name: nameOf(s) })}>
                 <span className="settle-head">
-                  <span className="settle-name">{name}</span>
+                  <span className="settle-name">{nameOf(s)}</span>
                   <span className="settle-pts mono">{fmtInt(s.points)}</span>
-                  {s.queue.length > 0 && <span className="settle-busy" title={t('panel.queue')} />}
+                  {(away > 0 || training > 0) && <span className="settle-busy" title={t('country.inField')} />}
                 </span>
                 <span className="settle-meta">
                   <span>{countryName(s.countryCode, countries)}</span>
                   <span className="sep">/</span>
-                  <span className="mono">
-                    {fmtInt(popUsed)} / {fmtInt(popCap)}
-                  </span>
+                  <span className="mono">{fmtInt(gTotal)}</span>
+                  <span>{t('country.garrisonShort')}</span>
                   <span className="settle-go" aria-hidden="true">
                     ›
                   </span>
                 </span>
-                <span className="settle-buildings">
-                  {BUILDING_IDS.map((id) => {
-                    const level = s.levels[id];
-                    return (
-                      <span
-                        key={id}
-                        className={`bp ${level > 0 ? '' : 'off'}`}
-                        title={t('country.cellTitle', { building: buildingName(id), n: level })}
-                      >
-                        <BuildingIcon id={id} size={20} className={level > 0 ? '' : 'unbuilt'} />
-                        <span className="bp-level mono">{level > 0 ? level : '–'}</span>
+                <span className="settle-units">
+                  {garrison.length === 0 ? (
+                    <span className="faint small">{t('troops.none')}</span>
+                  ) : (
+                    garrison.map((u) => (
+                      <span key={u} className={chipClass(u)} title={t(`unit.${u}.name` as TextKey)}>
+                        <UnitIcon unit={u} size={16} />
+                        <span className="mono">{fmtInt(homeOf(s, u))}</span>
                       </span>
-                    );
-                  })}
+                    ))
+                  )}
                 </span>
-              </button>
-            );
-          })}
-        </div>
+                {(away > 0 || training > 0) && (
+                  <span className="settle-foot">
+                    {away > 0 && <span className="sf away">{t('country.awayN', { n: fmtInt(away) })}</span>}
+                    {training > 0 && <span className="sf train">{t('country.trainingN', { n: fmtInt(training) })}</span>}
+                  </span>
+                )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </section>
+          );
+        })
       )}
 
-      {settlements.length > 0 && (
-        <footer className="country-totals">
-          <h3>{t('country.totals')}</h3>
-          <div className="totals-grid">
-            {BUILDING_IDS.map((id) => {
-              const level = stats.levels[id];
-              return (
-                <span
-                  key={id}
-                  className={`tot ${level > 0 ? '' : 'off'}`}
-                  title={`${buildingName(id)} — ${t('country.totalOf', { levels: level, n: stats.holders[id] })}`}
-                >
-                  <BuildingIcon id={id} size={26} className={level > 0 ? '' : 'unbuilt'} />
-                  <span className="tot-level mono">{level > 0 ? level : '–'}</span>
-                </span>
-              );
-            })}
-          </div>
-        </footer>
+      {(marches.length > 0 || forming.length > 0) && (
+        <div className="country-rolls">
+          <section className="roll">
+            <h3>
+              {t('country.inField')}
+              {marches.length > 0 && <span className="mono">{marches.length}</span>}
+            </h3>
+            {marches.length === 0 ? (
+              <p className="faint small">{t('country.noField')}</p>
+            ) : (
+              <ul>
+                {marches.map((c) => {
+                  // A return keeps the attack's endpoints: the troops travel target → origin.
+                  const [from, to] = c.type === 'return' ? [c.targetIdx, c.originIdx] : [c.originIdx, c.targetIdx];
+                  return (
+                    <li key={c.id}>
+                      <span className="roll-units">
+                        {UNIT_IDS.filter((u) => (c.units[u] ?? 0) > 0).map((u) => (
+                          <span key={u} className={chipClass(u, ' away')} title={t(`unit.${u}.name` as TextKey)}>
+                            <UnitIcon unit={u} size={16} />
+                            <span className="mono">{fmtInt(c.units[u])}</span>
+                          </span>
+                        ))}
+                      </span>
+                      <span className="roll-route">
+                        <strong>{placeOf(from)}</strong>
+                        <span className="faint"> → </span>
+                        {placeOf(to)}
+                      </span>
+                      <span className="roll-when mono small muted">{t('reports.arrives', { time: fmtDuration((c.arrivesAt - now) / 1000) })}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section className="roll">
+            <h3>
+              {t('troops.training')}
+              {forming.length > 0 && <span className="mono">{forming.reduce((n, f) => n + f.item.count, 0)}</span>}
+            </h3>
+            {forming.length === 0 ? (
+              <p className="faint small">{t('country.noTraining')}</p>
+            ) : (
+              <ul>
+                {forming.map(({ settlement: s, item }) => (
+                  <li key={item.id}>
+                    <span className={chipClass(item.unit, ' train')} title={t(`unit.${item.unit}.name` as TextKey)}>
+                      <UnitIcon unit={item.unit} size={16} />
+                      <span className="mono">×{fmtInt(item.count)}</span>
+                    </span>
+                    <span className="roll-route">
+                      <strong>{nameOf(s)}</strong>
+                    </span>
+                    <span className="roll-when mono small muted">{fmtDuration((item.finishesAt - now) / 1000)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       )}
     </section>
   );

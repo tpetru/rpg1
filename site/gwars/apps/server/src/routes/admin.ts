@@ -9,6 +9,10 @@ import {
   type AdminPlayerDto,
   type AdminSettlementDto,
   type AdminWorldDto,
+  type WorldSettings,
+  SPEED_KEYS,
+  SPEED_MAX,
+  SPEED_MIN,
 } from '@geowars/rules';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -16,6 +20,7 @@ import { config } from '../config';
 import { worldFrom, type AppContext } from '../context';
 import { exec, isDuplicateKey, pool, rows, tx, type Db } from '../db';
 import { GameError } from '../errors';
+import { insertAbandoned, planAbandoned } from '../game/abandoned';
 import { loadQueue, loadSettlement, refreshPlayerPoints, saveSettlement, stockAt, storageCap } from '../game/settlements';
 
 const ADMIN_COOKIE = 'gw_admin';
@@ -51,7 +56,7 @@ async function requireAdmin(request: FastifyRequest): Promise<void> {
   if (!isAdmin(request)) throw new GameError('Admin login required', 401, 'admin_required');
 }
 
-async function logAdmin(db: Db, worldId: number, settlementId: number, action: string, details: unknown, ip: string): Promise<void> {
+async function logAdmin(db: Db, worldId: number, settlementId: number | null, action: string, details: unknown, ip: string): Promise<void> {
   await exec(db, 'INSERT INTO admin_log (at, world_id, settlement_id, action, details, ip) VALUES (?, ?, ?, ?, ?, ?)', [
     Date.now(),
     worldId,
@@ -126,8 +131,25 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
   app.get('/api/admin/me', async (req) => ({ enabled: !!config.adminPassword, loggedIn: !!config.adminPassword && isAdmin(req) }));
 
   app.get('/api/admin/worlds', { preHandler: requireAdmin }, async (): Promise<AdminWorldDto[]> =>
-    [...ctx.worlds.values()].map(({ info }) => ({ id: info.id, number: info.number, name: info.name })),
+    [...ctx.worlds.values()].map(({ info }) => ({ id: info.id, number: info.number, name: info.name, settings: info.settings })),
   );
+
+  const speedField = z.number().min(SPEED_MIN).max(SPEED_MAX);
+  const settingsBody = z.object({ speed: speedField, constructionSpeed: speedField, recruitSpeed: speedField, warSpeed: speedField }).partial().strict();
+
+  app.get('/api/admin/w/:worldId/settings', { preHandler: requireAdmin }, async (req): Promise<WorldSettings> => worldFrom(ctx, req.params).info.settings);
+
+  /** Changes the speeds of one world. Applies at once to new actions; events already scheduled keep their times. */
+  app.patch('/api/admin/w/:worldId/settings', { preHandler: requireAdmin }, async (req): Promise<WorldSettings> => {
+    const { info } = worldFrom(ctx, req.params);
+    const body = settingsBody.parse(req.body);
+    const before = Object.fromEntries(SPEED_KEYS.map((k) => [k, info.settings[k]]));
+    const next: WorldSettings = { ...info.settings, ...body };
+    await exec(pool, 'UPDATE worlds SET settings = ? WHERE id = ?', [JSON.stringify(next), info.id]);
+    Object.assign(info.settings, next);
+    await logAdmin(pool, info.id, null, 'world_settings', { before, after: body }, req.ip);
+    return info.settings;
+  });
 
   app.get('/api/admin/w/:worldId/players', { preHandler: requireAdmin }, async (req): Promise<AdminPlayerDto[]> => {
     const { info } = worldFrom(ctx, req.params);
@@ -290,6 +312,34 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
 
     ctx.realtime.broadcast(info.id, { t: 'map', row: [idx, created.id, accountId, created.points], ownerName: created.nation });
     ctx.realtime.sendTo(info.id, accountId, { t: 'settlement', id: created.id });
+    return { settlementId: created.id };
+  });
+
+  /** Creates an abandoned settlement (small, medium or large, with a matching garrison) on an unclaimed hex. */
+  app.post('/api/admin/w/:worldId/hexes/:idx/abandoned', { preHandler: requireAdmin }, async (req): Promise<{ settlementId: number }> => {
+    const { info } = worldFrom(ctx, req.params);
+    const { idx } = z.object({ idx: z.coerce.number().int().nonnegative() }).parse(req.params);
+    const { size } = z.object({ size: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).parse(req.body);
+
+    let created: { id: number; points: number };
+    try {
+      created = await tx(async (c) => {
+        const hex = (await rows<{ h3: string; name: string }>(c, 'SELECT h3, name FROM hexes WHERE world_id = ? AND idx = ? FOR UPDATE', [info.id, idx]))[0];
+        if (!hex) throw new GameError('Hex not found', 404, 'admin_hex_not_found');
+        const taken = await rows<{ id: number }>(c, 'SELECT id FROM settlements WHERE world_id = ? AND h3 = ?', [info.id, hex.h3]);
+        if (taken.length > 0) throw new GameError('This hex already has a settlement', 409, 'admin_hex_taken');
+
+        const plan = planAbandoned(() => Math.random(), size);
+        const id = await insertAbandoned(c, info.id, hex, plan);
+        await logAdmin(c, info.id, id, 'create_abandoned', { idx, h3: hex.h3, size, points: plan.points, garrison: plan.garrison.rifleman }, req.ip);
+        return { id, points: plan.points };
+      });
+    } catch (err) {
+      if (isDuplicateKey(err)) throw new GameError('This hex already has a settlement', 409, 'admin_hex_taken');
+      throw err;
+    }
+
+    ctx.realtime.broadcast(info.id, { t: 'map', row: [idx, created.id, 0, created.points], ownerName: null });
     return { settlementId: created.id };
   });
 }

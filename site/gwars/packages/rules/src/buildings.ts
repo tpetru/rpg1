@@ -8,17 +8,15 @@ export const BUILDING_IDS = [
   'warehouse',
   'housing',
   'bunker',
-  'commandcenter',
   'barracks',
   'researchcenter',
   'market',
   'fortifications',
-  'hospital',
+  'commandcenter',
   'factory',
   'airbase',
   'port',
   'radar',
-  'parliament',
 ] as const;
 export type BuildingId = (typeof BUILDING_IDS)[number];
 export type BuildingLevels = Record<BuildingId, number>;
@@ -42,6 +40,8 @@ export interface BuildingDef {
   /** Built levels of other buildings required before this one can be queued. */
   requires: Partial<BuildingLevels>;
   produces?: Resource;
+  /** Can only be built in a hex that borders the sea. */
+  coastal?: boolean;
 }
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
@@ -146,20 +146,6 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     basePoints: 5,
     requires: {},
   },
-  commandcenter: {
-    id: 'commandcenter',
-    name: 'Command Center',
-    description: 'Issues attack and support orders.',
-    maxLevel: 1,
-    baseCost: { food: 10, steel: 40, oil: 30 },
-    costFactor: 1,
-    baseTime: 300,
-    timeFactor: 1,
-    basePop: 0,
-    popFactor: 1,
-    basePoints: 3,
-    requires: {},
-  },
   barracks: {
     id: 'barracks',
     name: 'Barracks',
@@ -216,11 +202,11 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     basePoints: 8,
     requires: { barracks: 1 },
   },
-  hospital: {
-    id: 'hospital',
-    name: 'Hospital',
-    description: 'Saves part of the defenders who fall in battle.',
-    maxLevel: 20,
+  commandcenter: {
+    id: 'commandcenter',
+    name: 'Command Center',
+    description: 'Shows the troops in the settlement. Level 2 also counts the ones out on the road.',
+    maxLevel: 2,
     baseCost: { food: 150, steel: 120, oil: 90 },
     costFactor: 1.26,
     baseTime: 1500,
@@ -228,7 +214,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     basePop: 10,
     popFactor: 1.17,
     basePoints: 12,
-    requires: { cityhall: 5, researchcenter: 1 },
+    requires: { cityhall: 5 },
   },
   factory: {
     id: 'factory',
@@ -261,7 +247,8 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   port: {
     id: 'port',
     name: 'Port',
-    description: 'Lets troops travel to other landmasses.',
+    description: 'Lets troops travel to other landmasses. Only on the coast.',
+    coastal: true,
     maxLevel: 10,
     baseCost: { food: 240, steel: 200, oil: 180 },
     costFactor: 1.3,
@@ -276,7 +263,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: 'radar',
     name: 'Radar',
     description: 'Reveals the unit type of incoming attacks.',
-    maxLevel: 10,
+    maxLevel: 5,
     baseCost: { food: 180, steel: 260, oil: 240 },
     costFactor: 1.3,
     baseTime: 3000,
@@ -284,21 +271,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     basePop: 12,
     popFactor: 1.17,
     basePoints: 18,
-    requires: { cityhall: 15, researchcenter: 10 },
-  },
-  parliament: {
-    id: 'parliament',
-    name: 'Parliament',
-    description: 'Appoints Governors, who take over other settlements.',
-    maxLevel: 1,
-    baseCost: { food: 15000, steel: 25000, oil: 10000 },
-    costFactor: 1,
-    baseTime: 64800,
-    timeFactor: 1,
-    basePop: 80,
-    popFactor: 1,
-    basePoints: 512,
-    requires: { cityhall: 20, researchcenter: 20, market: 10 },
+    requires: { cityhall: 2 },
   },
 };
 
@@ -314,9 +287,12 @@ export const STARTING_LEVELS: BuildingLevels = {
   housing: 1,
 };
 
-/** Fills in buildings missing from stored data (e.g. buildings added after a settlement was created). */
-export function normalizeLevels(partial: Partial<BuildingLevels>): BuildingLevels {
-  return { ...ZERO_LEVELS, ...partial };
+/** Fills in buildings missing from stored data (e.g. added after a settlement was created) and drops unknown ones. */
+export function normalizeLevels(partial: Readonly<Record<string, number | undefined>>): BuildingLevels {
+  // Only known buildings are kept, so a building removed from the game cannot linger in stored data.
+  const levels = { ...ZERO_LEVELS };
+  for (const id of BUILDING_IDS) levels[id] = partial[id] ?? 0;
+  return levels;
 }
 
 export function isBuildingId(value: string): value is BuildingId {

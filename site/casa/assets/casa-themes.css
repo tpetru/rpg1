@@ -30,6 +30,38 @@
   box-shadow: 0 1px 0 var(--line-soft), 0 6px 18px rgba(44,40,34,.06);
 }
 
+/* ============================ Tema Claude: token-uri ============================ */
+/* Sablonul Kombai "casa-claude-template": hartie calda #faf9f5, text aproape negru, accent teracota.
+   Fonturile (Inter + Cormorant Garamond) vin din casa_render_theme_head(). */
+:root[data-casa-theme="claude"] {
+  --bg:        #faf9f5;
+  --panel:     #f5f0e8;
+  --ink:       #141413;
+  --ink-2:     #6c6a64;
+  --ink-3:     #8e8b82;
+  --line:      #e6dfd8;
+  --line-soft: #ebe6df;
+  --accent:    #cc785c;  /* teracota */
+  --on-accent: #ffffff;
+  --good:      #5db872;
+  --bad:       #c64545;
+  --disp: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+:root[data-casa-theme="claude"] header.hero {
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--line-soft);
+}
+:root[data-casa-theme="claude"] header.hero .wordmark span {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+}
+:root[data-casa-theme="claude"] h1,
+:root[data-casa-theme="claude"] h2 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+}
+
 /* ============================ Tema Santier: token-uri ============================ */
 :root[data-casa-theme="santier"] {
   --bg:        #d9d3c7;  /* beton / nisip */
@@ -121,27 +153,41 @@
 :root[data-casa-theme="santier"] .add-row button:hover,
 :root[data-casa-theme="santier"] .check-all-btn:hover { background: #8c3a22; }
 
+:root[data-casa-theme="claude"] .login-card button:hover,
+:root[data-casa-theme="claude"] .house-row button:not(.name):not(.delete-btn):hover,
+:root[data-casa-theme="claude"] .add-row button:hover,
+:root[data-casa-theme="claude"] .check-all-btn:hover { background: #a9583e; }
+
 /* Umpluturi si borduri facute din alb translucid - invizibile pe fundal deschis. */
 :root[data-casa-theme="cream"] .stage-rail-track,
-:root[data-casa-theme="santier"] .stage-rail-track { background: rgba(44,40,34,.12); }
+:root[data-casa-theme="santier"] .stage-rail-track,
+:root[data-casa-theme="claude"] .stage-rail-track { background: rgba(44,40,34,.12); }
 :root[data-casa-theme="cream"] .stage-step,
-:root[data-casa-theme="santier"] .stage-step { border-color: rgba(44,40,34,.18); }
+:root[data-casa-theme="santier"] .stage-step,
+:root[data-casa-theme="claude"] .stage-step { border-color: rgba(44,40,34,.18); }
 :root[data-casa-theme="cream"] .stage-photo-empty,
-:root[data-casa-theme="santier"] .stage-photo-empty { border-color: rgba(44,40,34,.20); }
+:root[data-casa-theme="santier"] .stage-photo-empty,
+:root[data-casa-theme="claude"] .stage-photo-empty { border-color: rgba(44,40,34,.20); }
 :root[data-casa-theme="cream"] .room-floating-nav a:hover,
 :root[data-casa-theme="cream"] .room-nav a.is-active,
 :root[data-casa-theme="santier"] .room-floating-nav a:hover,
-:root[data-casa-theme="santier"] .room-nav a.is-active { background: rgba(44,40,34,.07); }
+:root[data-casa-theme="claude"] .room-floating-nav a:hover,
+:root[data-casa-theme="santier"] .room-nav a.is-active,
+:root[data-casa-theme="claude"] .room-nav a.is-active { background: rgba(44,40,34,.07); }
 :root[data-casa-theme="cream"] .product-tag,
-:root[data-casa-theme="santier"] .product-tag { background: rgba(44,40,34,.06); }
+:root[data-casa-theme="santier"] .product-tag,
+:root[data-casa-theme="claude"] .product-tag { background: rgba(44,40,34,.06); }
 
 /* Umbrele grele de pe panourile plutitoare, imblanzite pentru fundal deschis. */
 :root[data-casa-theme="cream"] .room-floating-nav,
 :root[data-casa-theme="cream"] .room-floating-btn,
 :root[data-casa-theme="cream"] .room-floating-panel,
 :root[data-casa-theme="santier"] .room-floating-nav,
+:root[data-casa-theme="claude"] .room-floating-nav,
 :root[data-casa-theme="santier"] .room-floating-btn,
-:root[data-casa-theme="santier"] .room-floating-panel {
+:root[data-casa-theme="claude"] .room-floating-btn,
+:root[data-casa-theme="santier"] .room-floating-panel,
+:root[data-casa-theme="claude"] .room-floating-panel {
   box-shadow: 0 10px 28px rgba(44,40,34,.16);
 }
 

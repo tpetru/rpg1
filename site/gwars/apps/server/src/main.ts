@@ -14,6 +14,8 @@ import { Realtime } from './realtime';
 import { registerAdminRoutes } from './routes/admin';
 import { registerAuthRoutes } from './routes/auth';
 import { registerMapRoutes } from './routes/map';
+import { registerMilitaryRoutes } from './routes/military';
+import { registerRankingRoutes } from './routes/ranking';
 import { registerSettlementRoutes } from './routes/settlements';
 import { registerWorldRoutes } from './routes/worlds';
 
@@ -52,6 +54,8 @@ registerAdminRoutes(app, ctx);
 registerWorldRoutes(app, ctx);
 registerMapRoutes(app, ctx);
 registerSettlementRoutes(app, ctx);
+registerMilitaryRoutes(app, ctx);
+registerRankingRoutes(app, ctx);
 
 app.get('/api/w/:worldId/ws', { websocket: true, preHandler: requireAuth }, (socket, req) => {
   const world = ctx.worlds.get(Number((req.params as { worldId: string }).worldId));

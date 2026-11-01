@@ -26,8 +26,10 @@ $mysqli->query(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
 );
 
+casa_journal_ensure_tags($mysqli);
+
 $entries = [];
-$stmt = $mysqli->prepare('SELECT id, entry_date, title, price, comment FROM casa_journal WHERE house_id = ? ORDER BY entry_date DESC, id DESC');
+$stmt = $mysqli->prepare('SELECT id, entry_date, title, price, comment, tags FROM casa_journal WHERE house_id = ? ORDER BY entry_date DESC, id DESC');
 $stmt->bind_param('i', $houseId);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -37,9 +39,12 @@ while ($row = $result->fetch_assoc()) {
 }
 
 $totalSpent = 0;
+$allTags = [];
 foreach ($entries as $entry) {
     $totalSpent += (float)$entry['price'];
+    foreach (array_filter(explode(',', $entry['tags'] ?? '')) as $tag) $allTags[mb_strtolower($tag)] = $tag;
 }
+sort($allTags, SORT_NATURAL | SORT_FLAG_CASE);
 
 // Group by "YYYY-MM" so the timeline reads month by month instead of one flat list.
 $entriesByMonth = [];
@@ -119,6 +124,49 @@ function casa_month_label(string $ym, array $monthNames): string
   .entry-main { flex: 1; min-width: 0; }
   .entry-title { font-weight: 600; font-size: 0.98rem; color: var(--ink); overflow-wrap: anywhere; }
   .entry-comment { margin-top: 3px; color: var(--ink-2); font-size: 0.85rem; font-style: italic; overflow-wrap: anywhere; }
+  .entry-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .tag-chip {
+    padding: 1px 9px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; color: var(--ink-2);
+    font-family: var(--mono); font-size: 0.72rem; line-height: 1.6;
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  }
+  .tag-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .tag-chip.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .tag-chip small { opacity: 0.7; margin-left: 4px; font-size: 0.9em; }
+  .tag-filter { display: none; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 24px; }
+  .tag-filter.has-tags { display: flex; }
+  .tag-filter-label { font-family: var(--mono); font-size: 0.75rem; color: var(--ink-3); margin-right: 4px; }
+  .tag-filter-clear { background: transparent; border: none; color: var(--ink-3); cursor: pointer; font-size: 0.78rem; text-decoration: underline; }
+  .chart-card { max-width: 640px; max-height: calc(100vh - 32px); overflow-y: auto; }
+  .tag-chart-body { display: grid; gap: 6px; }
+  .chart-fab {
+    position: fixed; right: 22px; bottom: 22px; z-index: 500;
+    width: 54px; height: 54px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    border: none; cursor: pointer;
+    background: var(--accent); color: var(--on-accent);
+    font-family: var(--mono); font-weight: 700; font-size: 1.5rem; line-height: 1;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .chart-fab.has-tags { display: flex; }
+  .chart-fab:hover { transform: scale(1.08); box-shadow: 0 8px 22px rgba(0,0,0,0.5); }
+  .tag-bar {
+    display: grid; grid-template-columns: minmax(70px, 160px) 1fr auto; align-items: center; gap: 10px;
+    padding: 2px 0; background: transparent; border: none; color: var(--ink-2); text-align: left; cursor: pointer;
+    font-family: var(--mono); font-size: 0.78rem;
+  }
+  .tag-bar.is-static { cursor: default; opacity: 0.75; }
+  .tag-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-bar-track { height: 14px; background: var(--line-soft); border-radius: 4px; overflow: hidden; }
+  .tag-bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 4px; opacity: 0.55; transition: opacity 0.2s ease; }
+  .tag-bar:not(.is-static):hover .tag-bar-fill, .tag-bar.is-on .tag-bar-fill { opacity: 1; }
+  .tag-bar.is-on .tag-bar-name { color: var(--accent); font-weight: 700; }
+  .tag-bar-sum { white-space: nowrap; color: var(--ink); }
+  .tag-chart-note { margin: 10px 0 0; font-size: 0.72rem; color: var(--ink-3); }
+  .entry.is-filtered, .entry.is-filtered + .entry-edit { display: none !important; }
+  .entry-edit input[name=edit-tags] { flex-basis: 100%; }
   .entry-price {
     flex-shrink: 0;
     font-family: var(--mono);
@@ -222,6 +270,7 @@ function casa_month_label(string $ym, array $monthNames): string
   .add-row input[name=date] { font-family: var(--mono); }
   .add-row input[name=price] { font-family: var(--mono); text-align: right; }
   .add-row input[name=title],
+  .add-row input[name=tags],
   .add-row input[name=comment],
   .add-row button { grid-column: 1 / -1; }
   .add-row input:focus { outline: none; border-color: var(--accent); }
@@ -305,6 +354,9 @@ function casa_month_label(string $ym, array $monthNames): string
 
   <button type="button" class="add-toggle-btn" id="addToggleBtn">+ Adaugă în jurnal</button>
 
+  <div class="tag-filter" id="tagFilter"></div>
+
+
   <?php if (empty($entries)): ?>
     <div class="empty-state" id="journalEmptyState">Jurnalul e gol. Adaugă prima intrare cu butonul de mai sus.</div>
   <?php else: ?>
@@ -325,7 +377,7 @@ function casa_month_label(string $ym, array $monthNames): string
             $day = date('d', $ts);
             $monShort = mb_substr($monthNames[date('m', $ts)] ?? '', 0, 3);
           ?>
-          <div class="entry" data-id="<?= (int)$entry['id'] ?>" data-price="<?= htmlspecialchars($entry['price']) ?>">
+          <div class="entry" data-id="<?= (int)$entry['id'] ?>" data-price="<?= htmlspecialchars($entry['price']) ?>" data-tags="<?= htmlspecialchars($entry['tags'] ?? '') ?>">
             <div class="entry-date">
               <span class="day"><?= $day ?></span>
               <span class="mon"><?= htmlspecialchars($monShort) ?></span>
@@ -334,6 +386,13 @@ function casa_month_label(string $ym, array $monthNames): string
               <div class="entry-title"><?= htmlspecialchars($entry['title']) ?></div>
               <?php if (!empty($entry['comment'])): ?>
                 <div class="entry-comment"><?= htmlspecialchars($entry['comment']) ?></div>
+              <?php endif; ?>
+              <?php if (($entry['tags'] ?? '') !== ''): ?>
+                <div class="entry-tags">
+                  <?php foreach (explode(',', $entry['tags']) as $tag): ?>
+                    <button type="button" class="tag-chip" data-tag="<?= htmlspecialchars(mb_strtolower($tag)) ?>"><?= htmlspecialchars($tag) ?></button>
+                  <?php endforeach; ?>
+                </div>
               <?php endif; ?>
             </div>
             <div class="entry-price" title="<?= htmlspecialchars(casa_eur_title((float)$entry['price'])) ?>"><?= casa_format_lei((float)$entry['price']) ?></div>
@@ -347,6 +406,7 @@ function casa_month_label(string $ym, array $monthNames): string
             <input type="text" name="edit-title" value="<?= htmlspecialchars($entry['title']) ?>" maxlength="150" placeholder="Titlu">
             <input type="number" name="edit-price" value="<?= htmlspecialchars($entry['price']) ?>" min="0" step="0.01" placeholder="Preț" title="<?= htmlspecialchars(casa_eur_title((float)$entry['price'])) ?>" <?= $isOwner ? '' : 'disabled' ?>>
             <input type="text" name="edit-comment" value="<?= htmlspecialchars($entry['comment'] ?? '') ?>" maxlength="256" placeholder="Comentariu (opțional, max 256 caractere)">
+            <input type="text" name="edit-tags" value="<?= htmlspecialchars(str_replace(',', ', ', $entry['tags'] ?? '')) ?>" maxlength="255" list="tagOptions" placeholder="Tag-uri, separate prin virgulă (ex: fundație, electric)">
             <button type="button" class="save-btn">Salvează</button>
             <button type="button" class="cancel-btn">Anulează</button>
           </div>
@@ -368,10 +428,28 @@ function casa_month_label(string $ym, array $monthNames): string
       <input type="number" name="price" id="newPrice" min="0" step="0.01" placeholder="Preț (LEI)" <?= $isOwner ? '' : 'value="0" disabled' ?>>
       <input type="text" name="title" id="newTitle" maxlength="150" placeholder="Ce s-a făcut (ex: Turnat fundația)">
       <input type="text" name="comment" id="newComment" maxlength="256" placeholder="Comentariu (opțional, max 256 caractere)">
+      <input type="text" name="tags" id="newTags" maxlength="255" list="tagOptions" placeholder="Tag-uri, separate prin virgulă (ex: fundație, electric)">
       <button id="addEntryBtn">Adaugă</button>
     </div>
   </div>
 </div>
+
+<button type="button" class="chart-fab" id="chartFab" title="Cheltuieli pe tag-uri" aria-label="Cheltuieli pe tag-uri">$</button>
+
+<div class="add-backdrop" id="chartBackdrop" hidden>
+  <div class="add-card chart-card" role="dialog" aria-modal="true" aria-labelledby="chartCardTitle">
+    <div class="add-card-head">
+      <h2 id="chartCardTitle">Cheltuieli pe tag-uri</h2>
+      <button type="button" class="add-card-close" id="chartCardClose" title="Închide">✕</button>
+    </div>
+    <div class="tag-chart-body" id="tagChartBody"></div>
+    <p class="tag-chart-note">O intrare cu mai multe tag-uri se numără la fiecare dintre ele, deci barele nu se adună la totalul general. Click pe o bară filtrează după tag.</p>
+  </div>
+</div>
+
+<datalist id="tagOptions">
+  <?php foreach ($allTags as $tag): ?><option value="<?= htmlspecialchars($tag) ?>"><?php endforeach; ?>
+</datalist>
 
 <?php casa_render_footer(); ?>
 
@@ -408,28 +486,143 @@ function casa_month_label(string $ym, array $monthNames): string
     return (n / EUR_TO_LEI).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' EUR';
   }
 
+  // Tag filter: the bar is rebuilt from the entries on the page, so it follows deletes/undo.
+  // An entry shows when it has ANY of the selected tags; no selection shows everything.
+  var activeTags = [];
+  try { activeTags = JSON.parse(localStorage.getItem('casaJournalTags') || '[]') || []; } catch (e) {}
+
+  function entryTags(entry) {
+    var raw = entry.getAttribute('data-tags') || '';
+    return raw ? raw.split(',') : [];
+  }
+  function saveActiveTags() {
+    try { localStorage.setItem('casaJournalTags', JSON.stringify(activeTags)); } catch (e) {}
+  }
+  // Spending per tag as horizontal bars, biggest first. Clicking a bar filters by that tag.
+  function closeChartPopup() { document.getElementById('chartBackdrop').hidden = true; }
+  function renderTagChart(keys, names, sums, untagged) {
+    var body = document.getElementById('tagChartBody');
+    document.getElementById('chartFab').classList.toggle('has-tags', keys.length > 0);
+    if (!keys.length) closeChartPopup();
+    body.textContent = '';
+    var rows = keys.map(function(key) { return { key: key, name: names[key], sum: sums[key] }; })
+      .sort(function(a, b) { return b.sum - a.sum || a.name.localeCompare(b.name, 'ro'); });
+    if (untagged > 0) rows.push({ key: null, name: 'fără tag', sum: untagged });
+    var max = rows.reduce(function(m, r) { return Math.max(m, r.sum); }, 0) || 1;
+    rows.forEach(function(r) {
+      var bar = document.createElement('button');
+      bar.type = 'button';
+      bar.className = 'tag-bar' + (r.key === null ? ' is-static' : '');
+      if (r.key !== null) bar.setAttribute('data-tag', r.key);
+      bar.title = r.name + ': ' + formatLei(r.sum) + ' (' + formatEurTitle(r.sum) + ')';
+      var name = document.createElement('span');
+      name.className = 'tag-bar-name';
+      name.textContent = r.name;
+      var track = document.createElement('span');
+      track.className = 'tag-bar-track';
+      var fill = document.createElement('span');
+      fill.className = 'tag-bar-fill';
+      fill.style.width = Math.max(1, r.sum / max * 100) + '%';
+      track.appendChild(fill);
+      var sum = document.createElement('span');
+      sum.className = 'tag-bar-sum';
+      sum.textContent = formatLei(r.sum);
+      bar.appendChild(name); bar.appendChild(track); bar.appendChild(sum);
+      body.appendChild(bar);
+    });
+  }
+  function renderTagFilter() {
+    var bar = document.getElementById('tagFilter');
+    var counts = Object.create(null), names = Object.create(null), sums = Object.create(null), untagged = 0; // no prototype: a tag may be called "constructor"
+    document.querySelectorAll('.entry').forEach(function(entry) {
+      var price = parseFloat(entry.getAttribute('data-price')) || 0;
+      if (!entryTags(entry).length) untagged += price;
+      entryTags(entry).forEach(function(t) {
+        var key = t.toLowerCase();
+        counts[key] = (counts[key] || 0) + 1;
+        sums[key] = (sums[key] || 0) + price;
+        names[key] = names[key] || t;
+      });
+    });
+    // A selected tag nobody uses any more would hide everything: drop it.
+    activeTags = activeTags.filter(function(t) { return counts[t]; });
+    var keys = Object.keys(counts).sort(function(a, b) { return a.localeCompare(b, 'ro'); });
+    bar.classList.toggle('has-tags', keys.length > 0);
+    bar.textContent = '';
+    if (keys.length) {
+      var label = document.createElement('span');
+      label.className = 'tag-filter-label';
+      label.textContent = 'Filtrează după tag:';
+      bar.appendChild(label);
+      keys.forEach(function(key) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'tag-chip';
+        chip.setAttribute('data-tag', key);
+        chip.textContent = names[key];
+        chip.title = 'Total ' + names[key] + ': ' + formatLei(sums[key]) + ' (' + formatEurTitle(sums[key]) + ')';
+        var n = document.createElement('small');
+        n.textContent = counts[key];
+        chip.appendChild(n);
+        bar.appendChild(chip);
+      });
+      if (activeTags.length) {
+        var clear = document.createElement('button');
+        clear.type = 'button';
+        clear.className = 'tag-filter-clear';
+        clear.textContent = 'Arată tot';
+        clear.addEventListener('click', function() { activeTags = []; saveActiveTags(); refreshJournalTotals(); });
+        bar.appendChild(clear);
+      }
+    }
+    renderTagChart(keys, names, sums, untagged);
+    document.querySelectorAll('.tag-chip[data-tag], .tag-bar[data-tag]').forEach(function(chip) {
+      chip.classList.toggle('is-on', activeTags.indexOf(chip.getAttribute('data-tag')) !== -1);
+    });
+    document.querySelectorAll('.entry').forEach(function(entry) {
+      var tags = entryTags(entry).map(function(t) { return t.toLowerCase(); });
+      var show = !activeTags.length || activeTags.some(function(t) { return tags.indexOf(t) !== -1; });
+      entry.classList.toggle('is-filtered', !show);
+    });
+  }
+  // One listener for every chip, in the filter bar and on the entries.
+  document.addEventListener('click', function(e) {
+    var chip = e.target.closest ? e.target.closest('.tag-chip[data-tag], .tag-bar[data-tag]') : null;
+    if (!chip) return;
+    var key = chip.getAttribute('data-tag');
+    var i = activeTags.indexOf(key);
+    if (i === -1) activeTags.push(key); else activeTags.splice(i, 1);
+    saveActiveTags();
+    refreshJournalTotals();
+  });
+
   function refreshJournalTotals() {
+    renderTagFilter();
     var grandTotal = 0;
     document.querySelectorAll('.month-group').forEach(function(group) {
       var monthTotal = 0;
       var entries = group.querySelectorAll('.entry');
+      var visible = 0;
       entries.forEach(function(e) {
+        if (e.classList.contains('is-filtered')) return;
+        visible++;
         monthTotal += parseFloat(e.getAttribute('data-price')) || 0;
       });
       var monthTotalEl = group.querySelector('.month-total');
       if (monthTotalEl) { monthTotalEl.textContent = formatLei(monthTotal); monthTotalEl.title = formatEurTitle(monthTotal); }
-      group.style.display = entries.length === 0 ? 'none' : '';
+      group.style.display = visible === 0 ? 'none' : '';
       grandTotal += monthTotal;
     });
 
-    var count = document.querySelectorAll('.entry').length;
+    var total = document.querySelectorAll('.entry').length;
+    var count = total - document.querySelectorAll('.entry.is-filtered').length;
     var countLabel = document.getElementById('entryCountLabel');
-    if (countLabel) countLabel.textContent = count + ' intrări în jurnal';
+    if (countLabel) countLabel.textContent = count + ' intrări în jurnal' + (count !== total ? ' (filtrate din ' + total + ')' : '');
     var totalLabel = document.getElementById('totalSpentLabel');
     if (totalLabel) { totalLabel.textContent = formatLei(grandTotal); totalLabel.title = formatEurTitle(grandTotal); }
 
     var emptyState = document.getElementById('journalEmptyState');
-    if (count === 0) {
+    if (total === 0) {
       if (!emptyState) {
         emptyState = document.createElement('div');
         emptyState.className = 'empty-state';
@@ -441,6 +634,8 @@ function casa_month_label(string $ym, array $monthNames): string
       emptyState.remove();
     }
   }
+
+  refreshJournalTotals();
 
   document.querySelectorAll('.delete-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -502,6 +697,7 @@ function casa_month_label(string $ym, array $monthNames): string
       var title = editRow.querySelector('[name=edit-title]').value.trim();
       var price = parseFloat(editRow.querySelector('[name=edit-price]').value);
       var comment = editRow.querySelector('[name=edit-comment]').value.trim();
+      var tags = editRow.querySelector('[name=edit-tags]').value.trim();
       if (!date || !title) {
         alert('Completează cel puțin data și titlul.');
         return;
@@ -511,7 +707,7 @@ function casa_month_label(string $ym, array $monthNames): string
       fetch('jurnal_update.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ id: id, date: date, title: title, price: price, comment: comment }).toString()
+        body: new URLSearchParams({ id: id, date: date, title: title, price: price, comment: comment, tags: tags }).toString()
       }).then(function(res) { return res.json(); }).then(function(data) {
         if (!data.ok) throw new Error('update failed');
         location.reload();
@@ -526,6 +722,7 @@ function casa_month_label(string $ym, array $monthNames): string
     var title = titleInput.value.trim();
     var price = parseFloat(priceInput.value);
     var comment = commentInput.value.trim();
+    var tags = document.getElementById('newTags').value.trim();
     if (!date || !title) {
       alert('Completează cel puțin data și titlul.');
       return;
@@ -535,7 +732,7 @@ function casa_month_label(string $ym, array $monthNames): string
     fetch('jurnal_add.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ date: date, title: title, price: price, comment: comment }).toString()
+      body: new URLSearchParams({ date: date, title: title, price: price, comment: comment, tags: tags }).toString()
     }).then(function(res) { return res.json(); }).then(function(data) {
       if (!data.ok) throw new Error('add failed');
       location.reload();
@@ -544,7 +741,7 @@ function casa_month_label(string $ym, array $monthNames): string
     });
   });
 
-  [dateInput, titleInput, priceInput, commentInput].forEach(function(input) {
+  [dateInput, titleInput, priceInput, commentInput, document.getElementById('newTags')].forEach(function(input) {
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') addBtn.click();
     });
@@ -559,6 +756,15 @@ function casa_month_label(string $ym, array $monthNames): string
     addBackdrop.hidden = true;
   }
   document.getElementById('addToggleBtn').addEventListener('click', openAddPopup);
+  var chartBackdrop = document.getElementById('chartBackdrop');
+  document.getElementById('chartFab').addEventListener('click', function() { chartBackdrop.hidden = false; });
+  document.getElementById('chartCardClose').addEventListener('click', closeChartPopup);
+  chartBackdrop.addEventListener('click', function(e) {
+    if (e.target === chartBackdrop) closeChartPopup();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !chartBackdrop.hidden) closeChartPopup();
+  });
   document.getElementById('addCardClose').addEventListener('click', closeAddPopup);
   addBackdrop.addEventListener('click', function(e) {
     if (e.target === addBackdrop) closeAddPopup();

@@ -12,8 +12,9 @@
 // nimic in plus; "cream" isi suprascrie token-urile in assets/casa-themes.css.
 
 const CASA_THEME_COOKIE = 'casa_theme';
-const CASA_THEME_DEFAULT = 'dark';
+const CASA_THEME_DEFAULT = 'claude';
 const CASA_THEMES = [
+    'claude'  => ['label' => 'White', 'emoji' => '✨'],
     'dark'    => ['label' => 'Noapte', 'emoji' => '🌙'],
     'cream'   => ['label' => 'Cremă', 'emoji' => '🫖'],
     'santier' => ['label' => 'Șantier', 'emoji' => '🧱'],
@@ -31,6 +32,8 @@ function casa_render_theme_head(): void
 {
     $cssPath = __DIR__ . '/assets/casa-themes.css';
     $jsPath = __DIR__ . '/assets/theme-switch.js';
+    echo '<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">' . "
+";
     echo '<link rel="stylesheet" href="/assets/casa-themes.css?v=' . @filemtime($cssPath) . '">' . "\n";
     echo '<script src="/assets/theme-switch.js?v=' . @filemtime($jsPath) . '" defer></script>' . "\n";
 }

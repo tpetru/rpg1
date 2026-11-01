@@ -644,3 +644,27 @@ function casa_rooms_for_pages(mysqli $mysqli, int $houseId, string $houseSlug): 
     if (!isset($rooms['others'])) $rooms['others'] = ['name' => 'Others', 'icon' => '✨'];
     return $rooms;
 }
+
+// Journal tags live in one comma-separated column on casa_journal. Added lazily, like house_id.
+function casa_journal_ensure_tags(mysqli $mysqli): void
+{
+    $has = $mysqli->query("SHOW COLUMNS FROM casa_journal LIKE 'tags'");
+    if ($has && $has->num_rows === 0) {
+        $mysqli->query("ALTER TABLE casa_journal ADD COLUMN tags VARCHAR(255) NOT NULL DEFAULT ''");
+    }
+}
+
+// "  fundatie , Electric,fundatie " -> "fundatie,Electric": trimmed, no empties, no case-insensitive
+// duplicates, at most 10 tags of 30 characters each.
+function casa_journal_clean_tags(string $raw): string
+{
+    $seen = [];
+    foreach (explode(',', $raw) as $tag) {
+        $tag = trim(preg_replace('/\s+/u', ' ', $tag));
+        if ($tag === '') continue;
+        $tag = mb_substr($tag, 0, 30);
+        $seen[mb_strtolower($tag)] ??= $tag;
+        if (count($seen) >= 10) break;
+    }
+    return implode(',', $seen);
+}

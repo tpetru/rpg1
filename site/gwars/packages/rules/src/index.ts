@@ -3,5 +3,8 @@ export * from './buildings';
 export * from './world';
 export * from './economy';
 export * from './nation';
+export * from './units';
+export * from './travel';
+export * from './combat';
 export * from './settlement-name';
 export type * from './api';

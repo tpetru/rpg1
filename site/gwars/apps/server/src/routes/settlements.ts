@@ -2,6 +2,7 @@ import {
   SETTLEMENT_NAME_MAX,
   SETTLEMENT_NAME_MIN,
   checkBuild,
+  checkDowngrade,
   isBuildingId,
   mapBag,
   settlementNameError,
@@ -24,10 +25,10 @@ import {
   saveSettlement,
   stockAt,
   storageCap,
-  toOwnDto,
   toPublicDto,
   type Settlement,
 } from '../game/settlements';
+import { loadTroopPop, ownDto } from '../game/troops';
 
 const IdParams = z.object({ id: z.coerce.number().int().positive() });
 const QueueParams = IdParams.extend({ queueId: z.coerce.number().int().positive() });
@@ -44,7 +45,7 @@ export function registerSettlementRoutes(app: FastifyInstance, ctx: AppContext):
   app.get('/api/w/:worldId/settlements/mine', { preHandler: requireAuth }, async (req): Promise<OwnSettlementDto[]> => {
     const { info } = worldFrom(ctx, req.params);
     const list = await loadOwnedSettlements(pool, info.id, req.account!.id);
-    return Promise.all(list.map(async (s) => toOwnDto(s, await loadQueue(pool, s.id))));
+    return Promise.all(list.map(async (s) => ownDto(pool, s)));
   });
 
   app.get('/api/w/:worldId/settlements/:id', { preHandler: requireAuth }, async (req): Promise<OwnSettlementDto | PublicSettlementDto> => {
@@ -52,7 +53,7 @@ export function registerSettlementRoutes(app: FastifyInstance, ctx: AppContext):
     const { id } = IdParams.parse(req.params);
     const s = await loadSettlement(pool, id);
     if (!s || s.worldId !== info.id) throw new GameError('Settlement not found', 404, 'settlement_not_found');
-    if (s.ownerId === req.account!.id) return toOwnDto(s, await loadQueue(pool, s.id));
+    if (s.ownerId === req.account!.id) return ownDto(pool, s);
     const owner = s.ownerId
       ? await one<{ nation: string }>(pool, 'SELECT nation FROM world_players WHERE world_id = ? AND account_id = ?', [info.id, s.ownerId])
       : undefined;
@@ -72,7 +73,7 @@ export function registerSettlementRoutes(app: FastifyInstance, ctx: AppContext):
       s.stock = stockAt(s, now, settings);
       s.resourcesAt = now;
 
-      const check = checkBuild({ levels: s.levels, queue, stock: s.stock }, building, settings);
+      const check = checkBuild({ levels: s.levels, queue, stock: s.stock, troopPop: await loadTroopPop(c, s.id), coastal: s.coastal }, building, settings);
       if (!check.ok) throw new GameError(check.reason, 400, `build_${check.code}`, check.params as Record<string, string | number> | undefined);
 
       const startsAt = Math.max(now, queue.at(-1)?.finishesAt ?? now);
@@ -91,7 +92,46 @@ export function registerSettlementRoutes(app: FastifyInstance, ctx: AppContext):
         item.insertId,
         finishesAt,
       ]);
-      return toOwnDto(s, await loadQueue(c, s.id));
+      return ownDto(c, s);
+    });
+
+    world.engine.wake();
+    return dto;
+  });
+
+  /** Queues one level less of a building. It costs nothing, takes time, and shares the build queue. */
+  app.post('/api/w/:worldId/settlements/:id/downgrade', { preHandler: requireAuth }, async (req): Promise<OwnSettlementDto> => {
+    const world = worldFrom(ctx, req.params);
+    const { settings } = world.info;
+    const { id } = IdParams.parse(req.params);
+    const { building } = BuildBody.parse(req.body);
+
+    const dto = await tx(async (c) => {
+      const s = await lockOwned(c, world.info, id, req.account!.id);
+      const queue = await loadQueue(c, s.id);
+      const now = Date.now();
+      s.stock = stockAt(s, now, settings);
+      s.resourcesAt = now;
+
+      const check = checkDowngrade({ levels: s.levels, queue, stock: s.stock, troopPop: await loadTroopPop(c, s.id) }, building, settings);
+      if (!check.ok) throw new GameError(check.reason, 400, `downgrade_${check.code}`, check.params as Record<string, string | number> | undefined);
+
+      const startsAt = Math.max(now, queue.at(-1)?.finishesAt ?? now);
+      const finishesAt = startsAt + check.timeSec * 1000;
+      await saveSettlement(c, s); // the stock is materialized up to now
+
+      const item = await exec(
+        c,
+        `INSERT INTO build_queue (settlement_id, building, target_level, cost_food, cost_steel, cost_oil, starts_at, finishes_at)
+         VALUES (?, ?, ?, 0, 0, 0, ?, ?)`,
+        [s.id, building, check.targetLevel, startsAt, finishesAt],
+      );
+      await exec(c, `INSERT INTO game_events (world_id, type, ref_id, execute_at) VALUES (?, 'BUILD_COMPLETE', ?, ?)`, [
+        world.info.id,
+        item.insertId,
+        finishesAt,
+      ]);
+      return ownDto(c, s);
     });
 
     world.engine.wake();
@@ -115,7 +155,7 @@ export function registerSettlementRoutes(app: FastifyInstance, ctx: AppContext):
       const s = await lockOwned(c, info, id, req.account!.id);
       await exec(c, 'UPDATE settlements SET custom_name = ? WHERE id = ?', [customName, s.id]);
       s.customName = customName;
-      return toOwnDto(s, await loadQueue(c, s.id));
+      return ownDto(c, s);
     });
   });
 
@@ -141,7 +181,7 @@ export function registerSettlementRoutes(app: FastifyInstance, ctx: AppContext):
         now,
         last.id,
       ]);
-      return toOwnDto(s, queue.slice(0, -1));
+      return ownDto(c, s);
     });
   });
 }

@@ -18,6 +18,11 @@ const settlement: OwnSettlementDto = {
   countryCode: 'RO',
   points: 480,
   loyalty: 92,
+  units: { rifleman: 0, assault: 0, veteran: 0, guardian: 0, tank: 0, drone: 0, spy: 0, bomber: 0, president: 0 },
+  researched: [],
+  researching: null,
+  training: [],
+  troopPop: 0,
   levels: {
     ...STARTING_LEVELS,
     cityhall: 4,
@@ -30,18 +35,26 @@ const settlement: OwnSettlementDto = {
     barracks: 2,
     fortifications: 1,
     port: 1,
-    hospital: 2,
+    commandcenter: 2,
   } as OwnSettlementDto['levels'],
   stock: { food: 4200, steel: 3100, oil: 1900 },
   resourcesAt: Date.now(),
   profile: { food: 1.4, steel: 1.1, oil: 2.1, rare: 0, uranium: 0 },
+  coastal: true,
   queue: [
     {
       id: 1,
       building: 'steelmill' as BuildingId,
       targetLevel: 6,
       startsAt: Date.now() - 60_000,
-      finishesAt: Date.now() + 240_000,
+      finishesAt: Date.now() + 1_100_000,
+    },
+    {
+      id: 2,
+      building: 'housing' as BuildingId,
+      targetLevel: 6,
+      startsAt: Date.now() + 1_100_000,
+      finishesAt: Date.now() + 1_900_000,
     },
   ],
 };
@@ -77,6 +90,8 @@ function Shell() {
         settlement={settlement}
         defaultName="East Brașov"
         countryName="România"
+        nation="Dacia"
+        clockOffset={0}
         onOpenBuilding={() => undefined}
       />
     </div>

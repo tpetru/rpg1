@@ -1,11 +1,19 @@
 import type {
   ApiErrorBody,
+  AttackPreviewDto,
   BuildingId,
+  CommandDto,
+  IncomingCommandDto,
   MapHexesResponse,
   MapSettlementsResponse,
   MeResponse,
+  RankingResponse,
+  RankingType,
   OwnSettlementDto,
   PublicSettlementDto,
+  ReportDto,
+  UnitCounts,
+  UnitId,
   WorldMeResponse,
   WorldSummary,
 } from '@geowars/rules';
@@ -55,6 +63,28 @@ export const api = {
   settlement: (worldId: number, id: number) => request<OwnSettlementDto | PublicSettlementDto>('GET', `${w(worldId)}/settlements/${id}`),
   build: (worldId: number, id: number, building: BuildingId) =>
     request<OwnSettlementDto>('POST', `${w(worldId)}/settlements/${id}/build`, { building }),
+  downgrade: (worldId: number, id: number, building: BuildingId) =>
+    request<OwnSettlementDto>('POST', `${w(worldId)}/settlements/${id}/downgrade`, { building }),
+  train: (worldId: number, id: number, unit: UnitId, count: number) =>
+    request<OwnSettlementDto>('POST', `${w(worldId)}/settlements/${id}/train`, { unit, count }),
+  cancelTraining: (worldId: number, id: number, trainId: number) =>
+    request<OwnSettlementDto>('DELETE', `${w(worldId)}/settlements/${id}/training/${trainId}`),
+  research: (worldId: number, id: number, unit: UnitId) =>
+    request<OwnSettlementDto>('POST', `${w(worldId)}/settlements/${id}/research`, { unit }),
+  cancelResearch: (worldId: number, id: number, researchId: number) =>
+    request<OwnSettlementDto>('DELETE', `${w(worldId)}/settlements/${id}/research/${researchId}`),
+  attack: (worldId: number, id: number, targetId: number, units: Partial<UnitCounts>, bombTarget?: BuildingId) =>
+    request<CommandDto>('POST', `${w(worldId)}/settlements/${id}/attack`, { targetId, units, bombTarget }),
+  attackPreview: (worldId: number, id: number, targetId: number, units: Partial<UnitCounts>) =>
+    request<AttackPreviewDto>('POST', `${w(worldId)}/settlements/${id}/attack/preview`, { targetId, units }),
+  commands: (worldId: number) => request<CommandDto[]>('GET', `${w(worldId)}/commands`),
+  incomingCommands: (worldId: number) => request<IncomingCommandDto[]>('GET', `${w(worldId)}/commands/incoming`),
+  ranking: (worldId: number, type: RankingType, page: number, continent?: string) =>
+    request<RankingResponse>('GET', `${w(worldId)}/ranking?type=${type}&page=${page}${continent ? `&continent=${encodeURIComponent(continent)}` : ''}`),
+  reports: (worldId: number) => request<ReportDto[]>('GET', `${w(worldId)}/reports`),
+  readReport: (worldId: number, id: number) => request('POST', `${w(worldId)}/reports/${id}/read`),
+  readAllReports: (worldId: number) => request('POST', `${w(worldId)}/reports/read-all`),
+  abandon: (worldId: number, id: number) => request('POST', `${w(worldId)}/settlements/${id}/abandon`),
   /** name = null resets to the map's default name. */
   renameSettlement: (worldId: number, id: number, name: string | null) =>
     request<OwnSettlementDto>('PATCH', `${w(worldId)}/settlements/${id}/name`, { name }),

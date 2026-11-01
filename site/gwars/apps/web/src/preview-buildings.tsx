@@ -14,17 +14,15 @@ const NAMES: Record<BuildingId, string> = {
   warehouse: 'Warehouse',
   housing: 'Housing',
   bunker: 'Bunker',
-  commandcenter: 'Command Center',
   barracks: 'Barracks',
   researchcenter: 'Research Center',
   market: 'Market',
   fortifications: 'Fortifications',
-  hospital: 'Hospital',
+  commandcenter: 'Command Center',
   factory: 'Factory',
   airbase: 'Airbase',
   port: 'Port',
   radar: 'Radar',
-  parliament: 'Parliament',
 };
 
 const cell: React.CSSProperties = {

@@ -13,12 +13,13 @@ import { LanguageSwitch } from '../components/LanguageSwitch';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { fmtInt, useI18n } from '../i18n';
 import { AdminMap } from './AdminMap';
+import { WorldSettingsPage } from './WorldSettings';
 import { adminApi } from './adminApi';
 
 type Session = 'loading' | 'disabled' | 'guest' | 'admin';
 
 /** Admin tools: give a settlement to another player, or set any building to any level. */
-export function AdminApp() {
+export function AdminApp({ settingsWorld }: { settingsWorld?: number }) {
   const { t, errorText } = useI18n();
   const [session, setSession] = useState<Session>('loading');
 
@@ -37,6 +38,7 @@ export function AdminApp() {
   if (session === 'loading') return <div className="splash">{t('app.loading')}</div>;
   if (session === 'disabled') return <div className="splash">{t('admin.disabled')}</div>;
   if (session === 'guest') return <Login onDone={refresh} errorText={errorText} />;
+  if (settingsWorld !== undefined) return <WorldSettingsPage worldId={settingsWorld} />;
   return (
     <Tools
       onLogout={async () => {
@@ -192,6 +194,11 @@ function Tools({ onLogout }: { onLogout: () => void }) {
         <span className="spacer" />
         <LanguageSwitch />
         <ThemeToggle />
+        {worldId !== null && (
+          <a className="admin-link" href={`/admin/w/${worldId}`}>
+            {t('admin.set.link')}
+          </a>
+        )}
         <a className="admin-link" href="/">
           {t('admin.backToGame')}
         </a>

@@ -12,6 +12,7 @@ import {
   type ResourceProfile,
   type WorldSettings,
 } from '@geowars/rules';
+import { gridDisk } from 'h3-js';
 import { exec, one, rows, type Db } from '../db';
 
 export interface Settlement {
@@ -29,6 +30,8 @@ export interface Settlement {
   points: number;
   loyalty: number;
   profile: ResourceProfile;
+  /** The hex borders the sea: only then can a Port be built. */
+  coastal: boolean;
 }
 
 interface SettlementRow {
@@ -76,8 +79,9 @@ const SELECT_SETTLEMENT = `
          h.food_mult, h.steel_mult, h.oil_mult, h.rare_mult, h.uranium_mult
   FROM settlements s JOIN hexes h ON h.world_id = s.world_id AND h.h3 = s.h3`;
 
-function fromRow(r: SettlementRow): Settlement {
+function fromRow(r: SettlementRow, coastal: boolean): Settlement {
   return {
+    coastal,
     id: r.id,
     worldId: r.world_id,
     h3: r.h3,
@@ -95,10 +99,17 @@ function fromRow(r: SettlementRow): Settlement {
   };
 }
 
+/** The world only has land hexes, so a hex with a missing neighbor borders the sea. */
+async function isCoastal(db: Db, worldId: number, h3: string): Promise<boolean> {
+  const around = gridDisk(h3, 1);
+  const found = await one<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM hexes WHERE world_id = ? AND h3 IN (?)', [worldId, around]);
+  return Number(found?.n ?? 0) < around.length;
+}
+
 /** Loads a settlement; with forUpdate it is row-locked until the transaction ends. */
 export async function loadSettlement(db: Db, id: number, forUpdate = false): Promise<Settlement | undefined> {
   const row = await one<SettlementRow>(db, `${SELECT_SETTLEMENT} WHERE s.id = ?${forUpdate ? ' FOR UPDATE' : ''}`, [id]);
-  return row && fromRow(row);
+  return row && fromRow(row, await isCoastal(db, row.world_id, row.h3));
 }
 
 export async function loadOwnedSettlements(db: Db, worldId: number, ownerId: number): Promise<Settlement[]> {
@@ -106,7 +117,7 @@ export async function loadOwnedSettlements(db: Db, worldId: number, ownerId: num
     worldId,
     ownerId,
   ]);
-  return list.map(fromRow);
+  return Promise.all(list.map(async (r) => fromRow(r, await isCoastal(db, r.world_id, r.h3))));
 }
 
 export async function loadQueue(db: Db, settlementId: number): Promise<QueueItem[]> {
@@ -152,7 +163,9 @@ export async function refreshPlayerPoints(db: Db, worldId: number, accountId: nu
   );
 }
 
-export function toOwnDto(s: Settlement, queue: QueueItem[]): OwnSettlementDto {
+export type Military = Pick<OwnSettlementDto, 'units' | 'training' | 'troopPop' | 'researched' | 'researching'>;
+
+export function toOwnDto(s: Settlement, queue: QueueItem[], military: Military): OwnSettlementDto {
   return {
     id: s.id,
     idx: s.idx,
@@ -166,7 +179,9 @@ export function toOwnDto(s: Settlement, queue: QueueItem[]): OwnSettlementDto {
     stock: s.stock,
     resourcesAt: s.resourcesAt,
     profile: s.profile,
+    coastal: s.coastal,
     queue: queue.map(({ cost: _cost, ...dto }) => dto),
+    ...military,
   };
 }
 

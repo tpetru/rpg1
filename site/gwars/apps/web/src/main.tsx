@@ -7,11 +7,13 @@ import { App } from './App';
 import { I18nProvider } from './i18n';
 import { ThemeProvider } from './theme';
 
+const adminPath = /^\/admin(?:\/w\/(\d+))?\/*$/.exec(location.pathname);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <I18nProvider>
-        {location.pathname.replace(/\/+$/, '') === '/admin' ? <AdminApp /> : <App />}
+        {adminPath ? <AdminApp settingsWorld={adminPath[1] ? Number(adminPath[1]) : undefined} /> : <App />}
       </I18nProvider>
     </ThemeProvider>
   </StrictMode>,

@@ -9,7 +9,7 @@ export function fmtDuration(totalSec: number): string {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   const pad = (x: number) => String(x).padStart(2, '0');
-  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+  return h > 0 ? `${h}h ${pad(m)}m ${pad(sec)}s` : m > 0 ? `${m}m ${pad(sec)}s` : `${sec}s`;
 }
 
 /** Re-renders every `intervalMs` and returns the current time. */
@@ -82,4 +82,28 @@ export function fmtBuildTime(totalSec: number): string {
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
   if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
   return `${sec}s`;
+}
+
+/** A time left as hh:mm:ss. */
+export function fmtHms(totalSec: number): string {
+  const s = Math.max(0, Math.ceil(totalSec));
+  const pad = (x: number) => String(x).padStart(2, '0');
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+}
+
+/** Date and exact local time to the millisecond, always with the date. */
+export function fmtDateTimeMs(ms: number): string {
+  const d = new Date(ms);
+  const pad = (x: number, n = 2) => String(x).padStart(n, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+}
+
+/** The exact local time of a moment, to the millisecond; the date is added when it is not today. */
+export function fmtClock(ms: number): string {
+  const d = new Date(ms);
+  const pad = (x: number, n = 2) => String(x).padStart(n, '0');
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+  const today = new Date();
+  const sameDay = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  return sameDay ? time : `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${time}`;
 }

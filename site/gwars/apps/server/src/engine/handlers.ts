@@ -3,6 +3,7 @@ import type { PoolConnection } from 'mysql2/promise';
 import { exec, one } from '../db';
 import { loadSettlement, refreshPlayerPoints, saveSettlement, stockAt } from '../game/settlements';
 import type { Realtime } from '../realtime';
+import { attackArrive, researchComplete, returnArrive, trainComplete } from './military-handlers';
 
 export interface GameEvent {
   id: number;
@@ -52,4 +53,8 @@ const buildComplete: EventHandler = async (conn, ev, { world, realtime }) => {
 
 export const HANDLERS: Record<string, EventHandler> = {
   BUILD_COMPLETE: buildComplete,
+  TRAIN_COMPLETE: trainComplete,
+  RESEARCH_COMPLETE: researchComplete,
+  ATTACK_ARRIVE: attackArrive,
+  RETURN_ARRIVE: returnArrive,
 };

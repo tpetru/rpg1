@@ -24,14 +24,14 @@ export function registerMapRoutes(app: FastifyInstance, ctx: AppContext): void {
       }>(pool, 'SELECT h3, country_code, name, name_key, food_mult, steel_mult, oil_mult, rare_mult, uranium_mult FROM hexes WHERE world_id = ? ORDER BY idx', [
         info.id,
       ]);
-      const countries = await rows<{ code: string; name: string; iso_a2: string | null }>(
+      const countries = await rows<{ code: string; name: string; iso_a2: string | null; continent: string }>(
         pool,
-        'SELECT DISTINCT c.code, c.name, c.iso_a2 FROM countries c JOIN hexes h ON h.country_code = c.code WHERE h.world_id = ?',
+        'SELECT DISTINCT c.code, c.name, c.iso_a2, c.continent FROM countries c JOIN hexes h ON h.country_code = c.code WHERE h.world_id = ?',
         [info.id],
       );
       const response: MapHexesResponse = {
         res: info.h3Res,
-        countries: Object.fromEntries(countries.map((c) => [c.code, { name: c.name, a2: c.iso_a2 }])),
+        countries: Object.fromEntries(countries.map((c) => [c.code, { name: c.name, a2: c.iso_a2, continent: c.continent }])),
         hexes: hexes.map(
           (h): HexRow => [h.h3, h.country_code, h.name, h.food_mult, h.steel_mult, h.oil_mult, h.rare_mult, h.uranium_mult, h.name_key],
         ),

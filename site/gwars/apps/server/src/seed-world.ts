@@ -1,12 +1,13 @@
 // Creates a world from packages/geo/out/world-r{res}.json, or refreshes reference data
 // (country codes, name keys) of a world that already exists.
-//   npm run db:seed -- --number 0 --speed 1 --name "World 0"
+//   npm run db:seed -- --number 0 --speed 1 --name "World 0" [--abandoned 8]
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { WorldFile } from '@geowars/geo';
 import { DEFAULT_WORLD_SETTINGS, type WorldSettings } from '@geowars/rules';
 import type { PoolConnection } from 'mysql2/promise';
 import { REPO_ROOT } from './config';
+import { seedAbandoned } from './game/abandoned';
 import { exec, one, pool, tx } from './db';
 
 function arg(name: string): string | undefined {
@@ -17,6 +18,8 @@ function arg(name: string): string | undefined {
 const res = Number(arg('--res') ?? 3);
 const number = Number(arg('--number') ?? 0);
 const name = arg('--name') ?? `World ${number}`;
+/** Share of hexes held by abandoned settlements. New worlds get 8% unless told otherwise; existing worlds only change when asked. */
+const abandonedArg = arg('--abandoned');
 const settings: WorldSettings = { ...DEFAULT_WORLD_SETTINGS, speed: Number(arg('--speed') ?? DEFAULT_WORLD_SETTINGS.speed) };
 
 const file = path.join(REPO_ROOT, 'packages', 'geo', 'out', `world-r${res}.json`);
@@ -51,11 +54,13 @@ async function backfillNameKeys(c: PoolConnection, worldId: number): Promise<num
 try {
   const existing = await one<{ id: number; name: string }>(pool, 'SELECT id, name FROM worlds WHERE number = ?', [number]);
   if (existing) {
-    const updated = await tx(async (c) => {
+    const result = await tx(async (c) => {
       await upsertCountries(c);
-      return backfillNameKeys(c, existing.id);
+      const keys = await backfillNameKeys(c, existing.id);
+      const abandoned = abandonedArg === undefined ? 0 : await seedAbandoned(c, existing.id, Number(abandonedArg));
+      return { keys, abandoned };
     });
-    console.log(`World ${number} already exists ("${existing.name}", id ${existing.id}); refreshed countries, ${updated} hex name keys updated.`);
+    console.log(`World ${number} already exists ("${existing.name}", id ${existing.id}); refreshed countries, ${result.keys} hex name keys updated, ${result.abandoned} abandoned settlements added.`);
   } else {
     const worldId = await tx(async (c) => {
       await upsertCountries(c);
@@ -76,9 +81,10 @@ try {
           [chunk],
         );
       }
-      return created.insertId;
+      const abandoned = await seedAbandoned(c, created.insertId, Number(abandonedArg ?? 8));
+      return { id: created.insertId, abandoned };
     });
-    console.log(`Created "${name}" (id ${worldId}, res ${world.res}, speed ${settings.speed}) with ${world.hexes.length} hexes`);
+    console.log(`Created "${name}" (id ${worldId.id}, res ${world.res}, speed ${settings.speed}) with ${world.hexes.length} hexes and ${worldId.abandoned} abandoned settlements`);
   }
 } finally {
   await pool.end();
