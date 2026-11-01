@@ -1,0 +1,107 @@
+# Urca pe server (84.234.99.136) fisierele schimbate din site/ la fiecare push pe master.
+# site/X ajunge in /var/www/html/X (aris, casa, city, docs, samp, includes, assets, ...).
+# GeoWars (site/gwars) NU e inclus - are propriul deploy in site/gwars/deploy/deploy.sh.
+#
+# Se urca doar fisierele adaugate/modificate in push (nu tot folderul) si nu se sterge nimic
+# pe server, ca sa nu atingem upload-urile facute din site (ex. casa/*/design, stage_photos).
+# Fisierele sterse din repo sunt doar listate in sumar; se sterg manual daca e nevoie.
+#
+# Rulare manuala (ex. din aplicatia GitHub de pe telefon): Actions -> Deploy sites -> Run
+# workflow, cu numele unui folder din site/ - urca TOATE fisierele lui din repo.
+#
+# Secrete necesare: DEPLOY_SSH_KEY (cheie privata, restransa pe server la
+# rrsync /var/www/html), DEPLOY_HOST, DEPLOY_KNOWN_HOSTS.
+name: Deploy sites
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'site/**'
+      - '!site/gwars/**'
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: 'Folder din site/ de urcat complet (ex. aris). Atentie: suprascrie fisierele de pe server cu cele din repo.'
+        required: true
+
+concurrency:
+  group: deploy-sites
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Lista fisierelor de urcat
+        id: files
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          FOLDER: ${{ github.event.inputs.folder }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            FOLDER="${FOLDER#site/}"; FOLDER="${FOLDER%/}"
+            if [ -z "$FOLDER" ] || [ "$FOLDER" = "gwars" ] || [[ "$FOLDER" == *..* ]] || [ ! -e "site/$FOLDER" ]; then
+              echo "::error::Folder invalid: '$FOLDER'"; exit 1
+            fi
+            git ls-files -- "site/$FOLDER" > all.txt
+            : > deleted.txt
+          else
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+              BEFORE="$AFTER~1"
+            fi
+            git diff --name-only --diff-filter=ACMRT "$BEFORE" "$AFTER" -- site/ > all.txt
+            git diff --name-only --diff-filter=D "$BEFORE" "$AFTER" -- site/ > deleted.txt
+          fi
+          grep -v '^site/gwars/' all.txt | sed 's#^site/##' > upload.txt || true
+          echo "count=$(wc -l < upload.txt | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          echo "Fisiere de urcat:"; cat upload.txt
+          {
+            echo "### Fisiere urcate"; sed 's/^/- /' upload.txt
+            if [ -s deleted.txt ]; then
+              echo; echo "### Sterse din repo (NU au fost sterse de pe server)"; sed 's/^/- /' deleted.txt
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Urca pe server
+        if: steps.files.outputs.count != '0'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Cheia e restransa pe server la `rrsync /var/www/html`, deci destinatia e relativa la
+          # /var/www/html. Folderele au setgid www-data, deci fisierele noi primesc grupul corect.
+          rsync -rlt --chmod=D2755,F644 --files-from=upload.txt \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
+            site/ "root@${DEPLOY_HOST}:./"
+          rm -f ~/.ssh/deploy_key
+
+      - name: Verifica site-urile atinse
+        if: steps.files.outputs.count != '0'
+        run: |
+          set -uo pipefail
+          fail=0
+          for top in $(cut -d/ -f1 upload.txt | sort -u); do
+            case "$top" in
+              aris|casa|city|docs|samp) url="https://$top.no-santos.com/" ;;
+              *) url="https://no-santos.com/" ;;
+            esac
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo 000)
+            echo "$url -> $code"
+            echo "- $url -> $code" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then fail=1; fi
+          done
+          exit $fail
