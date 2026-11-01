@@ -1,5 +1,6 @@
 <?php
-// Lista meselor care au o observație atașată (camp "notite") - loc unde poti revedea rapid ce
+// Notite: sus, notite libere (text + data si ora adaugarii, tabelul aris_notes); jos, lista meselor
+// care au o observație atașată (camp "notes") - loc unde poti revedea rapid ce
 // probleme/reactii/refuzuri au fost notate, fara sa cauti zi cu zi prin calendar.
 require_once __DIR__ . '/_defs.php';
 require_once __DIR__ . '/_auth.php';
@@ -8,6 +9,12 @@ require_once __DIR__ . '/../includes/db.php';
 site_theme_init($mysqli);
 aris_require_page_auth();
 aris_ensure_tables($mysqli);
+
+$notes = [];
+$res = $mysqli->query('SELECT id, body, created_at FROM aris_notes ORDER BY created_at DESC, id DESC');
+if ($res) {
+    while ($row = $res->fetch_assoc()) $notes[] = $row;
+}
 
 $meals = [];
 $res = $mysqli->query(
@@ -39,6 +46,50 @@ if ($res) {
   main { max-width: 700px; margin: 0 auto; padding: 32px 24px 80px; }
   main h1 { margin: 0 0 6px; font-size: 2rem; font-weight: 600; letter-spacing: -0.03em; color: var(--ink); }
   .sub { margin: 0 0 26px; font-size: 0.88rem; color: var(--ink-2); }
+
+  .add-note { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+  .add-note textarea {
+    width: 100%; box-sizing: border-box; min-height: 84px; resize: vertical;
+    padding: 10px 14px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    color: var(--ink); font-family: var(--disp); font-size: 0.9rem; line-height: 1.45;
+  }
+  .add-note textarea:focus { outline: none; border-color: var(--accent); }
+  .add-note-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .add-note-hint { font-family: var(--mono); font-size: 0.68rem; color: var(--ink-3); }
+  .add-note button {
+    padding: 10px 18px; border: none; border-radius: 6px;
+    background: var(--accent); color: var(--on-accent);
+    font-family: var(--disp); font-weight: 600; font-size: 0.85rem; cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .add-note button:hover { background: #c6923a; }
+  .add-note button:disabled { opacity: 0.6; cursor: default; }
+
+  .note-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 40px; }
+  .note-row {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+  }
+  .note-when {
+    flex-shrink: 0; width: 84px;
+    font-family: var(--mono); font-size: 0.72rem; color: var(--ink-3); line-height: 1.4;
+  }
+  .note-when strong { display: block; color: var(--ink-2); font-weight: 500; }
+  .note-body { flex: 1; min-width: 0; font-size: 0.9rem; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .note-delete {
+    flex-shrink: 0; width: 27px; height: 27px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--line); border-radius: 5px;
+    color: var(--ink-3); cursor: pointer; font-size: 0.8rem;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  .note-delete:hover { border-color: var(--bad); color: var(--bad); }
+
+  main h2 { margin: 0 0 6px; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
 
   .problem-list { display: flex; flex-direction: column; gap: 10px; }
   .problem-row {
@@ -82,6 +133,34 @@ if ($res) {
 
 <main>
   <h1>Notițe</h1>
+  <p class="sub">Notițe libere, cu data și ora la care au fost adăugate. Cele mai recente primele.</p>
+
+  <div class="add-note">
+    <textarea id="newNoteBody" maxlength="<?= ARIS_FREE_NOTE_MAX ?>" placeholder="Scrie o notiță…"></textarea>
+    <div class="add-note-foot">
+      <span class="add-note-hint">Ctrl+Enter pentru a salva</span>
+      <button type="button" id="addNoteBtn">Adaugă notița</button>
+    </div>
+  </div>
+
+  <?php if (empty($notes)): ?>
+    <div class="empty-state" style="margin-bottom: 40px;">Nicio notiță încă.</div>
+  <?php else: ?>
+    <div class="note-list">
+      <?php foreach ($notes as $note): $ts = strtotime($note['created_at']); ?>
+        <div class="note-row" data-id="<?= (int)$note['id'] ?>">
+          <div class="note-when">
+            <strong><?= htmlspecialchars(date('d.m.Y', $ts)) ?></strong>
+            <?= htmlspecialchars(date('H:i', $ts)) ?>
+          </div>
+          <div class="note-body"><?= htmlspecialchars($note['body']) ?></div>
+          <button type="button" class="note-delete" title="Șterge notița" aria-label="Șterge notița">✕</button>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <h2>Observații la mese</h2>
   <p class="sub">Toate mesele cu o observație atașată, cele mai recente primele.</p>
 
   <?php if (empty($meals)): ?>
@@ -114,6 +193,46 @@ if ($res) {
       navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
   }
+
+  var addNoteBtn = document.getElementById('addNoteBtn');
+  var newNoteBody = document.getElementById('newNoteBody');
+  if (addNoteBtn) {
+    addNoteBtn.addEventListener('click', function() {
+      var body = newNoteBody.value.trim();
+      if (!body) return;
+      addNoteBtn.disabled = true;
+      fetch('note_add.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ body: body }).toString()
+      }).then(function(res) { return res.json(); }).then(function(data) {
+        if (!data.ok) throw new Error('add failed');
+        location.reload();
+      }).catch(function() {
+        addNoteBtn.disabled = false;
+        alert('Nu s-a putut salva notița. Încearcă din nou.');
+      });
+    });
+    newNoteBody.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addNoteBtn.click();
+    });
+  }
+
+  document.querySelectorAll('.note-row').forEach(function(row) {
+    row.querySelector('.note-delete').addEventListener('click', function() {
+      if (!confirm('Ștergi această notiță?')) return;
+      fetch('note_delete.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ id: row.getAttribute('data-id') }).toString()
+      }).then(function(res) { return res.json(); }).then(function(data) {
+        if (!data.ok) throw new Error('delete failed');
+        row.remove();
+      }).catch(function() {
+        alert('Nu s-a putut șterge notița. Încearcă din nou.');
+      });
+    });
+  });
 })();
 </script>
 

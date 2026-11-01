@@ -14,6 +14,8 @@ const ARIS_FOOD_NAME_MAX = 80;
 const ARIS_RECIPE_NAME_MAX = 100;
 const ARIS_CUSTOM_TEXT_MAX = 150;
 const ARIS_REACTION_MAX = 300;
+const ARIS_FREE_NOTE_MAX = 2000;
+const ARIS_TIMEZONE = 'Europe/Bucharest';
 
 function aris_ensure_tables(mysqli $mysqli): void
 {
@@ -121,6 +123,22 @@ function aris_ensure_tables(mysqli $mysqli): void
             UNIQUE KEY food_week (food_id, week_start)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
+    // Notite libere (pagina /aris/notite.php) - text oarecare, nelegat de o masa anume. created_at
+    // e scris din PHP in ora Romaniei (ARIS_TIMEZONE), ca sa nu depinda de fusul orar al MySQL.
+    $mysqli->query(
+        'CREATE TABLE IF NOT EXISTS aris_notes (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            body TEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+}
+
+// "Acum" in ora Romaniei, format MySQL DATETIME.
+function aris_now_local(): string
+{
+    return (new DateTime('now', new DateTimeZone(ARIS_TIMEZONE)))->format('Y-m-d H:i:s');
 }
 
 // Suma gramelor dintr-o zi, citita din campul liber "quantity" al fiecarei mese. Accepta "50g",
