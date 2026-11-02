@@ -16,9 +16,10 @@ if ($body === '' || mb_strlen($body) > ARIS_FREE_NOTE_MAX) {
 
 aris_ensure_tables($mysqli);
 
+$noteDate = aris_clean_note_date($_POST['note_date'] ?? '');
 $createdAt = aris_now_local();
-$stmt = $mysqli->prepare('INSERT INTO aris_notes (body, created_at) VALUES (?, ?)');
-$stmt->bind_param('ss', $body, $createdAt);
+$stmt = $mysqli->prepare('INSERT INTO aris_notes (body, note_date, created_at) VALUES (?, ?, ?)');
+$stmt->bind_param('sss', $body, $noteDate, $createdAt);
 if (!$stmt->execute()) {
     echo json_encode(['ok' => false, 'error' => 'db']);
     exit;

@@ -66,6 +66,19 @@ while ($row = $res->fetch_assoc()) {
     $mealsByDate[$row['meal_date']][] = $row;
 }
 
+$notesByDate = [];
+$stmt = $mysqli->prepare(
+    'SELECT id, body, note_date FROM aris_notes
+     WHERE note_date BETWEEN ? AND ?
+     ORDER BY created_at ASC, id ASC'
+);
+$stmt->bind_param('ss', $monthStartStr, $monthEndStr);
+$stmt->execute();
+$res = $stmt->get_result();
+while ($row = $res->fetch_assoc()) {
+    $notesByDate[$row['note_date']][] = $row;
+}
+
 // Grila de 7 coloane, saptamana incepe Luni: goluri inainte de ziua 1, apoi zilele lunii.
 $cells = array_fill(0, $firstWeekday - 1, null);
 for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -145,6 +158,11 @@ $mealDetails = aris_build_meal_details($mysqli, $mealsByDate);
   .cell-meal.is-planned { color: var(--accent); }
   .cell-meal .qty { color: var(--ink-3); font-family: var(--mono); }
   .cell-more { font-size: 0.66rem; color: var(--ink-3); font-family: var(--mono); }
+  .cell-note {
+    font-size: 0.66rem; line-height: 1.35; font-style: italic;
+    color: var(--ink-2); border-left: 2px solid var(--accent); padding-left: 5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
 
   @media (max-width: 700px) {
     .cal-cell { height: 64px; padding: 5px 5px; }
@@ -268,9 +286,11 @@ $mealDetails = aris_build_meal_details($mysqli, $mealsByDate);
         <?php
           $cellDate = sprintf('%04d-%02d-%02d', $year, $month, $day);
           $dayMeals = $mealsByDate[$cellDate] ?? [];
+          $dayNotes = $notesByDate[$cellDate] ?? [];
           $isToday = $cellDate === $today;
           $visibleMeals = array_slice($dayMeals, 0, 3);
           $extraCount = count($dayMeals) - count($visibleMeals);
+          $visibleNotes = array_slice($dayNotes, 0, 2);
         ?>
         <div class="cal-cell<?= $isToday ? ' is-today' : '' ?>">
           <div class="cell-head">
@@ -286,6 +306,13 @@ $mealDetails = aris_build_meal_details($mysqli, $mealsByDate);
             <?php endforeach; ?>
             <?php if ($extraCount > 0): ?>
               <span class="cell-more">+<?= $extraCount ?> altele</span>
+            <?php endif; ?>
+            <?php foreach ($visibleNotes as $note): ?>
+              <?php $noteText = trim(preg_replace('/\s+/u', ' ', $note['body'])); ?>
+              <a class="cell-note" href="/notite.php" title="<?= htmlspecialchars($note['body']) ?>"><?= htmlspecialchars($noteText) ?></a>
+            <?php endforeach; ?>
+            <?php if (count($dayNotes) > count($visibleNotes)): ?>
+              <span class="cell-more">+<?= count($dayNotes) - count($visibleNotes) ?> notițe</span>
             <?php endif; ?>
           </div>
         </div>

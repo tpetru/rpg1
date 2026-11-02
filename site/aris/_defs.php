@@ -133,12 +133,29 @@ function aris_ensure_tables(mysqli $mysqli): void
             PRIMARY KEY (id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
+    // note_date e ziua la care se refera notita (selectabila, default azi); created_at ramane ora scrierii.
+    $hasNoteDate = $mysqli->query("SHOW COLUMNS FROM aris_notes LIKE 'note_date'");
+    if ($hasNoteDate && $hasNoteDate->num_rows === 0) {
+        $mysqli->query('ALTER TABLE aris_notes ADD COLUMN note_date DATE NULL AFTER body');
+        $mysqli->query('UPDATE aris_notes SET note_date = DATE(created_at)');
+    }
 }
 
 // "Acum" in ora Romaniei, format MySQL DATETIME.
 function aris_now_local(): string
 {
     return (new DateTime('now', new DateTimeZone(ARIS_TIMEZONE)))->format('Y-m-d H:i:s');
+}
+
+function aris_today_local(): string
+{
+    return (new DateTime('now', new DateTimeZone(ARIS_TIMEZONE)))->format('Y-m-d');
+}
+
+function aris_clean_note_date(string $raw): string
+{
+    $d = DateTime::createFromFormat('!Y-m-d', $raw, new DateTimeZone(ARIS_TIMEZONE));
+    return ($d && $d->format('Y-m-d') === $raw) ? $raw : aris_today_local();
 }
 
 // Suma gramelor dintr-o zi, citita din campul liber "quantity" al fiecarei mese. Accepta "50g",
