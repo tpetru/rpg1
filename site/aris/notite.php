@@ -11,7 +11,7 @@ aris_require_page_auth();
 aris_ensure_tables($mysqli);
 
 $notes = [];
-$res = $mysqli->query('SELECT id, body, created_at FROM aris_notes ORDER BY created_at DESC, id DESC');
+$res = $mysqli->query('SELECT id, body, note_date, created_at FROM aris_notes ORDER BY note_date DESC, created_at DESC, id DESC');
 if ($res) {
     while ($row = $res->fetch_assoc()) $notes[] = $row;
 }
@@ -80,14 +80,39 @@ if ($res) {
   }
   .note-when strong { display: block; color: var(--ink-2); font-weight: 500; }
   .note-body { flex: 1; min-width: 0; font-size: 0.9rem; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
-  .note-delete {
+  .note-main { flex: 1; min-width: 0; }
+  .note-actions { flex-shrink: 0; display: flex; gap: 6px; }
+  .note-icon {
     flex-shrink: 0; width: 27px; height: 27px;
     display: inline-flex; align-items: center; justify-content: center;
     background: transparent; border: 1px solid var(--line); border-radius: 5px;
     color: var(--ink-3); cursor: pointer; font-size: 0.8rem;
     transition: border-color 0.2s ease, color 0.2s ease;
   }
+  .note-icon:hover { border-color: var(--accent); color: var(--accent); }
+  .note-icon[hidden] { display: none; }
   .note-delete:hover { border-color: var(--bad); color: var(--bad); }
+  .note-edit { display: flex; flex-direction: column; gap: 8px; }
+  .note-edit[hidden], .note-body[hidden] { display: none; }
+  .note-edit textarea {
+    width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical;
+    padding: 8px 12px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+    color: var(--ink); font-family: var(--disp); font-size: 0.9rem; line-height: 1.45;
+  }
+  .note-edit-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .note-edit-foot button {
+    padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink-2);
+    font-family: var(--disp); font-size: 0.8rem; cursor: pointer;
+  }
+  .note-edit-foot .note-save { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .note-edit-foot .note-save:disabled { opacity: 0.6; cursor: default; }
+  .note-date-input {
+    padding: 6px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+    color: var(--ink); font-family: var(--mono); font-size: 0.8rem; color-scheme: dark light;
+  }
+  .add-note-foot .note-date-input { margin-right: auto; }
 
   main h2 { margin: 0 0 6px; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
 
@@ -138,6 +163,7 @@ if ($res) {
   <div class="add-note">
     <textarea id="newNoteBody" maxlength="<?= ARIS_FREE_NOTE_MAX ?>" placeholder="Scrie o notiță…"></textarea>
     <div class="add-note-foot">
+      <input type="date" id="newNoteDate" class="note-date-input" value="<?= aris_today_local() ?>" aria-label="Data notiței">
       <span class="add-note-hint">Ctrl+Enter pentru a salva</span>
       <button type="button" id="addNoteBtn">Adaugă notița</button>
     </div>
@@ -150,11 +176,24 @@ if ($res) {
       <?php foreach ($notes as $note): $ts = strtotime($note['created_at']); ?>
         <div class="note-row" data-id="<?= (int)$note['id'] ?>">
           <div class="note-when">
-            <strong><?= htmlspecialchars(date('d.m.Y', $ts)) ?></strong>
+            <strong><?= htmlspecialchars(date('d.m.Y', strtotime($note['note_date']))) ?></strong>
             <?= htmlspecialchars(date('H:i', $ts)) ?>
           </div>
-          <div class="note-body"><?= htmlspecialchars($note['body']) ?></div>
-          <button type="button" class="note-delete" title="Șterge notița" aria-label="Șterge notița">✕</button>
+          <div class="note-main">
+            <div class="note-body"><?= htmlspecialchars($note['body']) ?></div>
+            <div class="note-edit" hidden>
+              <textarea class="note-edit-body" maxlength="<?= ARIS_FREE_NOTE_MAX ?>"><?= htmlspecialchars($note['body']) ?></textarea>
+              <div class="note-edit-foot">
+                <input type="date" class="note-date-input note-edit-date" value="<?= htmlspecialchars($note['note_date']) ?>" aria-label="Data notiței">
+                <button type="button" class="note-save">Salvează</button>
+                <button type="button" class="note-cancel">Anulează</button>
+              </div>
+            </div>
+          </div>
+          <div class="note-actions">
+            <button type="button" class="note-icon note-edit-toggle" title="Editează notița" aria-label="Editează notița">✎</button>
+            <button type="button" class="note-icon note-delete" title="Șterge notița" aria-label="Șterge notița">✕</button>
+          </div>
         </div>
       <?php endforeach; ?>
     </div>
@@ -204,7 +243,7 @@ if ($res) {
       fetch('note_add.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ body: body }).toString()
+        body: new URLSearchParams({ body: body, note_date: document.getElementById('newNoteDate').value }).toString()
       }).then(function(res) { return res.json(); }).then(function(data) {
         if (!data.ok) throw new Error('add failed');
         location.reload();
@@ -219,6 +258,47 @@ if ($res) {
   }
 
   document.querySelectorAll('.note-row').forEach(function(row) {
+    var bodyEl = row.querySelector('.note-body');
+    var editEl = row.querySelector('.note-edit');
+    var editBtn = row.querySelector('.note-edit-toggle');
+    var saveBtn = row.querySelector('.note-save');
+    var cancelBtn = row.querySelector('.note-cancel');
+    var textarea = row.querySelector('.note-edit-body');
+    var dateInput = row.querySelector('.note-edit-date');
+
+    function setEditing(on) {
+      bodyEl.hidden = on;
+      editEl.hidden = !on;
+      editBtn.hidden = on;
+      if (on) textarea.focus();
+    }
+
+    editBtn.addEventListener('click', function() { setEditing(true); });
+    cancelBtn.addEventListener('click', function() {
+      textarea.value = bodyEl.textContent;
+      setEditing(false);
+    });
+    saveBtn.addEventListener('click', function() {
+      var body = textarea.value.trim();
+      if (!body) return;
+      saveBtn.disabled = true;
+      fetch('note_update.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          id: row.getAttribute('data-id'),
+          body: body,
+          note_date: dateInput.value
+        }).toString()
+      }).then(function(res) { return res.json(); }).then(function(data) {
+        if (!data.ok) throw new Error('update failed');
+        location.reload();
+      }).catch(function() {
+        saveBtn.disabled = false;
+        alert('Nu s-a putut salva modificarea. Încearcă din nou.');
+      });
+    });
+
     row.querySelector('.note-delete').addEventListener('click', function() {
       if (!confirm('Ștergi această notiță?')) return;
       fetch('note_delete.php', {
