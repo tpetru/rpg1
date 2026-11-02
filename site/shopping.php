@@ -6,9 +6,11 @@
 // vezi shopping/_defs.php. Endpoint-urile AJAX sunt in folderul shopping/.
 require_once __DIR__ . '/shopping/_defs.php';
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/shopping/_auth.php';
 
 shop_ensure_tables($mysqli);
 site_theme_init($mysqli);
+shop_require_page_auth();
 
 $categories = shop_categories($mysqli);
 

@@ -4,8 +4,10 @@
 // casa/product.php, pe tabelele shop_*.
 require_once __DIR__ . '/_defs.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/_auth.php';
 shop_ensure_tables($mysqli);
 site_theme_init($mysqli);
+shop_require_page_auth();
 
 $pid = (int)($_GET['id'] ?? 0);
 $stmt = $mysqli->prepare('SELECT p.id, p.name, p.url, p.tags, p.comment, c.name AS category_name, c.icon AS category_icon
