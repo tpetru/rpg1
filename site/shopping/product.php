@@ -44,6 +44,7 @@ $chartPoints = array_reverse(array_map(function ($h) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/shopping/favicon.svg?v=1" type="image/svg+xml">
 <title><?= htmlspecialchars($product['name']) ?> — Lista de cumpărături</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/theme.css?v=<?= @filemtime(__DIR__ . '/../assets/theme.css') ?>">
