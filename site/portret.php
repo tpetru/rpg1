@@ -57,6 +57,8 @@
   }
   .controls select:focus { outline: none; border-color: var(--accent); }
   .controls input[type=range] { accent-color: var(--accent); width: 120px; }
+  .controls.result { margin-top: 10px; font-size: 15px; }
+  .controls.result button { padding: 7px 16px; }
   .controls .upload { border-color: var(--accent); color: var(--ink); }
   #imgOpts .sil, #imgOpts .lin { display: inline-flex; gap: 6px; align-items: center; }
   #imgOpts[data-mode="lin"] .sil, #imgOpts[data-mode="sil"] .lin { display: none; }
@@ -86,16 +88,17 @@
   </div>
   <div class="loading" id="loading">Se pregătește…</div>
 
+  <div class="controls result" id="resultBtns" hidden>
+    <button id="againBtn" class="upload" title="Desenează din nou">↻ Repetă</button>
+    <button id="fsBtn" class="upload" title="Desenul terminat, pe tot ecranul">⛶ Ecran complet</button>
+    <button id="dlBtn" class="upload" title="Descarcă desenul ca imagine PNG">⤓ Descarcă</button>
+  </div>
   <div class="controls" id="controls" hidden>
     <div class="group" id="nButtons"><span>N:</span></div>
     <div class="group">
       <button id="autoBtn" title="Dublează N la fiecare desen, de la 1 la 4096">N crește</button>
       <button id="playBtn">Pauză</button>
       <button id="restartBtn">De la capăt</button>
-    </div>
-    <div class="group" id="resultBtns" hidden>
-      <button id="fsBtn" class="upload" title="Desenul terminat, pe tot ecranul">⛶ Ecran complet</button>
-      <button id="dlBtn" class="upload" title="Descarcă desenul ca imagine PNG">⤓ Descarcă</button>
     </div>
     <div class="group">
       <span>Viteză</span><input type="range" id="speed" min="0" max="100" value="45">
@@ -164,7 +167,11 @@
   let x0, y0;               // mean (k = 0)
   let yMax = 0;             // height of the map data
   let recon = null, curN = 4096, errPct = 0;
-  let progress = 0, playing = true, auto = false, holdUntil = 0;
+  let progress = 0, playing = true, auto = false, holdUntil = 0, done = false;
+  function restart() {                    // porneste desenul de la inceput si ascunde butoanele de final
+    progress = 0; holdUntil = 0; done = false;
+    document.getElementById('resultBtns').hidden = true;
+  }
   let L = null;             // layout
 
   let started = false;
@@ -634,8 +641,7 @@
   demo();
 
   function init(flat) {
-    yMax = 0; progress = 0; holdUntil = 0;
-    document.getElementById('resultBtns').hidden = true;
+    yMax = 0; restart();
     M = flat.length / 2;
     X = new Float64Array(M); Y = new Float64Array(M);
     for (let i = 0; i < M; i++) { X[i] = flat[2 * i]; Y[i] = flat[2 * i + 1]; if (Y[i] > yMax) yMax = Y[i]; }
@@ -709,17 +715,18 @@
     [1, 4, 16, 64, 256, 1024, 4096].forEach(n => {
       const b = document.createElement('button');
       b.textContent = n; b.dataset.n = n;
-      b.onclick = () => { auto = false; autoBtn.classList.remove('on'); setN(n); progress = 0; holdUntil = 0; };
+      b.onclick = () => { auto = false; autoBtn.classList.remove('on'); setN(n); restart(); };
       box.appendChild(b);
     });
     const autoBtn = document.getElementById('autoBtn');
     autoBtn.onclick = () => {
       auto = !auto; autoBtn.classList.toggle('on', auto);
-      if (auto) { setN(1); progress = 0; holdUntil = 0; }
+      if (auto) { setN(1); restart(); }
     };
     const playBtn = document.getElementById('playBtn');
     playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? 'Pauză' : 'Pornește'; };
-    document.getElementById('restartBtn').onclick = () => { progress = 0; holdUntil = 0; };
+    document.getElementById('restartBtn').onclick = restart;
+    document.getElementById('againBtn').onclick = restart;
   }
 
   function resize() {
@@ -773,19 +780,19 @@
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const sp = +document.getElementById('speed').value;
     const dur = 90 * Math.pow(0.04, sp / 100) + 4;     // ~ 4 s .. 94 s per drawing
-    if (playing && now >= holdUntil) {
+    if (playing && !done && now >= holdUntil) {
       progress += dt / dur;
       if (progress >= 1) {
-        progress = 0;
-        document.getElementById('resultBtns').hidden = false;
-        holdUntil = now + 1800;
-        if (auto) {
-          const i = NS.indexOf(curN);
-          setN(NS[(i + 1) % NS.length]);
+        const i = NS.indexOf(curN);
+        if (auto && i >= 0 && i < NS.length - 1) {   // "N crește": trece la N-ul urmator pana la 4096
+          progress = 0; holdUntil = now + 1800; setN(NS[i + 1]);
+        } else {                                      // gata: ne oprim si aratam butoanele
+          progress = 1; done = true;
+          document.getElementById('resultBtns').hidden = false;
         }
       }
     }
-    draw(holdUntil > now ? 1 : progress);
+    draw(done || holdUntil > now ? 1 : progress);
     requestAnimationFrame(frame);
   }
 
