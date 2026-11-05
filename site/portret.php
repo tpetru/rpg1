@@ -106,8 +106,7 @@ header('Cache-Control: no-cache, must-revalidate');
     </div>
     <div class="credit">inspirat de <a href="https://www.instagram.com/epicycle.studio/" target="_blank" rel="noopener">@epicycle.studio</a></div>
     <div class="readout" id="readout" hidden>
-      <div class="ro-line" id="nLine"><span class="ro-fallback">N = 4096</span></div>
-      <div class="ro-line" id="errLine"><span class="ro-fallback">approximation error = 0.10%</span></div>
+      <div class="ro-line" id="nLine"><span class="ro-fallback">N = 4096, approximation error = 0.10%</span></div>
     </div>
   </div>
   <div class="loading" id="loading">Se pregătește…</div>
@@ -945,14 +944,9 @@ header('Cache-Control: no-cache, must-revalidate');
   // N = ... si eroarea, scrise cu KaTeX ca formulele (sau text italic pana se incarca KaTeX)
   function renderReadout() {
     const e = errPct >= 10 ? errPct.toFixed(1) : errPct.toFixed(2);
-    const nEl = document.getElementById('nLine'), eEl = document.getElementById('errLine');
-    if (window.katex) {
-      katex.render('N = ' + curN, nEl, { throwOnError: false });
-      katex.render('\\text{approximation error} = ' + e + '\\%', eEl, { throwOnError: false });
-    } else {
-      nEl.innerHTML = '<span class="ro-fallback">N = ' + curN + '</span>';
-      eEl.innerHTML = '<span class="ro-fallback">approximation error = ' + e + '%</span>';
-    }
+    const el = document.getElementById('nLine');      // un singur rand
+    if (window.katex) katex.render('N = ' + curN + ',\\quad \\text{approximation error} = ' + e + '\\%', el, { throwOnError: false });
+    else el.innerHTML = '<span class="ro-fallback">N = ' + curN + ', approximation error = ' + e + '%</span>';
   }
   window.addEventListener('load', () => { if (recon) renderReadout(); });
 
