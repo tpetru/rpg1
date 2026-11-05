@@ -3,7 +3,8 @@
 # uniform la 16384 puncte, coordonate intregi 0..1000 ca lista plata [x0,y0,x1,y1,...].
 # Sursa: Natural Earth ne_10m_admin_1_states_provinces.geojson filtrat pe adm0_a3 == ROU.
 # Rulare: python3 build_path.py ro.geojson romania-judete.json [toleranta_vecini] [judet_start]
-# Iasi: comunele din geoBoundaries ROU ADM2 (simplified) aflate in judetul Iasi, toleranta 0.004
+# Judete (fun/judete/*.json): comunele din geoBoundaries ROU ADM2 (simplified), grupate pe judet
+# dupa geoBoundaries ROU ADM1 (unde cad majoritatea varfurilor conturului fiecarei comune).
 import json, sys, math
 import numpy as np
 sys.setrecursionlimit(10000)
@@ -17,8 +18,11 @@ for f in d['features']:
     # one ring per county: the longest (outer); holes (Ilfov) are Bucharest's outline anyway
     r=max(rs,key=len)
     a=np.array(r[:-1],float)
-    a[:,0]*=math.cos(math.radians(45.9)); a[:,1]*=-1
     rings.append(a); names.append(f['properties']['name'])
+# proiectie simpla: lon * cos(latitudinea medie), lat inversat
+LAT=float(np.mean(np.concatenate(rings)[:,1]))
+for a in rings:
+    a[:,0]*=math.cos(math.radians(LAT)); a[:,1]*=-1
 n=len(rings)
 # pairwise min distance & closest point indices
 D=np.full((n,n),np.inf); I={}
@@ -29,9 +33,17 @@ for i in range(n):
         k=np.unravel_index(dd.argmin(),dd.shape); D[i,j]=math.sqrt(dd[k]); I[(i,j)]=k
 TOL=float(sys.argv[3]) if len(sys.argv)>3 else 1e-3
 adj=[[j for j in range(n) if D[i,j]<TOL] for i in range(n)]
-for i in range(n):
-    if not adj[i]:
-        j=int(np.argmin(D[i])); adj[i].append(j); adj[j].append(i)
+# leaga componentele neconectate (enclave/exclave, ex. Bucuresti in Ilfov) de cea mai apropiata
+while True:
+    comp={0}; st=[0]
+    while st:
+        u=st.pop()
+        for v in adj[u]:
+            if v not in comp: comp.add(v); st.append(v)
+    if len(comp)==n: break
+    rest=[j for j in range(n) if j not in comp]; ci=sorted(comp)
+    sub=D[np.ix_(ci,rest)]; a_,b_=np.unravel_index(sub.argmin(),sub.shape)
+    i,j=ci[a_],rest[b_]; adj[i].append(j); adj[j].append(i)
 print('adjacency sizes',[len(a) for a in adj],file=sys.stderr)
 visited=[False]*n; out=[]
 def walk(i,a,b):

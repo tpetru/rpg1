@@ -2,11 +2,21 @@
 // Fun: harta Romaniei (cu judetele) desenata de epicicluri - serie Fourier cu N termeni.
 // Inspirat de un reel @epicycle.studio. Pagina statica, fara DB; datele conturului sunt in
 // fun/romania-judete.json (generat cu fun/build_path.py din Natural Earth admin-1, 1:10m) si
-// fun/iasi-comune.json (judetul Iasi cu comunele, din geoBoundaries ROU ADM2 simplified).
-$maps = [
-    'romania' => ['label' => 'România', 'file' => 'fun/romania-judete.json'],
-    'iasi'    => ['label' => 'Iași',    'file' => 'fun/iasi-comune.json'],
+// fun/judete/<judet>.json (fiecare judet cu comunele lui, din geoBoundaries ROU ADM1/ADM2 simplified).
+$judete = [
+    'alba' => 'Alba', 'arad' => 'Arad', 'arges' => 'Argeș', 'bacau' => 'Bacău', 'bihor' => 'Bihor',
+    'bistrita-nasaud' => 'Bistrița-Năsăud', 'botosani' => 'Botoșani', 'braila' => 'Brăila', 'brasov' => 'Brașov',
+    'bucharest' => 'București', 'buzau' => 'Buzău', 'calarasi' => 'Călărași', 'caras-severin' => 'Caraș-Severin',
+    'cluj' => 'Cluj', 'constanta' => 'Constanța', 'covasna' => 'Covasna', 'dambovita' => 'Dâmbovița',
+    'dolj' => 'Dolj', 'galati' => 'Galați', 'giurgiu' => 'Giurgiu', 'gorj' => 'Gorj', 'harghita' => 'Harghita',
+    'hunedoara' => 'Hunedoara', 'ialomita' => 'Ialomița', 'iasi' => 'Iași', 'ilfov' => 'Ilfov',
+    'maramures' => 'Maramureș', 'mehedinti' => 'Mehedinți', 'mures' => 'Mureș', 'neamt' => 'Neamț',
+    'olt' => 'Olt', 'prahova' => 'Prahova', 'salaj' => 'Sălaj', 'satu-mare' => 'Satu Mare', 'sibiu' => 'Sibiu',
+    'suceava' => 'Suceava', 'teleorman' => 'Teleorman', 'timis' => 'Timiș', 'tulcea' => 'Tulcea',
+    'valcea' => 'Vâlcea', 'vaslui' => 'Vaslui', 'vrancea' => 'Vrancea',
 ];
+$maps = ['romania' => ['label' => 'România (județe)', 'file' => 'fun/romania-judete.json']];
+foreach ($judete as $slug => $label) $maps[$slug] = ['label' => $label . ($slug === 'bucharest' ? ' (sectoare)' : ' (comune)'), 'file' => "fun/judete/$slug.json"];
 foreach ($maps as $k => $m) $maps[$k]['file'] .= '?v=' . (int)@filemtime(__DIR__ . '/' . $m['file']);
 ?>
 <!DOCTYPE html>
@@ -57,6 +67,11 @@ foreach ($maps as $k => $m) $maps[$k]['file'] .= '?v=' . (int)@filemtime(__DIR__
   }
   .controls button:hover { border-color: var(--accent); color: var(--ink); }
   .controls button.on { background: var(--accent); border-color: var(--accent); color: #1a1210; }
+  .controls select {
+    font: inherit; color: var(--ink); background: #111; border: 1px solid var(--line);
+    border-radius: 14px; padding: 5px 10px; cursor: pointer;
+  }
+  .controls select:focus { outline: none; border-color: var(--accent); }
   .controls input[type=range] { accent-color: var(--accent); width: 120px; }
   .loading { text-align: center; color: var(--ink-2); font-family: system-ui, sans-serif; padding: 40px 0; }
 </style>
@@ -78,7 +93,7 @@ foreach ($maps as $k => $m) $maps[$k]['file'] .= '?v=' . (int)@filemtime(__DIR__
   <div class="loading" id="loading">Se calculează seria Fourier…</div>
 
   <div class="controls" id="controls" hidden>
-    <div class="group" id="mapButtons"><span>Harta:</span></div>
+    <div class="group"><label for="mapSelect">Harta:</label><select id="mapSelect"></select></div>
     <div class="group" id="nButtons"><span>N:</span></div>
     <div class="group">
       <button id="autoBtn" title="Dublează N la fiecare desen, de la 1 la 4096">N crește</button>
@@ -141,20 +156,16 @@ foreach ($maps as $k => $m) $maps[$k]['file'] .= '?v=' . (int)@filemtime(__DIR__
     if (!MAPS[key]) key = 'romania';
     curMap = key;
     try { history.replaceState(null, '', key === 'romania' ? location.pathname : '?harta=' + key); } catch (e) {}
-    document.querySelectorAll('#mapButtons button').forEach(b => b.classList.toggle('on', b.dataset.map === key));
+    mapSel.value = key;
     const p = cache[key] || (cache[key] = fetch(MAPS[key].file).then(r => r.json()));
     p.then(flat => { if (curMap === key) init(flat); }).catch(() => {
       const el = document.getElementById('loading');
       if (el) el.textContent = 'Nu am putut încărca conturul hărții.';
     });
   }
-  const mapBox = document.getElementById('mapButtons');
-  Object.keys(MAPS).forEach(key => {
-    const b = document.createElement('button');
-    b.textContent = MAPS[key].label; b.dataset.map = key;
-    b.onclick = () => { if (key !== curMap) loadMap(key); };
-    mapBox.appendChild(b);
-  });
+  const mapSel = document.getElementById('mapSelect');
+  Object.keys(MAPS).forEach(key => mapSel.add(new Option(MAPS[key].label, key)));
+  mapSel.onchange = () => { if (mapSel.value !== curMap) loadMap(mapSel.value); };
   loadMap(new URLSearchParams(location.search).get('harta') || 'romania');
 
   function init(flat) {
@@ -254,7 +265,10 @@ foreach ($maps as $k => $m) $maps[$k]['file'] .= '?v=' . (int)@filemtime(__DIR__
     const dpr = window.devicePixelRatio || 1;
     cv.width = Math.round(w * dpr); cv.height = Math.round(w * H / W * dpr);
     const k = cv.width / W;
-    L = { W, H, k, s, mapX, mapY, xChainY: narrow ? 270 : 230, yChainX: narrow ? 140 : 170 };
+    // keep the left chain on canvas: room for its biggest circles
+    const reach = yTerms.map(t => t.r).sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0) * s;
+    const yChainX = Math.max(narrow ? 140 : 170, Math.min(reach + 10, mapX - 30));
+    L = { W, H, k, s, mapX, mapY, xChainY: narrow ? 270 : 230, yChainX };
     const ro = document.getElementById('readout');
     ro.style.top = ((mapY + yMax * s + 25) / H * 100) + '%';
     ro.style.left = ((mapX + 500 * s) / W * 100) + '%';
