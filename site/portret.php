@@ -117,10 +117,9 @@ header('Cache-Control: no-cache, must-revalidate');
   </div>
   <div class="controls" id="controls" hidden data-mode="sil">
     <div class="row">
+      <label class="group">N: <select id="nSelect" title="Câți termeni are seria Fourier"></select></label>
       <button id="uploadBtn" class="upload" title="Alege o imagine (poză, siluetă, desen, logo) și o desenăm cu epicicluri">Selectează imagine</button>
       <input type="file" id="fileInput" accept="image/*" hidden>
-      <button id="editBtn" title="Taie, rotește sau încadrează din nou poza">✂ Editează poza</button>
-      <label class="group">N: <select id="nSelect" title="Câți termeni are seria Fourier"></select></label>
     </div>
     <div class="row sliders">
       <label class="slider"><span>Viteză</span><input type="range" id="speed" min="0" max="100" value="45"></label>
@@ -231,7 +230,6 @@ header('Cache-Control: no-cache, must-revalidate');
   const ED_MAX = 1400;                       // rezolutia de lucru a editorului (desenul foloseste oricum max. 480 px)
   const edView = document.getElementById('edView'), edCv = document.getElementById('edCv');
   let ed = null;                             // { img, alpha, quarter, fine, rc (canvas rotit), crop: [x0,y0,x1,y1] in 0..1 }
-  let edOrig = null;                         // ultima imagine originala, pentru "Editează poza"
 
   function hasAlpha(img) {
     const c = document.createElement('canvas'); c.width = 64; c.height = 64;
@@ -241,7 +239,6 @@ header('Cache-Control: no-cache, must-revalidate');
     return false;
   }
   function openEditor(img) {
-    edOrig = img;
     ed = { img, alpha: hasAlpha(img), quarter: 0, fine: 0, rc: null, crop: [0, 0, 1, 1], drag: null };
     document.getElementById('edAngle').value = 0;
     edView.hidden = false;
@@ -344,7 +341,6 @@ header('Cache-Control: no-cache, must-revalidate');
     edView.hidden = true; ed = null;
     prepareImage(out);
   };
-  document.getElementById('editBtn').onclick = () => { if (edOrig) openEditor(edOrig); };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !edView.hidden) document.getElementById('edCancel').click(); });
 
   function prepareImage(img) {
