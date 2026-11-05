@@ -60,11 +60,15 @@ header('Cache-Control: no-cache, must-revalidate');
   }
   .controls select:focus { outline: none; border-color: var(--accent); }
   .controls input[type=range] { accent-color: var(--accent); width: 120px; }
-  .controls.result { margin-top: 10px; font-size: 15px; }
-  .controls.result button { padding: 7px 16px; }
+  .controls .row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; justify-content: center; width: 100%; }
+  .controls .slider { display: flex; align-items: center; gap: 6px; flex: 1 1 140px; max-width: 420px; }
+  .controls .slider input[type=range] { flex: 1; width: auto; min-width: 70px; height: 32px; }
+  .controls .row.sliders { flex-wrap: nowrap; }
+  .controls.result { margin-top: 6px; visibility: hidden; }        /* loc rezervat: pagina nu sare */
+  .controls.result.show { visibility: visible; }
+  .controls.result button { padding: 3px 10px; font-size: 12px; }
   .controls .upload { border-color: var(--accent); color: var(--ink); }
-  #imgOpts .sil, #imgOpts .lin { display: inline-flex; gap: 6px; align-items: center; }
-  #imgOpts[data-mode="lin"] .sil, #imgOpts[data-mode="sil"] .lin { display: none; }
+  #controls[data-mode="lin"] .sil, #controls[data-mode="sil"] .lin { display: none; }
   .controls .hint { font-size: 12px; color: var(--ink-2); }
   .dropping canvas { outline: 2px dashed var(--accent); outline-offset: -6px; }
   #edView { position: fixed; inset: 0; background: #0b0a09; z-index: 60; display: flex; flex-direction: column; }
@@ -106,41 +110,32 @@ header('Cache-Control: no-cache, must-revalidate');
   </div>
   <div class="loading" id="loading">Se pregătește…</div>
 
-  <div class="controls result" id="resultBtns" hidden>
-    <button id="againBtn" class="upload" title="Desenează din nou">↻ Repetă</button>
-    <button id="fsBtn" class="upload" title="Desenul terminat, pe tot ecranul">⛶ Ecran complet</button>
-    <button id="dlBtn" class="upload" title="Descarcă desenul ca imagine PNG">⤓ Descarcă</button>
+  <div class="controls result" id="resultBtns">
+    <button id="againBtn" title="Desenează din nou">↻ Repetă</button>
+    <button id="fsBtn" title="Desenul terminat, pe tot ecranul">⛶ Ecran complet</button>
+    <button id="dlBtn" title="Descarcă desenul ca imagine PNG">⤓ Descarcă</button>
   </div>
-  <div class="controls" id="controls" hidden>
-    <div class="group" id="nButtons"><span>N:</span></div>
-    <div class="group">
-      <button id="autoBtn" title="Dublează N la fiecare desen, de la 1 la 4096">N crește</button>
-      <button id="playBtn">Pauză</button>
-      <button id="restartBtn">De la capăt</button>
-    </div>
-    <div class="group">
-      <span>Viteză</span><input type="range" id="speed" min="0" max="100" value="45">
-    </div>
-    <div class="group">
-      <button id="uploadBtn" class="upload" title="Încarcă o imagine (siluetă, desen, logo) și o desenăm cu epicicluri">✎ Desenează-mă</button>
+  <div class="controls" id="controls" hidden data-mode="sil">
+    <div class="row">
+      <button id="uploadBtn" class="upload" title="Alege o imagine (poză, siluetă, desen, logo) și o desenăm cu epicicluri">Selectează imagine</button>
       <input type="file" id="fileInput" accept="image/*" hidden>
+      <button id="editBtn" title="Taie, rotește sau încadrează din nou poza">✂ Editează poza</button>
+      <label class="group">N: <select id="nSelect" title="Câți termeni are seria Fourier"></select></label>
     </div>
-    <div class="group" id="imgOpts" hidden>
+    <div class="row sliders">
+      <label class="slider"><span>Viteză</span><input type="range" id="speed" min="0" max="100" value="45"></label>
+      <label class="slider sil"><span>Prag</span><input type="range" id="thr" min="1" max="254" value="128" title="Pragul de luminozitate obiect/fundal"></label>
+      <label class="slider lin"><span>Detalii</span><input type="range" id="detail" min="0" max="100" value="35" title="Câte margini păstrăm: puține (doar cele puternice) … multe"></label>
+    </div>
+    <div class="row" id="imgOpts" hidden>
       <button id="modeSil" title="Conturul obiectului (siluete, logo-uri, PNG transparent)">Siluetă</button>
       <button id="modeLin" title="Marginile din imagine (fotografii, portrete, desene)">Linii</button>
-      <button id="editBtn" title="Taie, rotește sau încadrează din nou poza">✂ Editează poza</button>
       <button id="personBtn" title="Scoate fundalul și desenează doar persoana (model AI care rulează în browser, ~25 MB la prima folosire)">Doar persoana</button>
-      <button id="objBtn" title="Desenează doar obiectul principal (AI în browser, ~15 MB la prima folosire). Apoi atinge desenul ca să alegi alt obiect.">Doar obiectul</button>
-      <span class="sil">
-        <button id="outerBtn" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
-        <button id="invertBtn" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
-        <span>Prag</span><input type="range" id="thr" min="1" max="254" value="128" title="Pragul de luminozitate obiect/fundal">
-      </span>
-      <span class="lin">
-        <span>Detalii</span><input type="range" id="detail" min="0" max="100" value="35" title="Câte margini păstrăm: puține (doar cele puternice) … multe">
-      </span>
-      <span class="hint" id="imgStatus"></span>
+      <button id="objBtn" title="Desenează doar obiectul principal (AI în browser, ~6 MB la prima folosire). Apoi atinge desenul ca să alegi alt obiect.">Doar obiectul</button>
+      <button id="outerBtn" class="sil" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
+      <button id="invertBtn" class="sil" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
     </div>
+    <div class="row"><span class="hint" id="imgStatus"></span></div>
   </div>
 </main>
 <div id="edView" hidden>
@@ -212,7 +207,7 @@ header('Cache-Control: no-cache, must-revalidate');
   let frameRect = null, framing = 0;      // rama pozei (coordonate de date) si cat din ea e desenat (0..1)
   function restart() {                    // porneste desenul de la inceput si ascunde butoanele de final
     progress = 0; holdUntil = 0; done = false; framing = 0;
-    document.getElementById('resultBtns').hidden = true;
+    document.getElementById('resultBtns').classList.remove('show');
   }
   let L = null;             // layout
 
@@ -513,7 +508,7 @@ header('Cache-Control: no-cache, must-revalidate');
   }
   function setMode(m) {
     imgOpt.mode = m;
-    document.getElementById('imgOpts').dataset.mode = m;
+    document.getElementById('controls').dataset.mode = m;
     document.getElementById('modeSil').classList.toggle('on', m === 'sil');
     document.getElementById('modeLin').classList.toggle('on', m === 'lin');
   }
@@ -990,26 +985,15 @@ header('Cache-Control: no-cache, must-revalidate');
     errPct = 100 * Math.sqrt(num / den);
     document.getElementById('nVal').textContent = n;
     document.getElementById('errVal').textContent = errPct >= 10 ? errPct.toFixed(1) : errPct.toFixed(2);
-    document.querySelectorAll('#nButtons button').forEach(b => b.classList.toggle('on', +b.dataset.n === n));
+    document.getElementById('nSelect').value = n;
     drawFs();
   }
 
   function buildControls() {
-    const box = document.getElementById('nButtons');
-    [1, 4, 16, 64, 256, 1024, 4096].forEach(n => {
-      const b = document.createElement('button');
-      b.textContent = n; b.dataset.n = n;
-      b.onclick = () => { auto = false; autoBtn.classList.remove('on'); setN(n); restart(); };
-      box.appendChild(b);
-    });
-    const autoBtn = document.getElementById('autoBtn');
-    autoBtn.onclick = () => {
-      auto = !auto; autoBtn.classList.toggle('on', auto);
-      if (auto) { setN(1); restart(); }
-    };
-    const playBtn = document.getElementById('playBtn');
-    playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? 'Pauză' : 'Pornește'; };
-    document.getElementById('restartBtn').onclick = restart;
+    const sel = document.getElementById('nSelect');
+    NS.forEach(n => sel.add(new Option(n, n)));
+    sel.value = curN;
+    sel.onchange = () => { setN(+sel.value); restart(); };
     document.getElementById('againBtn').onclick = restart;
   }
 
@@ -1066,7 +1050,7 @@ header('Cache-Control: no-cache, must-revalidate');
     const dur = 90 * Math.pow(0.04, sp / 100) + 4;     // ~ 4 s .. 94 s per drawing
     if (playing && !done && framing > 0) {          // dupa contur: rama pozei
       framing += dt / Math.min(4, Math.max(1.2, dur * 0.2));
-      if (framing >= 1) { framing = 1; done = true; document.getElementById('resultBtns').hidden = false; }
+      if (framing >= 1) { framing = 1; done = true; document.getElementById('resultBtns').classList.add('show'); }
     } else if (playing && !done && now >= holdUntil) {
       progress += dt / dur;
       if (progress >= 1) {
@@ -1077,7 +1061,7 @@ header('Cache-Control: no-cache, must-revalidate');
           progress = 1; framing = 1e-6;
         } else {                                      // gata: ne oprim si aratam butoanele
           progress = 1; done = true;
-          document.getElementById('resultBtns').hidden = false;
+          document.getElementById('resultBtns').classList.add('show');
         }
       }
     }
