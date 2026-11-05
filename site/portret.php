@@ -39,9 +39,11 @@ header('Cache-Control: no-cache, must-revalidate');
     position: absolute; left: 58%; transform: translateX(-50%); top: 88%;
     text-align: center; pointer-events: none; white-space: nowrap;
   }
-  .readout .n { font-size: clamp(22px, 5vw, 46px); }
-  .readout .n b { color: var(--accent); font-weight: 400; }
-  .readout .err { font-size: clamp(12px, 2.2vw, 20px); margin-top: 4px; }
+  /* N si eroarea: acelasi stil si aceeasi marime ca formulele din stanga sus */
+  .readout { font-size: clamp(11px, 2.1vw, 19px); line-height: 1.2; }
+  .readout .katex { color: var(--ink); }
+  .readout .ro-fallback { font-style: italic; }
+  .readout .ro-line + .ro-line { margin-top: 0.35em; }
 
   .controls {
     display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: center;
@@ -104,8 +106,8 @@ header('Cache-Control: no-cache, must-revalidate');
     </div>
     <div class="credit">inspirat de <a href="https://www.instagram.com/epicycle.studio/" target="_blank" rel="noopener">@epicycle.studio</a></div>
     <div class="readout" id="readout" hidden>
-      <div class="n">N = <b id="nVal">4096</b></div>
-      <div class="err">approximation error = <span id="errVal">0.10</span>%</div>
+      <div class="ro-line" id="nLine"><span class="ro-fallback">N = 4096</span></div>
+      <div class="ro-line" id="errLine"><span class="ro-fallback">approximation error = 0.10%</span></div>
     </div>
   </div>
   <div class="loading" id="loading">Se pregătește…</div>
@@ -132,7 +134,6 @@ header('Cache-Control: no-cache, must-revalidate');
       <button id="personBtn" title="Scoate fundalul și desenează doar persoana (model AI care rulează în browser, ~25 MB la prima folosire)">Doar persoana</button>
       <button id="objBtn" title="Desenează doar obiectul principal (AI în browser, ~6 MB la prima folosire). Apoi atinge desenul ca să alegi alt obiect.">Doar obiectul</button>
       <button id="outerBtn" class="sil" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
-      <button id="invertBtn" class="sil" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
     </div>
     <div class="row"><span class="hint" id="imgStatus"></span></div>
   </div>
@@ -362,7 +363,6 @@ header('Cache-Control: no-cache, must-revalidate');
     imgSrc = { w, h, v, lum, canvas: c, person: null, obj: null, objKey: '' };
     imgOpt.objPt = [0.5, 0.5];
     imgOpt.invert = false;
-    document.getElementById('invertBtn').classList.remove('on');
     imgOpt.thr = otsu(v);
     document.getElementById('thr').value = imgOpt.thr;
     // fotografie (multe tonuri intermediare) -> modul "Linii"; siluete / logo-uri / PNG transparent -> "Siluetă"
@@ -514,7 +514,7 @@ header('Cache-Control: no-cache, must-revalidate');
     const lin = imgOpt.mode === 'lin', flat = lin ? edgesToPath() : imageToPath();
     if (!flat) {
       imgStatus(lin ? 'Nu am găsit margini — mărește „Detalii" sau încearcă „Siluetă".'
-                    : 'Nu am găsit niciun contur — încearcă alt prag, „Inversează" sau „Linii".');
+                    : 'Nu am găsit niciun contur — încearcă alt prag sau „Linii".');
       return;
     }
     frameRect = flat.path.frame || null;
@@ -756,10 +756,6 @@ header('Cache-Control: no-cache, must-revalidate');
   const fileInput = document.getElementById('fileInput');
   document.getElementById('uploadBtn').onclick = () => fileInput.click();
   fileInput.onchange = () => { if (fileInput.files[0]) loadImageFile(fileInput.files[0]); fileInput.value = ''; };
-  document.getElementById('invertBtn').onclick = e => {
-    if (!imgSrc) return;
-    imgOpt.invert = !imgOpt.invert; e.target.classList.toggle('on', imgOpt.invert); extractAndShow();
-  };
   document.getElementById('outerBtn').onclick = e => {
     if (!imgSrc) return;
     imgOpt.outer = !imgOpt.outer; e.target.classList.toggle('on', imgOpt.outer); extractAndShow();
@@ -946,6 +942,20 @@ header('Cache-Control: no-cache, must-revalidate');
     requestAnimationFrame(frame);
   }
 
+  // N = ... si eroarea, scrise cu KaTeX ca formulele (sau text italic pana se incarca KaTeX)
+  function renderReadout() {
+    const e = errPct >= 10 ? errPct.toFixed(1) : errPct.toFixed(2);
+    const nEl = document.getElementById('nLine'), eEl = document.getElementById('errLine');
+    if (window.katex) {
+      katex.render('N = ' + curN, nEl, { throwOnError: false });
+      katex.render('\\text{approximation error} = ' + e + '\\%', eEl, { throwOnError: false });
+    } else {
+      nEl.innerHTML = '<span class="ro-fallback">N = ' + curN + '</span>';
+      eEl.innerHTML = '<span class="ro-fallback">approximation error = ' + e + '%</span>';
+    }
+  }
+  window.addEventListener('load', () => { if (recon) renderReadout(); });
+
   function renderFormulas() {
     const tryRender = () => {
       if (!window.katex) return false;
@@ -979,8 +989,7 @@ header('Cache-Control: no-cache, must-revalidate');
       den += (X[i] - x0) ** 2 + (Y[i] - y0) ** 2;
     }
     errPct = 100 * Math.sqrt(num / den);
-    document.getElementById('nVal').textContent = n;
-    document.getElementById('errVal').textContent = errPct >= 10 ? errPct.toFixed(1) : errPct.toFixed(2);
+    renderReadout();
     document.getElementById('nSelect').value = n;
     drawFs();
   }
