@@ -2,7 +2,8 @@
 # granitele tuturor judetelor (DFS pe vecinatati, granitele comune se reparcurg), reesantionat
 # uniform la 16384 puncte, coordonate intregi 0..1000 ca lista plata [x0,y0,x1,y1,...].
 # Sursa: Natural Earth ne_10m_admin_1_states_provinces.geojson filtrat pe adm0_a3 == ROU.
-# Rulare: python3 build_path.py ro.geojson romania-judete.json
+# Rulare: python3 build_path.py ro.geojson romania-judete.json [toleranta_vecini] [judet_start]
+# Iasi: comunele din geoBoundaries ROU ADM2 (simplified) aflate in judetul Iasi, toleranta 0.004
 import json, sys, math
 import numpy as np
 sys.setrecursionlimit(10000)
@@ -26,7 +27,8 @@ for i in range(n):
         if i==j: continue
         dd=((rings[i][:,None,:]-rings[j][None,:,:])**2).sum(-1)
         k=np.unravel_index(dd.argmin(),dd.shape); D[i,j]=math.sqrt(dd[k]); I[(i,j)]=k
-adj=[[j for j in range(n) if D[i,j]<1e-3] for i in range(n)]
+TOL=float(sys.argv[3]) if len(sys.argv)>3 else 1e-3
+adj=[[j for j in range(n) if D[i,j]<TOL] for i in range(n)]
 for i in range(n):
     if not adj[i]:
         j=int(np.argmin(D[i])); adj[i].append(j); adj[j].append(i)
@@ -57,7 +59,8 @@ def dfs(i,e):
         walk(i,e,(e-1)%L); out.append(rings[i][e])
     else:
         walk(i,cur,e)
-start=names.index('Satu Mare') if 'Satu Mare' in names else 0
+START=sys.argv[4] if len(sys.argv)>4 else 'Satu Mare'
+start=names.index(START) if START in names else 0
 dfs(start,0)
 print('unvisited',[names[i] for i in range(n) if not visited[i]],file=sys.stderr)
 P=np.array(out)
