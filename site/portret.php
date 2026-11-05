@@ -58,6 +58,8 @@
   .controls select:focus { outline: none; border-color: var(--accent); }
   .controls input[type=range] { accent-color: var(--accent); width: 120px; }
   .controls .upload { border-color: var(--accent); color: var(--ink); }
+  #imgOpts .sil, #imgOpts .lin { display: inline-flex; gap: 6px; align-items: center; }
+  #imgOpts[data-mode="lin"] .sil, #imgOpts[data-mode="sil"] .lin { display: none; }
   .controls .hint { font-size: 12px; color: var(--ink-2); }
   .dropping canvas { outline: 2px dashed var(--accent); outline-offset: -6px; }
   .loading { text-align: center; color: var(--ink-2); font-family: system-ui, sans-serif; padding: 40px 0; }
@@ -94,9 +96,16 @@
       <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
     <div class="group" id="imgOpts" hidden>
-      <button id="outerBtn" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
-      <button id="invertBtn" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
-      <span>Prag</span><input type="range" id="thr" min="1" max="254" value="128" title="Pragul de luminozitate obiect/fundal">
+      <button id="modeSil" title="Conturul obiectului (siluete, logo-uri, PNG transparent)">Siluetă</button>
+      <button id="modeLin" title="Marginile din imagine (fotografii, portrete, desene)">Linii</button>
+      <span class="sil">
+        <button id="outerBtn" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
+        <button id="invertBtn" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
+        <span>Prag</span><input type="range" id="thr" min="1" max="254" value="128" title="Pragul de luminozitate obiect/fundal">
+      </span>
+      <span class="lin">
+        <span>Detalii</span><input type="range" id="detail" min="0" max="100" value="35" title="Câte margini păstrăm: puține (doar cele puternice) … multe">
+      </span>
       <span class="hint" id="imgStatus"></span>
     </div>
   </div>
@@ -149,7 +158,7 @@
   // ---------- "Desenează-mă": contur din imaginea utilizatorului (totul local, in browser) ----------
   const MAXDIM = 480, MAXLOOPS = 120;
   let imgSrc = null;                          // {w, h, v: luminozitate 0..255 (sau opacitate inversata)}
-  const imgOpt = { invert: false, outer: false, thr: 128 };
+  const imgOpt = { invert: false, outer: false, thr: 128, mode: 'sil', detail: 35 };
   const imgStatus = t => { document.getElementById('imgStatus').textContent = t; };
 
   function loadImageFile(file) {
@@ -167,20 +176,24 @@
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d', { willReadFrequently: true });
     g.drawImage(img, 0, 0, w, h);
-    const d = g.getImageData(0, 0, w, h).data, n = w * h, v = new Float32Array(n);
+    const d = g.getImageData(0, 0, w, h).data, n = w * h, v = new Float32Array(n), lum = new Float32Array(n);
     let transp = 0;
     for (let i = 0; i < n; i++) if (d[4 * i + 3] < 128) transp++;
     const useAlpha = transp > n * 0.02;       // PNG cu fundal transparent: obiectul = partea opaca
     for (let i = 0; i < n; i++) {
       const a = d[4 * i + 3] / 255;
-      v[i] = useAlpha ? 255 * (1 - a)
-        : (0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2]) * a + 255 * (1 - a);
+      lum[i] = (0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2]) * a + 255 * (1 - a);
+      v[i] = useAlpha ? 255 * (1 - a) : lum[i];
     }
-    imgSrc = { w, h, v };
+    imgSrc = { w, h, v, lum };
     imgOpt.invert = false;
     document.getElementById('invertBtn').classList.remove('on');
     imgOpt.thr = otsu(v);
     document.getElementById('thr').value = imgOpt.thr;
+    // fotografie (multe tonuri intermediare) -> modul "Linii"; siluete / logo-uri / PNG transparent -> "Siluetă"
+    let mid = 0;
+    for (let i = 0; i < n; i++) if (v[i] > 45 && v[i] < 210) mid++;
+    setMode(!useAlpha && mid > n * 0.2 ? 'lin' : 'sil');
     extractAndShow();
   }
 
@@ -202,13 +215,24 @@
   function showImgOpts() {
     document.getElementById('imgOpts').hidden = false;
   }
+  function setMode(m) {
+    imgOpt.mode = m;
+    document.getElementById('imgOpts').dataset.mode = m;
+    document.getElementById('modeSil').classList.toggle('on', m === 'sil');
+    document.getElementById('modeLin').classList.toggle('on', m === 'lin');
+  }
 
   function extractAndShow() {
     showImgOpts();
-    const flat = imageToPath();
-    if (!flat) { imgStatus('Nu am găsit niciun contur — încearcă alt prag sau „Inversează".'); return; }
+    const lin = imgOpt.mode === 'lin', flat = lin ? edgesToPath() : imageToPath();
+    if (!flat) {
+      imgStatus(lin ? 'Nu am găsit margini — mărește „Detalii" sau încearcă „Siluetă".'
+                    : 'Nu am găsit niciun contur — încearcă alt prag, „Inversează" sau „Linii".');
+      return;
+    }
     init(flat.path);
-    imgStatus(flat.loops + (flat.loops === 1 ? ' buclă' : ' bucle') + ' de contur · imaginea rămâne în browserul tău');
+    imgStatus(flat.loops + (lin ? (flat.loops === 1 ? ' linie' : ' linii') : (flat.loops === 1 ? ' buclă' : ' bucle'))
+      + ' · imaginea rămâne în browserul tău');
   }
 
   // masca obiect/fundal -> bucle (marching squares) -> un singur drum inchis -> M puncte, 0..1000
@@ -233,6 +257,93 @@
     let keep = loops.filter(l => l.len >= minLen).slice(0, imgOpt.outer ? 1 : MAXLOOPS);
     const path = joinLoops(keep.map(l => l.p));
     return { path: resampleNormalize(path, 16384), loops: keep.length };
+  }
+
+  // Modul "Linii": margini Canny (blur gaussian, Sobel, suprimare non-maxime, histerezis), urmarite ca
+  // lanturi de pixeli; fiecare lant e parcurs dus-intors ca sa devina bucla, apoi totul se uneste.
+  function edgesToPath() {
+    let { w, h, lum } = imgSrc;
+    // pozele mari dau prea multe margini marunte: lucram la max. 360 px
+    const f = Math.min(1, 360 / Math.max(w, h));
+    if (f < 1) {
+      const w2 = Math.round(w * f), h2 = Math.round(h * f), l2 = new Float32Array(w2 * h2);
+      for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+        let s = 0, c = 0;
+        const x0 = Math.floor(x / f), x1 = Math.min(w, Math.floor((x + 1) / f)), y0 = Math.floor(y / f), y1 = Math.min(h, Math.floor((y + 1) / f));
+        for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) { s += lum[yy * w + xx]; c++; }
+        l2[y * w2 + x] = c ? s / c : 255;
+      }
+      w = w2; h = h2; lum = l2;
+    }
+    const n = w * h, K = [1, 4, 6, 4, 1], tmp = new Float32Array(n), b = new Float32Array(n);
+    const cl = (v, a) => v < 0 ? 0 : v >= a ? a - 1 : v;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let s = 0; for (let k = -2; k <= 2; k++) s += K[k + 2] * lum[y * w + cl(x + k, w)]; tmp[y * w + x] = s / 16;
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let s = 0; for (let k = -2; k <= 2; k++) s += K[k + 2] * tmp[cl(y + k, h) * w + x]; b[y * w + x] = s / 16;
+    }
+    const mag = new Float32Array(n), dir = new Uint8Array(n);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const gx = b[i - w + 1] + 2 * b[i + 1] + b[i + w + 1] - b[i - w - 1] - 2 * b[i - 1] - b[i + w - 1];
+      const gy = b[i + w - 1] + 2 * b[i + w] + b[i + w + 1] - b[i - w - 1] - 2 * b[i - w] - b[i - w + 1];
+      mag[i] = Math.hypot(gx, gy);
+      let a = Math.atan2(gy, gx) * 180 / Math.PI; if (a < 0) a += 180;
+      dir[i] = a < 22.5 || a >= 157.5 ? 0 : a < 67.5 ? 1 : a < 112.5 ? 2 : 3;
+    }
+    const OFF = [[1, 0], [1, 1], [0, 1], [-1, 1]];
+    const nms = new Float32Array(n), cand = [];
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x, m = mag[i]; if (m < 4) continue;
+      const [dx, dy] = OFF[dir[i]];
+      if (m >= mag[i + dy * w + dx] && m > mag[i - dy * w - dx]) { nms[i] = m; cand.push(m); }
+    }
+    if (cand.length < 10) return null;
+    cand.sort((a, b) => a - b);
+    const keep = 0.04 + 0.5 * imgOpt.detail / 100;           // fractiunea de margini "puternice"
+    const hi = cand[Math.floor(cand.length * (1 - keep))], lo = hi * 0.45;
+    const E = new Uint8Array(n), st = [];
+    for (let i = 0; i < n; i++) if (nms[i] >= hi) { E[i] = 1; st.push(i); }
+    while (st.length) {
+      const i = st.pop(), x = i % w, y = (i / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        const j = yy * w + xx; if (!E[j] && nms[j] >= lo) { E[j] = 1; st.push(j); }
+      }
+    }
+    // urmarirea lanturilor: intai de la capete, apoi ce a ramas (bucle inchise)
+    const N8 = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -1]];
+    const deg = i => { let c = 0; const x = i % w, y = (i / w) | 0;
+      for (const [dx, dy] of N8) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h && E[yy * w + xx]) c++; } return c; };
+    const used = new Uint8Array(n), chains = [];
+    const walk = s => {
+      const c = []; let i = s;
+      while (i >= 0) {
+        used[i] = 1; c.push([i % w + 0.5, ((i / w) | 0) + 0.5]);
+        const x = i % w, y = (i / w) | 0; let nx = -1;
+        for (const [dx, dy] of N8) {
+          const xx = x + dx, yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < w && yy < h) { const j = yy * w + xx; if (E[j] && !used[j]) { nx = j; break; } }
+        }
+        i = nx;
+      }
+      return c;
+    };
+    for (let i = 0; i < n; i++) if (E[i] && !used[i] && deg(i) === 1) chains.push(walk(i));
+    for (let i = 0; i < n; i++) if (E[i] && !used[i]) chains.push(walk(i));
+    const minLen = Math.max(6, Math.max(w, h) * 0.025);
+    const loops = chains.filter(c => c.length >= minLen).sort((a, b) => b.length - a.length).slice(0, 400)
+      .map(c => {
+        const sm = c.map((p, i) => {            // netezire (fara a muta capetele)
+          if (i < 2 || i > c.length - 3) return p;
+          let sx = 0, sy = 0; for (let j = -2; j <= 2; j++) { sx += c[i + j][0]; sy += c[i + j][1]; }
+          return [sx / 5, sy / 5];
+        });
+        return sm.concat(sm.slice(1, -1).reverse());  // dus-intors => bucla
+      });
+    if (!loops.length) return null;
+    return { path: resampleNormalize(joinLoops(loops), 16384), loops: loops.length };
   }
 
   function marching(G, W, H) {
@@ -342,6 +453,9 @@
     if (!imgSrc) return;
     imgOpt.outer = !imgOpt.outer; e.target.classList.toggle('on', imgOpt.outer); extractAndShow();
   };
+  document.getElementById('detail').onchange = e => { if (imgSrc) { imgOpt.detail = +e.target.value; extractAndShow(); } };
+  document.getElementById('modeSil').onclick = () => { if (imgSrc && imgOpt.mode !== 'sil') { setMode('sil'); extractAndShow(); } };
+  document.getElementById('modeLin').onclick = () => { if (imgSrc && imgOpt.mode !== 'lin') { setMode('lin'); extractAndShow(); } };
   document.getElementById('thr').onchange = e => { if (imgSrc) { imgOpt.thr = +e.target.value; extractAndShow(); } };
   // trage o imagine peste pagina sau lipeste-o (Ctrl+V)
   ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => {
