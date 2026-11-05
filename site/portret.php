@@ -2,6 +2,8 @@
 // Portret: "Desenează-mă" - utilizatorul incarca o imagine (silueta, desen, logo), conturul e extras
 // in browser (prag Otsu + marching squares), buclele sunt unite intr-un singur drum inchis si desenat
 // cu epicicluri (serie Fourier cu N termeni), in acelasi stil ca fun.php. Imaginea nu pleaca spre server.
+// Pagina se schimba des: browserul (mai ales pe telefon) trebuie sa ceara mereu versiunea noua.
+header('Cache-Control: no-cache, must-revalidate');
 ?>
 <!DOCTYPE html>
 <html lang="ro">
