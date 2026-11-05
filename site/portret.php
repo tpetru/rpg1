@@ -62,6 +62,11 @@
   #imgOpts[data-mode="lin"] .sil, #imgOpts[data-mode="sil"] .lin { display: none; }
   .controls .hint { font-size: 12px; color: var(--ink-2); }
   .dropping canvas { outline: 2px dashed var(--accent); outline-offset: -6px; }
+  #fsView { position: fixed; inset: 0; background: #000; z-index: 50; }
+  #fsView canvas { width: 100%; height: 100%; }
+  #fsView .bar { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; font-family: system-ui, "Segoe UI", Roboto, sans-serif; font-size: 14px; }
+  #fsView button { font: inherit; color: var(--ink); background: rgba(0,0,0,.6); border: 1px solid var(--line); border-radius: 16px; padding: 6px 13px; cursor: pointer; }
+  #fsView button:hover { border-color: var(--accent); }
   .loading { text-align: center; color: var(--ink-2); font-family: system-ui, sans-serif; padding: 40px 0; }
 </style>
 </head>
@@ -88,6 +93,10 @@
       <button id="playBtn">Pauză</button>
       <button id="restartBtn">De la capăt</button>
     </div>
+    <div class="group" id="resultBtns" hidden>
+      <button id="fsBtn" class="upload" title="Desenul terminat, pe tot ecranul">⛶ Ecran complet</button>
+      <button id="dlBtn" class="upload" title="Descarcă desenul ca imagine PNG">⤓ Descarcă</button>
+    </div>
     <div class="group">
       <span>Viteză</span><input type="range" id="speed" min="0" max="100" value="45">
     </div>
@@ -98,6 +107,7 @@
     <div class="group" id="imgOpts" hidden>
       <button id="modeSil" title="Conturul obiectului (siluete, logo-uri, PNG transparent)">Siluetă</button>
       <button id="modeLin" title="Marginile din imagine (fotografii, portrete, desene)">Linii</button>
+      <button id="personBtn" title="Scoate fundalul și desenează doar persoana (model AI care rulează în browser, ~25 MB la prima folosire)">Doar persoana</button>
       <span class="sil">
         <button id="outerBtn" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
         <button id="invertBtn" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
@@ -110,6 +120,10 @@
     </div>
   </div>
 </main>
+<div id="fsView" hidden>
+  <canvas id="fsCv" aria-label="Desenul terminat"></canvas>
+  <div class="bar"><button id="fsDl">⤓ Descarcă</button><button id="fsClose" title="Închide (Esc)">✕</button></div>
+</div>
 
 <script>
 (function () {
@@ -158,7 +172,7 @@
   // ---------- "Desenează-mă": contur din imaginea utilizatorului (totul local, in browser) ----------
   const MAXDIM = 480, MAXLOOPS = 120;
   let imgSrc = null;                          // {w, h, v: luminozitate 0..255 (sau opacitate inversata)}
-  const imgOpt = { invert: false, outer: false, thr: 128, mode: 'sil', detail: 35 };
+  const imgOpt = { invert: false, outer: false, thr: 128, mode: 'sil', detail: 35, person: false };
   const imgStatus = t => { document.getElementById('imgStatus').textContent = t; };
 
   function loadImageFile(file) {
@@ -185,7 +199,7 @@
       lum[i] = (0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2]) * a + 255 * (1 - a);
       v[i] = useAlpha ? 255 * (1 - a) : lum[i];
     }
-    imgSrc = { w, h, v, lum };
+    imgSrc = { w, h, v, lum, canvas: c, person: null };
     imgOpt.invert = false;
     document.getElementById('invertBtn').classList.remove('on');
     imgOpt.thr = otsu(v);
@@ -194,7 +208,7 @@
     let mid = 0;
     for (let i = 0; i < n; i++) if (v[i] > 45 && v[i] < 210) mid++;
     setMode(!useAlpha && mid > n * 0.2 ? 'lin' : 'sil');
-    extractAndShow();
+    if (imgOpt.person) withPerson(); else extractAndShow();
   }
 
   function otsu(v) {
@@ -211,6 +225,60 @@
     }
     return Math.min(254, Math.max(1, thr + 1));
   }
+
+  // ---- "Doar persoana": segmentare cu MediaPipe (selfie multiclass), incarcata doar la cerere ----
+  const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite';
+  let segP = null;
+  function getSegmenter() {
+    if (!segP) {
+      segP = (async () => {
+        const vision = await import(MP + '/vision_bundle.mjs');
+        const files = await vision.FilesetResolver.forVisionTasks(MP + '/wasm');
+        return vision.ImageSegmenter.createFromOptions(files, {
+          baseOptions: { modelAssetPath: MP_MODEL }, runningMode: 'IMAGE',
+          outputConfidenceMasks: true, outputCategoryMask: false,
+        });
+      })();
+      segP.catch(() => { segP = null; });
+    }
+    return segP;
+  }
+  async function segmentPerson(src) {
+    if (src.person) return src.person;
+    const seg = await getSegmenter();
+    const { w, h } = src;
+    let p = null;
+    seg.segment(src.canvas, r => {
+      const m = r.confidenceMasks[0], bg = m.getAsFloat32Array(), mw = m.width, mh = m.height;
+      p = new Float32Array(w * h);                 // categoria 0 = fundal; restul (par, fata, corp, haine) = persoana
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+        p[y * w + x] = 1 - bg[Math.min(mh - 1, (y * mh / h) | 0) * mw + Math.min(mw - 1, (x * mw / w) | 0)];
+    });
+    let cnt = 0; for (let i = 0; i < p.length; i++) if (p[i] > 0.5) cnt++;
+    src.person = cnt > p.length * 0.005 ? p : 'none';
+    return src.person;
+  }
+  async function withPerson() {
+    const src = imgSrc, btn = document.getElementById('personBtn');
+    showImgOpts();
+    if (!src.person) imgStatus(segP ? 'Caut persoana…' : 'Se încarcă modelul pentru persoane (~25 MB, doar prima dată)…');
+    try { await segmentPerson(src); }
+    catch (e) {
+      imgOpt.person = false; btn.classList.remove('on');
+      imgStatus('Nu am putut încărca modelul pentru persoane.');
+      return;
+    }
+    if (src !== imgSrc) return;                       // intre timp s-a incarcat alta imagine
+    if (src.person === 'none') {
+      imgOpt.person = false; btn.classList.remove('on');
+      extractAndShow();
+      imgStatus('Nu am găsit nicio persoană în imagine — o desenez întreagă.');
+      return;
+    }
+    extractAndShow();
+  }
+  const personMask = () => imgOpt.person && imgSrc.person && imgSrc.person !== 'none' ? imgSrc.person : null;
 
   function showImgOpts() {
     document.getElementById('imgOpts').hidden = false;
@@ -232,17 +300,22 @@
     }
     init(flat.path);
     imgStatus(flat.loops + (lin ? (flat.loops === 1 ? ' linie' : ' linii') : (flat.loops === 1 ? ' buclă' : ' bucle'))
-      + ' · imaginea rămâne în browserul tău');
+      + (personMask() ? ' · doar persoana' : '') + ' · imaginea rămâne în browserul tău');
   }
 
   // masca obiect/fundal -> bucle (marching squares) -> un singur drum inchis -> M puncte, 0..1000
   function imageToPath() {
-    const { w, h, v } = imgSrc, thr = imgOpt.thr;
-    // fundalul e ce domina pe margine
-    let darkBorder = 0, nb = 0;
-    for (let x = 0; x < w; x++) { darkBorder += (v[x] < thr) + (v[(h - 1) * w + x] < thr); nb += 2; }
-    for (let y = 0; y < h; y++) { darkBorder += (v[y * w] < thr) + (v[y * w + w - 1] < thr); nb += 2; }
-    const fgDark = (darkBorder < nb / 2) !== imgOpt.invert;
+    const pm = personMask(), { w, h } = imgSrc;
+    let v = imgSrc.v, thr = imgOpt.thr, fgDark;
+    if (pm) {                                        // persoana = "opaca", fundalul = transparent
+      v = pm.map(q => 255 * (1 - q)); thr = 128; fgDark = !imgOpt.invert;
+    } else {
+      // fundalul e ce domina pe margine
+      let darkBorder = 0, nb = 0;
+      for (let x = 0; x < w; x++) { darkBorder += (v[x] < thr) + (v[(h - 1) * w + x] < thr); nb += 2; }
+      for (let y = 0; y < h; y++) { darkBorder += (v[y * w] < thr) + (v[y * w + w - 1] < thr); nb += 2; }
+      fgDark = (darkBorder < nb / 2) !== imgOpt.invert;
+    }
     const W = w + 2, H = h + 2, G = new Uint8Array(W * H);     // bordura de 0 => toate buclele se inchid
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const val = v[y * w + x];
@@ -262,18 +335,23 @@
   // Modul "Linii": margini Canny (blur gaussian, Sobel, suprimare non-maxime, histerezis), urmarite ca
   // lanturi de pixeli; fiecare lant e parcurs dus-intors ca sa devina bucla, apoi totul se uneste.
   function edgesToPath() {
-    let { w, h, lum } = imgSrc;
+    let { w, h, lum } = imgSrc, pm = personMask();
     // pozele mari dau prea multe margini marunte: lucram la max. 360 px
     const f = Math.min(1, 360 / Math.max(w, h));
     if (f < 1) {
-      const w2 = Math.round(w * f), h2 = Math.round(h * f), l2 = new Float32Array(w2 * h2);
-      for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
-        let s = 0, c = 0;
-        const x0 = Math.floor(x / f), x1 = Math.min(w, Math.floor((x + 1) / f)), y0 = Math.floor(y / f), y1 = Math.min(h, Math.floor((y + 1) / f));
-        for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) { s += lum[yy * w + xx]; c++; }
-        l2[y * w2 + x] = c ? s / c : 255;
-      }
-      w = w2; h = h2; lum = l2;
+      const w2 = Math.round(w * f), h2 = Math.round(h * f);
+      const down = src => {
+        const out = new Float32Array(w2 * h2);
+        for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+          let s = 0, c = 0;
+          const x0 = Math.floor(x / f), x1 = Math.min(w, Math.floor((x + 1) / f)), y0 = Math.floor(y / f), y1 = Math.min(h, Math.floor((y + 1) / f));
+          for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) { s += src[yy * w + xx]; c++; }
+          out[y * w2 + x] = c ? s / c : 0;
+        }
+        return out;
+      };
+      lum = down(lum); if (pm) pm = down(pm);
+      w = w2; h = h2;
     }
     const n = w * h, K = [1, 4, 6, 4, 1], tmp = new Float32Array(n), b = new Float32Array(n);
     const cl = (v, a) => v < 0 ? 0 : v >= a ? a - 1 : v;
@@ -295,7 +373,7 @@
     const OFF = [[1, 0], [1, 1], [0, 1], [-1, 1]];
     const nms = new Float32Array(n), cand = [];
     for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
-      const i = y * w + x, m = mag[i]; if (m < 4) continue;
+      const i = y * w + x, m = mag[i]; if (m < 4 || (pm && pm[i] < 0.35)) continue;   // fara fundal
       const [dx, dy] = OFF[dir[i]];
       if (m >= mag[i + dy * w + dx] && m > mag[i - dy * w - dx]) { nms[i] = m; cand.push(m); }
     }
@@ -333,7 +411,7 @@
     for (let i = 0; i < n; i++) if (E[i] && !used[i] && deg(i) === 1) chains.push(walk(i));
     for (let i = 0; i < n; i++) if (E[i] && !used[i]) chains.push(walk(i));
     const minLen = Math.max(6, Math.max(w, h) * 0.025);
-    const loops = chains.filter(c => c.length >= minLen).sort((a, b) => b.length - a.length).slice(0, 400)
+    let loops = chains.filter(c => c.length >= minLen).sort((a, b) => b.length - a.length).slice(0, 400)
       .map(c => {
         const sm = c.map((p, i) => {            // netezire (fara a muta capetele)
           if (i < 2 || i > c.length - 3) return p;
@@ -342,6 +420,13 @@
         });
         return sm.concat(sm.slice(1, -1).reverse());  // dus-intors => bucla
       });
+    if (pm) {                                        // conturul persoanei, ca prima bucla
+      const W = w + 2, H = h + 2, G = new Uint8Array(W * H);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) G[(y + 1) * W + x + 1] = pm[y * w + x] >= 0.5 ? 1 : 0;
+      const sil = marching(G, W, H).map(smoothLoop).map(l => l.map(q => [q[0] - 0.5, q[1] - 0.5]))
+        .sort((a, b) => b.length - a.length);
+      if (sil.length) loops = sil.filter(l => l.length >= sil[0].length * 0.1).slice(0, 3).concat(loops);
+    }
     if (!loops.length) return null;
     return { path: resampleNormalize(joinLoops(loops), 16384), loops: loops.length };
   }
@@ -455,6 +540,11 @@
   };
   document.getElementById('detail').onchange = e => { if (imgSrc) { imgOpt.detail = +e.target.value; extractAndShow(); } };
   document.getElementById('modeSil').onclick = () => { if (imgSrc && imgOpt.mode !== 'sil') { setMode('sil'); extractAndShow(); } };
+  document.getElementById('personBtn').onclick = e => {
+    if (!imgSrc) return;
+    imgOpt.person = !imgOpt.person; e.target.classList.toggle('on', imgOpt.person);
+    if (imgOpt.person) withPerson(); else extractAndShow();
+  };
   document.getElementById('modeLin').onclick = () => { if (imgSrc && imgOpt.mode !== 'lin') { setMode('lin'); extractAndShow(); } };
   document.getElementById('thr').onchange = e => { if (imgSrc) { imgOpt.thr = +e.target.value; extractAndShow(); } };
   // trage o imagine peste pagina sau lipeste-o (Ctrl+V)
@@ -488,10 +578,64 @@
     prepareImage(c);
     imgStatus('Exemplu · încarcă, trage sau lipește (Ctrl+V) o imagine a ta');
   }
+
+  // ---------- rezultat: ecran complet si descarcare PNG ----------
+  // Deseneaza curba reconstruita (la N-ul curent) centrata intr-un canvas oarecare.
+  function renderResult(c, W, H, caption) {
+    const g = c.getContext('2d');
+    c.width = W; c.height = H;
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    let a = Infinity, b = Infinity, A = -Infinity, B = -Infinity;
+    for (let i = 0; i < M; i++) { const x = recon.x[i], y = recon.y[i]; if (x < a) a = x; if (x > A) A = x; if (y < b) b = y; if (y > B) B = y; }
+    const pad = Math.min(W, H) * 0.07, sc = Math.min((W - 2 * pad) / Math.max(1, A - a), (H - 2 * pad) / Math.max(1, B - b));
+    const ox = (W - (A - a) * sc) / 2 - a * sc, oy = (H - (B - b) * sc) / 2 - b * sc;
+    g.strokeStyle = '#f0b8a0'; g.lineWidth = Math.max(1.2, Math.min(W, H) / 700); g.lineJoin = g.lineCap = 'round';
+    g.beginPath();
+    for (let i = 0; i <= M; i++) { const j = i % M, x = ox + recon.x[j] * sc, y = oy + recon.y[j] * sc; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+    if (caption) {
+      g.fillStyle = 'rgba(242,237,230,0.45)'; g.font = Math.round(Math.min(W, H) / 55) + 'px Georgia, serif';
+      g.textAlign = 'right'; g.fillText('N = ' + curN + ' · no-santos.com/portret.php', W - pad / 2, H - pad / 2);
+    }
+  }
+  const fsView = document.getElementById('fsView'), fsCv = document.getElementById('fsCv');
+  function drawFs() {
+    if (fsView.hidden) return;
+    const d = window.devicePixelRatio || 1;
+    renderResult(fsCv, Math.round(fsView.clientWidth * d), Math.round(fsView.clientHeight * d), false);
+  }
+  function openFs() {
+    fsView.hidden = false; drawFs();
+    if (fsView.requestFullscreen) fsView.requestFullscreen().then(drawFs, () => {});
+  }
+  function closeFs() {
+    fsView.hidden = true;
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  }
+  function download() {
+    const c = document.createElement('canvas');
+    renderResult(c, 2400, 2400, true);
+    c.toBlob(bl => {
+      if (!bl) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(bl); a.download = 'portret-epicicluri-N' + curN + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }, 'image/png');
+  }
+  document.getElementById('fsBtn').onclick = openFs;
+  document.getElementById('dlBtn').onclick = download;
+  document.getElementById('fsDl').onclick = download;
+  document.getElementById('fsClose').onclick = closeFs;
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && !fsView.hidden) closeFs(); else drawFs(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !fsView.hidden) closeFs(); });
+  window.addEventListener('resize', drawFs);
+
   demo();
 
   function init(flat) {
     yMax = 0; progress = 0; holdUntil = 0;
+    document.getElementById('resultBtns').hidden = true;
     M = flat.length / 2;
     X = new Float64Array(M); Y = new Float64Array(M);
     for (let i = 0; i < M; i++) { X[i] = flat[2 * i]; Y[i] = flat[2 * i + 1]; if (Y[i] > yMax) yMax = Y[i]; }
@@ -557,6 +701,7 @@
     document.getElementById('nVal').textContent = n;
     document.getElementById('errVal').textContent = errPct >= 10 ? errPct.toFixed(1) : errPct.toFixed(2);
     document.querySelectorAll('#nButtons button').forEach(b => b.classList.toggle('on', +b.dataset.n === n));
+    drawFs();
   }
 
   function buildControls() {
@@ -632,6 +777,7 @@
       progress += dt / dur;
       if (progress >= 1) {
         progress = 0;
+        document.getElementById('resultBtns').hidden = false;
         holdUntil = now + 1800;
         if (auto) {
           const i = NS.indexOf(curN);
