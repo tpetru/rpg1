@@ -66,6 +66,18 @@ header('Cache-Control: no-cache, must-revalidate');
   #imgOpts[data-mode="lin"] .sil, #imgOpts[data-mode="sil"] .lin { display: none; }
   .controls .hint { font-size: 12px; color: var(--ink-2); }
   .dropping canvas { outline: 2px dashed var(--accent); outline-offset: -6px; }
+  #edView { position: fixed; inset: 0; background: #0b0a09; z-index: 60; display: flex; flex-direction: column; }
+  #edView[hidden] { display: none; }
+  #edView .ed-stage { flex: 1; min-height: 0; position: relative; }
+  #edView canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  #edView .ed-bar { padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 8px; align-items: center;
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif; font-size: 14px; color: var(--ink-2); }
+  #edView .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+  #edView button { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 16px; padding: 7px 14px; cursor: pointer; }
+  #edView button:hover { border-color: var(--accent); }
+  #edView button.on { background: var(--accent); border-color: var(--accent); color: #1a1210; }
+  #edView input[type=range] { accent-color: var(--accent); width: 160px; }
+  #edView .hint { font-size: 12px; }
   #fsView { position: fixed; inset: 0; background: #000; z-index: 50; }
   #fsView canvas { width: 100%; height: 100%; }
   #fsView img { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; -webkit-touch-callout: default; }
@@ -115,6 +127,7 @@ header('Cache-Control: no-cache, must-revalidate');
     <div class="group" id="imgOpts" hidden>
       <button id="modeSil" title="Conturul obiectului (siluete, logo-uri, PNG transparent)">Siluetă</button>
       <button id="modeLin" title="Marginile din imagine (fotografii, portrete, desene)">Linii</button>
+      <button id="editBtn" title="Taie, rotește sau încadrează din nou poza">✂ Editează poza</button>
       <button id="personBtn" title="Scoate fundalul și desenează doar persoana (model AI care rulează în browser, ~25 MB la prima folosire)">Doar persoana</button>
       <span class="sil">
         <button id="outerBtn" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
@@ -128,6 +141,25 @@ header('Cache-Control: no-cache, must-revalidate');
     </div>
   </div>
 </main>
+<div id="edView" hidden>
+  <div class="ed-stage"><canvas id="edCv" aria-label="Editează poza: trage de colțuri ca să tai"></canvas></div>
+  <div class="ed-bar">
+    <div class="row">
+      <button id="edRotL" title="Rotește 90° la stânga">↺ 90°</button>
+      <button id="edRotR" title="Rotește 90° la dreapta">↻ 90°</button>
+      <span>Rotire</span><input type="range" id="edAngle" min="-45" max="45" step="0.5" value="0" title="Rotire fină (îndreaptă poza)">
+      <span id="edAngleVal">0°</span>
+    </div>
+    <div class="row">
+      <span class="hint">Trage de colțuri ca să tai · trage zona ca s-o muți</span>
+    </div>
+    <div class="row">
+      <button id="edReset">Resetează</button>
+      <button id="edCancel">Anulează</button>
+      <button id="edOk" class="on">✓ Desenează</button>
+    </div>
+  </div>
+</div>
 <div id="fsView" hidden>
   <canvas id="fsCv" aria-label="Desenul terminat"></canvas>
   <img id="fsImg" alt="Desenul terminat" hidden>
@@ -193,10 +225,130 @@ header('Cache-Control: no-cache, must-revalidate');
   function loadImageFile(file) {
     if (!file || !/^image\//.test(file.type)) { showImgOpts(); imgStatus('Alege un fișier imagine.'); return; }
     const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); prepareImage(img); };
+    img.onload = () => { URL.revokeObjectURL(url); openEditor(img); };
     img.onerror = () => { URL.revokeObjectURL(url); showImgOpts(); imgStatus('Nu am putut citi imaginea.'); };
     img.src = url;
   }
+
+  // ---------- editor: rotire (90° + fina) si taiere, inainte de desen ----------
+  const ED_MAX = 1400;                       // rezolutia de lucru a editorului (desenul foloseste oricum max. 480 px)
+  const edView = document.getElementById('edView'), edCv = document.getElementById('edCv');
+  let ed = null;                             // { img, alpha, quarter, fine, rc (canvas rotit), crop: [x0,y0,x1,y1] in 0..1 }
+  let edOrig = null;                         // ultima imagine originala, pentru "Editează poza"
+
+  function hasAlpha(img) {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, 64, 64);
+    const d = g.getImageData(0, 0, 64, 64).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+    return false;
+  }
+  function openEditor(img) {
+    edOrig = img;
+    ed = { img, alpha: hasAlpha(img), quarter: 0, fine: 0, rc: null, crop: [0, 0, 1, 1], drag: null };
+    document.getElementById('edAngle').value = 0;
+    edView.hidden = false;
+    edRotate();
+  }
+  // deseneaza poza rotita intr-un canvas de lucru (fundal alb la colturi, daca poza nu e transparenta)
+  function edRotate() {
+    const img = ed.img, iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const f = Math.min(1, ED_MAX / Math.max(iw, ih)), w = iw * f, h = ih * f;
+    const a = (ed.quarter * 90 + ed.fine) * Math.PI / 180, c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a));
+    const W = Math.round(w * c + h * sn), H = Math.round(w * sn + h * c);
+    const rc = document.createElement('canvas'); rc.width = Math.max(1, W); rc.height = Math.max(1, H);
+    const g = rc.getContext('2d');
+    if (!ed.alpha) { g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); }
+    g.translate(W / 2, H / 2); g.rotate(a); g.drawImage(img, -w / 2, -h / 2, w, h);
+    ed.rc = rc;
+    if (ed.fine) {                            // rotire fina: taie automat colturile albe (cel mai mare dreptunghi interior)
+      const q = ed.quarter % 2, w2 = q ? h : w, h2 = q ? w : h, fa = Math.abs(ed.fine) * Math.PI / 180;
+      const sa = Math.sin(fa), ca = Math.cos(fa), lng = Math.max(w2, h2), sht = Math.min(w2, h2);
+      let wr, hr;
+      if (sht <= 2 * sa * ca * lng) { const x = sht / 2; [wr, hr] = w2 >= h2 ? [x / sa, x / ca] : [x / ca, x / sa]; }
+      else { const c2 = ca * ca - sa * sa; wr = (w2 * ca - h2 * sa) / c2; hr = (h2 * ca - w2 * sa) / c2; }
+      const fx = Math.min(1, wr / W), fy = Math.min(1, hr / H);
+      ed.crop = [(1 - fx) / 2, (1 - fy) / 2, (1 + fx) / 2, (1 + fy) / 2];
+    }
+    document.getElementById('edAngleVal').textContent = (ed.fine > 0 ? '+' : '') + ed.fine + '°';
+    edDraw();
+  }
+  function edLayout() {
+    const d = window.devicePixelRatio || 1, cw = edCv.clientWidth, ch = edCv.clientHeight;
+    if (edCv.width !== Math.round(cw * d) || edCv.height !== Math.round(ch * d)) { edCv.width = Math.round(cw * d); edCv.height = Math.round(ch * d); }
+    const pad = 18, rc = ed.rc, sc = Math.min((cw - 2 * pad) / rc.width, (ch - 2 * pad) / rc.height);
+    return { d, sc, x: (cw - rc.width * sc) / 2, y: (ch - rc.height * sc) / 2, w: rc.width * sc, h: rc.height * sc };
+  }
+  function edDraw() {
+    if (!ed || edView.hidden) return;
+    const L2 = edLayout(), g = edCv.getContext('2d'), [x0, y0, x1, y1] = ed.crop;
+    g.setTransform(L2.d, 0, 0, L2.d, 0, 0);
+    g.clearRect(0, 0, edCv.width, edCv.height);
+    g.drawImage(ed.rc, L2.x, L2.y, L2.w, L2.h);
+    const cx = L2.x + x0 * L2.w, cy = L2.y + y0 * L2.h, cw = (x1 - x0) * L2.w, ch = (y1 - y0) * L2.h;
+    g.fillStyle = 'rgba(0,0,0,0.6)';
+    g.beginPath(); g.rect(L2.x, L2.y, L2.w, L2.h); g.rect(cx, cy, cw, ch); g.fill('evenodd');
+    g.strokeStyle = '#e8a08a'; g.lineWidth = 2; g.strokeRect(cx, cy, cw, ch);
+    g.strokeStyle = 'rgba(232,160,138,0.35)'; g.lineWidth = 1; g.beginPath();
+    for (let k = 1; k < 3; k++) { g.moveTo(cx + cw * k / 3, cy); g.lineTo(cx + cw * k / 3, cy + ch); g.moveTo(cx, cy + ch * k / 3); g.lineTo(cx + cw, cy + ch * k / 3); }
+    g.stroke();
+    g.fillStyle = '#e8a08a';
+    for (const [hx, hy] of [[cx, cy], [cx + cw, cy], [cx, cy + ch], [cx + cw, cy + ch]]) { g.beginPath(); g.arc(hx, hy, 7, 0, Math.PI * 2); g.fill(); }
+  }
+  edCv.addEventListener('pointerdown', e => {
+    const L2 = edLayout(), r = edCv.getBoundingClientRect();
+    const px = e.clientX - r.left, py = e.clientY - r.top, [x0, y0, x1, y1] = ed.crop;
+    const cx0 = L2.x + x0 * L2.w, cy0 = L2.y + y0 * L2.h, cx1 = L2.x + x1 * L2.w, cy1 = L2.y + y1 * L2.h;
+    const near = (a, b) => Math.abs(a - b) < (e.pointerType === 'touch' ? 28 : 16);
+    let mode = null;
+    if (near(px, cx0) && near(py, cy0)) mode = 'tl'; else if (near(px, cx1) && near(py, cy0)) mode = 'tr';
+    else if (near(px, cx0) && near(py, cy1)) mode = 'bl'; else if (near(px, cx1) && near(py, cy1)) mode = 'br';
+    else if (px > cx0 && px < cx1 && py > cy0 && py < cy1) mode = 'move';
+    else mode = 'new';
+    const u = (px - L2.x) / L2.w, v = (py - L2.y) / L2.h;
+    ed.drag = { mode, u, v, start: ed.crop.slice() };
+    edCv.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  edCv.addEventListener('pointermove', e => {
+    if (!ed || !ed.drag) return;
+    const L2 = edLayout(), r = edCv.getBoundingClientRect();
+    const cl = q => Math.min(1, Math.max(0, q)), MIN = 0.05;
+    const u = cl((e.clientX - r.left - L2.x) / L2.w), v = cl((e.clientY - r.top - L2.y) / L2.h);
+    const D = ed.drag, [a0, b0, a1, b1] = D.start;
+    let [x0, y0, x1, y1] = D.start;
+    if (D.mode === 'move') {
+      const du = Math.min(1 - a1, Math.max(-a0, u - D.u)), dv = Math.min(1 - b1, Math.max(-b0, v - D.v));
+      x0 = a0 + du; x1 = a1 + du; y0 = b0 + dv; y1 = b1 + dv;
+    } else if (D.mode === 'new') {
+      x0 = Math.min(D.u, u); x1 = Math.max(D.u, u); y0 = Math.min(D.v, v); y1 = Math.max(D.v, v);
+      if (x1 - x0 < MIN || y1 - y0 < MIN) return;
+    } else {
+      if (D.mode[1] === 'l') x0 = Math.min(u, x1 - MIN); else x1 = Math.max(u, x0 + MIN);
+      if (D.mode[0] === 't') y0 = Math.min(v, y1 - MIN); else y1 = Math.max(v, y0 + MIN);
+    }
+    ed.crop = [x0, y0, x1, y1]; edDraw();
+  });
+  const edEnd = () => { if (ed) ed.drag = null; };
+  edCv.addEventListener('pointerup', edEnd); edCv.addEventListener('pointercancel', edEnd);
+  window.addEventListener('resize', edDraw);
+  document.getElementById('edRotL').onclick = () => { ed.quarter = (ed.quarter + 3) % 4; ed.crop = [0, 0, 1, 1]; edRotate(); };
+  document.getElementById('edRotR').onclick = () => { ed.quarter = (ed.quarter + 1) % 4; ed.crop = [0, 0, 1, 1]; edRotate(); };
+  document.getElementById('edAngle').oninput = e => { ed.fine = +e.target.value; if (!ed.fine) ed.crop = [0, 0, 1, 1]; edRotate(); };
+  document.getElementById('edReset').onclick = () => {
+    ed.quarter = 0; ed.fine = 0; ed.crop = [0, 0, 1, 1]; document.getElementById('edAngle').value = 0; edRotate();
+  };
+  document.getElementById('edCancel').onclick = () => { edView.hidden = true; ed = null; };
+  document.getElementById('edOk').onclick = () => {
+    const rc = ed.rc, [x0, y0, x1, y1] = ed.crop;
+    const sx = Math.round(x0 * rc.width), sy = Math.round(y0 * rc.height);
+    const sw = Math.max(8, Math.round((x1 - x0) * rc.width)), sh = Math.max(8, Math.round((y1 - y0) * rc.height));
+    const out = document.createElement('canvas'); out.width = sw; out.height = sh;
+    out.getContext('2d').drawImage(rc, sx, sy, sw, sh, 0, 0, sw, sh);
+    edView.hidden = true; ed = null;
+    prepareImage(out);
+  };
+  document.getElementById('editBtn').onclick = () => { if (edOrig) openEditor(edOrig); };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !edView.hidden) document.getElementById('edCancel').click(); });
 
   function prepareImage(img) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
