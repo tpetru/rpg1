@@ -36,7 +36,7 @@ header('Cache-Control: no-cache, must-revalidate');
   }
   .credit a { color: inherit; text-decoration: none; }
   .readout {
-    position: absolute; left: 58%; transform: translateX(-50%); top: 88%;
+    position: absolute; left: 50%; transform: translateX(-50%); top: 88%;
     text-align: center; pointer-events: none; white-space: nowrap;
   }
   /* N si eroarea: acelasi stil si aceeasi marime ca formulele din stanga sus */
@@ -1015,7 +1015,7 @@ header('Cache-Control: no-cache, must-revalidate');
     L = { W, H, k, s, mapX, mapY, xChainY, yChainX };
     const ro = document.getElementById('readout');
     ro.style.top = ((mapY + yMax * s + 25) / H * 100) + '%';
-    ro.style.left = ((mapX + 500 * s) / W * 100) + '%';
+    ro.style.left = '50%';                       // centrat pe ecran
   }
 
   // Draw a chain of epicycles. comp(t): returns vector of a term. Returns tip.
