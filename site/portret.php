@@ -19,6 +19,7 @@ header('Cache-Control: no-cache, must-revalidate');
     --trace: #f0b8a0; --accent: #e8a08a;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* .controls / .group au display:flex, care altfel ar castiga */
   html, body { margin: 0; background: var(--bg); color: var(--ink); }
   body { font-family: "Latin Modern Roman", "CMU Serif", Georgia, "Times New Roman", serif; }
   main { max-width: 980px; margin: 0 auto; padding: 18px 16px 40px; }
@@ -129,6 +130,7 @@ header('Cache-Control: no-cache, must-revalidate');
       <button id="modeLin" title="Marginile din imagine (fotografii, portrete, desene)">Linii</button>
       <button id="editBtn" title="Taie, rotește sau încadrează din nou poza">✂ Editează poza</button>
       <button id="personBtn" title="Scoate fundalul și desenează doar persoana (model AI care rulează în browser, ~25 MB la prima folosire)">Doar persoana</button>
+      <button id="objBtn" title="Desenează doar obiectul principal (AI în browser, ~15 MB la prima folosire). Apoi atinge desenul ca să alegi alt obiect.">Doar obiectul</button>
       <span class="sil">
         <button id="outerBtn" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
         <button id="invertBtn" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
@@ -219,7 +221,7 @@ header('Cache-Control: no-cache, must-revalidate');
   // ---------- "Desenează-mă": contur din imaginea utilizatorului (totul local, in browser) ----------
   const MAXDIM = 480, MAXLOOPS = 120;
   let imgSrc = null;                          // {w, h, v: luminozitate 0..255 (sau opacitate inversata)}
-  const imgOpt = { invert: false, outer: false, thr: 128, mode: 'sil', detail: 35, person: false };
+  const imgOpt = { invert: false, outer: false, thr: 128, mode: 'sil', detail: 35, person: false, obj: false, objPt: [0.5, 0.5] };
   const imgStatus = t => { document.getElementById('imgStatus').textContent = t; };
 
   function loadImageFile(file) {
@@ -366,7 +368,8 @@ header('Cache-Control: no-cache, must-revalidate');
       lum[i] = (0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2]) * a + 255 * (1 - a);
       v[i] = useAlpha ? 255 * (1 - a) : lum[i];
     }
-    imgSrc = { w, h, v, lum, canvas: c, person: null };
+    imgSrc = { w, h, v, lum, canvas: c, person: null, obj: null, objKey: '' };
+    imgOpt.objPt = [0.5, 0.5];
     imgOpt.invert = false;
     document.getElementById('invertBtn').classList.remove('on');
     imgOpt.thr = otsu(v);
@@ -375,7 +378,7 @@ header('Cache-Control: no-cache, must-revalidate');
     let mid = 0;
     for (let i = 0; i < n; i++) if (v[i] > 45 && v[i] < 210) mid++;
     setMode(!useAlpha && mid > n * 0.2 ? 'lin' : 'sil');
-    if (imgOpt.person) withPerson(); else extractAndShow();
+    if (imgOpt.person) withPerson(); else if (imgOpt.obj) withObject(); else extractAndShow();
   }
 
   function otsu(v) {
@@ -445,7 +448,65 @@ header('Cache-Control: no-cache, must-revalidate');
     }
     extractAndShow();
   }
-  const personMask = () => imgOpt.person && imgSrc.person && imgSrc.person !== 'none' ? imgSrc.person : null;
+  // ---- "Doar obiectul": MediaPipe InteractiveSegmenter (MagicTouch) - obiectul de sub un punct ----
+  // Implicit punctul e centrul pozei; un click / o atingere pe desen alege alt obiect.
+  const MT_MODEL = 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/latest/magic_touch.tflite';
+  let mtP = null;
+  function getMagic() {
+    if (!mtP) {
+      mtP = (async () => {
+        const vision = await import(MP + '/vision_bundle.mjs');
+        const files = await vision.FilesetResolver.forVisionTasks(MP + '/wasm');
+        return vision.InteractiveSegmenter.createFromOptions(files, {
+          baseOptions: { modelAssetPath: MT_MODEL }, outputConfidenceMasks: true, outputCategoryMask: false,
+        });
+      })();
+      mtP.catch(() => { mtP = null; });
+    }
+    return mtP;
+  }
+  async function segmentObject(src, pt) {
+    const key = pt.map(q => q.toFixed(3)).join(',');
+    if (src.obj && src.objKey === key) return src.obj;
+    const seg = await getMagic();
+    const { w, h } = src;
+    let p = null;
+    seg.segment(src.canvas, { keypoint: { x: pt[0], y: pt[1] } }, r => {
+      const m = r.confidenceMasks[0], a = m.getAsFloat32Array(), mw = m.width, mh = m.height;
+      p = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+        p[y * w + x] = a[Math.min(mh - 1, (y * mh / h) | 0) * mw + Math.min(mw - 1, (x * mw / w) | 0)];
+    });
+    // masca trebuie sa contina punctul ales; daca e invers (fundalul), o intoarcem
+    const ki = Math.min(h - 1, (pt[1] * h) | 0) * w + Math.min(w - 1, (pt[0] * w) | 0);
+    if (p[ki] < 0.5) for (let i = 0; i < p.length; i++) p[i] = 1 - p[i];
+    let cnt = 0; for (let i = 0; i < p.length; i++) if (p[i] > 0.5) cnt++;
+    src.obj = cnt > p.length * 0.003 && cnt < p.length * 0.97 ? p : 'none';
+    src.objKey = key;
+    return src.obj;
+  }
+  async function withObject() {
+    const src = imgSrc, btn = document.getElementById('objBtn');
+    showImgOpts();
+    imgStatus(mtP ? 'Caut obiectul…' : 'Se încarcă modelul pentru obiecte (~15 MB, doar prima dată)…');
+    try { await segmentObject(src, imgOpt.objPt); }
+    catch (e) {
+      imgOpt.obj = false; btn.classList.remove('on'); cv.style.cursor = '';
+      imgStatus('Nu am putut încărca modelul pentru obiecte.');
+      return;
+    }
+    if (src !== imgSrc) return;
+    if (src.obj === 'none') {
+      extractAndShow();
+      imgStatus('Nu am găsit un obiect acolo — atinge desenul pe obiectul dorit.');
+      return;
+    }
+    extractAndShow();
+  }
+  const personMask = () => {
+    if (imgOpt.obj) return imgSrc.obj && imgSrc.obj !== 'none' ? imgSrc.obj : null;
+    return imgOpt.person && imgSrc.person && imgSrc.person !== 'none' ? imgSrc.person : null;
+  };
 
   function showImgOpts() {
     document.getElementById('imgOpts').hidden = false;
@@ -468,7 +529,8 @@ header('Cache-Control: no-cache, must-revalidate');
     frameRect = flat.path.frame || null;
     init(flat.path);
     imgStatus(flat.loops + (lin ? (flat.loops === 1 ? ' linie' : ' linii') : (flat.loops === 1 ? ' buclă' : ' bucle'))
-      + (personMask() ? ' · doar persoana' : '') + ' · imaginea rămâne în browserul tău');
+      + (personMask() ? (imgOpt.obj ? ' · doar obiectul (atinge desenul ca să alegi altul)' : ' · doar persoana') : '')
+      + ' · imaginea rămâne în browserul tău');
   }
 
   // masca obiect/fundal -> bucle (marching squares) -> un singur drum inchis -> M puncte, 0..1000
@@ -716,8 +778,26 @@ header('Cache-Control: no-cache, must-revalidate');
   document.getElementById('personBtn').onclick = e => {
     if (!imgSrc) return;
     imgOpt.person = !imgOpt.person; e.target.classList.toggle('on', imgOpt.person);
+    if (imgOpt.person) { imgOpt.obj = false; document.getElementById('objBtn').classList.remove('on'); cv.style.cursor = ''; }
     if (imgOpt.person) withPerson(); else extractAndShow();
   };
+  document.getElementById('objBtn').onclick = e => {
+    if (!imgSrc) return;
+    imgOpt.obj = !imgOpt.obj; e.target.classList.toggle('on', imgOpt.obj);
+    cv.style.cursor = imgOpt.obj ? 'crosshair' : '';
+    if (imgOpt.obj) { imgOpt.person = false; document.getElementById('personBtn').classList.remove('on'); withObject(); }
+    else extractAndShow();
+  };
+  // in modul "Doar obiectul": click / atingere pe desen (in rama pozei) = alege obiectul de acolo
+  cv.addEventListener('click', e => {
+    if (!imgOpt.obj || !imgSrc || !frameRect || !L) return;
+    const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) * L.W / r.width, ly = (e.clientY - r.top) * L.H / r.height;
+    const dx = (lx - L.mapX) / L.s, dy = (ly - L.mapY) / L.s, f = frameRect;
+    const u = (dx - f[0]) / (f[2] - f[0]), v = (dy - f[1]) / (f[3] - f[1]);
+    if (u < 0 || u > 1 || v < 0 || v > 1) return;
+    imgOpt.objPt = [u, v];
+    withObject();
+  });
   document.getElementById('modeLin').onclick = () => { if (imgSrc && imgOpt.mode !== 'lin') { setMode('lin'); extractAndShow(); } };
   document.getElementById('thr').onchange = e => { if (imgSrc) { imgOpt.thr = +e.target.value; extractAndShow(); } };
   // trage o imagine peste pagina sau lipeste-o (Ctrl+V)
