@@ -132,7 +132,6 @@ header('Cache-Control: no-cache, must-revalidate');
       <button id="personBtn" title="Scoate fundalul și desenează doar persoana (model AI care rulează în browser, ~25 MB la prima folosire)">Doar persoana</button>
       <button id="objBtn" title="Desenează doar obiectul principal (AI în browser, ~6 MB la prima folosire). Apoi atinge desenul ca să alegi alt obiect.">Doar obiectul</button>
       <button id="outerBtn" class="sil" title="Doar cea mai lungă buclă de contur, fără detaliile interioare">Doar conturul exterior</button>
-      <button id="invertBtn" class="sil" title="Schimbă ce e obiect și ce e fundal">Inversează</button>
     </div>
     <div class="row"><span class="hint" id="imgStatus"></span></div>
   </div>
@@ -362,7 +361,6 @@ header('Cache-Control: no-cache, must-revalidate');
     imgSrc = { w, h, v, lum, canvas: c, person: null, obj: null, objKey: '' };
     imgOpt.objPt = [0.5, 0.5];
     imgOpt.invert = false;
-    document.getElementById('invertBtn').classList.remove('on');
     imgOpt.thr = otsu(v);
     document.getElementById('thr').value = imgOpt.thr;
     // fotografie (multe tonuri intermediare) -> modul "Linii"; siluete / logo-uri / PNG transparent -> "Siluetă"
@@ -514,7 +512,7 @@ header('Cache-Control: no-cache, must-revalidate');
     const lin = imgOpt.mode === 'lin', flat = lin ? edgesToPath() : imageToPath();
     if (!flat) {
       imgStatus(lin ? 'Nu am găsit margini — mărește „Detalii" sau încearcă „Siluetă".'
-                    : 'Nu am găsit niciun contur — încearcă alt prag, „Inversează" sau „Linii".');
+                    : 'Nu am găsit niciun contur — încearcă alt prag sau „Linii".');
       return;
     }
     frameRect = flat.path.frame || null;
@@ -756,10 +754,6 @@ header('Cache-Control: no-cache, must-revalidate');
   const fileInput = document.getElementById('fileInput');
   document.getElementById('uploadBtn').onclick = () => fileInput.click();
   fileInput.onchange = () => { if (fileInput.files[0]) loadImageFile(fileInput.files[0]); fileInput.value = ''; };
-  document.getElementById('invertBtn').onclick = e => {
-    if (!imgSrc) return;
-    imgOpt.invert = !imgOpt.invert; e.target.classList.toggle('on', imgOpt.invert); extractAndShow();
-  };
   document.getElementById('outerBtn').onclick = e => {
     if (!imgSrc) return;
     imgOpt.outer = !imgOpt.outer; e.target.classList.toggle('on', imgOpt.outer); extractAndShow();
