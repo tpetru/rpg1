@@ -1,8 +1,13 @@
 <?php
 // Fun: harta Romaniei (cu judetele) desenata de epicicluri - serie Fourier cu N termeni.
 // Inspirat de un reel @epicycle.studio. Pagina statica, fara DB; datele conturului sunt in
-// fun/romania-judete.json (generat cu fun/build_path.py din Natural Earth admin-1, 1:10m).
-$dataVer = @filemtime(__DIR__ . '/fun/romania-judete.json');
+// fun/romania-judete.json (generat cu fun/build_path.py din Natural Earth admin-1, 1:10m) si
+// fun/iasi-comune.json (judetul Iasi cu comunele, din geoBoundaries ROU ADM2 simplified).
+$maps = [
+    'romania' => ['label' => 'România', 'file' => 'fun/romania-judete.json'],
+    'iasi'    => ['label' => 'Iași',    'file' => 'fun/iasi-comune.json'],
+];
+foreach ($maps as $k => $m) $maps[$k]['file'] .= '?v=' . (int)@filemtime(__DIR__ . '/' . $m['file']);
 ?>
 <!DOCTYPE html>
 <html lang="ro">
@@ -59,7 +64,7 @@ $dataVer = @filemtime(__DIR__ . '/fun/romania-judete.json');
 <body>
 <main>
   <div class="stage" id="stage">
-    <canvas id="cv" aria-label="Harta Romaniei desenata cu epicicluri"></canvas>
+    <canvas id="cv" aria-label="Harta desenata cu epicicluri"></canvas>
     <div class="formulas" id="formulas">
       <div class="f-fallback">x<sub>N</sub>(t) = &Sigma;<sub>k=1..N</sub> (a<sub>k</sub> cos kt + b<sub>k</sub> sin kt)</div>
       <div class="f-fallback">y<sub>N</sub>(t) = &Sigma;<sub>k=1..N</sub> (c<sub>k</sub> cos kt + d<sub>k</sub> sin kt)</div>
@@ -73,6 +78,7 @@ $dataVer = @filemtime(__DIR__ . '/fun/romania-judete.json');
   <div class="loading" id="loading">Se calculează seria Fourier…</div>
 
   <div class="controls" id="controls" hidden>
+    <div class="group" id="mapButtons"><span>Harta:</span></div>
     <div class="group" id="nButtons"><span>N:</span></div>
     <div class="group">
       <button id="autoBtn" title="Dublează N la fiecare desen, de la 1 la 4096">N crește</button>
@@ -127,11 +133,32 @@ $dataVer = @filemtime(__DIR__ . '/fun/romania-judete.json');
   let progress = 0, playing = true, auto = false, holdUntil = 0;
   let L = null;             // layout
 
-  fetch('fun/romania-judete.json?v=<?= (int)$dataVer ?>').then(r => r.json()).then(init).catch(() => {
-    document.getElementById('loading').textContent = 'Nu am putut încărca conturul hărții.';
+  const MAPS = <?= json_encode($maps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+  const cache = {};
+  let started = false, curMap = null;
+
+  function loadMap(key) {
+    if (!MAPS[key]) key = 'romania';
+    curMap = key;
+    try { history.replaceState(null, '', key === 'romania' ? location.pathname : '?harta=' + key); } catch (e) {}
+    document.querySelectorAll('#mapButtons button').forEach(b => b.classList.toggle('on', b.dataset.map === key));
+    const p = cache[key] || (cache[key] = fetch(MAPS[key].file).then(r => r.json()));
+    p.then(flat => { if (curMap === key) init(flat); }).catch(() => {
+      const el = document.getElementById('loading');
+      if (el) el.textContent = 'Nu am putut încărca conturul hărții.';
+    });
+  }
+  const mapBox = document.getElementById('mapButtons');
+  Object.keys(MAPS).forEach(key => {
+    const b = document.createElement('button');
+    b.textContent = MAPS[key].label; b.dataset.map = key;
+    b.onclick = () => { if (key !== curMap) loadMap(key); };
+    mapBox.appendChild(b);
   });
+  loadMap(new URLSearchParams(location.search).get('harta') || 'romania');
 
   function init(flat) {
+    yMax = 0; progress = 0; holdUntil = 0;
     M = flat.length / 2;
     X = new Float64Array(M); Y = new Float64Array(M);
     for (let i = 0; i < M; i++) { X[i] = flat[2 * i]; Y[i] = flat[2 * i + 1]; if (Y[i] > yMax) yMax = Y[i]; }
@@ -147,9 +174,12 @@ $dataVer = @filemtime(__DIR__ . '/fun/romania-judete.json');
       xTerms.push({ k, r: 2 * Math.hypot(xr, xi) / M, ph: Math.atan2(xi, xr) });
       yTerms.push({ k, r: 2 * Math.hypot(yr, yi) / M, ph: Math.atan2(yi, yr) });
     }
-    buildControls();
-    setN(4096);
+    setN(auto ? 1 : curN);
     resize();
+    if (started) return;
+    started = true;
+    buildControls();
+    setN(curN);
     window.addEventListener('resize', resize);
     document.getElementById('loading').remove();
     document.getElementById('controls').hidden = false;
