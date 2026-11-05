@@ -66,6 +66,9 @@
   .dropping canvas { outline: 2px dashed var(--accent); outline-offset: -6px; }
   #fsView { position: fixed; inset: 0; background: #000; z-index: 50; }
   #fsView canvas { width: 100%; height: 100%; }
+  #fsView img { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; -webkit-touch-callout: default; }
+  #fsView .hint { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: var(--ink-2);
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif; font-size: 14px; }
   #fsView .bar { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; font-family: system-ui, "Segoe UI", Roboto, sans-serif; font-size: 14px; }
   #fsView button { font: inherit; color: var(--ink); background: rgba(0,0,0,.6); border: 1px solid var(--line); border-radius: 16px; padding: 6px 13px; cursor: pointer; }
   #fsView button:hover { border-color: var(--accent); }
@@ -125,6 +128,8 @@
 </main>
 <div id="fsView" hidden>
   <canvas id="fsCv" aria-label="Desenul terminat"></canvas>
+  <img id="fsImg" alt="Desenul terminat" hidden>
+  <div class="hint" id="fsHint" hidden>Ține apăsat pe imagine → „Salvează imaginea”</div>
   <div class="bar"><button id="fsDl">⤓ Descarcă</button><button id="fsClose" title="Închide (Esc)">✕</button></div>
 </div>
 
@@ -168,8 +173,9 @@
   let yMax = 0;             // height of the map data
   let recon = null, curN = 4096, errPct = 0;
   let progress = 0, playing = true, auto = false, holdUntil = 0, done = false;
+  let frameRect = null, framing = 0;      // rama pozei (coordonate de date) si cat din ea e desenat (0..1)
   function restart() {                    // porneste desenul de la inceput si ascunde butoanele de final
-    progress = 0; holdUntil = 0; done = false;
+    progress = 0; holdUntil = 0; done = false; framing = 0;
     document.getElementById('resultBtns').hidden = true;
   }
   let L = null;             // layout
@@ -305,6 +311,7 @@
                     : 'Nu am găsit niciun contur — încearcă alt prag, „Inversează" sau „Linii".');
       return;
     }
+    frameRect = flat.path.frame || null;
     init(flat.path);
     imgStatus(flat.loops + (lin ? (flat.loops === 1 ? ' linie' : ' linii') : (flat.loops === 1 ? ' buclă' : ' bucle'))
       + (personMask() ? ' · doar persoana' : '') + ' · imaginea rămâne în browserul tău');
@@ -336,7 +343,8 @@
     const minLen = Math.max(14, loops[0].len * 0.015);
     let keep = loops.filter(l => l.len >= minLen).slice(0, imgOpt.outer ? 1 : MAXLOOPS);
     const path = joinLoops(keep.map(l => l.p));
-    return { path: resampleNormalize(path, 16384), loops: keep.length };
+    // rama pozei, in coordonatele marching squares (pixelul x are centrul in x+1)
+    return { path: resampleNormalize(path, 16384, [0.5, 0.5, w + 0.5, h + 0.5]), loops: keep.length };
   }
 
   // Modul "Linii": margini Canny (blur gaussian, Sobel, suprimare non-maxime, histerezis), urmarite ca
@@ -435,7 +443,7 @@
       if (sil.length) loops = sil.filter(l => l.length >= sil[0].length * 0.1).slice(0, 3).concat(loops);
     }
     if (!loops.length) return null;
-    return { path: resampleNormalize(joinLoops(loops), 16384), loops: loops.length };
+    return { path: resampleNormalize(joinLoops(loops), 16384, [0, 0, w, h]), loops: loops.length };
   }
 
   function marching(G, W, H) {
@@ -512,7 +520,9 @@
     return path;
   }
 
-  function resampleNormalize(p, M) {
+  // rect = rama pozei [x0,y0,x1,y1]: desenul e scalat dupa ea, ca sa stea in poza ca in original;
+  // rama normalizata e pusa pe rezultat ca .frame
+  function resampleNormalize(p, M, rect) {
     const n = p.length, cum = new Float64Array(n + 1);
     for (let i = 0; i < n; i++) { const a = p[i], b = p[(i + 1) % n]; cum[i + 1] = cum[i] + Math.hypot(a[0] - b[0], a[1] - b[1]); }
     const total = cum[n], xs = new Float64Array(M), ys = new Float64Array(M);
@@ -525,12 +535,14 @@
     }
     let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
     for (let k = 0; k < M; k++) { mnx = Math.min(mnx, xs[k]); mxx = Math.max(mxx, xs[k]); mny = Math.min(mny, ys[k]); mxy = Math.max(mxy, ys[k]); }
+    if (rect) { mnx = Math.min(mnx, rect[0]); mny = Math.min(mny, rect[1]); mxx = Math.max(mxx, rect[2]); mxy = Math.max(mxy, rect[3]); }
     const bw = Math.max(1, mxx - mnx), bh = Math.max(1, mxy - mny), sc = Math.min(1000 / bw, 800 / bh);
     const ox = (1000 - bw * sc) / 2, flat = new Array(2 * M);
     for (let k = 0; k < M; k++) {
       flat[2 * k] = Math.round((ox + (xs[k] - mnx) * sc) * 10) / 10;
       flat[2 * k + 1] = Math.round((ys[k] - mny) * sc * 10) / 10;
     }
+    if (rect) flat.frame = [ox + (rect[0] - mnx) * sc, (rect[1] - mny) * sc, ox + (rect[2] - mnx) * sc, (rect[3] - mny) * sc];
     return flat;
   }
 
@@ -587,6 +599,21 @@
   }
 
   // ---------- rezultat: ecran complet si descarcare PNG ----------
+  // Rama: sus, dreapta, jos, stanga, ca o singura linie; f = cat din perimetru (0..1). Intoarce varful.
+  function framePath(g, r, f, map) {
+    const pts = [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]], [r[0], r[1]]];
+    const per = 2 * ((r[2] - r[0]) + (r[3] - r[1]));
+    let left = f * per, tip = map(pts[0]);
+    g.beginPath(); g.moveTo(tip[0], tip[1]);
+    for (let i = 0; i < 4 && left > 0; i++) {
+      const a = pts[i], b = pts[i + 1], len = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]), u = Math.min(1, left / len);
+      tip = map([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]);
+      g.lineTo(tip[0], tip[1]); left -= len;
+    }
+    g.stroke();
+    return tip;
+  }
+
   // Deseneaza curba reconstruita (la N-ul curent) centrata intr-un canvas oarecare.
   function renderResult(c, W, H, caption) {
     const g = c.getContext('2d');
@@ -594,12 +621,15 @@
     g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
     let a = Infinity, b = Infinity, A = -Infinity, B = -Infinity;
     for (let i = 0; i < M; i++) { const x = recon.x[i], y = recon.y[i]; if (x < a) a = x; if (x > A) A = x; if (y < b) b = y; if (y > B) B = y; }
+    const fr = frameRect;
+    if (fr) { a = Math.min(a, fr[0]); b = Math.min(b, fr[1]); A = Math.max(A, fr[2]); B = Math.max(B, fr[3]); }
     const pad = Math.min(W, H) * 0.07, sc = Math.min((W - 2 * pad) / Math.max(1, A - a), (H - 2 * pad) / Math.max(1, B - b));
     const ox = (W - (A - a) * sc) / 2 - a * sc, oy = (H - (B - b) * sc) / 2 - b * sc;
     g.strokeStyle = '#f0b8a0'; g.lineWidth = Math.max(1.2, Math.min(W, H) / 700); g.lineJoin = g.lineCap = 'round';
     g.beginPath();
     for (let i = 0; i <= M; i++) { const j = i % M, x = ox + recon.x[j] * sc, y = oy + recon.y[j] * sc; i ? g.lineTo(x, y) : g.moveTo(x, y); }
     g.stroke();
+    if (fr) framePath(g, fr, 1, q => [ox + q[0] * sc, oy + q[1] * sc]);
     if (caption) {
       g.fillStyle = 'rgba(242,237,230,0.45)'; g.font = Math.round(Math.min(W, H) / 55) + 'px Georgia, serif';
       g.textAlign = 'right'; g.fillText('N = ' + curN + ' · no-santos.com/portret.php', W - pad / 2, H - pad / 2);
@@ -612,23 +642,42 @@
     renderResult(fsCv, Math.round(fsView.clientWidth * d), Math.round(fsView.clientHeight * d), false);
   }
   function openFs() {
+    fsImg.hidden = true; fsHint.hidden = true; fsCv.hidden = false;
     fsView.hidden = false; drawFs();
     if (fsView.requestFullscreen) fsView.requestFullscreen().then(drawFs, () => {});
   }
   function closeFs() {
-    fsView.hidden = true;
+    fsView.hidden = true; fsImg.hidden = true; fsHint.hidden = true; fsCv.hidden = false; fsImg.removeAttribute('src');
     if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   }
+  // Descarcare. Pe telefon a.download e ignorat des (iOS, browsere din aplicatii), asa ca:
+  // 1) foaia de partajare cu fisierul (iOS: "Salvează imaginea", Android: Galerie / Drive ...),
+  // 2) link de descarcare clasic, 3) pe ecrane tactile, imaginea afisata pentru "tine apasat -> salveaza".
+  // Totul sincron in click, ca browserul sa nu piarda "gestul utilizatorului" inainte de share().
+  const fsImg = document.getElementById('fsImg'), fsHint = document.getElementById('fsHint');
   function download() {
     const c = document.createElement('canvas');
     renderResult(c, 2400, 2400, true);
-    c.toBlob(bl => {
-      if (!bl) return;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(bl); a.download = 'portret-epicicluri-N' + curN + '.png';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    }, 'image/png');
+    const url = c.toDataURL('image/png'), name = 'portret-epicicluri-N' + curN + '.png';
+    const bin = atob(url.split(',')[1]), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const blob = new Blob([u8], { type: 'image/png' });
+    const touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    const showImg = () => {                       // varianta de rezerva: imaginea, de salvat cu apasare lunga
+      fsImg.src = url; fsImg.hidden = false; fsHint.hidden = false; fsCv.hidden = true; fsView.hidden = false;
+    };
+    let file = null;
+    try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
+    if (touch && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Portret cu epicicluri' })
+        .catch(e => { if (!e || e.name !== 'AbortError') showImg(); });
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    if (touch) showImg();
   }
   document.getElementById('fsBtn').onclick = openFs;
   document.getElementById('dlBtn').onclick = download;
@@ -645,6 +694,7 @@
     M = flat.length / 2;
     X = new Float64Array(M); Y = new Float64Array(M);
     for (let i = 0; i < M; i++) { X[i] = flat[2 * i]; Y[i] = flat[2 * i + 1]; if (Y[i] > yMax) yMax = Y[i]; }
+    if (frameRect) yMax = Math.max(yMax, frameRect[3]);
     Zre = Float64Array.from(X); Zim = Float64Array.from(Y);
     fft(Zre, Zim, false);
     x0 = Zre[0] / M; y0 = Zim[0] / M;
@@ -780,19 +830,24 @@
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const sp = +document.getElementById('speed').value;
     const dur = 90 * Math.pow(0.04, sp / 100) + 4;     // ~ 4 s .. 94 s per drawing
-    if (playing && !done && now >= holdUntil) {
+    if (playing && !done && framing > 0) {          // dupa contur: rama pozei
+      framing += dt / Math.min(4, Math.max(1.2, dur * 0.2));
+      if (framing >= 1) { framing = 1; done = true; document.getElementById('resultBtns').hidden = false; }
+    } else if (playing && !done && now >= holdUntil) {
       progress += dt / dur;
       if (progress >= 1) {
         const i = NS.indexOf(curN);
         if (auto && i >= 0 && i < NS.length - 1) {   // "N crește": trece la N-ul urmator pana la 4096
           progress = 0; holdUntil = now + 1800; setN(NS[i + 1]);
+        } else if (frameRect) {                      // conturul e gata: urmeaza rama
+          progress = 1; framing = 1e-6;
         } else {                                      // gata: ne oprim si aratam butoanele
           progress = 1; done = true;
           document.getElementById('resultBtns').hidden = false;
         }
       }
     }
-    draw(done || holdUntil > now ? 1 : progress);
+    draw(done || framing > 0 || holdUntil > now ? 1 : progress);
     requestAnimationFrame(frame);
   }
 
@@ -828,6 +883,12 @@
     const [tx, txy] = chain(mapX + x0 * s, L.xChainY, xTerms, t, false);
     const [tyx, ty] = chain(L.yChainX, mapY + y0 * s, yTerms, t, true);
     const px = mapX + recon.x[idx] * s, py = mapY + recon.y[idx] * s;
+
+    if (framing > 0) {                              // rama, desenata dupa contur
+      ctx.strokeStyle = '#f0b8a0'; ctx.lineWidth = 1.3 / k * Math.max(1, k * 0.9);
+      const tip = framePath(ctx, frameRect, framing, q => [mapX + q[0] * s, mapY + q[1] * s]);
+      if (framing < 1) { ctx.fillStyle = '#f2ede6'; ctx.beginPath(); ctx.arc(tip[0], tip[1], 3, 0, Math.PI * 2); ctx.fill(); }
+    }
 
     ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(242,237,230,0.55)'; ctx.lineWidth = 1 / k * 1.2;
     ctx.beginPath(); ctx.moveTo(tx, txy); ctx.lineTo(px, py); ctx.stroke();
