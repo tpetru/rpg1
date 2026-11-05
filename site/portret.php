@@ -1033,11 +1033,11 @@ header('Cache-Control: no-cache, must-revalidate');
     const narrow = w < 600, W_ = 1000;
     // Map box (data is 0..1000 wide), placed bottom-right like in the reel.
     const s = narrow ? 0.7 : 0.6;
-    // lantul de sus (x) are nevoie de loc pentru cercurile lui mari: coboara desenul daca e cazul
-    const reachX = xTerms.map(t => t.r).sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0) * s;
-    const xChainY = Math.max(narrow ? 270 : 230, reachX + 10);
-    const mapX = W_ - 1000 * s - 10, mapY = Math.max(narrow ? 470 : 450, xChainY + reachX * 0.6 + 40);
-    const W = W_, H = Math.round(mapY + yMax * s + (narrow ? 190 : 150));   // logical units
+    // marime fixa, aceeasi pentru orice imagine si orice mod (Siluetă, Linii, Doar persoana ...):
+    // loc pentru cercurile mari ale lantului de sus si pentru o harta de inaltime maxima (800)
+    const xChainY = narrow ? 380 : 330, top = narrow ? 640 : 560;
+    const mapX = W_ - 1000 * s - 10, mapY = top + (800 - yMax) * s / 2;   // desenul centrat vertical
+    const W = W_, H = Math.round(top + 800 * s + (narrow ? 190 : 150));   // logical units
     const dpr = window.devicePixelRatio || 1;
     cv.width = Math.round(w * dpr); cv.height = Math.round(w * H / W * dpr);
     const k = cv.width / W;
@@ -1046,7 +1046,7 @@ header('Cache-Control: no-cache, must-revalidate');
     const yChainX = Math.max(narrow ? 140 : 170, Math.min(reach + 10, mapX - 30));
     L = { W, H, k, s, mapX, mapY, xChainY, yChainX };
     const ro = document.getElementById('readout');
-    ro.style.top = ((mapY + yMax * s + 25) / H * 100) + '%';
+    ro.style.top = ((top + 800 * s + 25) / H * 100) + '%';
     ro.style.left = '50%';                       // centrat pe ecran
   }
 
