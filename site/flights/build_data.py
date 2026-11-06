@@ -13,7 +13,8 @@ Rulare: python3 build_data.py <folder-surse>   -> scrie data.json langa script.
 Pentru fiecare tara, aeroportul principal: dintre aeroporturile cu zboruri regulate aflate la cel mult
 100 km de capitala, cel din categoria cea mai mare (mare > mediu) si cu pista cea mai lunga, cu o penalizare de 30 ft/km de distanta
 (asa iese Otopeni in loc de Baneasa, Fiumicino in loc de Ciampino, Abu Dhabi in loc de Al Maktoum). Daca nu e niciunul aproape, cel mai apropiat
-de capitala din categoria cea mai buna. Se pastreaza si pana la 7 alternative din tara.
+de capitala din categoria cea mai buna. Dupa el urmeaza toate celelalte aeroporturi mari/medii cu zboruri
+regulate din tara, in ordinea alfabetica a orasului.
 Pentru fiecare aeroport se salveaza si directia pistei celei mai lungi (avionul decoleaza pe ea).
 """
 import csv, json, math, os, sys, unicodedata
@@ -134,7 +135,7 @@ for cc, rows in per.items():
         best = min(tier(r) for r in rows)
         main = min((r for r in rows if tier(r) == best), key=lambda r: r['_d'])
     others = sorted((r for r in rows if r is not main and tier(r) <= max(tier(main), 1)),
-                    key=lambda r: (tier(r), -rlen(r)))[:7]
+                    key=lambda r: norm(r['municipality'] or r['name']))
     out[cc] = {
         'cap': cap_name,
         'a': [[r['iata_code'] or r['ident'], r['name'], r['municipality'],
