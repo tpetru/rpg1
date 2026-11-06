@@ -1,7 +1,7 @@
 <?php
 // Flights: alegi o tara si scrii un text; un avion decoleaza de pe aeroportul principal al tarii (cel de
 // langa capitala) si "scrie" textul in aer, ca desenele facute de avioane pe Flightradar24.
-// Harta: Leaflet + fundal CARTO dark (fara chei API). Datele (aeroporturi + fontul de linii Hershey)
+// Harta: Leaflet + placi OpenStreetMap intunecate din CSS (fara chei API; CARTO cere acum cheie). Datele (aeroporturi + fontul de linii Hershey)
 // sunt in flights/data.json, generat de flights/build_data.py. Totul ruleaza in browser.
 header('Cache-Control: no-cache, must-revalidate');
 $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
@@ -25,6 +25,7 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
   body { font-family: system-ui, "Segoe UI", Roboto, sans-serif; font-size: 14px; overflow: hidden; }
   #map { position: fixed; inset: 0; background: #0b0d10; }
   .leaflet-container { background: #0b0d10; font: inherit; }
+  .dark-tiles { filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.88) saturate(.35); }
   .leaflet-control-attribution { background: rgba(0,0,0,.55) !important; color: #8a939c !important; font-size: 10px; }
   .leaflet-control-attribution a { color: #b3bcc6 !important; }
 
@@ -147,9 +148,10 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
   // ---------- harta ----------
   const map = L.map('map', { zoomControl: false, worldCopyJump: true, minZoom: 2 }).setView([45.9, 24.9], 5);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd', maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · aeroporturi: <a href="https://ourairports.com/">OurAirports</a>'
+  // Plăcile standard OpenStreetMap (fără cheie), făcute întunecate din CSS (.dark-tiles).
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, className: 'dark-tiles',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · aeroporturi: <a href="https://ourairports.com/">OurAirports</a>'
   }).addTo(map);
 
   const PLANE_SVG = '<svg viewBox="0 0 64 64"><path fill="#ffc400" stroke="#2a2000" stroke-width="2" stroke-linejoin="round" d="M32 2c2.2 0 3.6 2.6 3.6 6v14l22 13v6l-22-6.5V47l7 5v5l-10.6-3L32 58l-0.4-4L21 57v-5l7-5V34.5L6 41v-6l22-13V8c0-3.4 1.8-6 4-6z"/></svg>';
