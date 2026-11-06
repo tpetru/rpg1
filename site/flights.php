@@ -322,8 +322,8 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
     if (el) el.firstChild.style.transform = 'rotate(' + deg + 'deg)';
   }
 
-  // viteza "afisata": ~ 900 km/h in croaziera, mai mica la decolare/aterizare. Animatia: 1x ~ 250 km/s.
-  const BASE_KMS = 250;
+  // viteza "afisata": ~ 900 km/h in croaziera, mai mica la decolare/aterizare. Animatia: 1x ~ 125 km/s (injumatatit la cererea lui Petru).
+  const BASE_KMS = 125;
   function frame(t) {
     if (!flight) return;
     const dt = Math.min(0.1, (t - lastT) / 1000); lastT = t;
