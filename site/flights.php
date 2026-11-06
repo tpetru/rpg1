@@ -61,6 +61,10 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
   .check input { accent-color: var(--accent); }
   .toggle { padding: 2px 8px; font-size: 12px; }
   .panel.min .body { display: none; }
+  .mode-row { margin-top: 8px; }
+  #pad { display: block; width: 100%; aspect-ratio: 16 / 10; background: #0b0e12; border: 1px solid var(--line); border-radius: 8px; touch-action: none; cursor: crosshair; }
+  .pad-tools { margin-top: 6px; }
+  .pad-tools button { padding: 4px 10px; font-size: 12px; }
   .panel label.check { display: flex; margin: 0; font-size: 12px; text-transform: none; letter-spacing: 0; }
 
   .info {
@@ -114,8 +118,23 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
         <select id="airport"></select>
       </div>
     </div>
-    <label for="text">Textul</label>
-    <input type="text" id="text" maxlength="40" value="SALUT" autocomplete="off" enterkeyhint="go">
+    <div class="row mode-row">
+      <span class="seg" id="mode" aria-label="Ce scrie avionul">
+        <button type="button" data-m="text" class="on">Text</button><button type="button" data-m="draw">Desen</button>
+      </span>
+    </div>
+    <div id="textBox">
+      <label for="text">Textul</label>
+      <input type="text" id="text" maxlength="40" value="SALUT" autocomplete="off" enterkeyhint="go">
+    </div>
+    <div id="drawBox" hidden>
+      <label>Desenează aici (cu degetul sau mouse-ul)</label>
+      <canvas id="pad" aria-label="Căsuța de desen"></canvas>
+      <div class="row pad-tools">
+        <button type="button" id="undo">Anulează ultima linie</button>
+        <button type="button" id="clear">Șterge tot</button>
+      </div>
+    </div>
     <div class="row">
       <button class="primary" id="go" type="button">Decolează</button>
       <span class="seg" id="speed" aria-label="Viteză">
@@ -123,7 +142,7 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
       </span>
     </div>
     <div class="row">
-      <label class="check"><input type="checkbox" id="showMoves" checked> Arată și traseul dintre litere</label>
+      <label class="check"><input type="checkbox" id="showMoves" checked> Arată și traseul de legătură</label>
       <label class="check"><input type="checkbox" id="follow"> Urmărește avionul</label>
     </div>
     <div class="msg" id="msg"></div>
@@ -233,11 +252,61 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
   // ---------- planul de zbor ----------
   // Lucram in metri Web Mercator (exact ce deseneaza harta), deci literele apar nedeformate pe ecran.
   const proj = L.Projection.SphericalMercator;
-  function buildFlight(apt, text) {
+  function screenAspect() {
     const size = map.getSize();
-    const aspect = Math.max(0.45, Math.min(3.2, size.x / Math.max(1, size.y - (size.x < 600 ? 170 : 120))));
-    const lay = layoutText(text, aspect);
-    if (!lay.strokes.length) return null;
+    return Math.max(0.45, Math.min(3.2, size.x / Math.max(1, size.y - (size.x < 600 ? 170 : 120))));
+  }
+
+  // ---------- desenul din casuta ----------
+  // Liniile se tin in coordonate logice 0..1000 x 0..625 (independent de marimea casutei pe ecran).
+  const PAD_W = 1000, PAD_H = 625;
+  let drawing = [], drawingCur = null;
+  function padRedraw() {
+    const cv = $('pad'), r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+    const g = cv.getContext('2d'), sx = cv.width / PAD_W, sy = cv.height / PAD_H;
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.strokeStyle = '#ffc21a'; g.lineWidth = 3 * dpr; g.lineCap = g.lineJoin = 'round';
+    drawing.forEach(s => {
+      g.beginPath(); g.moveTo(s[0][0] * sx, s[0][1] * sy);
+      if (s.length === 1) g.lineTo(s[0][0] * sx + 0.5, s[0][1] * sy);
+      s.forEach(p => g.lineTo(p[0] * sx, p[1] * sy)); g.stroke();
+    });
+  }
+  function padPoint(e) {
+    const r = $('pad').getBoundingClientRect();
+    return [Math.max(0, Math.min(PAD_W, Math.round((e.clientX - r.left) / r.width * PAD_W))),
+            Math.max(0, Math.min(PAD_H, Math.round((e.clientY - r.top) / r.height * PAD_H)))];
+  }
+  function drawingLayout() {
+    const pts = drawing.flat();
+    if (!pts.length) return null;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const W = Math.max(1, x1 - x0), H = Math.max(1, y1 - y0);
+    const sc = 160 / Math.max(W, H, 60);             // cea mai mare latura ~ 160 unitati de font (~830 km)
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    return { strokes: drawing.map(s => s.map(p => [(p[0] - cx) * sc, (p[1] - cy) * sc])), W: W * sc, H: H * sc };
+  }
+  // desenul in link: fiecare coordonata pe 2 caractere base64url, liniile despartite prin "."
+  const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const enc = v => B64[v >> 6] + B64[v & 63];
+  const encodeDrawing = () => drawing.map(s => s.map(p => enc(p[0]) + enc(p[1])).join('')).join('.');
+  function decodeDrawing(str) {
+    return str.split('.').map(t => {
+      const s = [];
+      for (let i = 0; i + 3 < t.length; i += 4) {
+        const v = j => B64.indexOf(t[i + j]) * 64 + B64.indexOf(t[i + j + 1]);
+        const x = v(0), y = v(2);
+        if (x >= 0 && y >= 0) s.push([Math.min(PAD_W, x), Math.min(PAD_H, y)]);
+      }
+      return s;
+    }).filter(s => s.length);
+  }
+
+  function buildFlight(apt, lay) {
+    if (!lay || !lay.strokes.length) return null;
     const c = proj.project(L.latLng(apt.lat, apt.lon));
     const k = 1 / Math.cos(apt.lat * Math.PI / 180);        // km pe sol -> metri Mercator
     // marimea: ~110 km inaltimea unei majuscule, dar textul intreg incape in ~1600 x 1000 km
@@ -394,15 +463,23 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
     return apt;
   }
 
+  let mode = 'text';
   function start() {
     msg('');
     const text = $('text').value.replace(/\s+/g, ' ').trim();
-    if (!text) { msg('Scrie un text.'); $('text').focus(); return; }
+    let lay;
+    if (mode === 'draw') {
+      if (!drawing.length) { msg('Desenează ceva în căsuță.'); return; }
+      lay = drawingLayout();
+    } else {
+      if (!text) { msg('Scrie un text.'); $('text').focus(); return; }
+      lay = layoutText(text, screenAspect());
+    }
     const apt = showAirport();
     cancelAnimationFrame(raf);
     resetTrails();
-    flight = buildFlight(apt, text);
-    if (!flight) { msg('Textul nu are litere de desenat.'); return; }
+    flight = buildFlight(apt, lay);
+    if (!flight) { msg(mode === 'draw' ? 'Desenul e gol.' : 'Textul nu are litere de desenat.'); return; }
     // incadreaza tot zborul (textul + aeroportul)
     const b = L.latLngBounds(flight.pts.map(p => flight.toLL(p)));
     const small = map.getSize().x < 600;
@@ -414,12 +491,13 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
     planeMarker.setLatLng([apt.lat, apt.lon]);
     heading = apt.hdg == null ? 90 : apt.hdg; setPlaneHeading(heading);
     dist = 0; lastIdx = 1;
-    $('callsign').textContent = 'NOS' + (1 + (text.length * 37 + apt.code.charCodeAt(0)) % 899);
+    $('callsign').textContent = 'NOS' + (1 + ((mode === 'draw' ? drawing.length * 11 : text.length) * 37 + apt.code.charCodeAt(0)) % 899);
     $('route').textContent = apt.code + ' → ' + apt.code + ' · ' + Math.round(flight.total).toLocaleString('ro-RO') + ' km';
     $('info').hidden = false;
     $('go').textContent = 'Decolează';
     updateInfo(0);
-    const q = new URLSearchParams({ tara: apt.cc, text });
+    const q = new URLSearchParams({ tara: apt.cc });
+    if (mode === 'draw') { const d = encodeDrawing(); if (d.length < 6000) q.set('desen', d); } else q.set('text', text);
     if (+$('airport').value) q.set('aeroport', apt.code);
     history.replaceState(null, '', location.pathname + '?' + q.toString());
     lastT = performance.now();
@@ -456,12 +534,36 @@ $dataVer = @filemtime(__DIR__ . '/flights/data.json') ?: 1;
     if (q.get('text')) $('text').value = q.get('text').slice(0, 40);
     const apt = showAirport();
     map.setView([apt.lat, apt.lon], 6);
+    if (q.get('desen')) { drawing = decodeDrawing(q.get('desen')); if (drawing.length) { setMode('draw'); start(); return; } }
     if (q.get('text')) start();
   }).catch(() => msg('Nu am putut încărca lista de aeroporturi.'));
 
   $('country').addEventListener('change', () => { fillAirports($('country').value); const a = showAirport(); if (!raf) map.setView([a.lat, a.lon], 6); });
   $('airport').addEventListener('change', () => { const a = showAirport(); if (!raf) map.setView([a.lat, a.lon], 6); });
   $('go').addEventListener('click', start);
+  function setMode(m) {
+    mode = m;
+    $('mode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.m === m));
+    $('textBox').hidden = m !== 'text'; $('drawBox').hidden = m !== 'draw';
+    if (m === 'draw') padRedraw();
+  }
+  $('mode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); });
+  const pad = $('pad');
+  pad.addEventListener('pointerdown', e => {
+    e.preventDefault(); pad.setPointerCapture(e.pointerId);
+    drawingCur = [padPoint(e)]; drawing.push(drawingCur); padRedraw();
+  });
+  pad.addEventListener('pointermove', e => {
+    if (!drawingCur) return;
+    const p = padPoint(e), l = drawingCur[drawingCur.length - 1];
+    if (Math.hypot(p[0] - l[0], p[1] - l[1]) >= 6) { drawingCur.push(p); padRedraw(); }
+  });
+  const endStroke = () => { drawingCur = null; };
+  pad.addEventListener('pointerup', endStroke); pad.addEventListener('pointercancel', endStroke);
+  $('undo').addEventListener('click', () => { drawing.pop(); padRedraw(); });
+  $('clear').addEventListener('click', () => { drawing = []; padRedraw(); });
+  window.addEventListener('resize', () => { if (mode === 'draw') padRedraw(); });
+  $('toggle').addEventListener('click', () => setTimeout(() => { if (mode === 'draw') padRedraw(); }, 0));
   $('text').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('text').blur(); start(); } });
   $('toggle').addEventListener('click', () => setMin(!$('panel').classList.contains('min')));
   $('speed').addEventListener('click', e => {
