@@ -2123,6 +2123,124 @@ function parkStep(dt) {
   if (PARK.lampMat) PARK.lampMat.emissiveIntensity = night ? 3.2 : 0.6;
 }
 
+// ------------------------------------------------------------------
+// Palatul Culturii din Iași (Palas): neogotic, cu turnul cu ceas în mijlocul fațadei
+// ------------------------------------------------------------------
+const PALACE = { x: -60, z: 128, w: 64, d: 30 };              // z = fațada (spre sud), clădirea se întinde spre +z
+{
+  const pg = new THREE.Group(), X = PALACE.x, Z = PALACE.z;
+  const stoneC = '#e4dccb';
+  // fațadă: travee de 4 m cu ferestre gotice înalte (arc frânt), ancadramente și brâu între etaje
+  const bayTex = canvasTex(256, 352, (g, W, H) => {
+    g.fillStyle = stoneC; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${120 + Math.random() * 60},${110 + Math.random() * 50},${90 + Math.random() * 40},.06)`; g.fillRect(Math.random() * W, Math.random() * H, 3 + Math.random() * 8, 2 + Math.random() * 5); }
+    g.strokeStyle = 'rgba(120,105,80,.25)'; g.lineWidth = 1; for (let y = 0; y < H; y += 22) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    g.fillStyle = '#cfc5ae'; g.fillRect(0, 0, 14, H); g.fillRect(W - 14, 0, 14, H);                // pilaștri
+    g.fillStyle = '#d3c8b0'; g.fillRect(0, 0, W, 14);                                                  // brâu
+    const win = (x, y, w, h) => {
+      g.fillStyle = '#bfb39a'; g.beginPath(); g.moveTo(x - 9, y + h + 6); g.lineTo(x - 9, y + w * 0.35); g.quadraticCurveTo(x - 9, y - 22, x + w / 2, y - 34); g.quadraticCurveTo(x + w + 9, y - 22, x + w + 9, y + w * 0.35); g.lineTo(x + w + 9, y + h + 6); g.fill();
+      const gr = g.createLinearGradient(0, y - 20, 0, y + h); gr.addColorStop(0, '#3c4a5c'); gr.addColorStop(1, '#1f2833');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y + w * 0.3); g.quadraticCurveTo(x, y - 12, x + w / 2, y - 24); g.quadraticCurveTo(x + w, y - 12, x + w, y + w * 0.3); g.lineTo(x + w, y + h); g.fill();
+      g.strokeStyle = '#d9cfba'; g.lineWidth = 4; g.beginPath(); g.moveTo(x + w / 2, y - 22); g.lineTo(x + w / 2, y + h); g.moveTo(x, y + h * 0.45); g.lineTo(x + w, y + h * 0.45); g.stroke();
+      g.fillStyle = '#c8bda4'; g.fillRect(x - 12, y + h, w + 24, 8);
+    };
+    win(78, 92, 100, 210);
+  });
+  const facadeMat = (len, hgt) => { const t = bayTex.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(Math.max(1, Math.round(len / 4)), Math.max(1, Math.round(hgt / 5.5))); t.needsUpdate = true; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }); };
+  const plain = new THREE.MeshStandardMaterial({ color: 0xd8cfbb, roughness: 0.9 });
+  const roofM = new THREE.MeshStandardMaterial({ color: 0x4d5763, roughness: 0.6, metalness: 0.25 });
+  const darkM = new THREE.MeshStandardMaterial({ color: 0x2f3842, roughness: 0.5, metalness: 0.4 });
+  const block = (w, h, d, x, y, z) => {                 // corp de clădire cu ferestre pe toate laturile
+    const fx = facadeMat(d, h), fz = facadeMat(w, h);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [fx, fx, plain, plain, fz, fz]); m.position.set(X + x, y + h / 2, Z + z); m.userData.keep = true; pg.add(m); return m;   // material pe fețe: nu se combină
+  };
+  const gable = (w, h, d, x, y, z, alongX = true) => {  // acoperiș în două ape, abrupt
+    const sh = new THREE.Shape(); const half = (alongX ? d : w) / 2; sh.moveTo(-half, 0); sh.lineTo(half, 0); sh.lineTo(0, h); sh.closePath();
+    const L = alongX ? w : d, g = new THREE.ExtrudeGeometry(sh, { depth: L, bevelEnabled: false }); g.translate(0, 0, -L / 2);
+    if (alongX) g.rotateY(PI / 2);
+    const m = new THREE.Mesh(g, roofM); m.position.set(X + x, y, Z + z); pg.add(m); return m;
+  };
+  const pyramid = (w, h, d, x, y, z, mat = roofM) => { const g = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4); g.rotateY(PI / 4); g.translate(0, 0.5, 0); g.scale(w, h, d); const m = new THREE.Mesh(g, mat); m.position.set(X + x, y, Z + z); pg.add(m); return m; };
+  const spire = (x, y, z, h, r = 0.35) => { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), darkM); m.position.set(X + x, y + h / 2, Z + z); pg.add(m);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(r * 0.45, 8, 6), new THREE.MeshStandardMaterial({ color: 0xc9a34a, metalness: 0.9, roughness: 0.3 })); ball.position.set(X + x, y + h + 0.1, Z + z); pg.add(ball); };
+  const H = 17;
+  // soclu
+  { const b = new THREE.Mesh(new THREE.BoxGeometry(PALACE.w + 2, 1.4, PALACE.d + 2), new THREE.MeshStandardMaterial({ color: 0xa79f8f, roughness: 0.95 })); b.position.set(X, 0.7, Z + PALACE.d / 2); pg.add(b); }
+  // corpul principal, curtea interioară e acoperită (vedere de ansamblu)
+  block(PALACE.w - 16, H, PALACE.d - 6, 0, 1.4, PALACE.d / 2 + 1);
+  gable(PALACE.w - 16, 8, PALACE.d - 6, 0, H + 1.4, PALACE.d / 2 + 1, true);
+  // pavilioanele de colț: mai înalte, cu acoperiș piramidal foarte ascuțit și fleșă
+  for (const sx of [-1, 1]) for (const zz of [5, PALACE.d - 5]) {
+    const x = sx * (PALACE.w / 2 - 5);
+    block(10, H + 4, 10, x, 1.4, zz);
+    pyramid(10.6, 11, 10.6, x, H + 5.4, zz);
+    spire(x, H + 16.2, zz, 3.5, 0.25);
+    for (const [px, pz] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) spire(x + px, H + 5.4, zz + pz, 3.2, 0.3);   // turnulețe de colț
+  }
+  // pavilionul central (iese în față) și turnul cu ceas
+  block(18, H + 3, 8, 0, 1.4, -1.5);
+  gable(18, 7, 8, 0, H + 4.4, -1.5, true);
+  const TW = 8.5, TB = 1.4, TH = 38;
+  block(TW, TH, TW, 0, TB, 1);
+  // ceasul pe toate cele 4 fețe
+  const clockTex = canvasTex(256, 256, (g, W) => {
+    g.fillStyle = '#f5efe0'; g.beginPath(); g.arc(128, 128, 118, 0, 7); g.fill();
+    g.lineWidth = 10; g.strokeStyle = '#2b2b2b'; g.stroke(); g.fillStyle = '#2b2b2b'; g.font = 'bold 26px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'].forEach((n, i) => { const a = i / 12 * PI * 2 - PI / 2; g.fillText(n, 128 + Math.cos(a) * 92, 128 + Math.sin(a) * 92); });
+  });
+  const clockMat = new THREE.MeshStandardMaterial({ map: clockTex, roughness: 0.5, transparent: true });
+  const hands = [];
+  for (let i = 0; i < 4; i++) {
+    const a = i * PI / 2, nx = Math.sin(a), nz = -Math.cos(a), cy = TB + TH - 6;
+    const f = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40), clockMat); f.position.set(X + nx * (TW / 2 + 0.06), cy, Z + 1 + nz * (TW / 2 + 0.06)); f.rotation.y = PI - a; pg.add(f);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(2.7, 0.18, 8, 40), new THREE.MeshStandardMaterial({ color: 0xc9a34a, metalness: 0.8, roughness: 0.3 })); ring.position.copy(f.position); ring.rotation.y = PI - a; pg.add(ring);
+    for (const [len, wd] of [[1.5, 0.22], [2.2, 0.14]]) {
+      const hg = new THREE.Group(); hg.position.set(f.position.x + nx * 0.08, cy, f.position.z + nz * 0.08); hg.rotation.y = PI - a;
+      const hm = new THREE.Mesh(new THREE.BoxGeometry(wd, len, 0.05), MAT.black); hm.position.y = len / 2 - 0.2; hg.add(hm); hg.userData.keep = true; hg.userData.min = len > 2; pg.add(hg); hands.push(hg);
+    }
+  }
+  PALACE.hands = hands;
+  // galeria de la vârful turnului, foișorul octogonal și fleșa
+  { const gal = new THREE.Mesh(new THREE.BoxGeometry(TW + 1.2, 0.8, TW + 1.2), plain); gal.position.set(X, TB + TH + 0.4, Z + 1); pg.add(gal);
+    for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) spire(px * (TW / 2 + 0.3), TB + TH + 0.8, 1 + pz * (TW / 2 + 0.3), 4, 0.35);
+    const oct = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.4, 6, 8), facadeMat(6, 6)); oct.userData.keep = true; oct.position.set(X, TB + TH + 3.8, Z + 1); pg.add(oct);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(3.6, 11, 8), roofM); cap.position.set(X, TB + TH + 6.8 + 5.5, Z + 1); pg.add(cap);
+    spire(0, TB + TH + 18.3, 1, 2.6, 0.18); }
+  // creneluri și pinacluri pe cornișa corpului principal
+  for (let x = -PALACE.w / 2 + 12; x <= PALACE.w / 2 - 12; x += 4) for (const zz of [-1.5 + 4 + 0.01, PALACE.d - 2]) { if (Math.abs(x) < 10 && zz < 5) continue; spire(x, H + 1.4, zz, 2.2, 0.22); }
+  // intrarea: portal gotic mare, trepte, inscripție
+  { const portalTex = canvasTex(256, 256, (g, W, Hh) => { g.fillStyle = '#d6ccb4'; g.fillRect(0, 0, W, Hh);
+      g.fillStyle = '#2a2018'; g.beginPath(); g.moveTo(48, Hh); g.lineTo(48, 120); g.quadraticCurveTo(48, 40, 128, 18); g.quadraticCurveTo(208, 40, 208, 120); g.lineTo(208, Hh); g.fill();
+      g.strokeStyle = '#b8ab8e'; g.lineWidth = 8; g.stroke(); g.fillStyle = '#6b4a2a'; g.fillRect(64, 130, 128, Hh - 130); g.strokeStyle = '#4a3218'; g.lineWidth = 4; g.strokeRect(64, 130, 64, Hh - 130); g.strokeRect(128, 130, 64, Hh - 130); });
+    const portal = new THREE.Mesh(new THREE.PlaneGeometry(7, 8), new THREE.MeshStandardMaterial({ map: portalTex, roughness: 0.8 })); portal.position.set(X, 1.4 + 4, Z - 5.52); portal.rotation.y = PI; pg.add(portal);
+    for (let k = 0; k < 4; k++) { const st = new THREE.Mesh(new THREE.BoxGeometry(14 - k, 0.35, 1.2), new THREE.MeshStandardMaterial({ color: 0xb9b0a0, roughness: 0.95 })); st.position.set(X, 0.175 + k * 0.35, Z - 6.4 - (3 - k) * 1.1); pg.add(st); }
+    const nameTex = canvasTex(1024, 96, (g, W, Hh) => { g.fillStyle = stoneC; g.fillRect(0, 0, W, Hh); g.fillStyle = '#5a4a32'; g.font = 'bold 60px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PALATUL CULTURII', W / 2, Hh / 2 + 3); });
+    const nm = new THREE.Mesh(new THREE.PlaneGeometry(14, 1.3), new THREE.MeshStandardMaterial({ map: nameTex, roughness: 0.8 })); nm.position.set(X, 1.4 + 10.2, Z - 5.53); nm.rotation.y = PI; pg.add(nm); }
+  // esplanada din față: pavaj, două rânduri de felinare, fântână
+  { const pave = canvasTex(128, 128, (g, W, Hh) => { g.fillStyle = '#b5ab99'; g.fillRect(0, 0, W, Hh); g.strokeStyle = '#9b917e'; g.lineWidth = 2; for (let i = 0; i <= W; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, Hh); g.moveTo(0, i); g.lineTo(W, i); g.stroke(); } }, [24, 7]);
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(PALACE.w + 6, 22), new THREE.MeshStandardMaterial({ map: pave, roughness: 0.95 })); pl.rotation.x = -PI / 2; pl.position.set(X, 0.014, Z - 11); pl.receiveShadow = true; pg.add(pl);
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.2, 0.7, 32), new THREE.MeshStandardMaterial({ color: 0xc8bfae, roughness: 0.9 })); basin.position.set(X, 0.35, Z - 15); pg.add(basin);
+    const wat = new THREE.Mesh(new THREE.CircleGeometry(3.6, 32), new THREE.MeshStandardMaterial({ color: 0x3f8fd0, roughness: 0.1, metalness: 0.1 })); wat.rotation.x = -PI / 2; wat.position.set(X, 0.62, Z - 15); pg.add(wat);
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 2.4, 12), plain); col.position.set(X, 1.6, Z - 15); pg.add(col);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 0.4, 0.5, 20), plain); bowl.position.set(X, 2.9, Z - 15); pg.add(bowl);
+    OBSTACLES.push({ x: X, z: Z - 15, r: 4.3, h: 3, bld: true });
+    for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const lx = X + sx * (10 + k * 9), lz = Z - 19;
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 4, 8), darkM); pole.position.set(lx, 2, lz); pg.add(pole);
+      const lan = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.18, 0.55, 8), PARK.lampMat); lan.position.set(lx, 4.2, lz); pg.add(lan);
+      OBSTACLES.push({ x: lx, z: lz, r: 0.2 }); } }
+  scene.add(mergeStatic(placeShadow(pg)));
+  // coliziune: cercuri pe tot conturul clădirii, cu înălțime (se poate zbura doar pe deasupra)
+  const ring = (x0, z0, x1, z1, h) => { for (let x = x0; x <= x1 + 0.01; x += 2.5) for (let z = z0; z <= z1 + 0.01; z += 2.5) {
+      if (x > x0 + 0.1 && x < x1 - 0.1 && z > z0 + 0.1 && z < z1 - 0.1) continue; OBSTACLES.push({ x: X + x, z: Z + z, r: 1.5, h, bld: true }); } };
+  ring(-PALACE.w / 2, 0, PALACE.w / 2, PALACE.d, 27);
+  ring(-9, -5.5, 9, 0, 22);
+  PALACE.foot = [[X - PALACE.w / 2, Z, X + PALACE.w / 2, Z + PALACE.d], [X - 9, Z - 5.5, X + 9, Z]];
+}
+function palaceStep() {
+  const d = new Date(), m = d.getMinutes() + d.getSeconds() / 60, h = (d.getHours() % 12) + m / 60;
+  for (const hg of PALACE.hands) hg.rotation.z = -(hg.userData.min ? m / 60 : h / 12) * PI * 2;   // ceasul arată ora reală
+}
+
 // rampe: pornesc din (x, z), urcă pe direcția dir pe lungimea L până la înălțimea H, apoi cad vertical
 const RAMPS = [
   { x: 0, z: -92, dir: 0, L: 9, W: 7, H: 1.5 },
@@ -2477,7 +2595,8 @@ function collide() {
       }
     }
     // stâlpi, copaci, tancuri, rachetă... (peste ele se poate zbura)
-    if (car.y < 3) for (const p of OBSTACLES) {
+    for (const p of OBSTACLES) {
+      if (car.y > (p.h || 3)) continue;
       const dx = cx - p.x, dz = cz - p.z, dd = Math.hypot(dx, dz), min = p.r + R;
       if (dd < min && dd > 1e-4) {
         const nx = dx / dd, nz = dz / dd;
@@ -2570,7 +2689,8 @@ function ballStep(dt) {
   if (b.x > lim && b.vx > 0 || b.x < -lim && b.vx < 0) { b.vx *= -0.7; b.x = Math.max(-lim, Math.min(lim, b.x)); }
   if (b.z > lim && b.vz > 0 || b.z < -lim && b.vz < 0) { b.vz *= -0.7; b.z = Math.max(-lim, Math.min(lim, b.z)); }
   // stâlpi, copaci, tancuri (doar când mingea e jos)
-  if (b.y < BALL_R + 3) for (const o of OBSTACLES) {
+  for (const o of OBSTACLES) {
+    if (b.y > BALL_R + (o.h || 3)) continue;
     const dx = b.x - o.x, dz = b.z - o.z, dd = Math.hypot(dx, dz), min = o.r + BALL_R;
     if (dd < min && dd > 1e-4) {
       const nx = dx / dd, nz = dz / dd; b.x += nx * (min - dd); b.z += nz * (min - dd);
@@ -3124,7 +3244,7 @@ function frame(now) {
   while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); acc -= STEP; }
   updateBallMesh(dt);
   if (WET.water) { WET.water.normalMap.offset.x += dt * 0.012; WET.water.normalMap.offset.y += dt * 0.007; }
-  parkStep(dt);
+  parkStep(dt); palaceStep();
   updateDrift(dt);
   updateCones(dt);
   updateSmoke(dt);
@@ -3157,7 +3277,8 @@ function mmBuild() {
   }
   { const [x0, z0] = mmPos(PARK.x1, PARK.z1); g.fillStyle = '#5a9a3a'; g.beginPath(); g.roundRect(x0, z0, (PARK.x1 - PARK.x0) * k, (PARK.z1 - PARK.z0) * k, PARK.r * k); g.fill();
     const [lx, lz] = mmPos(LAKE.x, LAKE.z); g.strokeStyle = '#d8cba8'; g.lineWidth = Math.max(1, 2.8 * k); g.beginPath(); g.arc(lx, lz, 16 * k, 0, 7); g.stroke(); }
-  for (const o of OBSTACLES) { if (o.lake) continue; const [x, z] = mmPos(o.x, o.z); g.fillStyle = o.r > 1.5 ? '#6b6f4a' : o.r > 0.3 ? '#2f7d36' : '#bbb'; g.beginPath(); g.arc(x, z, Math.max(1, o.r * k), 0, 7); g.fill(); }
+  for (const r of PALACE.foot) { const [x0, z0] = mmPos(r[2], r[3]); g.fillStyle = '#d8cfbb'; g.fillRect(x0, z0, (r[2] - r[0]) * k, (r[3] - r[1]) * k); }
+  for (const o of OBSTACLES) { if (o.lake || o.bld) continue; const [x, z] = mmPos(o.x, o.z); g.fillStyle = o.r > 1.5 ? '#6b6f4a' : o.r > 0.3 ? '#2f7d36' : '#bbb'; g.beginPath(); g.arc(x, z, Math.max(1, o.r * k), 0, 7); g.fill(); }
   for (const pl of PILLARS) { const [x, z] = mmPos(pl.x, pl.z); g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(x, z, pl.r * k, 0, 7); g.fill(); }
   { const [x, z] = mmPos(LAKE.x, LAKE.z); g.fillStyle = '#2f8fd8'; g.beginPath(); g.arc(x, z, LAKE.r * k, 0, 7); g.fill(); }
   { const [x, z] = mmPos(BALL_SPAWN[0], BALL_SPAWN[1]); g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1; g.beginPath(); g.arc(x, z, (BALL_R + 0.7) * k, 0, 7); g.stroke(); }
