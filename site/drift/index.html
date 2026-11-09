@@ -2653,7 +2653,7 @@ function visuals(dt) {
   if (mesh.userData.ao) mesh.userData.ao.visible = !car.air && car.y < 0.05;
   const body = mesh.userData.body;
   if (S.bike) {                                   // motocicleta se înclină în viraj (unghiul de echilibru)
-    const want = THREE.MathUtils.clamp(Math.atan2(car.ay, 9.81), -0.95, 0.95) * Math.min(1, Math.hypot(car.vx, car.vz) / 4);
+    const want = THREE.MathUtils.clamp(Math.atan2(-car.ay, 9.81), -0.95, 0.95) * Math.min(1, Math.hypot(car.vx, car.vz) / 4);
     body.rotation.z += (want - body.rotation.z) * Math.min(1, dt * 8);
   } else body.rotation.z = THREE.MathUtils.clamp(-car.ay * 0.009, -0.07, 0.07);   // ruliu
   if (mesh.userData.steerWheel) mesh.userData.steerWheel.rotation.z = -car.steer * 2.2;
