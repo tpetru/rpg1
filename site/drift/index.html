@@ -85,7 +85,7 @@
 <div id="speedo" class="panel"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="a" id="ang">unghi 0°</div></div>
 <div id="help" class="panel">
   <kbd>↑</kbd> accelerație &nbsp; <kbd>↓</kbd> frână / marșarier &nbsp; <kbd>←</kbd><kbd>→</kbd> direcție<br>
-  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>4</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet
+  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>4</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte
 </div>
 <div id="pop"></div>
 <div id="touch">
@@ -164,9 +164,10 @@ scene.fog = new THREE.Fog(0xa9c2d6, 160, 520);
 
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 1200);
 
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(renderer), 0.04).texture;
+const envTex = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(renderer), 0.04).texture;
+scene.environment = envTex;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
-scene.add(new THREE.HemisphereLight(0xdfeeff, 0x4b4a44, 0.7));
+const hemi = new THREE.HemisphereLight(0xdfeeff, 0x4b4a44, 0.7); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2dd, 2.0);
 sun.position.set(40, 80, 25);
 sun.castShadow = true;
@@ -174,6 +175,7 @@ sun.shadow.mapSize.set(2048, 2048);
 const sc = sun.shadow.camera; sc.left = -30; sc.right = 30; sc.top = 30; sc.bottom = -30; sc.near = 1; sc.far = 200;
 sun.shadow.bias = -0.0005;
 scene.add(sun); scene.add(sun.target);
+const STREET = { mat: null, pos: [] };   // stâlpii de iluminat (aprinși noaptea)
 
 function noiseTexture(size, base, spread, dots) {
   const c = document.createElement('canvas'); c.width = c.height = size;
@@ -249,11 +251,12 @@ for (const p of PILLARS) {
   }
   // stâlpi de iluminat
   const poleMat = new THREE.MeshStandardMaterial({ color: 0x777b80, metalness: 0.4, roughness: 0.5 });
-  const lampMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff3c4, emissiveIntensity: 0.6 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff3c4, emissiveIntensity: 0.6 }); STREET.mat = lampMat;
   for (let i = -ARENA; i <= ARENA; i += 63.3) {
     for (const [x, z] of [[i, ARENA + 4], [i, -ARENA - 4], [ARENA + 4, i], [-ARENA - 4, i]]) {
       const p = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 14, 8), poleMat); p.position.set(x, 7, z); scene.add(p);
       const l = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, 1.2), lampMat); l.position.set(x, 14, z); scene.add(l);
+      STREET.pos.push([x, 13.7, z]);
     }
   }
   // dealuri în depărtare
@@ -476,12 +479,14 @@ const MAT = {
   alu: new THREE.MeshStandardMaterial({ color: 0xb9bcc0, metalness: 0.9, roughness: 0.35 }),
   glass: new THREE.MeshPhysicalMaterial({ color: 0x070b10, metalness: 0.2, roughness: 0.02, clearcoat: 1, envMapIntensity: 1.2, transparent: true, opacity: 0.84, depthWrite: false }),
   liner: new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 1, side: THREE.DoubleSide }),
-  head: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf4f8ff, emissiveIntensity: 1.8 }),
-  lens: new THREE.MeshPhysicalMaterial({ color: 0x1c2026, metalness: 0.7, roughness: 0.08, clearcoat: 1 }),
+  head: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeef4ff, emissiveIntensity: 2.6 }),
+  // interiorul farului văzut prin sticla clară: reflector cromat fumuriu, cu lac
+  lens: new THREE.MeshPhysicalMaterial({ color: 0x5d646d, metalness: 1, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.02 }),
+  projGlass: new THREE.MeshPhysicalMaterial({ color: 0x10141a, metalness: 0.3, roughness: 0.02, clearcoat: 1 }),
   reflector: new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 1, roughness: 0.18 }),
   blue: new THREE.MeshStandardMaterial({ color: 0x0a2a80, emissive: 0x2f6bff, emissiveIntensity: 1.2 }),
   amber: new THREE.MeshStandardMaterial({ color: 0x553300, emissive: 0xff8a00, emissiveIntensity: 0.5 }),
-  redLens: new THREE.MeshPhysicalMaterial({ color: 0x4a0408, roughness: 0.1, clearcoat: 1, metalness: 0.2 }),
+  redLens: new THREE.MeshPhysicalMaterial({ color: 0x6e0910, emissive: 0x6a0000, emissiveIntensity: 0.35, roughness: 0.08, clearcoat: 1, metalness: 0.25 }),
   seat: new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.75 }),
   trim: new THREE.MeshStandardMaterial({ color: 0x2a2b2e, roughness: 0.5, metalness: 0.2 }),
 };
@@ -576,6 +581,18 @@ function makeWheel(W, front, side) {
   cal.position.set(side * (hw * 0.32), Math.cos(-0.7) * rIn * 0.72, Math.sin(-0.7) * rIn * 0.72); cal.rotation.x = 0.7; pivot.add(cal);
   return { pivot, spin };
 }
+
+// strălucirea luminilor: sprite aditiv cu un miez mic și un halou larg
+const glowTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.12, 'rgba(255,255,255,0.85)');
+  gr.addColorStop(0.35, 'rgba(255,255,255,0.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const glowMat = color => new THREE.SpriteMaterial({ map: glowTex, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false, opacity: 0 });
+let night = false;
 
 function buildCar(spec) {
   const M = MODELS[spec.body], W = M.wheel;
@@ -696,8 +713,28 @@ function buildCar(spec) {
   const plateF = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.11), plateMat); add(plateF, false);
   const plateR = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.11), plateMat); plateR.rotation.y = PI; add(plateR, false);
 
-  const tailMat = new THREE.MeshStandardMaterial({ color: 0x3a0000, emissive: 0xff1208, emissiveIntensity: 0.8, roughness: 0.25 });
+  const tailMat = new THREE.MeshStandardMaterial({ color: 0x3a0000, emissive: 0xff1208, emissiveIntensity: 1.2, roughness: 0.25 });
   root.userData.tailMat = tailMat;
+  // lumini de marșarier și a treia stop (aprinse doar când e cazul)
+  const revMat = new THREE.MeshPhysicalMaterial({ color: 0xdfe3e8, emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.1, clearcoat: 1 });
+  const brakeMat = new THREE.MeshStandardMaterial({ color: 0x2a0000, emissive: 0xff1208, emissiveIntensity: 0, roughness: 0.3 });
+  const G = root.userData.glow = { head: glowMat(0xdfe9ff), tail: glowMat(0xff2a12), brake: glowMat(0xff1a0a), rev: glowMat(0xf4f6ff), list: [] };
+  // strălucire simetrică: kind = head/tail/brake/rev, dir = +1 față, -1 spate
+  const glow = (kind, x, y, z, size, dir) => {
+    for (const sx of x === 0 ? [1] : [-1, 1]) {
+      const sp = new THREE.Sprite(G[kind]); sp.position.set(sx * x, y, z); sp.scale.setScalar(size); sp.renderOrder = 5;
+      body.add(sp); G.list.push({ sp, kind, size, dir });
+    }
+  };
+  // proiector: inel cromat, lentilă bombată, miez aprins
+  const projector = (x, y, r) => {
+    for (const sx of [-1, 1]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.16, 8, 28), MAT.chrome); ring.position.set(sx * x, y, front + 0.014); add(ring, false);
+      const ln = new THREE.Mesh(new THREE.SphereGeometry(r * 0.92, 24, 12, 0, PI * 2, 0, PI / 2), MAT.projGlass);
+      ln.rotation.x = PI / 2; ln.scale.y = 0.45; ln.position.set(sx * x, y, front + 0.01); add(ln, false);
+      const core = new THREE.Mesh(new THREE.CircleGeometry(r * 0.42, 20), MAT.head); core.position.set(sx * x, y, front + 0.012 + r * 0.42); add(core, false);
+    }
+  };
   const exhaust = (x, y, r, sx = 1) => {
     const e = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.95, 0.18, 22, 1, true), MAT.chrome);
     e.rotation.x = PI / 2; e.scale.x = sx; e.position.set(x, y, rear + 0.02); add(e);
@@ -741,6 +778,11 @@ function buildCar(spec) {
     badge('text', 'M4', 0.14, 0.03, V(-0.55, Rtop - 0.23, rear - 0.008), PI);
     const lip = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.022, 0.15), new THREE.MeshPhysicalMaterial({ map: carbonTex, roughness: 0.3, clearcoat: 1 }));
     const lz = rear + 0.14; lip.position.set(0, S(lz).yc + S(lz).hT + 0.004, lz); lip.rotation.x = -0.18; lip.scale.x = 0.85; add(lip);
+    projector(0.565, Ftop - 0.115, 0.03); projector(0.675, Ftop - 0.105, 0.026);
+    capBoth(sx => rr(sx * 0.70, Rtop - 0.175, 0.1, 0.022, 0.008), -1, revMat, 0.009);
+    glow('head', 0.62, Ftop - 0.11, front + 0.05, 0.75, 1);
+    glow('tail', 0.62, Rtop - 0.12, rear - 0.05, 0.55, -1); glow('brake', 0.62, Rtop - 0.12, rear - 0.05, 0.83, -1);
+    glow('rev', 0.70, Rtop - 0.175, rear - 0.05, 0.6, -1);
   } else if (spec.body === 'rs6') {
     // grila singleframe mare, fagure negru, fanta quattro sub capotă
     const gw = 1.04, gh = 0.40, gy = Ftop - 0.30;
@@ -776,6 +818,11 @@ function buildCar(spec) {
     // bare negre pe plafon (urmează plafonul) și eleron
     both(-1.95, 0.05, 0.355 * PI, 0.37 * PI, MAT.gloss, 0.016, cabSec, 3);
     patch(C.z0 + 0.04, C.z0 + 0.3, 0.3 * PI, 0.7 * PI, MAT.gloss, 0.014, cabSec, 12);   // eleron pe plafon
+    for (const px of [0.605, 0.675, 0.745]) projector(px, Ftop - 0.1, 0.02);
+    capBoth(sx => rr(sx * 0.47, Rtop - 0.17, 0.09, 0.03, 0.01), -1, revMat, 0.009);
+    glow('head', 0.67, Ftop - 0.1, front + 0.05, 0.8, 1);
+    glow('tail', 0.6, Rtop - 0.13, rear - 0.05, 0.6, -1); glow('brake', 0.6, Rtop - 0.13, rear - 0.05, 0.86, -1);
+    glow('rev', 0.47, Rtop - 0.17, rear - 0.05, 0.6, -1);
   } else if (spec.body === 'passat') {
     // grila cromată cu 3 lamele orizontale și emblema VW, prize jos, proiectoare
     const gy = Ftop - 0.13;
@@ -802,7 +849,7 @@ function buildCar(spec) {
     both(rear + 0.05, rear + 0.33, 0.20 * PI, 0.215 * PI, tailMat, 0.008);
     capBoth(sx => poly(sx, [[0.34, Rtop - 0.17], [0.76, Rtop - 0.15], [0.76, Rtop - 0.04], [0.34, Rtop - 0.06]]), -1, MAT.redLens);
     capBoth(sx => poly(sx, [[0.40, Rtop - 0.115], [0.74, Rtop - 0.10], [0.74, Rtop - 0.085], [0.40, Rtop - 0.10]]), -1, tailMat, 0.008);
-    capBoth(sx => rr(sx * 0.63, Rtop - 0.13, 0.08, 0.05, 0.02), -1, MAT.head, 0.008);       // lumini de marșarier
+    capBoth(sx => rr(sx * 0.63, Rtop - 0.13, 0.08, 0.05, 0.02), -1, revMat, 0.008);       // lumini de marșarier
     capDecal(rr(0, Rtop - 0.2, 0.66, 0.022, 0.008), -1, MAT.chrome, 0.008);
     capDecal(rr(0, Rbot + 0.1, R.hw * 1.5, 0.1, 0.03), -1, MAT.gloss);
     for (const ox of [0.5, 0.6]) exhaust(-ox, Rbot + 0.08, 0.035);
@@ -810,6 +857,9 @@ function buildCar(spec) {
     badge('vw', '', 0.13, 0.13, V(0, Rtop - 0.1, rear - 0.01), PI);
     badge('text', 'PASSAT', 0.22, 0.04, V(0.5, Rtop - 0.27, rear - 0.01), PI);
     badge('text', 'TFSI', 0.12, 0.03, V(-0.5, Rtop - 0.27, rear - 0.01), PI);
+    glow('head', 0.63, Ftop - 0.11, front + 0.05, 0.85, 1);
+    glow('tail', 0.55, Rtop - 0.1, rear - 0.05, 0.6, -1); glow('brake', 0.55, Rtop - 0.1, rear - 0.05, 0.86, -1);
+    glow('rev', 0.63, Rtop - 0.13, rear - 0.05, 0.55, -1);
   } else {
     // 911 (997.2): faruri ovale bi-xenon pe aripi, DRL LED în prizele laterale
     for (const sx of [-1, 1]) {
@@ -840,7 +890,15 @@ function buildCar(spec) {
     plateR.position.set(0, Rtop - 0.33, rear - 0.012);
     badge('text', 'PORSCHE', 0.42, 0.06, V(0, Rtop - 0.05, rear - 0.01), PI);
     badge('script', '911 Carrera S', 0.3, 0.05, V(-0.45, Rtop - 0.26, rear - 0.01), PI);
+    capBoth(sx => rr(sx * 0.47, Rtop - 0.19, 0.08, 0.025, 0.01), -1, revMat, 0.009);
+    { const hz = front - 0.42, s9 = S(hz); glow('head', s9.hw - 0.27, s9.yc + s9.hT + (s9.hump || 0) - 0.02, hz + 0.22, 0.8, 1); }
+    glow('tail', 0.56, Rtop - 0.16, rear - 0.05, 0.55, -1); glow('brake', 0.56, Rtop - 0.16, rear - 0.05, 0.79, -1);
+    glow('rev', 0.47, Rtop - 0.19, rear - 0.05, 0.55, -1);
   }
+  // a treia lumină de frână, sus pe luneta din spate
+  { const z3 = C.z0 + 0.05; patch(z3 - 0.03, z3 + 0.03, 0.44 * PI, 0.56 * PI, brakeMat, 0.012, cabSec, 6);
+    const c3 = cabSec(z3); glow('brake', 0, c3.yc + c3.hT + 0.01, z3 - 0.05, 0.5, -1); }
+  root.userData.revMat = revMat; root.userData.brakeMat = brakeMat;
   // umbră de contact sub mașină
   const ao = new THREE.Mesh(new THREE.PlaneGeometry(spec.wid + 0.5, spec.len + 0.5), new THREE.MeshBasicMaterial({ map: aoTex, transparent: true, depthWrite: false, opacity: 0.8 }));
   ao.rotation.x = -PI / 2; ao.position.set(0, 0.02, -cgZ); root.add(ao); root.userData.ao = ao;
@@ -1647,6 +1705,64 @@ const sound = (() => {
 })();
 
 // ------------------------------------------------------------------
+// Luminile mașinii și modul de noapte
+// ------------------------------------------------------------------
+const beams = [-1, 1].map(sx => {
+  const l = new THREE.SpotLight(0xf2f6ff, 0, 70, 0.42, 0.55, 1.4);
+  l.userData.sx = sx; l.target.position.set(sx * 0.9, 0, 18); return l;
+});
+const rearGlow = new THREE.PointLight(0xff1a0a, 0, 6, 2);
+function attachBeams(mesh) {
+  const b = mesh.userData.body, z = car.spec.len / 2 - 0.25;
+  for (const l of beams) { l.position.set(l.userData.sx * 0.62, 0.7, z); l.target.position.set(l.userData.sx * 0.9, 0, z + 18); b.add(l); b.add(l.target); }
+  rearGlow.position.set(0, 0.35, -car.spec.len / 2 - 1.6); b.add(rearGlow);
+}
+const _cv = new THREE.Vector3();
+let braking = 0, reversing = 0;
+function updateLights(mesh, dt) {
+  const ud = mesh.userData, G = ud.glow;
+  const brk = (keys.ArrowDown && car.long > 0.5) || keys.Space ? 1 : 0;
+  const rev = car.long < -0.3 || (keys.ArrowDown && car.long < 0.5) ? 1 : 0;
+  braking += (brk - braking) * Math.min(1, dt * 25);            // LED: aprindere aproape instantă
+  reversing += (rev - reversing) * Math.min(1, dt * 12);
+  ud.tailMat.emissiveIntensity = 1.2 + braking * 3.2;
+  ud.brakeMat.emissiveIntensity = braking * 4;
+  ud.revMat.emissiveIntensity = reversing * 3;
+  // strălucirea depinde de unghiul din care privești farul
+  _cv.set(camera.position.x - car.x, 0, camera.position.z - car.z).normalize();
+  const fw = _cv.x * Math.sin(car.yaw) + _cv.z * Math.cos(car.yaw);
+  const front = Math.max(0, fw), back = Math.max(0, -fw);
+  const k = night ? 1 : 0.55;
+  G.head.opacity = k * (0.25 + 0.75 * front) * (night ? 1 : 0.8);
+  G.tail.opacity = (night ? 0.75 : 0.3) * (0.3 + 0.7 * back);
+  G.brake.opacity = braking * (night ? 0.6 : 0.7) * (0.3 + 0.7 * back);
+  G.rev.opacity = reversing * (night ? 0.9 : 0.6) * (0.3 + 0.7 * back);
+  for (const l of beams) l.intensity = night ? 90 : 0;
+  rearGlow.intensity = night ? 0.3 + braking * 1.4 : 0;
+}
+const DAY = { bg: 0xa9c2d6, hemi: 0.7, sun: 2.0, exp: 1.0 };
+function setNight(on) {
+  night = on;
+  scene.background.set(on ? 0x070c18 : DAY.bg); scene.fog.color.set(on ? 0x070c18 : DAY.bg);
+  scene.fog.near = on ? 40 : 160; scene.fog.far = on ? 260 : 520;
+  hemi.intensity = on ? 0.5 : DAY.hemi; hemi.color.set(on ? 0x5a6f9e : 0xdfeeff);
+  sun.intensity = on ? 0.18 : DAY.sun; sun.color.set(on ? 0xa8bcff : 0xfff2dd);
+  scene.environment = on ? null : envTex;
+  if (STREET.mat) STREET.mat.emissiveIntensity = on ? 3 : 0.6;
+  streetGlows.forEach(s => s.visible = on);
+  streetLights.forEach(l => l.intensity = on ? 1400 : 0);
+  pop(on ? 'Noapte · farurile aprinse' : 'Zi');
+  try { localStorage.setItem('drift-night', on ? '1' : '0'); } catch (e) {}
+}
+// câțiva stâlpi chiar luminează pistă (cei mai apropiați de centru), restul doar strălucesc
+const streetGlowMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffd9a0, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.9 });
+const streetGlows = STREET.pos.map(([x, y, z]) => { const s = new THREE.Sprite(streetGlowMat); s.position.set(x, y, z); s.scale.setScalar(7); s.visible = false; scene.add(s); return s; });
+const streetLights = STREET.pos.filter(([x, , z]) => Math.abs(x) < 70 || Math.abs(z) < 70).slice(0, 6).map(([x, y, z]) => {
+  const l = new THREE.SpotLight(0xffd9a0, 0, 140, 0.9, 0.7, 1.6); l.position.set(x, y, z);
+  l.target.position.set(x * 0.6, 0, z * 0.6); scene.add(l); scene.add(l.target); return l;
+});
+
+// ------------------------------------------------------------------
 // Interfață, selecție mașină, tastatură
 // ------------------------------------------------------------------
 const carsEl = $('cars');
@@ -1670,12 +1786,14 @@ function selectCar(i) {
   carMeshes.forEach((m, j) => m.visible = j === i);
   [...carsEl.querySelectorAll('.car')].forEach((b, j) => b.classList.toggle('on', j === i));
   descEl.textContent = car.spec.desc;
+  attachBeams(carMeshes[i]);
   resetCar(true);
   try { localStorage.setItem('drift-car', i); } catch (e) {}
 }
 let startCar = 0;
 try { startCar = Math.min(CARS.length - 1, Math.max(0, parseInt(localStorage.getItem('drift-car') || '0', 10) || 0)); } catch (e) {}
 selectCar(startCar);
+try { if (localStorage.getItem('drift-night') === '1') setNight(true); } catch (e) {}
 
 let camMode = 0;
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
@@ -1688,6 +1806,7 @@ addEventListener('keydown', e => {
   if (e.key === 'r' || e.key === 'R') resetCar(false);
   if (e.key === 'c' || e.key === 'C') camMode = (camMode + 1) % 3;
   if (e.key === 'm' || e.key === 'M') sound.toggle();
+  if (e.key === 'n' || e.key === 'N') setNight(!night);
 });
 addEventListener('keyup', e => { const k = e.code === 'Space' ? 'Space' : e.key; if (GAME_KEYS.includes(k)) keys[k] = false; });
 addEventListener('blur', () => GAME_KEYS.forEach(k => keys[k] = false));
@@ -1723,7 +1842,7 @@ function visuals(dt) {
   const body = mesh.userData.body;
   body.rotation.z = THREE.MathUtils.clamp(-car.ay * 0.009, -0.07, 0.07);   // ruliu
   body.rotation.x = THREE.MathUtils.clamp(-car.ax * 0.006, -0.05, 0.05);   // tangaj
-  mesh.userData.tailMat.emissiveIntensity = keys.ArrowDown || keys.Space ? 2.2 : 0.6;
+  updateLights(mesh, dt);
 
   const sn = Math.sin(car.yaw), cs = Math.cos(car.yaw);
   const speed = Math.hypot(car.vx, car.vz);
@@ -1824,7 +1943,7 @@ $('loading').remove();
 requestAnimationFrame(frame);
 
 // pentru testare din consolă
-window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, groundAt, wetAt };
+window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, groundAt, wetAt, setNight };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
