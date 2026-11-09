@@ -40,19 +40,19 @@
 'use strict';
 // ---------- Ținutele Doamnei Crăciun (toate decente: fiecare sticlă prinsă = schimbă ținuta / dă jos un strat de iarnă) ----------
 const OUTFITS = [
-  { name:'Palton, fular, căciulă și mănuși', coat:1, scarf:1, hat:1, mitts:1 },
-  { name:'Și-a dat jos mănușile',            coat:1, scarf:1, hat:1 },
-  { name:'Și-a dat jos fularul',             coat:1, hat:1 },
-  { name:'Și-a dat jos căciula',             coat:1 },
-  { name:'Fără palton: pulover cu reni',     sweater:1 },
-  { name:'Costum de spiriduș',               elf:1 },
-  { name:'Rochie de catifea de Crăciun',     velvet:1 },
-  { name:'Pulover urât cu beculețe',         ugly:1 },
+  { name:'Geacă puf, fular, fes și mănuși',  coat:1, scarf:1, hat:1, mitts:1, jeans:1 },
+  { name:'Și-a dat jos mănușile',            coat:1, scarf:1, hat:1, jeans:1 },
+  { name:'Și-a dat jos fularul',             coat:1, hat:1, jeans:1 },
+  { name:'Și-a dat jos fesul',               coat:1, jeans:1 },
+  { name:'Fără geacă: hanorac cu reni și blugi', sweater:1, jeans:1 },
+  { name:'Costum de spiriduș cu colanți',    elf:1 },
+  { name:'Salopetă roșie de petrecere',      velvet:1 },
+  { name:'Pulover urât cu beculețe și blugi', ugly:1, jeans:1 },
   { name:'Rochie de gală aurie',             gold:1 },
 ];
 const MAXO = OUTFITS.length - 1;
 // ce își pune la loc când coboară la nivelul i (după o sticlă ratată)
-const PUT_BACK = ['mănușile', 'fularul', 'căciula', 'paltonul', 'puloverul', 'costumul de spiriduș', 'rochia de catifea', 'puloverul urât'];
+const PUT_BACK = ['mănușile', 'fularul', 'fesul', 'geaca de puf', 'hanoracul', 'costumul de spiriduș', 'salopeta', 'puloverul urât'];
 const LANES = 5;
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -206,8 +206,8 @@ function gameOver() {
 function menu() {
   card.innerHTML = `<h1>Moș Crăciun <span>și berea</span></h1>
     <p>Sticlele de bere cad pe 5 coloane. Prinde-le în coș!</p>
-    <p>La fiecare sticlă prinsă, <b>Doamna Crăciun</b> își schimbă ținuta: dă jos mănușile, fularul, căciula,
-    paltonul… până ajunge la rochia de gală. La fiecare sticlă ratată se îmbracă la loc cu un strat.</p>
+    <p>La fiecare sticlă prinsă, <b>Doamna Crăciun</b> își schimbă ținuta: dă jos mănușile, fularul, fesul,
+    geaca de puf… până ajunge la rochia de gală. La fiecare sticlă ratată se îmbracă la loc cu un strat.</p>
     <p class="keys">Cu cât prinzi mai multe: Moșul se cherchelește, Doamna Crăciun dansează, vine petrecerea disco, trec renii cu sania, apar sticle de aur și artificii. Ai grijă la cărbuni!</p>
     <p class="keys">Calculator: <b>← →</b> sau <b>A D</b> (sau 1–5) · Telefon: atinge coloana unde vrei să meargă Moșul.<br>
     P = pauză · M = sunet</p>
@@ -456,8 +456,10 @@ function drawMrs(cx, top, h, o, t) {
   if (dancing) { ctx.translate(0, -Math.abs(Math.sin(t * 6)) * 2.5); ctx.rotate(Math.sin(t * 6) * 0.05); }
 
   // pantofi / cizme
-  ctx.fillStyle = o.coat ? '#3a2416' : o.gold ? '#c9a227' : o.elf ? '#7a1d1d' : '#2a1a14';
-  rr(-11, 94, 9, 6, 2); ctx.fill(); rr(2, 94, 9, 6, 2); ctx.fill();
+  ctx.fillStyle = o.jeans ? '#e9e4da' : o.gold ? '#c9a227' : o.elf ? '#7a1d1d' : '#1b1b1b';
+  if (o.jeans || o.velvet || o.elf) { rr(-11, 90, 9, 10, 2.5); ctx.fill(); rr(2, 90, 9, 10, 2.5); ctx.fill(); // botine
+    ctx.fillStyle = o.jeans ? '#c9c2b4' : '#333'; ctx.fillRect(-11, 98, 9, 2); ctx.fillRect(2, 98, 9, 2); }
+  else { rr(-11, 94, 9, 6, 2); ctx.fill(); rr(2, 94, 9, 6, 2); ctx.fill(); }
 
   // ---- rochia/fusta de bază (lungă, mereu până la glezne) ----
   let dress = '#7d1424', top2 = null;
@@ -465,29 +467,28 @@ function drawMrs(cx, top, h, o, t) {
   if (o.elf) dress = '#1f7a3a';
   if (o.velvet) dress = '#a3122a';
   if (o.gold) dress = '#d8b24a';
+  // pantaloni (blugi / salopetă) sau colanți: două picioare acoperite până la glezne
+  const pants = o.jeans || o.velvet || o.elf;
+  if (pants) {
+    const col = o.jeans ? '#3d5f95' : o.velvet ? '#b3122b' : '#c8102e';
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(-11, 50); ctx.lineTo(-0.5, 50); ctx.lineTo(-1.5, 92); ctx.lineTo(-10.5, 92); ctx.lineTo(-12, 70); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(11, 50); ctx.lineTo(0.5, 50); ctx.lineTo(1.5, 92); ctx.lineTo(10.5, 92); ctx.lineTo(12, 70); ctx.closePath(); ctx.fill();
+    if (o.jeans) { ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = .6; ctx.beginPath(); ctx.moveTo(-7, 56); ctx.lineTo(-6, 90); ctx.moveTo(7, 56); ctx.lineTo(6, 90); ctx.stroke();
+      ctx.strokeStyle = '#d9a441'; ctx.lineWidth = .4; ctx.beginPath(); ctx.moveTo(-10.6, 89); ctx.lineTo(-1.6, 89); ctx.moveTo(1.6, 89); ctx.lineTo(10.6, 89); ctx.stroke(); }
+    if (o.elf) { ctx.fillStyle = '#fff'; for (let y = 72; y < 92; y += 4) { ctx.fillRect(-11.5, y, 10.5, 2); ctx.fillRect(1, y, 10.5, 2); } }
+    if (o.velvet) { ctx.fillStyle = '#7d0d1f'; ctx.fillRect(-1, 52, 2, 38); }
+  }
   const skirt = new Path2D();
+  if (pants) skirt.rect(0, 0, 0, 0); else {
   skirt.moveTo(-10, 50); skirt.quadraticCurveTo(-20 - sway*.3, 80, -22 - sway*.5, 95);
-  skirt.quadraticCurveTo(0, 98, 22 - sway*.5, 95); skirt.quadraticCurveTo(20 - sway*.3, 80, 10, 50); skirt.closePath();
+  skirt.quadraticCurveTo(0, 98, 22 - sway*.5, 95); skirt.quadraticCurveTo(20 - sway*.3, 80, 10, 50); skirt.closePath(); }
   ctx.fillStyle = dress; ctx.fill(skirt);
-  if (o.sweater) { // fustă în carouri
-    ctx.save(); ctx.clip(skirt);
-    ctx.fillStyle = '#c8102e'; ctx.fillRect(-25, 50, 50, 48);
-    ctx.strokeStyle = 'rgba(20,60,30,.7)'; ctx.lineWidth = 2.2;
-    for (let i = -25; i < 25; i += 6) { ctx.beginPath(); ctx.moveTo(i, 50); ctx.lineTo(i, 98); ctx.stroke(); }
-    for (let j = 53; j < 98; j += 6) { ctx.beginPath(); ctx.moveTo(-25, j); ctx.lineTo(25, j); ctx.stroke(); }
-    ctx.restore();
-  }
-  if (o.elf) { // dungi și tiv cu zimți
-    ctx.save(); ctx.clip(skirt);
+  if (o.elf) { // tunică de spiriduș până la jumătatea coapsei, peste colanți
+    ctx.fillStyle = '#1f7a3a';
+    ctx.beginPath(); ctx.moveTo(-11, 48); ctx.lineTo(11, 48); ctx.lineTo(16 - sway*.3, 70); ctx.lineTo(-16 - sway*.3, 70); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#c8102e';
-    for (let x = -24; x < 24; x += 6) { ctx.beginPath(); ctx.moveTo(x, 98); ctx.lineTo(x + 3, 90); ctx.lineTo(x + 6, 98); ctx.fill(); }
-    ctx.restore();
-  }
-  if (o.velvet) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-22 - sway*.5, 95); ctx.quadraticCurveTo(0, 98, 22 - sway*.5, 95); ctx.lineTo(21, 91); ctx.quadraticCurveTo(0, 94, -21, 91); ctx.fill(); }
-  if (o.ugly) { // fustă verde lungă cu fulgi
-    ctx.save(); ctx.clip(skirt); ctx.fillStyle = '#145a32'; ctx.fillRect(-25, 50, 50, 48);
-    ctx.fillStyle = '#fff'; for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(((i * 29) % 36) - 18, 58 + ((i * 41) % 34), .9, 0, 7); ctx.fill(); }
-    ctx.restore();
+    for (let x = -16; x < 16; x += 4) { ctx.beginPath(); ctx.moveTo(x - sway*.3, 70); ctx.lineTo(x + 2 - sway*.3, 65); ctx.lineTo(x + 4 - sway*.3, 70); ctx.fill(); }
   }
   if (o.gold) { // sclipici
     ctx.save(); ctx.clip(skirt);
@@ -501,6 +502,7 @@ function drawMrs(cx, top, h, o, t) {
   // ---- bust + mâneci lungi ----
   let bodice = dress, sleeve = dress;
   if (o.sweater) { bodice = sleeve = '#2e7d4f'; }
+  if (o.velvet) { bodice = sleeve = '#b3122b'; }
   if (o.ugly) { bodice = sleeve = '#c8102e'; }
   ctx.fillStyle = bodice;
   rr(-12, 27, 24, 26, 6); ctx.fill();
@@ -516,6 +518,9 @@ function drawMrs(cx, top, h, o, t) {
     ctx.beginPath(); ctx.arc(4, 38.5, 1.6, 0, 7); ctx.fill();
     ctx.strokeStyle = '#8a5a2b'; ctx.beginPath(); ctx.moveTo(4, 37); ctx.lineTo(3, 35); ctx.moveTo(5, 37); ctx.lineTo(6.5, 35); ctx.stroke();
     ctx.fillStyle = '#c8102e'; ctx.beginPath(); ctx.arc(5.5, 39, .8, 0, 7); ctx.fill();
+    ctx.fillStyle = '#256a42'; rr(-9, 24, 18, 5, 2.5); ctx.fill(); // glugă strânsă la gât
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = .6; ctx.beginPath(); ctx.moveTo(-2, 28); ctx.lineTo(-2.5, 33); ctx.moveTo(2, 28); ctx.lineTo(2.5, 33); ctx.stroke();
+    ctx.fillStyle = '#256a42'; ctx.fillRect(-12, 50, 24, 3);
   }
   if (o.ugly) { // pulover urât: zig-zag verde, brăduț, beculețe care clipesc
     ctx.strokeStyle = '#2e7d4f'; ctx.lineWidth = 2;
@@ -533,34 +538,30 @@ function drawMrs(cx, top, h, o, t) {
     ctx.fillStyle = '#1b1b1b'; ctx.fillRect(-12, 48, 24, 4);
     ctx.fillStyle = '#e8b923'; ctx.fillRect(-2.5, 47.5, 5, 5);
   }
-  if (o.velvet) { // guler și manșete din blană, centură
-    ctx.fillStyle = '#fff'; rr(-12, 26, 24, 4, 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(-15, 53, 3.6, 0, 7); ctx.arc(15, 53, 3.6, 0, 7); ctx.fill();
-    ctx.fillStyle = '#1b1b1b'; ctx.fillRect(-12, 48, 24, 4);
-    ctx.fillStyle = '#e8b923'; ctx.fillRect(-2.5, 47.5, 5, 5);
+  if (o.velvet) { // salopetă: guler rotund închis, nasturi aurii, curea
+    ctx.fillStyle = '#7d0d1f'; rr(-7, 25.5, 14, 3, 1.5); ctx.fill();
+    ctx.fillStyle = '#e8b923'; for (let y = 31; y < 47; y += 5) { ctx.beginPath(); ctx.arc(0, y, .9, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#1b1b1b'; ctx.fillRect(-12, 48, 24, 3.5);
+    ctx.fillStyle = '#e8b923'; ctx.fillRect(-2, 47.7, 4, 4);
   }
   if (o.gold) { // guler înalt și brâu
     ctx.fillStyle = '#f3dd8a'; rr(-8, 25, 16, 4, 2); ctx.fill();
     ctx.fillStyle = '#b8902a'; ctx.fillRect(-12, 48, 24, 3);
   }
 
-  // ---- palton (strat de iarnă) ----
+  // ---- geacă de puf (strat de iarnă) ----
   if (o.coat) {
-    const coat = new Path2D();
-    coat.moveTo(-13, 28); coat.lineTo(13, 28); coat.lineTo(15, 50);
-    coat.quadraticCurveTo(21 - sway*.4, 75, 23 - sway*.5, 90); coat.quadraticCurveTo(0, 93, -23 - sway*.5, 90);
-    coat.quadraticCurveTo(-21 - sway*.4, 75, -15, 50); coat.closePath();
-    ctx.fillStyle = '#b3122b'; ctx.fill(coat);
-    ctx.fillStyle = '#fff'; // blană pe față și jos
-    ctx.fillRect(-2.5, 28, 5, 62);
-    ctx.beginPath(); ctx.moveTo(-23 - sway*.5, 90); ctx.quadraticCurveTo(0, 93, 23 - sway*.5, 90); ctx.lineTo(23 - sway*.5, 86);
-    ctx.quadraticCurveTo(0, 89, -23 - sway*.5, 86); ctx.fill();
-    ctx.fillStyle = '#1b1b1b'; ctx.fillRect(-14, 47, 28, 4);
-    ctx.fillStyle = '#e8b923'; ctx.fillRect(-3, 46.5, 6, 5);
-    ctx.strokeStyle = '#b3122b'; ctx.lineWidth = 9; // mâneci groase
+    ctx.fillStyle = '#c8102e';
+    rr(-15, 26, 30, 35, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = .8; // cusături de puf
+    for (let y = 33; y < 60; y += 6) { ctx.beginPath(); ctx.moveTo(-14.5, y); ctx.lineTo(14.5, y); ctx.stroke(); }
+    ctx.fillStyle = '#e9e4da'; rr(-8, 24.5, 16, 5, 2.5); ctx.fill(); // guler
+    ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = .7; ctx.beginPath(); ctx.moveTo(0, 29); ctx.lineTo(0, 61); ctx.stroke(); // fermoar
+    ctx.strokeStyle = '#c8102e'; ctx.lineWidth = 10; // mâneci pufoase
     ctx.beginPath(); ctx.moveTo(-12, 31); ctx.quadraticCurveTo(-19, 42, -16, 53); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(12, 31); ctx.quadraticCurveTo(19, 42, 16, 53); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-16, 54, 4.6, 0, 7); ctx.arc(16, 54, 4.6, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = .8;
+    for (const sx of [-1, 1]) for (const y of [38, 45]) { ctx.beginPath(); ctx.moveTo(sx * 12.5, y); ctx.lineTo(sx * 20, y + 1); ctx.stroke(); }
   }
 
   // ---- mâini ----
@@ -602,10 +603,11 @@ function drawMrs(cx, top, h, o, t) {
   }
   // ---- căciulă ----
   if (o.hat) {
-    ctx.fillStyle = '#b3122b';
-    ctx.beginPath(); ctx.moveTo(-10, 8); ctx.quadraticCurveTo(-2, -12, 14 + sway, -6); ctx.lineTo(10, 8); ctx.fill();
-    ctx.fillStyle = '#fff'; rr(-11.5, 5, 23, 5, 2.5); ctx.fill();
-    ctx.beginPath(); ctx.arc(14 + sway, -6, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e9e4da';
+    ctx.beginPath(); ctx.arc(0, 8, 10.8, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#d5cfc3'; rr(-11.5, 6, 23, 5, 2.5); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = .6; for (let x = -9; x <= 9; x += 3) { ctx.beginPath(); ctx.moveTo(x, 6); ctx.lineTo(x * .6, -1.5); ctx.stroke(); }
+    ctx.fillStyle = '#c8102e'; ctx.beginPath(); ctx.arc(0, -3.5, 3.4, 0, 7); ctx.fill();
   }
   if (o.elf) { // bonetă de spiriduș
     ctx.fillStyle = '#1f7a3a'; ctx.beginPath(); ctx.moveTo(-10, 7); ctx.quadraticCurveTo(0, -14, 16 + sway, -2); ctx.lineTo(10, 7); ctx.fill();
