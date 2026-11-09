@@ -306,9 +306,23 @@ function setBands(p) {
 }
 
 // ---------- trajectoria ----------
-const DOTS = 40;
-const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }), DOTS);
-dots.frustumCulled = false; scene.add(dots);
+// puncte albe cu contur închis, vizibile și prin obiecte
+const DOTS = 60;
+const dotOut = new THREE.InstancedMesh(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial({ color: 0x2a1a08, transparent: true, opacity: 0.6, depthTest: false }), DOTS);
+const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.24, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 1, depthTest: false }), DOTS);
+dotOut.renderOrder = 10; dots.renderOrder = 11;
+for (const d of [dotOut, dots]) { d.frustumCulled = false; d.count = 0; scene.add(d); }
+// urma lăsată de pisica lansată (rămâne până la următoarea lansare)
+const TRAIL = 400;
+const trail = new THREE.InstancedMesh(new THREE.SphereGeometry(0.17, 10, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }), TRAIL);
+trail.frustumCulled = false; trail.count = 0; trail.renderOrder = 9; scene.add(trail);
+let trailN = 0, trailT = 0;
+function trailReset() { trailN = 0; trail.count = 0; }
+function trailAdd(p, big) {
+  if (trailN >= TRAIL) return;
+  const s = big ? 1.6 : 1; trail.setMatrixAt(trailN++, new THREE.Matrix4().makeScale(s, s, s).setPosition(p.x, p.y, p.z));
+  trail.count = trailN; trail.instanceMatrix.needsUpdate = true;
+}
 
 // =====================================================================
 //  Texturi blocuri (cu crăpături)
@@ -717,7 +731,7 @@ function clearLevel() {
   for (const f of floats) f.el.remove(); floats.length = 0;
 }
 function loadLevel(i) {
-  clearLevel();
+  clearLevel(); trailReset();
   S.level = i; S.score = 0; S.result = null;
   LEVELS[i].build();
   for (const o of S.objs) if (o.body.mass > 0) o.body.sleep();
@@ -757,6 +771,7 @@ function launch() {
   const def = CATS[S.cur.key];
   const dir = aimDir(); const v = dir.clone().multiplyScalar(S.power * VMAX);
   const c = spawnCat(S.cur.key, S.cur.mesh, P0, v);
+  trailReset(); trailT = 0;
   S.cur = null; S.flying = [c]; S.mode = 'fly'; S.turnT = 0; S.abilityUsed = false;
   SFX.launch(); meow(1 + Math.random() * 0.2);
   setBands(P0); updateHud();
@@ -777,6 +792,7 @@ function useAbility() {
   if (ab !== 'boom' && c.hit) return;
   S.abilityUsed = true;
   const p = c.body.position, v = c.body.velocity;
+  trailAdd(p, true);
   if (ab === 'split') {
     const vel = new THREE.Vector3(v.x, v.y, v.z);
     for (const [yaw, up] of [[0.2, 0.06], [-0.2, -0.06]]) {
@@ -907,17 +923,18 @@ function update(dt) {
   if (show) {
     const v = dir.multiplyScalar(S.power * VMAX);
     for (let i = 1; i <= DOTS; i++) {
-      const t = i * 0.065;
+      const t = i * 0.05;
       const x = P0.x + v.x * t, y = P0.y + v.y * t - 0.5 * G * t * t, z = P0.z + v.z * t;
       if (y < 0) break;
-      const s = 1 - i / DOTS * 0.6;
-      m4.makeScale(s, s, s).setPosition(x, y, z); dots.setMatrixAt(shown++, m4);
+      const s = 1 - i / DOTS * 0.45;
+      m4.makeScale(s, s, s).setPosition(x, y, z); dots.setMatrixAt(shown, m4); dotOut.setMatrixAt(shown++, m4);
     }
   }
-  dots.count = shown; dots.instanceMatrix.needsUpdate = true;
+  dots.count = dotOut.count = shown; dots.instanceMatrix.needsUpdate = dotOut.instanceMatrix.needsUpdate = true;
   // sfârșitul rândului
   if (S.mode === 'fly') {
-    S.turnT += dt;
+    S.turnT += dt; trailT += dt;
+    if (trailT > 0.035) { trailT = 0; for (const c of S.flying) if (!c.dead && !c.hit) trailAdd(c.body.position, false); }
     let moving = false;
     for (const o of S.objs.concat(S.flying)) {
       if (o.dead || o.body.mass === 0 || !o.body.world) continue;
