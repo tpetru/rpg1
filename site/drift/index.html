@@ -3281,7 +3281,8 @@ CARS.forEach((s, i) => {
   carsEl.appendChild(b);
 });
 const descEl = document.createElement('div'); descEl.id = 'desc'; carsEl.appendChild(descEl);
-const setLink = document.createElement('a'); setLink.className = 'setlink'; setLink.href = 'settings/'; setLink.textContent = '⚙ Setări vehicule'; carsEl.appendChild(setLink);
+// linkul spre pagina de setări e ascuns din meniu (pagina rămâne la /drift/settings/)
+// const setLink = document.createElement('a'); setLink.className = 'setlink'; setLink.href = 'settings/'; setLink.textContent = '⚙ Setări vehicule'; carsEl.appendChild(setLink);
 // aripi: bifă (și tasta A); contează doar la vehiculele care pot avea aripi
 let wingsOn = false;
 const wingOpt = document.createElement('label'); wingOpt.className = 'opt';
