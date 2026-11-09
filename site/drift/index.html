@@ -2481,8 +2481,8 @@ const PALACE = { x: -60, z: 128, w: 64, d: 30 };              // z = fațada (sp
 // ------------------------------------------------------------------
 // Pisica curcubeu: umblă prin arenă și fuge din calea mașinilor, lăsând o dâră de curcubeu
 // ------------------------------------------------------------------
-const CAT = { x: 40, z: 30, yaw: 0.5, sp: 0, y: 0, vy: 0, t: 0, wanderT: 0, wanderYaw: 0.5, hit: 0, gait: 0, sit: 0, trail: [], tn: 0 };
-const catMesh = (() => {
+const newCatState = (x, z, yaw) => ({ x, z, yaw, sp: 0, y: 0, vy: 0, t: Math.random() * 10, wanderT: 0, wanderYaw: yaw, hit: 0, gait: 0, sit: 0, trail: [], tn: 0 });
+const buildCatMesh = () => {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const fur = canvasTex(256, 64, (c, W, H) => { const cols = ['#ff3b3b', '#ff9a1f', '#ffe135', '#3ddc5a', '#2fa8ff', '#7a4dff', '#e04cff']; cols.forEach((col, i) => { c.fillStyle = col; c.fillRect(i * W / 7, 0, W / 7 + 1, H); }); });
   const furM = new THREE.MeshStandardMaterial({ map: fur, roughness: 0.85 }), pink = new THREE.MeshStandardMaterial({ color: 0xffb3d9, roughness: 0.6 }), dark = new THREE.MeshStandardMaterial({ color: 0x1b1b24, roughness: 0.5 });
@@ -2510,16 +2510,17 @@ const catMesh = (() => {
   g.userData = { body, head, tailG, legs };
   g.scale.setScalar(1.7); g.visible = true; scene.add(g);
   return g;
-})();
-const CAT_TRAIL = 26, catTrailMesh = (() => {
+};
+const CAT_TRAIL = 64, buildCatTrail = CAT => {
   const m = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }), CAT_TRAIL);
   m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  for (let i = 0; i < CAT_TRAIL; i++) { m.setColorAt(i, new THREE.Color().setHSL(i / 7 % 1, 0.95, 0.55)); CAT.trail.push([CAT.x, CAT.z, 0]); }
+  for (let i = 0; i < CAT_TRAIL; i++) { m.setColorAt(i, new THREE.Color().setHSL(i / 12 % 1, 0.95, 0.55)); CAT.trail.push([CAT.x, CAT.z, 0]); }
   scene.add(m); return m;
-})();
+};
+const CATS = [[40, 30, 0.5], [-55, -45, 2.2], [70, -70, 4.0]].map(([x, z, yaw]) => { const C = newCatState(x, z, yaw); return { C, mesh: buildCatMesh(), trailMesh: buildCatTrail(C) }; });
 const _cm = new THREE.Matrix4(), _cq = new THREE.Quaternion(), _cv3 = new THREE.Vector3(), _cs3 = new THREE.Vector3();
-function catStep(dt) {
-  const C = CAT; C.t += dt;
+function catStep(CT, dt) {
+  const C = CT.C, catMesh = CT.mesh, catTrailMesh = CT.trailMesh; C.t += dt;
   const dx = C.x - car.x, dz = C.z - car.z, d = Math.hypot(dx, dz) || 0.001, carSp = Math.hypot(car.vx, car.vz);
   const danger = d < 24 && (carSp > 1.5 || d < 7);
   let want = C.wanderYaw, spT = C.sit > 0 ? 0 : 1.3;
@@ -3597,7 +3598,7 @@ function frame(now) {
   while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); acc -= STEP; }
   updateBallMesh(dt);
   if (WET.water) { WET.water.normalMap.offset.x += dt * 0.012; WET.water.normalMap.offset.y += dt * 0.007; }
-  parkStep(dt); palaceStep(); catStep(dt);
+  parkStep(dt); palaceStep(); for (const ct of CATS) catStep(ct, dt);
   updateDrift(dt);
   updateCones(dt);
   updateSmoke(dt);
@@ -3647,7 +3648,7 @@ function drawMinimap() {
     const [a, b] = mmPos(hx + Math.sin(trailer.yaw) * TRAILER.front, hz + Math.cos(trailer.yaw) * TRAILER.front), [c, d] = mmPos(hx - Math.sin(trailer.yaw) * rear, hz - Math.cos(trailer.yaw) * rear);
     g.strokeStyle = '#f2f2f2'; g.lineWidth = Math.max(3, TRAILER.wid * k); g.lineCap = 'butt'; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke();
   }
-  { const [x, z] = mmPos(CAT.x, CAT.z); g.fillStyle = '#ff4fd8'; g.beginPath(); g.arc(x, z, 3, 0, 7); g.fill(); g.strokeStyle = '#ffe135'; g.lineWidth = 1.2; g.stroke(); }
+  for (const ct of CATS) { const [x, z] = mmPos(ct.C.x, ct.C.z); g.fillStyle = '#ff4fd8'; g.beginPath(); g.arc(x, z, 3, 0, 7); g.fill(); g.strokeStyle = '#ffe135'; g.lineWidth = 1.2; g.stroke(); }
   { const [x, z] = mmPos(ball.x, ball.z); g.fillStyle = '#fff'; g.strokeStyle = '#111'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, z, Math.max(3, BALL_R * k), 0, 7); g.fill(); g.stroke(); }
   // mașina: săgeată în culoarea ei, cu contur alb
   const [x, z] = mmPos(car.x, car.z), sz = Math.max(7, car.spec.len * k * 1.6);
@@ -3658,7 +3659,7 @@ function drawMinimap() {
 }
 
 // pentru testare din consolă
-window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, setSiren, carMeshes, trailer, trailerStep, groundAt, wetAt, setNight, ball, ballStep, resetBall, CAT, catMesh };
+window.__drift = { CATS, car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, setSiren, carMeshes, trailer, trailerStep, groundAt, wetAt, setNight, ball, ballStep, resetBall };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
