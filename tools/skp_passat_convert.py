@@ -50,6 +50,20 @@ for key, lst in groups.items():
         out['wheels'][f'{w[0]}{w[1]}'] = [round(float((c[0] - CX) * S), 4), round(float((c[1] - Y0) * S), 4), round(float((c[2] - ZF_M) * S + ZF_G), 4)]
     else:
         pos = tobody(pos)
+    # normale netede: media fețelor vecine din același punct, doar dacă unghiul dintre ele < 38° (muchiile ascuțite rămân ascuțite)
+    tr2 = idx.reshape(-1, 3); fn2 = np.cross(pos[tr2[:, 1]] - pos[tr2[:, 0]], pos[tr2[:, 2]] - pos[tr2[:, 0]])
+    fl = np.linalg.norm(fn2, axis=1, keepdims=True); fl[fl == 0] = 1; fnu = fn2 / fl
+    corner_v = tr2.reshape(-1); corner_f = np.repeat(np.arange(len(tr2)), 3)
+    pk = np.round(pos[corner_v] * 5000).astype(np.int64)
+    _, pid = np.unique(pk, axis=0, return_inverse=True); pid = pid.reshape(-1)
+    order = np.argsort(pid, kind='stable'); sp = pid[order]; bounds = np.flatnonzero(np.diff(sp)) + 1
+    newn = np.zeros((len(corner_v), 3)); cosT = np.cos(np.radians(38))
+    for grp in np.split(order, bounds):
+        if len(grp) == 1: newn[grp[0]] = fnu[corner_f[grp[0]]]; continue
+        F = fn2[corner_f[grp]]; U = fnu[corner_f[grp]]
+        M = (U @ U.T) > cosT
+        newn[grp] = M @ F
+    nrm = np.zeros_like(nrm); nrm[corner_v] = newn
     # sudură
     q = np.round(pos * 2000).astype(np.int64); qn = np.round(nrm * 40).astype(np.int64)
     k = np.concatenate([q, qn], 1)
