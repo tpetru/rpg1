@@ -65,7 +65,10 @@
   #loading { position:fixed; inset:0; display:grid; place-items:center; background:#11141a; color:var(--ink2); font-size:14px; z-index:5; }
 </style>
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
 </script>
 </head>
 <body>
@@ -92,6 +95,8 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ------------------------------------------------------------------
 // Mașinile. Unitățile sunt SI (metri, kg, N, W). a/b = distanța de la
@@ -99,31 +104,31 @@ import * as THREE from 'three';
 // ------------------------------------------------------------------
 const CARS = [
   {
-    id:'bmw', name:'BMW Seria 3', tag:'Propulsie spate · 50/50',
+    id:'bmw', name:'BMW M4 2026', tag:'Propulsie spate · 50/50',
     desc:'Echilibrat și previzibil. Intră ușor în drift cu accelerația și se ține bine la unghi; cel mai bun pentru început.',
-    color:0x1f4fd6, mass:1520, a:1.40, b:1.40, h:0.52, inertiaF:1.0,
-    power:290000, maxForce:8800, frontDrive:0.0,
+    color:0x1648b8, mass:1600, a:1.42, b:1.44, h:0.50, inertiaF:1.0,
+    power:300000, maxForce:9200, frontDrive:0.0,
     muF:1.02, muR:1.04, BF:10, CF:1.35, BR:9, CR:1.38,
     steerMax:0.62, steerRate:3.2, assist:0.62, brake:1.0, hbGrip:0.42,
-    cd:0.38, body:'sedan', len:4.7, wid:1.85
+    cd:0.38, body:'m4', len:4.80, wid:1.89, wheelR:0.35
   },
   {
-    id:'audi', name:'Audi RS6', tag:'quattro AWD · 32/68',
+    id:'audi', name:'Audi RS6 2025', tag:'quattro AWD · 32/68',
     desc:'Greu și cu tracțiune integrală: e nevoie de frâna de mână sau de un transfer de greutate ca să intre în drift, iar fața îl trage singur afară și îl îndreaptă.',
-    color:0x9ea4a8, mass:2075, a:1.62, b:1.33, h:0.56, inertiaF:1.08,
+    color:0xb3101c, mass:2075, a:1.62, b:1.31, h:0.56, inertiaF:1.08,
     power:441000, maxForce:16500, frontDrive:0.32,
     muF:1.12, muR:1.02, BF:10, CF:1.30, BR:9.5, CR:1.30,
     steerMax:0.58, steerRate:2.8, assist:0.60, brake:1.05, hbGrip:0.38,
-    cd:0.40, body:'wagon', len:5.0, wid:1.95
+    cd:0.40, body:'rs6', len:4.99, wid:1.95, wheelR:0.37
   },
   {
-    id:'911', name:'Porsche 911', tag:'Motor în spate · RWD · 39/61',
+    id:'911', name:'Porsche 911 (2011)', tag:'Motor în spate · RWD · 39/61',
     desc:'Motorul din spate îl face să se rotească repede: oversteer la ieșirea din viraj și la ridicarea piciorului de pe accelerație. Spectaculos, dar cere contrabracaj rapid.',
-    color:0xc8161d, mass:1480, a:1.47, b:0.98, h:0.47, inertiaF:0.82,
+    color:0xf3c300, mass:1450, a:1.43, b:0.92, h:0.46, inertiaF:0.82,
     power:330000, maxForce:9800, frontDrive:0.0,
     muF:1.02, muR:1.10, BF:11, CF:1.35, BR:10, CR:1.55,
     steerMax:0.64, steerRate:3.8, assist:0.45, brake:1.1, hbGrip:0.40,
-    cd:0.34, body:'coupe', len:4.5, wid:1.85
+    cd:0.34, body:'p911', len:4.44, wid:1.81, wheelR:0.33
   },
 ];
 
@@ -150,7 +155,9 @@ scene.fog = new THREE.Fog(0xa9c2d6, 160, 520);
 
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 1200);
 
-scene.add(new THREE.HemisphereLight(0xdfeeff, 0x4b4a44, 1.1));
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(renderer), 0.04).texture;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+scene.add(new THREE.HemisphereLight(0xdfeeff, 0x4b4a44, 0.7));
 const sun = new THREE.DirectionalLight(0xfff2dd, 2.0);
 sun.position.set(40, 80, 25);
 sun.castShadow = true;
@@ -267,123 +274,620 @@ const cones = [];
 }
 
 // ------------------------------------------------------------------
-// Modelele mașinilor (siluete extrudate)
+// Modelele mașinilor: caroserie „loft” (secțiuni transversale de tip
+// superelipsă de-a lungul mașinii), plus detalii separate.
 // ------------------------------------------------------------------
-const PROFILES = {
-  sedan: {
-    lower: [[-2.35,0.30],[2.30,0.30],[2.38,0.55],[2.28,0.76],[1.05,0.92],[0.65,0.98],[-1.65,1.00],[-2.28,1.00],[-2.40,0.78]],
-    glass: [[0.82,0.95],[-0.05,1.40],[-1.05,1.42],[-1.82,0.98]], roof: [-0.05, -1.05, 1.41],
+// interpolare netedă între chei [[z, valoare], ...]
+function curve(keys) {
+  return z => {
+    if (z <= keys[0][0]) return keys[0][1];
+    for (let i = 1; i < keys.length; i++) {
+      const [z1, v1] = keys[i];
+      if (z <= z1) {
+        const [z0, v0] = keys[i - 1];
+        const t = (z - z0) / (z1 - z0), s = t * t * (3 - 2 * t);
+        return v0 + (v1 - v0) * s;
+      }
+    }
+    return keys[keys.length - 1][1];
+  };
+}
+const spow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
+
+// sec(z) -> {yc, hT, hB, hw, nT, nB, hump}; z de la z0 la z1
+function loftGeometry(sec, z0, z1, nz, nth, th0 = 0, th1 = Math.PI * 2, caps = true) {
+  const pos = [], uv = [], idx = [];
+  const full = th1 - th0 > 6.28;
+  const ring = full ? nth : nth + 1;
+  for (let i = 0; i <= nz; i++) {
+    const z = z0 + (z1 - z0) * i / nz, S = sec(z);
+    for (let j = 0; j < ring; j++) {
+      const th = th0 + (th1 - th0) * j / nth;
+      const c = Math.cos(th), s = Math.sin(th);
+      const up = s >= 0;
+      const n = up ? S.nT : S.nB;
+      const x = S.hw * spow(c, 2 / n);
+      let y = S.yc + (up ? S.hT : S.hB) * spow(s, 2 / n);
+      if (up && S.hump) y += S.hump * Math.pow(Math.abs(x) / S.hw, 3);
+      pos.push(x, y, z); uv.push(i / nz, j / nth);
+    }
+  }
+  for (let i = 0; i < nz; i++) for (let j = 0; j < (full ? nth : nth); j++) {
+    const a = i * ring + j, b = i * ring + (j + 1) % ring, c = a + ring, d = b + ring;
+    idx.push(a, b, c, b, d, c);
+  }
+  if (caps && full) {
+    for (const [i, flip] of [[0, true], [nz, false]]) {
+      const z = z0 + (z1 - z0) * i / nz, S = sec(z), ci = pos.length / 3;
+      pos.push(0, S.yc, z); uv.push(i / nz, 0.5);
+      for (let j = 0; j < nth; j++) {
+        const a = i * ring + j, b = i * ring + (j + 1) % ring;
+        flip ? idx.push(ci, b, a) : idx.push(ci, a, b);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+// descrierea fiecărui model (dimensiuni reale, în metri)
+const MODELS = {
+  m4: {
+    zF: 1.42, zR: -1.44, z0: -2.40, z1: 2.40, archR: 0.43, flare: 0.03,
+    top: [[-2.40,.70],[-2.32,.92],[-2.12,1.00],[-1.7,1.03],[-1.0,1.04],[0.6,1.0],[1.2,.93],[1.9,.84],[2.25,.73],[2.40,.56]],
+    sh: [[-2.40,.56],[-2.25,.74],[-1.44,.85],[0,.85],[1.42,.85],[2.2,.66],[2.40,.48]],
+    hw: [[-2.40,.68],[-2.30,.86],[-2.0,.93],[-1.44,.945],[0,.91],[1.42,.94],[2.1,.90],[2.32,.80],[2.40,.64]],
+    bot: [[-2.40,.36],[-2.2,.24],[2.2,.19],[2.40,.32]],
+    nT: 3.4, nB: 5,
+    cab: { z0: -1.95, z1: 0.95, nT: 2.7,
+      roof: [[-1.95,1.0],[-1.5,1.17],[-1.0,1.32],[-0.4,1.38],[0.1,1.37],[0.45,1.27],[0.95,0.98]],
+      belt: [[-1.95,0.98],[0.95,0.95]], wf: 0.97, bPos: 0.55, capTh: 0.3, cap: [-1.02, 0.22] },
+    roofColor: 0x16171a, rim: 0x2b2b2e, caliper: 0x1d63d6, plate: 'M4 · 2026',
   },
-  wagon: {
-    lower: [[-2.50,0.32],[2.45,0.32],[2.52,0.58],[2.42,0.80],[1.12,0.96],[0.72,1.01],[-2.40,1.03],[-2.52,0.86]],
-    glass: [[0.88,0.98],[0.0,1.45],[-2.18,1.43],[-2.44,1.01]], roof: [0.0, -2.18, 1.44],
+  rs6: {
+    zF: 1.50, zR: -1.43, z0: -2.50, z1: 2.50, archR: 0.45, flare: 0.045,
+    top: [[-2.50,.78],[-2.44,1.0],[-2.3,1.06],[-1.0,1.08],[0.7,1.04],[1.3,.97],[2.0,.88],[2.35,.77],[2.50,.58]],
+    sh: [[-2.50,.62],[-2.3,.80],[-1.43,.88],[0,.87],[1.5,.87],[2.3,.68],[2.50,.52]],
+    hw: [[-2.50,.76],[-2.4,.90],[-2.1,.95],[0,.935],[2.1,.93],[2.38,.85],[2.50,.70]],
+    bot: [[-2.50,.40],[-2.3,.27],[2.25,.22],[2.50,.36]],
+    nT: 3.6, nB: 5,
+    cab: { z0: -2.38, z1: 1.0, nT: 2.5,
+      roof: [[-2.38,1.06],[-2.30,1.34],[-2.1,1.44],[-0.5,1.47],[0.2,1.45],[0.5,1.36],[1.0,1.04]],
+      belt: [[-2.38,1.02],[1.0,1.0]], wf: 0.97, bPos: 0.62, capTh: 0.34, cap: [-2.15, 0.28] },
+    roofColor: null, rim: 0x1c1d20, caliper: 0xd0d2d4, plate: 'RS 6 · 2025',
   },
-  coupe: {
-    lower: [[-2.25,0.30],[2.20,0.30],[2.28,0.50],[2.12,0.66],[0.72,0.85],[0.45,0.90],[-1.60,0.93],[-2.16,0.86],[-2.30,0.62]],
-    glass: [[0.58,0.88],[-0.20,1.28],[-0.80,1.30],[-2.12,0.88]], roof: [-0.2, -0.85, 1.29],
+  p911: {
+    zF: 1.17, zR: -1.18, z0: -2.22, z1: 2.22, archR: 0.41, flare: 0.05,
+    top: [[-2.22,.70],[-2.15,.88],[-1.9,.96],[-1.4,.99],[-0.6,1.0],[0.5,.92],[1.2,.80],[1.9,.70],[2.15,.62],[2.22,.48]],
+    sh: [[-2.22,.56],[-2.0,.72],[-1.18,.81],[0,.79],[1.17,.77],[2.0,.60],[2.22,.46]],
+    hw: [[-2.22,.64],[-2.1,.82],[-1.6,.905],[-1.18,.905],[-0.4,.85],[0.6,.84],[1.17,.87],[1.9,.82],[2.15,.72],[2.22,.60]],
+    bot: [[-2.22,.36],[-2.0,.24],[2.0,.21],[2.22,.32]],
+    hump: [[-2.22,0],[-1.7,0.05],[-1.0,0.0],[0.3,0],[0.9,0.07],[1.6,0.09],[2.1,0.05],[2.22,0]],
+    nT: 3.0, nB: 5,
+    cab: { z0: -1.95, z1: 0.65, nT: 2.5,
+      roof: [[-1.95,.97],[-1.5,1.08],[-0.9,1.22],[-0.35,1.30],[0.05,1.29],[0.3,1.2],[0.65,.93]],
+      belt: [[-1.95,.95],[0.65,.90]], wf: 0.95, bPos: 0.5, capTh: 0.3, cap: [-0.95, 0.02] },
+    roofColor: null, rim: 0xc9ccd1, caliper: 0xd11a1a, plate: '911 · 997',
   },
 };
 
-function extrudeProfile(pts, width, mat) {
-  const s = new THREE.Shape();
-  pts.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y));
-  s.closePath();
-  const geo = new THREE.ExtrudeGeometry(s, { depth: width, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 3, curveSegments: 4 });
-  geo.rotateY(-Math.PI / 2);          // x-ul siluetei devine axa înainte (+z)
-  geo.translate(width / 2, 0, 0);
-  const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true;
-  return m;
+function plateTexture(text) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 56;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f4f4f0'; g.fillRect(0, 0, 256, 56);
+  g.fillStyle = '#1d3f9a'; g.fillRect(0, 0, 26, 56);
+  g.fillStyle = '#111'; g.font = 'bold 30px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 141, 30);
+  g.strokeStyle = '#222'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, 253, 53);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
+// roată: anvelopă (lathe), jantă cu spițe duble, disc și etrier
+function makeWheel(R, width, rimColor, caliperColor, side) {
+  const pivot = new THREE.Group(), spin = new THREE.Group(); pivot.add(spin);
+  const prof = [];
+  const rIn = R * 0.66, hw = width / 2;
+  prof.push(new THREE.Vector2(rIn, -hw * 0.92));
+  for (let i = 0; i <= 8; i++) { const a = -Math.PI / 2 + Math.PI * i / 8; prof.push(new THREE.Vector2(R - 0.035 + Math.cos(a) * 0.035, Math.sin(a) * hw)); }
+  prof.push(new THREE.Vector2(rIn, hw * 0.92));
+  const tyreGeo = new THREE.LatheGeometry(prof, 36); tyreGeo.rotateZ(Math.PI / 2);
+  const tyre = new THREE.Mesh(tyreGeo, MAT.tyre); tyre.castShadow = true; spin.add(tyre);
+  const rimMat = new THREE.MeshPhysicalMaterial({ color: rimColor, metalness: 0.9, roughness: 0.28, clearcoat: 0.6 });
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(rIn, rIn, width * 0.9, 28, 1, true), rimMat);
+  barrel.rotation.z = Math.PI / 2; spin.add(barrel);
+  const face = side * (hw * 0.82);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(rIn - 0.01, 0.012, 6, 32), rimMat);
+  lip.rotation.y = Math.PI / 2; lip.position.x = face; spin.add(lip);
+  for (let i = 0; i < 5; i++) {
+    for (const off of [-0.07, 0.07]) {
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(0.03, rIn * 0.92, 0.035), rimMat);
+      const a = i / 5 * Math.PI * 2 + off;
+      sp.position.set(face - side * 0.015, Math.cos(a) * rIn * 0.48, Math.sin(a) * rIn * 0.48);
+      sp.rotation.x = a; spin.add(sp);
+    }
+  }
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 16), rimMat);
+  hub.rotation.z = Math.PI / 2; hub.position.x = face - side * 0.01; spin.add(hub);
+  // disc și etrier (nu se rotesc)
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(rIn * 0.86, rIn * 0.86, 0.03, 28), MAT.disc);
+  disc.rotation.z = Math.PI / 2; disc.position.x = side * (hw * 0.25); pivot.add(disc);
+  const cal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.13), new THREE.MeshStandardMaterial({ color: caliperColor, roughness: 0.4, metalness: 0.2 }));
+  cal.position.set(side * (hw * 0.4), rIn * 0.55, -rIn * 0.35); cal.rotation.x = 0.55; pivot.add(cal);
+  return { pivot, spin };
+}
+
+const MAT = {
+  tyre: new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.92 }),
+  disc: new THREE.MeshStandardMaterial({ color: 0x8a8d90, metalness: 0.85, roughness: 0.45 }),
+  black: new THREE.MeshStandardMaterial({ color: 0x0d0e10, roughness: 0.55 }),
+  gloss: new THREE.MeshPhysicalMaterial({ color: 0x08090a, roughness: 0.2, clearcoat: 1 }),
+  chrome: new THREE.MeshStandardMaterial({ color: 0xe6e8eb, metalness: 1, roughness: 0.12 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x06090c, metalness: 0.0, roughness: 0.03, clearcoat: 1, envMapIntensity: 0.9 }),
+  liner: new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 1, side: THREE.DoubleSide }),
+  head: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf4f8ff, emissiveIntensity: 1.6 }),
+  lens: new THREE.MeshPhysicalMaterial({ color: 0x1a1e24, metalness: 0.6, roughness: 0.1, clearcoat: 1 }),
+  amber: new THREE.MeshStandardMaterial({ color: 0x553300, emissive: 0xff8a00, emissiveIntensity: 0.5 }),
+};
+
+function bodySection(M) {
+  const top = curve(M.top), sh = curve(M.sh), hw = curve(M.hw), bot = curve(M.bot), hump = M.hump ? curve(M.hump) : () => 0;
+  return z => {
+    let b = bot(z), w = hw(z);
+    for (const zc of [M.zF, M.zR]) {
+      const dz = z - zc;
+      if (Math.abs(dz) < M.archR) b = Math.max(b, 0.34 + Math.sqrt(M.archR * M.archR - dz * dz));
+      w += M.flare * Math.exp(-dz * dz / 0.6);       // aripi lățite peste roți
+    }
+    const yc = sh(z);
+    return { yc, hT: Math.max(0.02, top(z) - yc), hB: Math.max(0.02, yc - b), hw: w, nT: M.nT, nB: M.nB, hump: hump(z) };
+  };
+}
+
+// lățimea secțiunii superelipsă la înălțimea y (partea de sus)
+function widthAt(s, y) {
+  if (y <= s.yc) return s.hw;
+  const t = Math.min(0.999, (y - s.yc) / s.hT);
+  const sn = Math.pow(t, s.nT / 2), c = Math.sqrt(1 - sn * sn);
+  return s.hw * Math.pow(c, 2 / s.nT);
+}
+const PI = Math.PI;
+
 function buildCar(spec) {
-  const root = new THREE.Group();      // poziție + orientare
-  const body = new THREE.Group();      // ruliu/tangaj
+  const M = MODELS[spec.body];
+  const root = new THREE.Group();         // poziția centrului de greutate
+  const body = new THREE.Group();         // ruliu/tangaj
+  const cgZ = M.zR + spec.b;              // centrul de greutate față de mijlocul caroseriei
+  body.position.z = -cgZ;
   root.add(body);
-  const P = PROFILES[spec.body];
-  const paintMat = new THREE.MeshPhysicalMaterial({ color: spec.color, metalness: 0.12, roughness: 0.38, clearcoat: 1, clearcoatRoughness: 0.08 });
-  const glassMat = new THREE.MeshStandardMaterial({ color: 0x1a2128, metalness: 0.6, roughness: 0.12 });
-  const black = new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: 0.7 });
-  const chrome = new THREE.MeshStandardMaterial({ color: 0xcfd3d8, metalness: 1, roughness: 0.25 });
-  const W = spec.wid;
-  body.add(extrudeProfile(P.lower, W - 0.1, paintMat));
-  body.add(extrudeProfile(P.glass, W - 0.34, glassMat));
-  const [r1, r2, ry] = P.roof;
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(W - 0.36, 0.07, r1 - r2), paintMat);
-  roof.position.set(0, ry + 0.02, (r1 + r2) / 2); roof.castShadow = true; body.add(roof);
-  const front = P.lower[2][0], rear = P.lower[P.lower.length - 1][0];
+  const paint = new THREE.MeshPhysicalMaterial({ color: spec.color, metalness: 0.45, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.04 });
+  const S = bodySection(M);
+  const add = (mesh, shadow = true) => { mesh.castShadow = shadow; mesh.receiveShadow = true; body.add(mesh); return mesh; };
+  // „decal” care urmează exact suprafața caroseriei (faruri, stopuri, prize, praguri)
+  const grown = (sec, g) => z => { const s = sec(z); return { ...s, hw: s.hw + g, hT: s.hT + g, hB: s.hB + g }; };
+  const patch = (zA, zB, thA, thB, mat, g = 0.006, sec = S) =>
+    add(new THREE.Mesh(loftGeometry(grown(sec, g), zA, zB, Math.max(4, Math.round((zB - zA) * 40)), 10, thA, thB, false), mat), false);
+  const both = (zA, zB, thA, thB, mat, g, sec) => { patch(zA, zB, thA, thB, mat, g, sec); patch(zA, zB, PI - thB, PI - thA, mat, g, sec); };
+  // formă plată pe capătul din față/spate (capacul secțiunii)
+  const capDecal = (pts, end, mat, dz = 0.004) => {
+    const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+    const geo = new THREE.ShapeGeometry(sh);
+    const m = new THREE.Mesh(geo, mat);
+    if (end > 0) m.position.z = M.z1 + dz; else { m.position.z = M.z0 - dz; m.rotation.y = PI; }
+    return add(m, false);
+  };
+  const rr = (cx, cy, w, h, r = 0.03) => {           // dreptunghi rotunjit ca listă de puncte
+    const pts = [];
+    for (const [qx, qy, a0] of [[1, 1, 0], [-1, 1, PI / 2], [-1, -1, PI], [1, -1, 1.5 * PI]])
+      for (let k = 0; k <= 4; k++) { const a = a0 + k / 4 * PI / 2; pts.push([cx + qx * (w / 2 - r) + Math.cos(a) * r, cy + qy * (h / 2 - r) + Math.sin(a) * r]); }
+    return pts;
+  };
+  const mirrorX = pts => pts.map(([x, y]) => [-x, y]);
 
-  // faruri și stopuri
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff6e0, emissiveIntensity: 0.9 });
-  const tailMat = new THREE.MeshStandardMaterial({ color: 0x550000, emissive: 0xff1a10, emissiveIntensity: 0.6 });
+  add(new THREE.Mesh(loftGeometry(S, M.z0, M.z1, 120, 48), paint));
+  // pasajele roților (căptușeală neagră în decupajul caroseriei)
+  for (const zc of [M.zF, M.zR]) {
+    const lw = 2 * (S(zc).hw - 0.01);
+    const ln = new THREE.Mesh(new THREE.CylinderGeometry(M.archR - 0.01, M.archR - 0.01, lw, 24, 1, true, 0, PI), MAT.liner);
+    ln.rotation.z = PI / 2; ln.position.set(0, 0.34, zc); add(ln, false);
+  }
+
+  // habitaclu: baza are lățimea caroseriei la linia geamurilor, deci se îmbină curat
+  const C = M.cab, roof = curve(C.roof), belt = curve(C.belt);
+  const cabSec = (z, g = 0) => {
+    const yb = belt(z);
+    return { yc: yb, hT: Math.max(0.008, roof(z) - yb) + g, hB: 0.08, hw: widthAt(S(z), yb + 0.01) * C.wf + g, nT: C.nT, nB: 4 };
+  };
+  add(new THREE.Mesh(loftGeometry(z => cabSec(z), C.z0, C.z1, 70, 40), MAT.glass));
+  const roofMat = M.roofColor != null ? new THREE.MeshPhysicalMaterial({ color: M.roofColor, roughness: 0.35, clearcoat: 1 }) : paint;
+  const [c0, c1] = C.cap;
+  patch(c0, c1, C.capTh * PI, (1 - C.capTh) * PI, roofMat, 0.007, cabSec);
+  // stâlpii A, B, C ca benzi pe sticlă
+  const pil = (zA, zB, mat) => { both(zA, zB, 0.02 * PI, 0.25 * PI, mat, 0.006, cabSec); };
+  pil(c1 - 0.02, C.z1 - 0.01, paint);                       // A
+  pil(C.z0 + 0.01, c0 + 0.03, paint);                       // C
+  const bz = c0 + (c1 - c0) * C.bPos;
+  pil(bz - 0.035, bz + 0.035, MAT.gloss);                   // B
+  // chenar negru la baza geamurilor
+  both(C.z0 + 0.1, C.z1 - 0.1, 0.0, 0.05 * PI, MAT.gloss, 0.008, cabSec);
+
+  const front = M.z1, rear = M.z0, F = S(front), R = S(rear);
+  // praguri laterale
+  both(M.zR + M.archR, M.zF - M.archR, 1.70 * PI, 1.80 * PI, MAT.gloss, 0.006);
+  // plăcuțe
+  const plateMat = new THREE.MeshStandardMaterial({ map: plateTexture(M.plate), roughness: 0.5 });
+  const pf = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.1), plateMat);
+  pf.position.set(0, F.yc - F.hB * 0.35, front + 0.012); add(pf, false);
+  const pr = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.1), plateMat);
+  pr.position.set(0, R.yc + R.hT * 0.05, rear - 0.012); pr.rotation.y = PI; add(pr, false);
+  // difuzor spate
+  capDecal(rr(0, R.yc - R.hB * 0.7, R.hw * 1.3, R.hB * 0.5, 0.03), -1, MAT.gloss);
+
+  const tailMat = new THREE.MeshStandardMaterial({ color: 0x3a0000, emissive: 0xff1208, emissiveIntensity: 0.7, roughness: 0.25 });
   root.userData.tailMat = tailMat;
-  for (const sx of [-1, 1]) {
-    let hl;
-    if (spec.body === 'coupe') {
-      hl = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 20), headMat);
-      hl.rotation.x = Math.PI / 2 - 0.5; hl.position.set(sx * (W / 2 - 0.35), 0.66, front - 0.25);
-    } else {
-      hl = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.1), headMat);
-      hl.position.set(sx * (W / 2 - 0.38), 0.68, front - 0.02);
-    }
-    body.add(hl);
-    const tl = new THREE.Mesh(new THREE.BoxGeometry(spec.body === 'coupe' ? 0.7 : 0.45, 0.11, 0.08), tailMat);
-    tl.position.set(sx * (W / 2 - (spec.body === 'coupe' ? 0.45 : 0.32)), spec.body === 'coupe' ? 0.78 : 0.88, rear + 0.02);
-    body.add(tl);
-  }
-  // detalii de identificare
-  if (spec.body === 'sedan') {           // grila dublă
+  const exhaust = (x, y, r, sx = 1) => {
+    const e = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.16, 18, 1, true), MAT.chrome);
+    e.rotation.x = PI / 2; e.scale.x = sx; e.position.set(x, y, rear + 0.03); add(e);
+    const d = new THREE.Mesh(new THREE.CircleGeometry(r * 0.85, 18), MAT.black); d.rotation.y = PI; d.scale.x = sx; d.position.set(x, y, rear - 0.0); add(d, false);
+  };
+
+  if (spec.body === 'm4') {
+    // grilele verticale mari, cu ramă cromată și lamele
     for (const sx of [-1, 1]) {
-      const k = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.2, 0.06), black);
-      k.position.set(sx * 0.18, 0.6, front + 0.04); body.add(k);
-      const kr = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.24, 0.04), chrome);
-      kr.position.set(sx * 0.18, 0.6, front + 0.015); body.add(kr);
+      capDecal(rr(sx * 0.17, F.yc - 0.01, 0.30, 0.36, 0.06), 1, MAT.chrome, 0.004);
+      capDecal(rr(sx * 0.17, F.yc - 0.01, 0.26, 0.32, 0.05), 1, MAT.gloss, 0.008);
+      for (let k = 0; k < 6; k++) { const sl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.012, 0.012), MAT.chrome); sl.position.set(sx * 0.17, F.yc - 0.14 + k * 0.052, front + 0.015); add(sl, false); }
     }
-  } else if (spec.body === 'wagon') {    // grila mare hexagonală + bare pe plafon
-    const gr = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.32, 0.06), black);
-    gr.position.set(0, 0.55, front + 0.04); body.add(gr);
+    both(front - 0.30, front - 0.02, 0.10 * PI, 0.24 * PI, MAT.lens, 0.005);       // faruri
+    both(front - 0.26, front - 0.05, 0.16 * PI, 0.19 * PI, MAT.head, 0.008);       // DRL
+    both(front - 0.22, front - 0.01, 1.62 * PI, 1.80 * PI, MAT.gloss, 0.005);      // prize laterale
+    capDecal(rr(0, F.yc - F.hB * 0.75, 0.9, 0.1, 0.03), 1, MAT.gloss);
+    both(rear + 0.02, rear + 0.32, 0.12 * PI, 0.30 * PI, tailMat, 0.005);          // stopuri
+    for (const sx of [-1, 1]) capDecal(rr(sx * (R.hw - 0.2), R.yc + R.hT * 0.45, 0.32, 0.08, 0.02), -1, tailMat);
+    for (const sx of [-1, 1]) for (const ox of [0.42, 0.56]) exhaust(sx * ox, R.yc - R.hB * 0.62, 0.045);
+    both(0.75, 1.05, 0.02 * PI, 0.06 * PI, MAT.gloss, 0.008);                      // branhii
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.025, 0.14), MAT.gloss); lip.position.set(0, S(rear + 0.25).yc + S(rear + 0.25).hT + 0.01, rear + 0.24); add(lip);
+  } else if (spec.body === 'rs6') {
+    const gp = rr(0, F.yc - 0.02, 1.0, 0.34, 0.08);
+    capDecal(gp, 1, MAT.gloss);
+    for (let k = 0; k < 5; k++) { const sl = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.01, 0.012), MAT.black); sl.position.set(0, F.yc - 0.15 + k * 0.065, front + 0.012); add(sl, false); }
+    const ring4 = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.007, 6, 18), MAT.chrome);
+    for (let k = 0; k < 4; k++) { const r = ring4.clone(); r.position.set(-0.075 + k * 0.05, F.yc + 0.1, front + 0.016); add(r, false); }
+    both(front - 0.34, front - 0.02, 0.10 * PI, 0.26 * PI, MAT.lens, 0.005);
+    both(front - 0.30, front - 0.04, 0.12 * PI, 0.15 * PI, MAT.head, 0.008);
+    both(front - 0.24, front - 0.01, 1.60 * PI, 1.80 * PI, MAT.gloss, 0.005);
+    both(rear + 0.02, rear + 0.30, 0.16 * PI, 0.32 * PI, tailMat, 0.005);
+    capDecal(rr(0, R.yc + R.hT * 0.55, R.hw * 1.75, 0.035, 0.015), -1, tailMat);
+    for (const sx of [-1, 1]) exhaust(sx * 0.55, R.yc - R.hB * 0.6, 0.065, 1.5);
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.035, 0.26), MAT.gloss); sp.position.set(0, roof(C.z0 + 0.12) - 0.01, C.z0 + 0.1); sp.rotation.x = -0.12; add(sp);
+  } else {
+    // 911 (997): faruri ovale pe aripi
     for (const sx of [-1, 1]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 2.0), chrome);
-      rail.position.set(sx * (W / 2 - 0.25), ry + 0.08, -1.0); body.add(rail);
+      const hz = front - 0.42, s = S(hz), y = s.yc + s.hT + (s.hump || 0) - 0.02;
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 28, 14, 0, PI * 2, 0, PI / 2), MAT.lens);
+      lamp.scale.set(0.95, 0.45, 1.55); lamp.rotation.x = 0.28; lamp.position.set(sx * (s.hw - 0.27), y - 0.04, hz); add(lamp, false);
+      const proj = new THREE.Mesh(new THREE.CircleGeometry(0.06, 20), MAT.head); proj.rotation.x = -1.15; proj.position.set(sx * (s.hw - 0.27), y + 0.005, hz + 0.1); add(proj, false);
     }
-  } else {                               // eleron spate
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(W - 0.4, 0.05, 0.32), black);
-    wing.position.set(0, 0.98, rear + 0.3); wing.rotation.x = -0.12; body.add(wing);
-    for (const sx of [-1, 1]) {
-      const st = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.12), black);
-      st.position.set(sx * 0.4, 0.92, rear + 0.32); body.add(st);
-    }
-  }
-  // oglinzi
-  for (const sx of [-1, 1]) {
-    const mr = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.11, 0.12), paintMat);
-    mr.position.set(sx * (W / 2 + 0.04), P.glass[0][1] + 0.04, P.glass[0][0] - 0.2); body.add(mr);
+    capDecal(rr(0, F.yc - F.hB * 0.45, 0.62, 0.12, 0.04), 1, MAT.gloss);
+    for (const sx of [-1, 1]) capDecal(rr(sx * 0.45, F.yc - F.hB * 0.45, 0.22, 0.11, 0.04), 1, MAT.gloss);
+    both(front - 0.10, front - 0.01, 0.0 * PI, 0.08 * PI, MAT.amber, 0.006);
+    both(rear + 0.03, rear + 0.32, 0.16 * PI, 0.34 * PI, tailMat, 0.005);
+    for (const sx of [-1, 1]) capDecal(rr(sx * (R.hw - 0.22), R.yc + R.hT * 0.4, 0.3, 0.1, 0.03), -1, tailMat);
+    for (const sx of [-1, 1]) for (const ox of [0.16, 0.27]) exhaust(sx * ox, R.yc - R.hB * 0.6, 0.042);
+    // grila motorului + eleronul
+    const gz = rear + 0.42, gs = S(gz);
+    patch(gz - 0.18, gz + 0.18, 0.4 * PI, 0.6 * PI, MAT.gloss, 0.004);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.03, 0.24), paint); wing.position.set(0, gs.yc + gs.hT + 0.05, gz - 0.08); wing.rotation.x = -0.12; add(wing);
   }
 
-  // roți
-  const tyreGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.26, 26); tyreGeo.rotateZ(Math.PI / 2);
-  const rimGeo = new THREE.CylinderGeometry(0.23, 0.23, 0.27, 10); rimGeo.rotateZ(Math.PI / 2);
-  const spokeGeo = new THREE.BoxGeometry(0.28, 0.4, 0.05);
-  const tyreMat = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.9 });
-  const rimMat = new THREE.MeshStandardMaterial({ color: spec.id === 'audi' ? 0x2b2d30 : 0xb8bcc2, metalness: 0.9, roughness: 0.3 });
+  // oglinzi și mânere
+  for (const sx of [-1, 1]) {
+    const zc = C.z1 - 0.22, s = cabSec(zc);
+    const hous = new THREE.Mesh(new THREE.SphereGeometry(0.1, 18, 12), paint); hous.scale.set(0.75, 0.5, 0.55);
+    hous.position.set(sx * (s.hw + 0.11), s.yc + 0.1, zc); add(hous);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.05), MAT.gloss); arm.position.set(sx * (s.hw + 0.04), s.yc + 0.06, zc); add(arm);
+    const hz = bz - 0.3, hs = S(hz), hy = hs.yc + hs.hT * 0.45;
+    const dh = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, 0.17), spec.body === 'rs6' ? MAT.chrome : paint);
+    dh.position.set(sx * (widthAt(hs, hy) + 0.006), hy, hz); add(dh, false);
+  }
+  // roțile
   const wheels = [];
-  const track = W / 2 - 0.16;
-  for (const [z, front] of [[spec.a, true], [-spec.b, false]]) {
+  const track = spec.wid / 2 - 0.15;
+  for (const [z, isFront] of [[M.zF, true], [M.zR, false]]) {
     for (const sx of [-1, 1]) {
-      const pivot = new THREE.Group(); pivot.position.set(sx * track, 0.34, z);
-      const spin = new THREE.Group(); pivot.add(spin);
-      const t = new THREE.Mesh(tyreGeo, tyreMat); t.castShadow = true; spin.add(t);
-      spin.add(new THREE.Mesh(rimGeo, rimMat));
-      for (let i = 0; i < 3; i++) { const sp = new THREE.Mesh(spokeGeo, rimMat); sp.rotation.x = i * Math.PI / 3; sp.position.x = sx * 0.1; spin.add(sp); }
-      root.add(pivot);
-      wheels.push({ pivot, spin, front, sx });
+      const w = makeWheel(spec.wheelR, isFront ? 0.25 : 0.29, M.rim, M.caliper, sx);
+      w.pivot.position.set(sx * track, spec.wheelR, z - cgZ);
+      root.add(w.pivot);
+      wheels.push({ pivot: w.pivot, spin: w.spin, front: isFront, sx });
     }
   }
+  // umbră de contact (ambient occlusion falsă sub mașină)
+  const ao = new THREE.Mesh(new THREE.PlaneGeometry(spec.wid + 0.4, spec.len + 0.4), new THREE.MeshBasicMaterial({ map: aoTex, transparent: true, depthWrite: false, opacity: 0.75 }));
+  ao.rotation.x = -Math.PI / 2; ao.position.set(0, 0.02, -cgZ); root.add(ao);
+
+  mergeStatic(body);
+  for (const w of wheels) { mergeStatic(w.spin); }
   root.userData.body = body;
   root.userData.wheels = wheels;
   return root;
 }
 
+const aoTex = (() => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 128;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 64, 10, 32, 64, 64);
+  gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.6, 'rgba(0,0,0,.45)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.save(); g.scale(1, 1); g.fillRect(0, 0, 64, 128); g.restore();
+  return new THREE.CanvasTexture(c);
+})();
+
 const carMeshes = CARS.map(spec => { const m = buildCar(spec); m.visible = false; scene.add(m); return m; });
+
+// ------------------------------------------------------------------
+// Decor: copaci, mașini abandonate, tancuri, rachetă. Fiecare obstacol
+// are cercuri de coliziune în OBSTACLES.
+// ------------------------------------------------------------------
+
+// unește toate meshurile statice dintr-un grup într-unul singur per material (mai puține draw calls)
+function mergeStatic(root, opts = {}) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const byMat = new Map(), drop = [];
+  root.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || o === root || o.userData.keep) return;
+    let anc = o.parent, ok = true;
+    while (anc && anc !== root) { if (anc.userData.keep) ok = false; anc = anc.parent; }
+    if (!ok) return;
+    let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (!g.attributes.normal) g.computeVertexNormals();
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    if (!byMat.has(o.material)) byMat.set(o.material, { geos: [], shadow: false });
+    const e = byMat.get(o.material); e.geos.push(g); e.shadow = e.shadow || o.castShadow;
+    drop.push(o);
+  });
+  for (const o of drop) o.parent.remove(o);
+  for (const [mat, e] of byMat) {
+    const m = new THREE.Mesh(mergeGeometries(e.geos), mat);
+    m.castShadow = opts.shadow ?? e.shadow; m.receiveShadow = true; root.add(m);
+  }
+  return root;
+}
+const _up0 = new THREE.Vector3(0, 1, 0);
+const OBSTACLES = PILLARS.map(p => ({ x: p.x, z: p.z, r: p.r }));
+function blockOut(x, z, r) { return OBSTACLES.some(o => Math.hypot(o.x - x, o.z - z) < o.r + r); }
+function canvasTex(w, h, draw, repeat) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+  t.anisotropy = 4; return t;
+}
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const placeShadow = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+// --- copaci (instanțiați): pini și foioase ---
+const TREE_MAT = { trunk: new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 1 }), leaf: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true }) };
+{
+  const spots = [];
+  for (let i = 0; i < 70; i++) {               // în arenă, lângă ziduri
+    const side = i % 4, t = (rnd() * 2 - 1) * (ARENA - 12), d = ARENA - 6 - rnd() * 12;
+    const [x, z] = side === 0 ? [t, d] : side === 1 ? [t, -d] : side === 2 ? [d, t] : [-d, t];
+    if (Math.abs(x) < 14 && z < -100) continue;        // lasă liberă zona de start
+    if (!blockOut(x, z, 2.5)) { spots.push([x, z, true]); OBSTACLES.push({ x, z, r: 0.45 }); }
+  }
+  for (let i = 0; i < 360; i++) {              // pădure în afara arenei
+    const a = rnd() * Math.PI * 2, d = ARENA + 12 + rnd() * 170;
+    const x = Math.cos(a) * d * 1.05, z = Math.sin(a) * d;
+    if (Math.max(Math.abs(x), Math.abs(z)) > ARENA + 8) spots.push([x, z, false]);
+  }
+  buildTrees(spots.filter(t => t[2]), true);
+  buildTrees(spots.filter(t => !t[2]), false);
+}
+function buildTrees(spots, shadow) {
+  const trunkGeo = new THREE.CylinderGeometry(0.16, 0.28, 1, 7); trunkGeo.translate(0, 0.5, 0);
+  const pineGeo = new THREE.ConeGeometry(1, 1, 8); pineGeo.translate(0, 0.5, 0);
+  const leafGeo = new THREE.IcosahedronGeometry(1, 1);
+  const trunkMat = TREE_MAT.trunk, leafMat = TREE_MAT.leaf;
+  const n = spots.length;
+  const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, n);
+  const pines = new THREE.InstancedMesh(pineGeo, leafMat, n * 3);
+  const leaves = new THREE.InstancedMesh(leafGeo, leafMat, n * 3);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3(), col = new THREE.Color();
+  let ip = 0, il = 0;
+  spots.forEach(([x, z], i) => {
+    const h = 5 + rnd() * 7, pine = rnd() < 0.55;
+    q.setFromAxisAngle(_up0, rnd() * 6.28);
+    trunks.setMatrixAt(i, m.compose(p.set(x, 0, z), q, s.set(1 + h * 0.03, pine ? h * 0.35 : h * 0.5, 1 + h * 0.03)));
+    if (pine) {
+      for (let k = 0; k < 3; k++) {
+        const r = (2.4 - k * 0.6) * h / 9, hh = h * 0.42;
+        pines.setMatrixAt(ip, m.compose(p.set(x, h * 0.22 + k * h * 0.2, z), q, s.set(r, hh, r)));
+        pines.setColorAt(ip++, col.setHSL(0.33 + rnd() * 0.04, 0.45, 0.17 + rnd() * 0.06));
+      }
+    } else {
+      for (let k = 0; k < 3; k++) {
+        const r = h * (0.22 + rnd() * 0.1);
+        leaves.setMatrixAt(il, m.compose(p.set(x + (rnd() - 0.5) * r, h * 0.55 + k * r * 0.5, z + (rnd() - 0.5) * r), q, s.set(r, r * 0.85, r)));
+        leaves.setColorAt(il++, col.setHSL(0.22 + rnd() * 0.08, 0.5, 0.25 + rnd() * 0.08));
+      }
+    }
+  });
+  pines.count = ip; leaves.count = il;
+  for (const o of [trunks, pines, leaves]) { o.castShadow = shadow; o.receiveShadow = true; scene.add(o); }
+}
+
+// --- mașini abandonate, ruginite ---
+{
+  const rust = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#6f5a48'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) {
+      const r = 4 + Math.random() * 26;
+      g.fillStyle = ['rgba(122,58,24,.55)', 'rgba(150,80,35,.5)', 'rgba(70,40,25,.5)', 'rgba(120,130,110,.35)'][i % 4];
+      g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, r, r * (0.4 + Math.random()), Math.random() * 3, 0, 7); g.fill();
+    }
+  });
+  const rustMat = new THREE.MeshStandardMaterial({ map: rust, roughness: 0.95, metalness: 0.2 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 1 });
+  const Mj = {
+    zF: 1.3, zR: -1.3, archR: 0.42, flare: 0, nT: 3.0, nB: 5,
+    top: [[-2.2,.75],[-2.1,.95],[-1.4,1.0],[0.6,1.0],[1.2,.95],[2.1,.85],[2.2,.65]],
+    sh: [[-2.2,.62],[-2,.78],[0,.8],[2,.74],[2.2,.58]],
+    hw: [[-2.2,.72],[-2,.85],[0,.86],[2,.85],[2.2,.72]],
+    bot: [[-2.2,.36],[-2,.26],[2,.26],[2.2,.36]],
+  };
+  const sec = bodySection(Mj);
+  const bodyGeo = loftGeometry(sec, -2.2, 2.2, 70, 32);
+  const cabGeo = loftGeometry(z => ({ yc: 0.98, hT: curve([[-1.4,.02],[-1.0,.42],[0.3,.44],[0.75,.02]])(z), hB: 0.05, hw: 0.74, nT: 2.4, nB: 4 }), -1.4, 0.75, 30, 24);
+  const tyreGeo = new THREE.CylinderGeometry(0.33, 0.33, 0.24, 18); tyreGeo.rotateZ(Math.PI / 2);
+  function junkCar(x, z, yaw, mode) {
+    const g = new THREE.Group();
+    const b = new THREE.Group(); g.add(b);
+    b.add(new THREE.Mesh(bodyGeo, rustMat)); b.add(new THREE.Mesh(cabGeo, darkMat));
+    // geamuri sparte = goluri negre; o ușă lipsă
+    const hole = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.4, 0.9), darkMat); hole.position.set(0.86, 0.6, -0.1); b.add(hole);
+    if (mode === 'roof') { b.rotation.z = Math.PI; b.position.y = 1.44; }
+    else if (mode === 'tilt') { b.rotation.z = 0.12; b.rotation.x = -0.05; b.position.y = -0.12; }
+    else {                                                // pe cărămizi, fără roți
+      b.position.y = -0.08;
+      for (const [wx, wz] of [[0.7, 1.3], [-0.7, 1.3], [0.7, -1.3], [-0.7, -1.3]]) {
+        const br = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.22), new THREE.MeshStandardMaterial({ color: 0x8a4632, roughness: 1 }));
+        br.position.set(wx, 0.15, wz); g.add(br);
+      }
+      for (let k = 0; k < 3; k++) { const t = new THREE.Mesh(tyreGeo, MAT.tyre); t.rotation.z = Math.PI / 2; t.position.set(1.7, 0.12 + k * 0.24, 0.5); g.add(t); }
+    }
+    g.position.set(x, 0, z); g.rotation.y = yaw; scene.add(mergeStatic(placeShadow(g)));
+    for (const k of [-1.3, 0, 1.3]) OBSTACLES.push({ x: x + Math.sin(yaw) * k, z: z + Math.cos(yaw) * k, r: 0.95 });
+  }
+  junkCar(-150, -40, 0.7, 'bricks');
+  junkCar(-118, -150, 2.2, 'roof');
+  junkCar(150, 150, -0.4, 'tilt');
+  junkCar(36, 150, 1.6, 'bricks');
+  junkCar(-158, 62, -1.2, 'tilt');
+}
+
+// --- tancuri ---
+{
+  const camo = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#4f5a32'; g.fillRect(0, 0, w, h);
+    const cols = ['#3a4424', '#6b6440', '#2a2c1c'];
+    for (let i = 0; i < 40; i++) {
+      g.fillStyle = cols[i % 3]; g.beginPath();
+      const cx = Math.random() * w, cy = Math.random() * h;
+      for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28, r = 12 + Math.random() * 26; g.lineTo(cx + Math.cos(a) * r * 1.5, cy + Math.sin(a) * r); }
+      g.fill();
+    }
+  });
+  const camoMat = new THREE.MeshStandardMaterial({ map: camo, roughness: 0.85, metalness: 0.15 });
+  const trackTex = canvasTex(64, 16, (g, w, h) => { g.fillStyle = '#1b1b19'; g.fillRect(0, 0, w, h); g.fillStyle = '#3a3a36'; for (let i = 0; i < w; i += 8) g.fillRect(i, 0, 4, h); }, [24, 1]);
+  const trackMat = new THREE.MeshStandardMaterial({ map: trackTex, roughness: 1 });
+  function extrudeSide(pts, depth, mat) {   // siluetă în planul (z, y) extrudată pe lățime
+    const s = new THREE.Shape(); pts.forEach(([zz, y], i) => i ? s.lineTo(zz, y) : s.moveTo(zz, y));
+    const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 1 });
+    geo.rotateY(-Math.PI / 2); geo.translate(depth / 2, 0, 0);
+    return new THREE.Mesh(geo, mat);
+  }
+  function tank(x, z, yaw, turretYaw) {
+    const g = new THREE.Group();
+    // cocă cu plăci înclinate
+    g.add(extrudeSide([[-3.4, 0.55], [3.0, 0.55], [3.6, 1.2], [2.6, 1.75], [-3.3, 1.75], [-3.5, 1.2]], 2.4, camoMat));
+    // apărători laterale peste șenile
+    for (const sx of [-1, 1]) {
+      const fender = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 7.0), camoMat); fender.position.set(sx * 1.55, 1.25, 0); g.add(fender);
+      const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, 6.6), camoMat); skirt.position.set(sx * 1.86, 0.98, 0); g.add(skirt);
+      const tr = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.95, 6.9), trackMat); tr.position.set(sx * 1.52, 0.5, 0); g.add(tr);
+      for (let k = 0; k < 7; k++) {
+        const rw = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.62, 16), MAT.black); rw.rotation.z = Math.PI / 2;
+        rw.position.set(sx * 1.52, 0.42, -2.6 + k * 0.87); g.add(rw);
+      }
+    }
+    // turelă hexagonală (văzută de sus), extrudată pe înălțime
+    const tg = new THREE.Group(); tg.position.set(0, 1.75, -0.4); tg.rotation.y = turretYaw; g.add(tg);
+    const ts = new THREE.Shape([[-1.2, -1.7], [1.2, -1.7], [1.45, 0.2], [0.75, 1.6], [-0.75, 1.6], [-1.45, 0.2]].map(([a, b]) => new THREE.Vector2(a, b)));
+    const tgeo = new THREE.ExtrudeGeometry(ts, { depth: 0.75, bevelEnabled: true, bevelSize: 0.08, bevelThickness: 0.08, bevelSegments: 2 });
+    tgeo.rotateX(-Math.PI / 2); tgeo.scale(1, 1, -1);
+    tg.add(new THREE.Mesh(tgeo, camoMat));
+    const mantlet = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.4), camoMat); mantlet.position.set(0, 0.4, 1.7); tg.add(mantlet);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 5.2, 14), camoMat); barrel.rotation.x = Math.PI / 2 - 0.04; barrel.position.set(0, 0.45, 4.4); tg.add(barrel);
+    const evac = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.6, 14), camoMat); evac.rotation.x = Math.PI / 2 - 0.04; evac.position.set(0, 0.5, 3.6); tg.add(evac);
+    const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.3, 14), MAT.black); muzzle.rotation.x = Math.PI / 2 - 0.04; muzzle.position.set(0, 0.56, 6.95); tg.add(muzzle);
+    for (const [hx, hz] of [[-0.55, -0.4], [0.55, -0.2]]) {
+      const hatch = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.34, 0.14, 16), camoMat); hatch.position.set(hx, 0.85, hz); tg.add(hatch);
+    }
+    const mg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 8), MAT.black); mg.rotation.x = Math.PI / 2; mg.position.set(0.55, 1.05, 0.35); tg.add(mg);
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 2.2, 5), MAT.black); ant.position.set(-0.9, 1.9, -1.3); ant.rotation.x = -0.2; tg.add(ant);
+    g.position.set(x, 0, z); g.rotation.y = yaw; scene.add(mergeStatic(placeShadow(g)));
+    for (const k of [-2.4, -0.8, 0.8, 2.4]) OBSTACLES.push({ x: x + Math.sin(yaw) * k, z: z + Math.cos(yaw) * k, r: 1.9 });
+  }
+  tank(128, 42, 0.6, -0.9);
+  tank(-62, -162, 1.9, 0.5);
+}
+
+// --- rachetă pe rampa de lansare, cu turn de serviciu ---
+{
+  const rx = -132, rz = 128;
+  const g = new THREE.Group(); g.position.set(rx, 0, rz);
+  const conc = new THREE.MeshStandardMaterial({ map: noiseTexture(128, '#8d8a84', 26, 200), roughness: 0.95 });
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(9, 9.6, 0.35, 40), conc); pad.position.y = 0.17; g.add(pad);
+  const flame = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.36, 3.6), MAT.black); flame.position.y = 0.2; g.add(flame);
+  const white = new THREE.MeshPhysicalMaterial({ color: 0xf2f2ee, roughness: 0.35, clearcoat: 0.5 });
+  const blackP = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.5 });
+  // corpul: treaptă 1 + interetaj + treaptă 2 + vârf ogival (lathe)
+  const R = 1.7, base = 3.2;
+  const st1 = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 20, 32), white); st1.position.y = base + 10; g.add(st1);
+  for (const y of [base + 3, base + 17]) { const band = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.01, R + 0.01, 1.2, 32), blackP); band.position.y = y; g.add(band); }
+  const inter = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 2.2, 32), blackP); inter.position.y = base + 21.1; g.add(inter);
+  const st2 = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 8, 32), white); st2.position.y = base + 26.2; g.add(st2);
+  const ogive = []; for (let i = 0; i <= 16; i++) { const t = i / 16; ogive.push(new THREE.Vector2(R * Math.sqrt(1 - t * t) * (1 - 0.15 * t), t * 6.5)); }
+  const nose = new THREE.Mesh(new THREE.LatheGeometry(ogive, 32), white); nose.position.y = base + 30.2; g.add(nose);
+  // aripioare și motoare
+  for (let k = 0; k < 4; k++) {
+    const fs = new THREE.Shape([[0, 0], [2.4, -0.6], [2.4, 1.2], [0, 5]].map(([a, b]) => new THREE.Vector2(a, b)));
+    const fg = new THREE.ExtrudeGeometry(fs, { depth: 0.14, bevelEnabled: false }); fg.translate(R - 0.1, 0, -0.07);
+    const fin = new THREE.Mesh(fg, blackP); fin.position.y = base + 0.2; fin.rotation.y = k * Math.PI / 2 + Math.PI / 4; g.add(fin);
+  }
+  const bell = []; for (let i = 0; i <= 10; i++) { const t = i / 10; bell.push(new THREE.Vector2(0.35 + 0.45 * t * t, -t * 1.4)); }
+  const bellGeo = new THREE.LatheGeometry(bell, 20);
+  const metal = new THREE.MeshStandardMaterial({ color: 0x5a5753, metalness: 0.9, roughness: 0.4, side: THREE.DoubleSide });
+  for (const [bx, bz] of [[0, 0], [0.85, 0], [-0.85, 0], [0, 0.85], [0, -0.85]]) {
+    const b = new THREE.Mesh(bellGeo, metal); b.position.set(bx, base + 0.05, bz); g.add(b);
+  }
+  // inscripție pe corp
+  const label = canvasTex(256, 1024, (c, w, h) => {
+    c.fillStyle = 'rgba(0,0,0,0)'; c.clearRect(0, 0, w, h);
+    c.save(); c.translate(w / 2, h / 2); c.rotate(-Math.PI / 2);
+    c.fillStyle = '#121212'; c.font = 'bold 150px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('NO-SANTOS', 0, 0); c.restore();
+  });
+  const lab = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.02, R + 0.02, 12, 32, 1, true, -0.5, 1.0), new THREE.MeshStandardMaterial({ map: label, transparent: true, roughness: 0.4 }));
+  lab.position.y = base + 10; lab.rotation.y = -Math.PI / 4; g.add(lab);
+  // turnul de serviciu: zăbrele roșii
+  const red = new THREE.MeshStandardMaterial({ color: 0xb2321e, roughness: 0.6, metalness: 0.3 });
+  const tw = new THREE.Group(); tw.position.set(5.2, 0, 0); g.add(tw);
+  const H = 40, half = 1.3;
+  for (const [px, pz] of [[-half, -half], [half, -half], [half, half], [-half, half]]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, H, 0.22), red); post.position.set(px, H / 2 + 0.35, pz); tw.add(post);
+  }
+  for (let y = 2; y < H; y += 3) {
+    for (const [ax, az, ry] of [[0, -half, 0], [0, half, 0], [-half, 0, Math.PI / 2], [half, 0, Math.PI / 2]]) {
+      const h = new THREE.Mesh(new THREE.BoxGeometry(2 * half, 0.12, 0.12), red); h.position.set(ax, y, az); h.rotation.y = ry; tw.add(h);
+      const d = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(2 * half, 3), 0.08, 0.08), red);
+      d.position.set(ax, y + 1.5, az); d.rotation.y = ry; d.rotation.z = Math.atan2(3, 2 * half); tw.add(d);
+    }
+  }
+  for (const y of [14, 27, 33]) {          // brațe de acces spre rachetă
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.25, 0.9), red); arm.position.set(-2.6, y, 0); tw.add(arm);
+  }
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff2200, emissiveIntensity: 2 }));
+  beacon.position.set(0, H + 0.7, 0); tw.add(beacon);
+  scene.add(mergeStatic(placeShadow(g)));
+  OBSTACLES.push({ x: rx, z: rz, r: 2.6 }, { x: rx + 5.2, z: rz, r: 2.0 });
+  ring(rx, rz, 14, 0.4, paintY);
+}
 
 // ------------------------------------------------------------------
 // Urme de cauciuc și fum
@@ -584,8 +1088,8 @@ function collide() {
         }
       }
     }
-    // stâlpii
-    for (const p of PILLARS) {
+    // stâlpi, copaci, tancuri, rachetă...
+    for (const p of OBSTACLES) {
       const dx = cx - p.x, dz = cz - p.z, dd = Math.hypot(dx, dz), min = p.r + R;
       if (dd < min && dd > 1e-4) {
         const nx = dx / dd, nz = dz / dd;
@@ -780,7 +1284,7 @@ function visuals(dt) {
 
   const sn = Math.sin(car.yaw), cs = Math.cos(car.yaw);
   const speed = Math.hypot(car.vx, car.vz);
-  const roll = car.long / 0.34 * dt;
+  const roll = car.long / S.wheelR * dt;
   const spin = roll + (car.spinR > 0 ? 40 * dt : 0) * Math.sign(car.long || 1);
   for (const wh of mesh.userData.wheels) {
     if (wh.front) wh.pivot.rotation.y = car.steer;
@@ -814,9 +1318,11 @@ function visuals(dt) {
   let target;
   if (camMode === 2) target = new THREE.Vector3(car.x + 0.01, 42, car.z - 18);
   else target = new THREE.Vector3(car.x - Math.sin(camYaw) * dist, hgt, car.z - Math.cos(camYaw) * dist);
-  camPos.lerp(target, 1 - Math.exp(-dt * (camMode === 2 ? 4 : 6)));
+  const co = window.__drift && window.__drift.camOverride;
+  if (co) { target = new THREE.Vector3(car.x + Math.sin(co.ang) * co.dist, co.h, car.z + Math.cos(co.ang) * co.dist); camPos.copy(target); }
+  else camPos.lerp(target, 1 - Math.exp(-dt * (camMode === 2 ? 4 : 6)));
   camera.position.copy(camPos);
-  camLook.set(car.x + sn * 2.5, 1.0, car.z + cs * 2.5);
+  if (co) camLook.set(car.x, 0.6, car.z); else camLook.set(car.x + sn * 2.5, 1.0, car.z + cs * 2.5);
   camera.lookAt(camLook);
   camera.fov = 60 + Math.min(speed, 60) * 0.18; camera.updateProjectionMatrix();
 
@@ -844,8 +1350,18 @@ function visuals(dt) {
   if (popT > 0) { popT -= dt; if (popT <= 0) popEl.className = ''; }
 }
 
+// rezoluție adaptivă: dacă placa video nu ține pasul, scade pixel ratio
+let perfT = 0, perfN = 0, pr = renderer.getPixelRatio();
+function adaptQuality(dt) {
+  perfT += dt; perfN++;
+  if (perfT < 2) return;
+  const fps = perfN / perfT; perfT = 0; perfN = 0;
+  if (fps < 40 && pr > 0.7) { pr = Math.max(0.7, pr - 0.35); renderer.setPixelRatio(pr); resize(); }
+}
+
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  adaptQuality(dt);
   acc += dt;
   while (acc >= STEP) { physicsStep(STEP); acc -= STEP; }
   updateDrift(dt);
@@ -859,7 +1375,7 @@ $('loading').remove();
 requestAnimationFrame(frame);
 
 // pentru testare din consolă
-window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift };
+window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
