@@ -779,7 +779,7 @@ function buildCar(spec) {
   }
   // umbră de contact sub mașină
   const ao = new THREE.Mesh(new THREE.PlaneGeometry(spec.wid + 0.5, spec.len + 0.5), new THREE.MeshBasicMaterial({ map: aoTex, transparent: true, depthWrite: false, opacity: 0.8 }));
-  ao.rotation.x = -PI / 2; ao.position.set(0, 0.02, -cgZ); root.add(ao);
+  ao.rotation.x = -PI / 2; ao.position.set(0, 0.02, -cgZ); root.add(ao); root.userData.ao = ao;
 
   // roțile
   const wheels = [];
@@ -1073,6 +1073,120 @@ function buildTrees(spots, shadow) {
 }
 
 // ------------------------------------------------------------------
+// Zona umedă (aderență mult mai mică) și rampele de sărit
+// ------------------------------------------------------------------
+const WET = { x0: 95, x1: 170, z0: -115, z1: 0 };
+function wetAt(x, z) {
+  const d = Math.min(x - WET.x0, WET.x1 - x, z - WET.z0, WET.z1 - z);
+  return Math.max(0, Math.min(1, (d + 1) / 3));         // margine de 3 m în care se trece treptat
+}
+{
+  const w = WET.x1 - WET.x0, h = WET.z1 - WET.z0, cx = (WET.x0 + WET.x1) / 2, cz = (WET.z0 + WET.z1) / 2;
+  const wetTex = canvasTex(512, 512, (g, W, H) => {
+    g.fillStyle = '#2a2c30'; g.fillRect(0, 0, W, H);
+    const img = g.getImageData(0, 0, W, H);
+    for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 22; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n + 2; }
+    g.putImageData(img, 0, 0);
+  }, [w / 6, h / 6]);
+  const wetMat = new THREE.MeshPhysicalMaterial({ map: wetTex, roughness: 0.22, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.5 });
+  const pad = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wetMat);
+  pad.rotation.x = -PI / 2; pad.position.set(cx, 0.008, cz); pad.receiveShadow = true; scene.add(pad);
+  // bălți
+  const puddleMat = new THREE.MeshPhysicalMaterial({ color: 0x0d1014, roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0, envMapIntensity: 2.2, transparent: true, opacity: 0.9, depthWrite: false });
+  const pg = new THREE.CircleGeometry(1, 32);
+  for (let i = 0; i < 34; i++) {
+    const p = new THREE.Mesh(pg, puddleMat);
+    p.rotation.x = -PI / 2; p.rotation.z = rnd() * PI;
+    p.scale.set(2 + rnd() * 5, 1.2 + rnd() * 3, 1);
+    p.position.set(WET.x0 + 6 + rnd() * (w - 12), 0.011, WET.z0 + 6 + rnd() * (h - 12));
+    scene.add(p);
+  }
+  // margine albastră întreruptă
+  const blue = new THREE.MeshBasicMaterial({ color: 0x2f8cff, transparent: true, opacity: 0.8, depthWrite: false });
+  for (let x = WET.x0; x < WET.x1; x += 4) { stripe(x + 1, WET.z0, 2, 0.4, 0, blue); stripe(x + 1, WET.z1, 2, 0.4, 0, blue); }
+  for (let z = WET.z0; z < WET.z1; z += 4) { stripe(WET.x0, z + 1, 0.4, 2, 0, blue); stripe(WET.x1, z + 1, 0.4, 2, 0, blue); }
+  // inscripție pe asfalt
+  const label = canvasTex(512, 128, (g, W, H) => {
+    g.clearRect(0, 0, W, H); g.fillStyle = 'rgba(120,190,255,.9)'; g.font = 'bold 84px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('ZONĂ UMEDĂ', W / 2, H / 2);
+  });
+  const lm = new THREE.MeshBasicMaterial({ map: label, transparent: true, depthWrite: false });
+  for (const [x, z, r] of [[cx, WET.z1 - 5, PI], [WET.x0 + 5, cz, -PI / 2], [cx, WET.z0 + 5, 0]]) {
+    const t = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), lm); t.rotation.x = -PI / 2; t.rotation.z = r; t.position.set(x, 0.013, z); scene.add(t);
+  }
+  // indicatoare „drum alunecos”
+  const signTex = canvasTex(128, 128, (g) => {
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(64, 6); g.lineTo(124, 116); g.lineTo(4, 116); g.closePath(); g.fill();
+    g.strokeStyle = '#d0201a'; g.lineWidth = 12; g.lineJoin = 'round'; g.beginPath(); g.moveTo(64, 14); g.lineTo(116, 110); g.lineTo(12, 110); g.closePath(); g.stroke();
+    g.fillStyle = '#111'; g.fillRect(48, 56, 32, 16); g.lineWidth = 3; g.strokeStyle = '#111';
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(64 + s * 8, 76); g.bezierCurveTo(64 + s * 20, 84, 64 - s * 2, 92, 64 + s * 14, 102); g.stroke(); }
+  });
+  const signMat = new THREE.MeshStandardMaterial({ map: signTex, transparent: true, side: THREE.DoubleSide });
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x8a8d90, metalness: 0.6, roughness: 0.4 });
+  for (const [x, z] of [[WET.x0 - 3, WET.z1 + 3], [WET.x0 - 3, WET.z0 - 3]]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), poleMat); pole.position.set(x, 1.2, z); pole.castShadow = true; scene.add(pole);
+    const s = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), signMat); s.position.set(x, 2.5, z); s.rotation.y = PI / 4 * (z > 0 ? 1 : 3); scene.add(s);
+    OBSTACLES.push({ x, z, r: 0.25 });
+  }
+}
+
+// rampe: pornesc din (x, z), urcă pe direcția dir pe lungimea L până la înălțimea H, apoi cad vertical
+const RAMPS = [
+  { x: 0, z: -92, dir: 0, L: 9, W: 7, H: 1.5 },
+  { x: -120, z: -12, dir: 0, L: 11, W: 8, H: 2.2 },
+  { x: 38, z: 112, dir: PI / 2, L: 10, W: 7, H: 1.8 },
+  { x: -48, z: 32, dir: PI, L: 9, W: 7, H: 1.6 },
+  { x: 132, z: -78, dir: 0, L: 8, W: 7, H: 1.3 },        // aterizare pe ud
+];
+// înălțimea solului și panta (gradient global) într-un punct
+function groundAt(x, z) {
+  let h = 0, gx = 0, gz = 0;
+  for (const r of RAMPS) {
+    const s = Math.sin(r.dir), c = Math.cos(r.dir), dx = x - r.x, dz = z - r.z;
+    const u = dx * s + dz * c, v = dx * c - dz * s;
+    if (u >= 0 && u <= r.L && Math.abs(v) <= r.W / 2) {
+      const hh = r.H * u / r.L;
+      if (hh > h) { h = hh; gx = s * r.H / r.L; gz = c * r.H / r.L; }
+    }
+  }
+  return { h, gx, gz };
+}
+{
+  const chev = canvasTex(256, 256, (g, W, H) => {
+    g.fillStyle = '#e8b417'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#151515';
+    for (let i = -2; i < 6; i++) { g.beginPath(); g.moveTo(0, i * 64); g.lineTo(W / 2, i * 64 - 48); g.lineTo(W, i * 64); g.lineTo(W, i * 64 + 28); g.lineTo(W / 2, i * 64 - 20); g.lineTo(0, i * 64 + 28); g.closePath(); g.fill(); }
+    const img = g.getImageData(0, 0, W, H);
+    for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 30; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n; }
+    g.putImageData(img, 0, 0);
+  });
+  const topMat = new THREE.MeshStandardMaterial({ map: chev, roughness: 0.8 });
+  const sideMat = new THREE.MeshStandardMaterial({ map: noiseTexture(128, '#8d8a84', 26, 200), roughness: 0.95 });
+  for (const r of RAMPS) {
+    const g = new THREE.Group(); g.position.set(r.x, 0, r.z); g.rotation.y = r.dir;
+    const w = r.W / 2;
+    const top = new THREE.BufferGeometry();
+    top.setAttribute('position', new THREE.Float32BufferAttribute([-w, 0.02, 0, w, 0.02, 0, w, r.H, r.L, -w, 0.02, 0, w, r.H, r.L, -w, r.H, r.L], 3));
+    top.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, r.L / 3, 0, 0, 1, r.L / 3, 0, r.L / 3], 2));
+    top.computeVertexNormals();
+    const tm = new THREE.Mesh(top, topMat); tm.receiveShadow = true; tm.castShadow = true; g.add(tm);
+    const sides = new THREE.BufferGeometry();
+    sides.setAttribute('position', new THREE.Float32BufferAttribute([
+      w, 0, 0, w, 0, r.L, w, r.H, r.L,          // lateral dreapta
+      -w, 0, 0, -w, r.H, r.L, -w, 0, r.L,       // lateral stânga
+      -w, 0, r.L, -w, r.H, r.L, w, r.H, r.L,    // spate
+      -w, 0, r.L, w, r.H, r.L, w, 0, r.L,
+    ], 3));
+    sides.setAttribute('uv', new THREE.Float32BufferAttribute(new Array(24).fill(0).map((_, i) => (i % 2 ? 0.5 : 0.5)), 2));
+    sides.computeVertexNormals();
+    const sm = new THREE.Mesh(sides, sideMat); sm.castShadow = true; sm.receiveShadow = true; g.add(sm);
+    // bordură metalică pe muchia de sus
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(r.W, 0.08, 0.12), MAT.alu); lip.position.set(0, r.H, r.L - 0.06); g.add(lip);
+    scene.add(g);
+  }
+}
+
+// ------------------------------------------------------------------
 // Urme de cauciuc și fum
 // ------------------------------------------------------------------
 const SKID_MAX = 9000;
@@ -1110,8 +1224,9 @@ for (let i = 0; i < 160; i++) {
   smoke.push({ s, life: 0, max: 1, vx: 0, vy: 0, vz: 0 });
 }
 let smokeIdx = 0;
-function puff(x, z, vx, vz, k) {
+function puff(x, z, vx, vz, k, color = 0xe8e8e8) {
   const p = smoke[smokeIdx]; smokeIdx = (smokeIdx + 1) % smoke.length;
+  p.s.material.color.setHex(color);
   p.s.position.set(x, 0.35, z); p.s.visible = true;
   p.life = 0; p.max = 1.2 + Math.random() * 1.0; p.k = k;
   p.vx = vx * 0.25 + (Math.random() - 0.5); p.vz = vz * 0.25 + (Math.random() - 0.5); p.vy = 0.5 + Math.random() * 0.6;
@@ -1137,6 +1252,7 @@ const car = {
   spec: CARS[0], x: 0, z: -125, yaw: 0, vx: 0, vz: 0, w: 0,
   steer: 0, ax: 0, ay: 0, rpm: 900, wheelSpin: 0, wheelRot: [0, 0, 0, 0],
   slipR: 0, slipF: 0, spinR: 0, beta: 0, long: 0, lat: 0,
+  y: 0, vy: 0, vyG: 0, air: false, airT: 0, pitch: 0, roll: 0, wet: 0, gradL: 0, gradT: 0,
 };
 const keys = {};
 
@@ -1189,14 +1305,18 @@ function physicsStep(dt) {
     const dir = Math.sign(long) || 1;
     FxF -= dir * bf * 0.65; FxR -= dir * bf * 0.35;
   }
-  let gripR = S.muR;
+  // aderența pe ud: fiecare punte după poziția ei (pe ud rămâne cam 45% din aderență)
+  const wetF = wetAt(car.x + sn * S.a, car.z + cs * S.a), wetR = wetAt(car.x - sn * S.b, car.z - cs * S.b);
+  car.wet = Math.max(wetF, wetR);
+  const muF = S.muF * (1 - 0.55 * wetF);
+  let gripR = S.muR * (1 - 0.55 * wetR);
   if (hb) {
     gripR *= S.hbGrip;
-    FxR = -(Math.sign(long) || 0) * S.muR * Nr * 0.55 + FxR * 0.2;
+    FxR = -(Math.sign(long) || 0) * gripR / S.hbGrip * Nr * 0.55 + FxR * 0.2;
   }
 
   // cercul de frecare: ce consumă tracțiunea/frânarea nu mai e disponibil lateral
-  const capF = S.muF * Nf, capR = gripR * Nr;
+  const capF = muF * Nf, capR = gripR * Nr;
   let spinR = 0;
   if (Math.abs(FxR) > capR) { spinR = Math.abs(FxR) / capR - 1; FxR = Math.sign(FxR) * capR * 0.92; }
   if (Math.abs(FxF) > capF) { FxF = Math.sign(FxF) * capF * 0.92; }
@@ -1222,6 +1342,9 @@ function physicsStep(dt) {
   // rezistența aerului + rulare
   const dragX = -S.cd * long * Math.abs(long) - 14 * long;
   const dragY = -S.cd * lat * Math.abs(lat) - 14 * lat;
+  let tq = torque;
+  if (car.air) { Fx = 0; Fy = 0; tq = 0; car.w *= 1 - 0.4 * dt; car.spinR = 0; }   // în aer roțile nu mai prind
+  else Fx -= m * G * Math.max(-0.4, Math.min(0.4, car.gradL));                       // gravitația pe pantă
   Fx += dragX; Fy += dragY;
 
   // integrare în coordonate globale
@@ -1230,7 +1353,7 @@ function physicsStep(dt) {
   car.vx += fxW / m * dt;
   car.vz += fzW / m * dt;
   const I = m * S.a * S.b * S.inertiaF;
-  car.w += torque / I * dt;
+  car.w += tq / I * dt;
   // la viteză foarte mică, fără motor, mașina se oprește de tot
   if (speed < 0.6 && !throttle) { car.vx *= 0.9; car.vz *= 0.9; car.w *= 0.85; }
   if (brake && Math.abs(long) < 0.6) {
@@ -1240,11 +1363,34 @@ function physicsStep(dt) {
   car.x += car.vx * dt;
   car.z += car.vz * dt;
 
+  // mișcarea pe verticală: urcare pe rampă, zbor, aterizare
+  const gi = groundAt(car.x, car.z);
+  car.gradL = gi.gx * sn + gi.gz * cs; car.gradT = gi.gx * cs - gi.gz * sn;
+  if (car.air) {
+    car.vy -= G * dt; car.y += car.vy * dt; car.airT += dt;
+    if (car.y <= gi.h) land(gi.h);
+  } else if (gi.h < car.y - 0.08) {                // solul a dispărut de sub mașină: capătul rampei
+    car.air = true; car.vy = car.vyG; car.airT = 0;
+  } else {
+    car.vyG = Math.max(-15, Math.min(Math.min(15, speed * 0.5 + 1), (gi.h - car.y) / dt));
+    car.y = gi.h;
+  }
+
   const axNew = Fx / m;
   car.ax += (axNew - car.ax) * Math.min(1, dt * 8);
   car.ay += (Fy / m - car.ay) * Math.min(1, dt * 8);
 
   collide();
+}
+
+function land(h) {
+  const impact = -car.vy, t = car.airT, speed = Math.hypot(car.vx, car.vz);
+  car.y = h; car.vy = 0; car.vyG = 0; car.air = false;
+  if (impact > 9) { car.vx *= 0.85; car.vz *= 0.85; sound.thump(); }
+  if (t > 0.35) {
+    const pts = Math.round(t * speed * 25);
+    drift.total += pts; pop('Salt ' + t.toFixed(1) + ' s · +' + pts.toLocaleString('ro-RO'));
+  }
 }
 
 function hitPenalty(impact) {
@@ -1407,6 +1553,7 @@ const descEl = document.createElement('div'); descEl.id = 'desc'; carsEl.appendC
 function resetCar(keepPos) {
   if (!keepPos) { car.x = 0; car.z = -125; car.yaw = 0; }
   car.vx = car.vz = car.w = car.steer = car.ax = car.ay = 0;
+  car.y = car.vy = car.vyG = car.pitch = car.roll = 0; car.air = false;
   drift.active = false; drift.points = 0; drift.mult = 1; drift.time = 0;
 }
 function selectCar(i) {
@@ -1458,8 +1605,12 @@ const STEP = 1 / 240;
 function visuals(dt) {
   const mesh = carMeshes[CARS.indexOf(car.spec)];
   const S = car.spec;
-  mesh.position.set(car.x, 0, car.z);
-  mesh.rotation.y = car.yaw;
+  mesh.position.set(car.x, car.y, car.z);
+  mesh.rotation.order = 'YXZ'; mesh.rotation.y = car.yaw;
+  if (car.air) { car.pitch += (0.1 - car.pitch) * Math.min(1, dt * 0.9); car.roll *= 1 - Math.min(1, dt); }
+  else { car.pitch += (-Math.atan(car.gradL) - car.pitch) * Math.min(1, dt * 14); car.roll += (Math.atan(car.gradT) - car.roll) * Math.min(1, dt * 14); }
+  mesh.rotation.x = car.pitch; mesh.rotation.z = car.roll;
+  if (mesh.userData.ao) mesh.userData.ao.visible = !car.air && car.y < 0.05;
   const body = mesh.userData.body;
   body.rotation.z = THREE.MathUtils.clamp(-car.ay * 0.009, -0.07, 0.07);   // ruliu
   body.rotation.x = THREE.MathUtils.clamp(-car.ax * 0.006, -0.05, 0.05);   // tangaj
@@ -1487,6 +1638,12 @@ function visuals(dt) {
   if (prevWheels) {
     for (let i = 0; i < 4; i++) {
       const it = i < 2 ? intR : intF;
+      if (car.air || car.y > 0.05) continue;
+      const wet = wetAt(wheelsW[i][0], wheelsW[i][1]);
+      if (wet > 0.5) {                               // pe ud: stropi de apă în loc de urme și fum
+        if (i < 2 && speed > 6 && Math.random() < Math.min(1, (speed / 30 + it * 0.3)) * dt * 60 * 0.6) puff(wheelsW[i][0], wheelsW[i][1], car.vx, car.vz, Math.min(1.4, 0.4 + speed / 40 + it * 0.2), 0xbfd8f2);
+        continue;
+      }
       if (it > 0.35 && speed > 1.5) addSkid(prevWheels[i][0], prevWheels[i][1], wheelsW[i][0], wheelsW[i][1], 0.24);
       if (i < 2 && it > 0.8 && Math.random() < Math.min(1, it * 0.5) * dt * 60 * 0.5) puff(wheelsW[i][0], wheelsW[i][1], car.vx, car.vz, Math.min(1.5, it * 0.6));
     }
@@ -1500,12 +1657,12 @@ function visuals(dt) {
   const dist = camMode === 1 ? 13 : 7.8, hgt = camMode === 1 ? 5.5 : 2.9;
   let target;
   if (camMode === 2) target = new THREE.Vector3(car.x + 0.01, 42, car.z - 18);
-  else target = new THREE.Vector3(car.x - Math.sin(camYaw) * dist, hgt, car.z - Math.cos(camYaw) * dist);
+  else target = new THREE.Vector3(car.x - Math.sin(camYaw) * dist, hgt + car.y * 0.8, car.z - Math.cos(camYaw) * dist);
   const co = window.__drift && window.__drift.camOverride;
   if (co) { target = new THREE.Vector3(car.x + Math.sin(co.ang) * co.dist, co.h, car.z + Math.cos(co.ang) * co.dist); camPos.copy(target); }
   else camPos.lerp(target, 1 - Math.exp(-dt * (camMode === 2 ? 4 : 6)));
   camera.position.copy(camPos);
-  if (co) camLook.set(car.x, 0.6, car.z); else camLook.set(car.x + sn * 2.5, 1.0, car.z + cs * 2.5);
+  if (co) camLook.set(car.x, 0.6, car.z); else camLook.set(car.x + sn * 2.5, 1.0 + car.y, car.z + cs * 2.5);
   camera.lookAt(camLook);
   camera.fov = 60 + Math.min(speed, 60) * 0.18; camera.updateProjectionMatrix();
 
@@ -1523,7 +1680,7 @@ function visuals(dt) {
   // HUD
   $('spd').textContent = Math.round(speed * 3.6);
   const angDeg = speed > 4 ? Math.round(Math.abs(car.beta) * 180 / Math.PI) : 0;
-  $('ang').textContent = 'unghi ' + angDeg + '°';
+  $('ang').textContent = 'unghi ' + angDeg + '°' + (car.air ? ' · în aer' : car.wet > 0.5 ? ' · asfalt ud' : '');
   $('cur').textContent = Math.round(drift.points * drift.mult).toLocaleString('ro-RO');
   $('mul').textContent = drift.active ? '×' + drift.mult : '';
   $('score').classList.toggle('drifting', drift.active);
@@ -1558,7 +1715,7 @@ $('loading').remove();
 requestAnimationFrame(frame);
 
 // pentru testare din consolă
-window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null };
+window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, groundAt, wetAt };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
