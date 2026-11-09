@@ -1152,36 +1152,81 @@ function groundAt(x, z) {
   return { h, gx, gz };
 }
 {
+  // suprafața: galben aprins cu săgeți negre spre capăt și margini alb-roșii
   const chev = canvasTex(256, 256, (g, W, H) => {
-    g.fillStyle = '#e8b417'; g.fillRect(0, 0, W, H);
-    g.fillStyle = '#151515';
-    for (let i = -2; i < 6; i++) { g.beginPath(); g.moveTo(0, i * 64); g.lineTo(W / 2, i * 64 - 48); g.lineTo(W, i * 64); g.lineTo(W, i * 64 + 28); g.lineTo(W / 2, i * 64 - 20); g.lineTo(0, i * 64 + 28); g.closePath(); g.fill(); }
-    const img = g.getImageData(0, 0, W, H);
-    for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 30; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n; }
-    g.putImageData(img, 0, 0);
+    g.fillStyle = '#ffc400'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#111';
+    for (let i = -1; i < 5; i++) {
+      const y = i * 64 + 40;
+      g.beginPath(); g.moveTo(40, y + 26); g.lineTo(W / 2, y - 14); g.lineTo(W - 40, y + 26); g.lineTo(W - 40, y + 50);
+      g.lineTo(W / 2, y + 10); g.lineTo(40, y + 50); g.closePath(); g.fill();
+    }
+    for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#e3121b'; g.fillRect(0, i * 32, 22, 32); g.fillRect(W - 22, i * 32, 22, 32); }
   });
-  const topMat = new THREE.MeshStandardMaterial({ map: chev, roughness: 0.8 });
-  const sideMat = new THREE.MeshStandardMaterial({ map: noiseTexture(128, '#8d8a84', 26, 200), roughness: 0.95 });
+  // lateralele: dungi diagonale roșu-alb, ca la parapeții de circuit
+  const stripes = canvasTex(128, 128, (g, W, H) => {
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#e3121b';
+    for (let i = -2; i < 3; i++) { g.beginPath(); g.moveTo(i * 64, H); g.lineTo(i * 64 + 32, H); g.lineTo(i * 64 + 32 + H, 0); g.lineTo(i * 64 + H, 0); g.closePath(); g.fill(); }
+  }, [1, 1]);
+  const topMat = new THREE.MeshStandardMaterial({ map: chev, emissiveMap: chev, emissive: 0xffffff, emissiveIntensity: 0.12, roughness: 0.7 });
+  const sideMat = new THREE.MeshStandardMaterial({ map: stripes, emissiveMap: stripes, emissive: 0xffffff, emissiveIntensity: 0.3, roughness: 0.6 });
+  // săgeți pictate pe asfalt înainte de rampă
+  const arrowTex = canvasTex(128, 256, (g, W, H) => {
+    g.fillStyle = 'rgba(255,90,0,0.95)';
+    g.beginPath(); g.moveTo(W / 2, 6); g.lineTo(W - 6, 96); g.lineTo(W * 0.68, 96); g.lineTo(W * 0.68, H - 6);
+    g.lineTo(W * 0.32, H - 6); g.lineTo(W * 0.32, 96); g.lineTo(6, 96); g.closePath(); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 8; g.stroke();
+  });
+  const arrowMat = new THREE.MeshBasicMaterial({ map: arrowTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  const arrowGeo = new THREE.PlaneGeometry(3, 6); arrowGeo.rotateX(-Math.PI / 2); arrowGeo.rotateY(Math.PI);
+  const flagMat = new THREE.MeshStandardMaterial({ color: 0xff5a00, emissive: 0xff3c00, emissiveIntensity: 0.6, side: THREE.DoubleSide, roughness: 0.6 });
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.3 });
+  const lipMat = new THREE.MeshStandardMaterial({ color: 0xff5a00, emissive: 0xff3c00, emissiveIntensity: 0.5, roughness: 0.5 });
+  // triunghiurile au fost scrise în sens orar; le întoarcem ca fețele să privească în afară
+  function flipWinding(geo) {
+    for (const name of ['position', 'uv']) {
+      const at = geo.getAttribute(name), n = at.itemSize, a = at.array;
+      for (let t = 0; t < at.count; t += 3) for (let k = 0; k < n; k++) { const i = (t + 1) * n + k, j = (t + 2) * n + k; [a[i], a[j]] = [a[j], a[i]]; }
+    }
+  }
   for (const r of RAMPS) {
     const g = new THREE.Group(); g.position.set(r.x, 0, r.z); g.rotation.y = r.dir;
-    const w = r.W / 2;
+    const w = r.W / 2, L = r.L, Hh = r.H;
     const top = new THREE.BufferGeometry();
-    top.setAttribute('position', new THREE.Float32BufferAttribute([-w, 0.02, 0, w, 0.02, 0, w, r.H, r.L, -w, 0.02, 0, w, r.H, r.L, -w, r.H, r.L], 3));
-    top.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, r.L / 3, 0, 0, 1, r.L / 3, 0, r.L / 3], 2));
-    top.computeVertexNormals();
+    top.setAttribute('position', new THREE.Float32BufferAttribute([-w, 0.02, 0, w, 0.02, 0, w, Hh, L, -w, 0.02, 0, w, Hh, L, -w, Hh, L], 3));
+    top.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, L / 4, 0, 0, 1, L / 4, 0, L / 4], 2));
+    flipWinding(top); top.computeVertexNormals(); chev.wrapT = THREE.RepeatWrapping;
     const tm = new THREE.Mesh(top, topMat); tm.receiveShadow = true; tm.castShadow = true; g.add(tm);
+    const S = 1.6;   // mărimea unei dungi (m)
     const sides = new THREE.BufferGeometry();
     sides.setAttribute('position', new THREE.Float32BufferAttribute([
-      w, 0, 0, w, 0, r.L, w, r.H, r.L,          // lateral dreapta
-      -w, 0, 0, -w, r.H, r.L, -w, 0, r.L,       // lateral stânga
-      -w, 0, r.L, -w, r.H, r.L, w, r.H, r.L,    // spate
-      -w, 0, r.L, w, r.H, r.L, w, 0, r.L,
+      w, 0, 0, w, 0, L, w, Hh, L,
+      -w, 0, 0, -w, Hh, L, -w, 0, L,
+      -w, 0, L, -w, Hh, L, w, Hh, L,
+      -w, 0, L, w, Hh, L, w, 0, L,
     ], 3));
-    sides.setAttribute('uv', new THREE.Float32BufferAttribute(new Array(24).fill(0).map((_, i) => (i % 2 ? 0.5 : 0.5)), 2));
-    sides.computeVertexNormals();
+    sides.setAttribute('uv', new THREE.Float32BufferAttribute([
+      0, 0, L / S, 0, L / S, Hh / S,
+      0, 0, L / S, Hh / S, L / S, 0,
+      0, 0, 0, Hh / S, r.W / S, Hh / S,
+      0, 0, r.W / S, Hh / S, r.W / S, 0,
+    ], 2));
+    flipWinding(sides); sides.computeVertexNormals();
     const sm = new THREE.Mesh(sides, sideMat); sm.castShadow = true; sm.receiveShadow = true; g.add(sm);
-    // bordură metalică pe muchia de sus
-    const lip = new THREE.Mesh(new THREE.BoxGeometry(r.W, 0.08, 0.12), MAT.alu); lip.position.set(0, r.H, r.L - 0.06); g.add(lip);
+    // bordură portocalie pe muchia de sus și la intrare
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(r.W + 0.1, 0.14, 0.2), lipMat); lip.position.set(0, Hh, L - 0.1); g.add(lip);
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(r.W, 0.05, 0.35), lipMat); nose.position.set(0, 0.03, 0.15); g.add(nose);
+    // stâlpi cu steaguri la capătul rampei
+    for (const sd of [-1, 1]) {
+      const px = sd * (w + 0.6);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, Hh + 2.6, 8), poleMat); pole.position.set(px, (Hh + 2.6) / 2, L); pole.castShadow = true; g.add(pole);
+      const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), flagMat); fl.position.set(px - sd * 0.58, Hh + 2.2, L); g.add(fl);
+      const c = Math.cos(r.dir), s = Math.sin(r.dir);
+      OBSTACLES.push({ x: r.x + px * c + L * s, z: r.z - px * s + L * c, r: 0.15 });
+    }
+    // săgeți de apropiere pe asfalt
+    for (let k = 1; k <= 3; k++) { const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(0, 0.02, -k * 8 + 2); g.add(a); }
     scene.add(g);
   }
 }
