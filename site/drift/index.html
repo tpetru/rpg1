@@ -180,13 +180,13 @@ const CARS = [
     cd:0.25, body:'kart', len:1.82, wid:1.38, wheelR:0.14, hgt:0.95, headY:0.35, camK:0.7, rpmK:1.35, noLights:true
   },
   {
-    id:'r1', name:'Yamaha YZF-R1', tag:'Motocicletă · 200 CP · 201 kg',
+    id:'r1', name:'Yamaha YZF-R1', tag:'Motocicletă · 200 CP · 201 kg · fără marșarier',
     desc:'Superbike: accelerează brutal și se înclină în viraje. Roata din spate scapă ușor la accelerație, așa că driftul se ține din gaz; cu frâna de mână blochează spatele. Ușoară și nervoasă.',
     color:0x1d3fb0, mass:285, a:0.7, b:0.705, h:0.6, inertiaF:0.7,
     power:147000, maxForce:2800, frontDrive:0.0, vmax:78,
     muF:1.1, muR:1.25, BF:10, CF:1.30, BR:9, CR:1.50,
     steerMax:0.45, steerRate:3.0, assist:0.75, brake:1.05, hbGrip:0.4,
-    cd:0.3, body:'r1', len:2.055, wid:0.69, wheelR:0.31, hgt:1.4, headY:0.95, camK:0.85, rpmK:1.5, bike:true
+    cd:0.3, body:'r1', len:2.055, wid:0.69, wheelR:0.31, hgt:1.4, headY:0.95, camK:0.85, rpmK:1.5, bike:true, noReverse:true
   },
   {
     id:'cart', name:'Căruță cu 2 cai', tag:'2 cai putere (reali) · roți de lemn',
@@ -948,7 +948,6 @@ function buildBike(spec) {
   const seat = box(0.26, 0.06, 0.42, 0, 0.84, -0.32, MAT.black, lean); seat.rotation.x = 0.12;
   const tail = box(0.22, 0.14, 0.45, 0, 0.88, -0.62, paint, lean); tail.rotation.x = 0.28;
   box(0.16, 0.04, 0.1, 0, 0.82, -0.86, V.tailMat, lean, false);
-  box(0.08, 0.03, 0.04, 0, 0.76, -0.84, V.revMat, lean, false);          // lampa de marșarier
   const fair = sph(0.28, 0, 0.72, 0.48, paint, [0.95, 0.85, 1.15], lean);
   for (const sx of [-1, 1]) { const side = box(0.02, 0.32, 0.6, sx * 0.21, 0.55, 0.22, white, lean); side.rotation.x = -0.25; }
   const screen = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 10, 0, PI * 2, 0, 1.0), MAT.projGlass); screen.position.set(0, 0.92, 0.58); screen.rotation.x = 1.0; lean.add(screen);
@@ -972,7 +971,7 @@ function buildBike(spec) {
       const bar = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.025, 0.025), MAT.black); bar.position.set(0, 0.58, -0.28); w.pivot.add(bar);
     }
   }
-  V.glow('head', 0.08, 0.7, 0.85, 0.5, lean); V.glow('tail', 0, 0.82, -0.92, 0.45, lean); V.glow('brake', 0, 0.82, -0.92, 0.6, lean); V.glow('rev', 0, 0.76, -0.9, 0.4, lean);
+  V.glow('head', 0.08, 0.7, 0.85, 0.5, lean); V.glow('tail', 0, 0.82, -0.92, 0.45, lean); V.glow('brake', 0, 0.82, -0.92, 0.6, lean);
   mergeStatic(lean); for (const w of wheels) mergeStatic(w.spin);
   return V.root;
 }
@@ -2293,7 +2292,7 @@ function physicsStep(dt) {
   if (up && long > -0.5) throttle = S.vmax && long > S.vmax ? 0 : 1;
   else if (up) brake = 1;
   if (down && long > 0.5) brake = 1;
-  else if (down && !up) throttle = -0.45;
+  else if (down && !up && !S.noReverse) throttle = -0.45;     // motocicleta nu are marșarier
 
   // unghiul de derivă al caroseriei (β): pozitiv = mașina alunecă spre stânga
   const beta = speed > 2 ? Math.atan2(lat, Math.abs(long)) : 0;
