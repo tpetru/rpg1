@@ -85,7 +85,7 @@
 <div id="speedo" class="panel"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="a" id="ang">unghi 0°</div></div>
 <div id="help" class="panel">
   <kbd>↑</kbd> accelerație &nbsp; <kbd>↓</kbd> frână / marșarier &nbsp; <kbd>←</kbd><kbd>→</kbd> direcție<br>
-  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>4</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte
+  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>4</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
 </div>
 <div id="pop"></div>
 <div id="touch">
@@ -1624,6 +1624,112 @@ function updateCones(dt) {
 }
 
 // ------------------------------------------------------------------
+// Mingea de fotbal uriașă: fizică proprie, se lovește cu mașina
+// ------------------------------------------------------------------
+const BALL_R = 1.8, BALL_M = 45, BALL_SPAWN = [-22, -98];
+const ball = { x: BALL_SPAWN[0], y: BALL_R, z: BALL_SPAWN[1], vx: 0, vy: 0, vz: 0, hitT: 0 };
+const ballMesh = (() => {
+  // minge clasică: 12 pete negre (pentagoane) pe vârfurile unui icosaedru, restul alb
+  const geo = new THREE.IcosahedronGeometry(BALL_R, 16);
+  const ico = new THREE.IcosahedronGeometry(1, 0), pos = geo.attributes.position, iv = ico.attributes.position;
+  const centers = [];
+  for (let i = 0; i < iv.count; i++) {
+    const v = new THREE.Vector3().fromBufferAttribute(iv, i).normalize();
+    if (!centers.some(c => c.distanceTo(v) < 1e-3)) centers.push(v);
+  }
+  const col = [], a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let t = 0; t < pos.count; t += 3) {
+    a.fromBufferAttribute(pos, t); b.fromBufferAttribute(pos, t + 1); c.fromBufferAttribute(pos, t + 2);
+    const m = a.add(b).add(c).normalize();
+    let best = -1; for (const cc of centers) best = Math.max(best, m.dot(cc));
+    // pentagon: distanța unghiulară față de centru, cu margini drepte aproximative
+    const black = best > 0.935;
+    const seam = !black && best > 0.925;
+    const v = black ? 0.05 : seam ? 0.35 : 0.93;
+    for (let k = 0; k < 3; k++) col.push(v, v, v);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.3 }));
+  m.castShadow = true; m.receiveShadow = true; scene.add(m); return m;
+})();
+// cerc pe asfalt unde stă mingea la start
+{
+  const ring = new THREE.Mesh(new THREE.RingGeometry(BALL_R + 0.6, BALL_R + 0.85, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  ring.rotation.x = -PI / 2; ring.position.set(BALL_SPAWN[0], 0.02, BALL_SPAWN[1]); scene.add(ring);
+}
+function resetBall() { Object.assign(ball, { x: BALL_SPAWN[0], y: BALL_R, z: BALL_SPAWN[1], vx: 0, vy: 0, vz: 0 }); ballMesh.quaternion.identity(); }
+const _bq = new THREE.Quaternion(), _bax = new THREE.Vector3();
+function ballStep(dt) {
+  const b = ball;
+  b.hitT = Math.max(0, b.hitT - dt);
+  b.vy -= G * dt;
+  const drag = Math.exp(-dt * 0.12); b.vx *= drag; b.vz *= drag;
+  b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+  // solul (și rampele)
+  const gh = groundAt(b.x, b.z).h;
+  if (b.y - BALL_R < gh) {
+    b.y = gh + BALL_R;
+    if (b.vy < 0) { if (b.vy < -2.5) sound.thump(); b.vy = b.vy < -1 ? -b.vy * 0.62 : 0; }
+    const roll = Math.exp(-dt * 0.45); b.vx *= roll; b.vz *= roll;
+  }
+  // zidurile arenei
+  const lim = ARENA - BALL_R;
+  if (b.x > lim && b.vx > 0 || b.x < -lim && b.vx < 0) { b.vx *= -0.7; b.x = Math.max(-lim, Math.min(lim, b.x)); }
+  if (b.z > lim && b.vz > 0 || b.z < -lim && b.vz < 0) { b.vz *= -0.7; b.z = Math.max(-lim, Math.min(lim, b.z)); }
+  // stâlpi, copaci, tancuri (doar când mingea e jos)
+  if (b.y < BALL_R + 3) for (const o of OBSTACLES) {
+    const dx = b.x - o.x, dz = b.z - o.z, dd = Math.hypot(dx, dz), min = o.r + BALL_R;
+    if (dd < min && dd > 1e-4) {
+      const nx = dx / dd, nz = dz / dd; b.x += nx * (min - dd); b.z += nz * (min - dd);
+      const vn = b.vx * nx + b.vz * nz; if (vn < 0) { b.vx -= 1.6 * vn * nx; b.vz -= 1.6 * vn * nz; }
+    }
+  }
+  // mașina: cutie orientată (lungime × lățime × 1,35 m); impuls ca la o ciocnire elastică
+  const S = car.spec, M = MODELS[S.body], cgZ = M.zR + S.b;
+  const sn = Math.sin(car.yaw), cs = Math.cos(car.yaw);
+  const dx = b.x - car.x, dz = b.z - car.z;
+  const lx = dx * cs - dz * sn, lz = dx * sn + dz * cs + cgZ, ly = b.y - car.y;   // coordonate față de mijlocul caroseriei
+  const hx = S.wid / 2, hz = S.len / 2;
+  const qx = Math.max(-hx, Math.min(hx, lx)), qz = Math.max(-hz, Math.min(hz, lz)), qy = Math.max(0.15, Math.min(1.35, ly));
+  let nx = lx - qx, ny = ly - qy, nz = lz - qz, d = Math.hypot(nx, ny, nz);
+  if (d < BALL_R) {
+    if (d < 1e-4) { nx = 0; ny = 1; nz = 0; d = 0; } else { nx /= d; ny /= d; nz /= d; }
+    if (ny > 0 && ly < 2.2) { ny *= 0.45; const k = Math.hypot(nx, ny, nz); nx /= k; ny /= k; nz /= k; }   // mai mult în față decât în sus
+    // înapoi în coordonate globale
+    const wnx = nx * cs + nz * sn, wnz = -nx * sn + nz * cs, wny = ny;
+    const push = BALL_R - d; b.x += wnx * push; b.y += wny * push; b.z += wnz * push;
+    // viteza punctului de contact al mașinii (translație + rotație)
+    const rx = (qx * cs + (qz - cgZ) * sn), rz = (-qx * sn + (qz - cgZ) * cs);
+    const cvx = car.vx + car.w * rz, cvz = car.vz - car.w * rx, cvy = car.vy || 0;
+    const vrel = (b.vx - cvx) * wnx + (b.vy - cvy) * wny + (b.vz - cvz) * wnz;
+    if (vrel < 0) {
+      const mc = S.mass, e = 0.65;
+      const j = -(1 + e) * vrel / (1 / BALL_M + 1 / mc);
+      b.vx += j * wnx / BALL_M; b.vy += j * wny / BALL_M; b.vz += j * wnz / BALL_M;
+      const dv = j / BALL_M;
+      b.vy += Math.min(4, dv * 0.08);                                // lovitura o ridică puțin, ca în Rocket League
+      car.vx -= j * wnx / mc; car.vz -= j * wnz / mc;
+      const I = mc * S.a * S.b * S.inertiaF;
+      car.w -= 0.5 * (rz * (j * wnx) - rx * (j * wnz)) / I;
+      if (dv > 4 && b.hitT <= 0) {
+        b.hitT = 0.4; sound.thump();
+        const kmh = Math.round(Math.hypot(b.vx, b.vy, b.vz) * 3.6);
+        if (kmh > 25) pop('Șut! ' + kmh + ' km/h');
+      }
+    }
+  }
+}
+function updateBallMesh(dt) {
+  ballMesh.position.set(ball.x, ball.y, ball.z);
+  const sp = Math.hypot(ball.vx, ball.vz);
+  if (sp > 0.01) {                       // se rostogolește: axa e perpendiculară pe direcția de mers
+    _bax.set(ball.vz, 0, -ball.vx).normalize();
+    _bq.setFromAxisAngle(_bax, sp / BALL_R * dt); ballMesh.quaternion.premultiply(_bq);
+  }
+}
+
+// ------------------------------------------------------------------
 // Scorul de drift
 // ------------------------------------------------------------------
 const drift = { active: false, points: 0, time: 0, grace: 0, mult: 1, total: 0, best: {}, maxAng: 0 };
@@ -1796,20 +1902,33 @@ selectCar(startCar);
 try { if (localStorage.getItem('drift-night') === '1') setNight(true); } catch (e) {}
 
 let camMode = 0;
+// cameră liberă: cât ții Ctrl apăsat, mouse-ul rotește camera în jurul mașinii (rotița = zoom)
+const orbit = { on: false, yaw: 0, pitch: 0.28, dist: 8, k: 0 };
+addEventListener('mousemove', e => {
+  if (!orbit.on) return;
+  orbit.yaw -= e.movementX * 0.006;
+  orbit.pitch = Math.max(-0.05, Math.min(1.35, orbit.pitch + e.movementY * 0.005));
+});
+addEventListener('wheel', e => {
+  if (!orbit.on && !e.ctrlKey) return;
+  e.preventDefault();                       // altfel Ctrl + rotiță face zoom pe toată pagina
+  orbit.dist = Math.max(4, Math.min(22, orbit.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+}, { passive: false });
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
 addEventListener('keydown', e => {
+  if (e.key === 'Control') { if (!orbit.on) { orbit.on = true; orbit.yaw = 0; orbit.pitch = 0.28; } e.preventDefault(); }
   const k = e.code === 'Space' ? 'Space' : e.key;
   if (GAME_KEYS.includes(k)) { keys[k] = true; e.preventDefault(); }
   sound.init();
   if (e.repeat) return;
   if (e.key >= '1' && e.key <= String(CARS.length)) selectCar(+e.key - 1);
-  if (e.key === 'r' || e.key === 'R') resetCar(false);
+  if (e.key === 'r' || e.key === 'R') { resetCar(false); resetBall(); }
   if (e.key === 'c' || e.key === 'C') camMode = (camMode + 1) % 3;
   if (e.key === 'm' || e.key === 'M') sound.toggle();
   if (e.key === 'n' || e.key === 'N') setNight(!night);
 });
-addEventListener('keyup', e => { const k = e.code === 'Space' ? 'Space' : e.key; if (GAME_KEYS.includes(k)) keys[k] = false; });
-addEventListener('blur', () => GAME_KEYS.forEach(k => keys[k] = false));
+addEventListener('keyup', e => { if (e.key === 'Control') orbit.on = false; const k = e.code === 'Space' ? 'Space' : e.key; if (GAME_KEYS.includes(k)) keys[k] = false; });
+addEventListener('blur', () => { GAME_KEYS.forEach(k => keys[k] = false); orbit.on = false; });
 document.querySelectorAll('#touch button').forEach(b => {
   const k = b.dataset.k;
   const set = v => e => { e.preventDefault(); keys[k] = v; b.classList.toggle('on', v); sound.init(); };
@@ -1826,7 +1945,7 @@ addEventListener('resize', resize); resize();
 // ------------------------------------------------------------------
 // Bucla principală
 // ------------------------------------------------------------------
-const camPos = new THREE.Vector3(0, 5, -135), camLook = new THREE.Vector3();
+const camPos = new THREE.Vector3(0, 5, -135), camLook = new THREE.Vector3(), _orbLook = new THREE.Vector3();
 let last = performance.now(), acc = 0, prevWheels = null;
 const STEP = 1 / 240;
 
@@ -1886,11 +2005,20 @@ function visuals(dt) {
   let target;
   if (camMode === 2) target = new THREE.Vector3(car.x + 0.01, 42, car.z - 18);
   else target = new THREE.Vector3(car.x - Math.sin(camYaw) * dist, hgt + car.y * 0.8, car.z - Math.cos(camYaw) * dist);
+  orbit.k += ((orbit.on ? 1 : 0) - orbit.k) * Math.min(1, dt * 8);
+  if (orbit.k > 0.01) {                                  // camera liberă în jurul mașinii
+    const a = car.yaw + PI + orbit.yaw, hd = Math.cos(orbit.pitch) * orbit.dist;
+    const free = new THREE.Vector3(car.x + Math.sin(a) * hd, car.y + 0.9 + Math.sin(orbit.pitch) * orbit.dist, car.z + Math.cos(a) * hd);
+    free.y = Math.max(free.y, groundAt(free.x, free.z).h + 0.3);
+    target.lerp(free, orbit.k);
+  }
   const co = window.__drift && window.__drift.camOverride;
   if (co) { target = new THREE.Vector3(car.x + Math.sin(co.ang) * co.dist, co.h, car.z + Math.cos(co.ang) * co.dist); camPos.copy(target); }
+  else if (orbit.k > 0.5) camPos.copy(target);
   else camPos.lerp(target, 1 - Math.exp(-dt * (camMode === 2 ? 4 : 6)));
   camera.position.copy(camPos);
   if (co) camLook.set(car.x, 0.6, car.z); else camLook.set(car.x + sn * 2.5, 1.0 + car.y, car.z + cs * 2.5);
+  if (!co && orbit.k > 0.01) camLook.lerp(_orbLook.set(car.x, car.y + 0.7, car.z), orbit.k);
   camera.lookAt(camLook);
   camera.fov = 60 + Math.min(speed, 60) * 0.18; camera.updateProjectionMatrix();
 
@@ -1931,7 +2059,8 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   adaptQuality(dt);
   acc += dt;
-  while (acc >= STEP) { physicsStep(STEP); acc -= STEP; }
+  while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); acc -= STEP; }
+  updateBallMesh(dt);
   updateDrift(dt);
   updateCones(dt);
   updateSmoke(dt);
@@ -1943,7 +2072,7 @@ $('loading').remove();
 requestAnimationFrame(frame);
 
 // pentru testare din consolă
-window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, groundAt, wetAt, setNight };
+window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, groundAt, wetAt, setNight, ball, ballStep, resetBall };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
