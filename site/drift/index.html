@@ -2002,8 +2002,10 @@ function wetAt(x, z) {
 // Parcul: iarbă, alei, lac cu lebede, bănci, flori, copaci, felinare
 // ------------------------------------------------------------------
 const PARK = { x0: 91, x1: 171, z0: 64, z1: 136, r: 9 };
+const PARK2 = { x0: -100, x1: -20, z0: 78, z1: 104, cx: -60 };   // parcul din fața Palatului Culturii
 const LAKE = { x: 136, z: 102, r: 11 };
 function grassAt(x, z) {                                 // 1 pe iarbă, 0 pe asfalt / alei
+  if (x > PARK2.x0 && x < PARK2.x1 && z > PARK2.z0 && z < PARK2.z1) return Math.abs(x - PARK2.cx) < 1.6 ? 0 : 1;   // parcul din fața palatului (aleea din mijloc e pavată)
   const cx = Math.min(Math.max(x, PARK.x0 + PARK.r), PARK.x1 - PARK.r), cz = Math.min(Math.max(z, PARK.z0 + PARK.r), PARK.z1 - PARK.r);
   if (Math.hypot(x - cx, z - cz) > PARK.r) return 0;
   const d = Math.hypot(x - LAKE.x, z - LAKE.z);
@@ -2296,6 +2298,58 @@ const PALACE = { x: -60, z: 128, w: 64, d: 30 };              // z = fațada (sp
   ring(-PALACE.w / 2, 0, PALACE.w / 2, PALACE.d, 27);
   ring(-9, -5.5, 9, 0, 22);
   PALACE.foot = [[X - PALACE.w / 2, Z, X + PALACE.w / 2, Z + PALACE.d], [X - 9, Z - 5.5, X + 9, Z]];
+}
+// Parcul din fața palatului: gazon, alee centrală spre intrare, copaci, bănci și „IAȘI” din flori în culorile tricolorului
+{
+  const pg = new THREE.Group(), P = PARK2, w = P.x1 - P.x0, d = P.z1 - P.z0, cz = (P.z0 + P.z1) / 2;
+  const grassTex = canvasTex(256, 256, (g, W, H) => {
+    g.fillStyle = '#4f8a2f'; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 5000; i++) { g.fillStyle = ['#5c9a36', '#447a28', '#67a83d', '#3d6f24', '#78b347'][i % 5]; g.fillRect(Math.random() * W, Math.random() * H, 1.2, 2 + Math.random() * 4); }
+  }, [w / 7, d / 7]);
+  const lawn = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.95 }));
+  lawn.rotation.x = -PI / 2; lawn.position.set(P.cx, 0.012, cz); lawn.receiveShadow = true; pg.add(lawn);
+  const curbM = new THREE.MeshStandardMaterial({ color: 0xbdb8ac, roughness: 0.85 });
+  for (const [cx, cz2, lx, lz] of [[P.cx, P.z0, w, 0.22], [P.cx, P.z1, w, 0.22], [P.x0, cz, 0.22, d], [P.x1, cz, 0.22, d]]) { const c = new THREE.Mesh(new THREE.BoxGeometry(lx, 0.1, lz), curbM); c.position.set(cx, 0.05, cz2); pg.add(c); }
+  // aleea pavată din mijloc, aliniată cu intrarea palatului
+  const pathM = new THREE.MeshStandardMaterial({ color: 0xc9bb9b, roughness: 1 });
+  { const pth = new THREE.Mesh(new THREE.PlaneGeometry(3.2, d), pathM); pth.rotation.x = -PI / 2; pth.position.set(P.cx, 0.016, cz); pth.receiveShadow = true; pg.add(pth); }
+  // „IAȘI” din flori: textul e desenat pe un canvas și fiecare pixel plin devine o tufă de flori
+  { const W = 220, H = 64, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+    g.fillStyle = '#000'; g.font = 'bold 60px system-ui, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('IAȘI', W / 2, H / 2 + 4);
+    const data = g.getImageData(0, 0, W, H).data, cell = 0.36, step = 2, spots = [];
+    let minU = W, maxU = 0; for (let v = 0; v < H; v += step) for (let u = 0; u < W; u += step) if (data[(v * W + u) * 4 + 3] > 128) { spots.push([u, v]); minU = Math.min(minU, u); maxU = Math.max(maxU, u); }
+    const cxText = (minU + maxU) / 2;
+    const flowers = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, flatShading: true }), spots.length);
+    const leaves = new THREE.InstancedMesh(new THREE.BoxGeometry(cell * 1.05, 0.12, cell * 1.05), new THREE.MeshStandardMaterial({ color: 0x2f6a2a, roughness: 0.95 }), spots.length);
+    const M4 = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color();
+    const tri = [0x1b3fa6, 0xf2c200, 0xd21f2a];                    // albastru, galben, roșu (de la stânga la dreapta)
+    spots.forEach(([u, v], i) => {
+      const x = P.cx - (u - cxText) * cell / step * 1.0, z = cz + 2 - (v - H / 2) * cell / step;   // privit dinspre sud, textul se citește normal
+      M4.compose(new THREE.Vector3(x, 0.06, z), q.identity(), new THREE.Vector3(1, 1, 1)); leaves.setMatrixAt(i, M4);
+      const s = 0.8 + rnd() * 0.5; M4.compose(new THREE.Vector3(x + (rnd() - 0.5) * 0.12, 0.2, z + (rnd() - 0.5) * 0.12), q.identity(), new THREE.Vector3(s, s * 0.7, s)); flowers.setMatrixAt(i, M4);
+      const band = Math.min(2, Math.floor((u - minU) / (maxU - minU + 1) * 3));
+      flowers.setColorAt(i, col.setHex(tri[band]).offsetHSL(0, 0, (rnd() - 0.5) * 0.08));
+    });
+    flowers.castShadow = true; leaves.receiveShadow = true; scene.add(flowers, leaves);
+    PARK2.textW = (maxU - minU) * cell / step; }
+  // copaci pe margini, bănci lângă alee, felinare
+  const pts = []; for (let x = P.x0 + 4; x <= P.x1 - 4; x += 9) for (const z of [P.z0 + 3, P.z1 - 3]) if (Math.abs(x - P.cx) > 6) pts.push([x, z]);
+  for (const [x, z] of pts) OBSTACLES.push({ x, z, r: 0.45 });
+  buildTrees(pts.map(([x, z]) => [x, z, true]), true);
+  const woodM = new THREE.MeshStandardMaterial({ color: 0x9a5b2e, roughness: 0.75 }), ironM = new THREE.MeshStandardMaterial({ color: 0x1d2420, metalness: 0.6, roughness: 0.5 });
+  for (const sx of [-1, 1]) for (const z of [P.z0 + 6, P.z1 - 7]) {
+    const g = new THREE.Group(); g.position.set(P.cx + sx * 3.2, 0, z); g.rotation.y = sx * PI / 2;
+    for (let i = 0; i < 3; i++) { const sl = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.12), woodM); sl.position.set(0, 0.45, -0.15 + i * 0.15); g.add(sl); }
+    for (let i = 0; i < 2; i++) { const sl = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.11, 0.035), woodM); sl.position.set(0, 0.62 + i * 0.16, -0.27 - i * 0.04); sl.rotation.x = -0.22; g.add(sl); }
+    for (const lx of [-0.78, 0.78]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.4), ironM); leg.position.set(lx, 0.22, -0.05); g.add(leg); }
+    pg.add(g); OBSTACLES.push({ x: P.cx + sx * 3.2, z, r: 0.9 });
+  }
+  for (const sx of [-1, 1]) for (const z of [P.z0 + 1, P.z1 - 1]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 3.4, 10), ironM); pole.position.set(P.cx + sx * 2.1, 1.7, z); pg.add(pole);
+    const lan = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.14, 0.45, 8), PARK.lampMat); lan.position.set(P.cx + sx * 2.1, 3.6, z); pg.add(lan);
+    OBSTACLES.push({ x: P.cx + sx * 2.1, z, r: 0.2 });
+  }
+  scene.add(mergeStatic(placeShadow(pg)));
 }
 function palaceStep() {
   const d = new Date(), m = d.getMinutes() + d.getSeconds() / 60, h = (d.getHours() % 12) + m / 60;
@@ -3340,6 +3394,7 @@ function mmBuild() {
   }
   { const [x0, z0] = mmPos(PARK.x1, PARK.z1); g.fillStyle = '#5a9a3a'; g.beginPath(); g.roundRect(x0, z0, (PARK.x1 - PARK.x0) * k, (PARK.z1 - PARK.z0) * k, PARK.r * k); g.fill();
     const [lx, lz] = mmPos(LAKE.x, LAKE.z); g.strokeStyle = '#d8cba8'; g.lineWidth = Math.max(1, 2.8 * k); g.beginPath(); g.arc(lx, lz, 16 * k, 0, 7); g.stroke(); }
+  { const [x0, z0] = mmPos(PARK2.x1, PARK2.z1); g.fillStyle = '#5a9a3a'; g.fillRect(x0, z0, (PARK2.x1 - PARK2.x0) * k, (PARK2.z1 - PARK2.z0) * k); }
   for (const r of PALACE.foot) { const [x0, z0] = mmPos(r[2], r[3]); g.fillStyle = '#d8cfbb'; g.fillRect(x0, z0, (r[2] - r[0]) * k, (r[3] - r[1]) * k); }
   for (const o of OBSTACLES) { if (o.lake || o.bld) continue; const [x, z] = mmPos(o.x, o.z); g.fillStyle = o.r > 1.5 ? '#6b6f4a' : o.r > 0.3 ? '#2f7d36' : '#bbb'; g.beginPath(); g.arc(x, z, Math.max(1, o.r * k), 0, 7); g.fill(); }
   for (const pl of PILLARS) { const [x, z] = mmPos(pl.x, pl.z); g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(x, z, pl.r * k, 0, 7); g.fill(); }
