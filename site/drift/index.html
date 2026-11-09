@@ -85,7 +85,7 @@
 <div id="speedo" class="panel"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="a" id="ang">unghi 0°</div></div>
 <div id="help" class="panel">
   <kbd>↑</kbd> accelerație &nbsp; <kbd>↓</kbd> frână / marșarier &nbsp; <kbd>←</kbd><kbd>→</kbd> direcție<br>
-  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>4</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
+  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>5</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>S</kbd> sirenă &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
 </div>
 <div id="pop"></div>
 <div id="touch">
@@ -138,6 +138,15 @@ const CARS = [
     muF:1.00, muR:1.00, BF:9.5, CF:1.30, BR:10, CR:1.50,
     steerMax:0.62, steerRate:3.0, assist:0.55, brake:0.95, hbGrip:0.30,
     cd:0.36, body:'passat', len:4.765, wid:1.82, wheelR:0.322
+  },
+  {
+    id:'dacia', name:'Dacia 1300 Poliție', tag:'Tracțiune față · 54 CP · 920 kg',
+    desc:'Mașina de poliție clasică: ușoară, cu anvelope înguste și suspensie moale, se apleacă mult în viraje. Cu frâna de mână intră ușor în drift, dar are puțină putere ca să-l țină. Tasta S pornește girofarul și sirena.',
+    color:0xf1f1ec, mass:920, a:0.98, b:1.46, h:0.55, inertiaF:1.0,
+    power:40000, maxForce:4300, frontDrive:1.0,
+    muF:0.86, muR:0.84, BF:8.5, CF:1.30, BR:9, CR:1.45,
+    steerMax:0.66, steerRate:2.8, assist:0.6, brake:0.85, hbGrip:0.32,
+    cd:0.42, body:'dacia', len:4.348, wid:1.636, wheelR:0.289, police:true
   },
 ];
 
@@ -351,7 +360,8 @@ function loftGeometry(sec, z0, z1, nz, nth, th0 = 0, th1 = Math.PI * 2, caps = t
 // ampatament 2857, ecartament 1617/1605, 275/35 R19 + 285/30 R20), Audi RS 6 Avant performance
 // (4995 × 1951 × 1460, ampatament 2929, ecartament 1668/1650, 285/30 R22), Porsche 911 Carrera S
 // 997.2 (4435 × 1808 × 1310, ampatament 2350, ecartament 1486/1534, 235/35 R19 + 295/30 R19),
-// VW Passat B6 sedan (4765 × 1820 × 1472, ampatament 2709, ecartament 1552/1551, 235/45 R17).
+// VW Passat B6 sedan (4765 × 1820 × 1472, ampatament 2709, ecartament 1552/1551, 235/45 R17),
+// Dacia 1300 (4348 × 1636 × 1435, ampatament 2440, ecartament 1312/1312, 155 SR 13).
 const MODELS = {
   m4: {
     zF: 1.44, zR: -1.417, z0: -2.40, z1: 2.40, flare: 0.032,
@@ -406,6 +416,19 @@ const MODELS = {
       belt: [[-1.62,0.99],[1.0,0.93]] },
     doors: [0.98, -0.02, -0.9], seats: 5, plate: 'PASSAT · B6', chromeTrim: true,
   },
+  dacia: {
+    zF: 1.314, zR: -1.126, z0: -2.174, z1: 2.174, flare: 0,
+    wheel: { rF: 0.289, rR: 0.289, wF: 0.155, wR: 0.155, tF: 0.656, tR: 0.656, style: 'steel', rim: 0xb8bcc1, cap: 'dacia', caliper: 0x2a2a2a },
+    top: [[-2.174,.84],[-2.12,.93],[-1.9,.95],[-1.3,.955],[0.8,.90],[1.6,.87],[2.08,.84],[2.174,.80]],
+    sh: [[-2.174,.70],[-2.05,.78],[-1.3,.82],[0,.82],[1.4,.80],[2.05,.76],[2.174,.70]],
+    hw: [[-2.174,.76],[-2.10,.80],[0,.818],[2.10,.80],[2.174,.77]],
+    bot: [[-2.174,.38],[-2.0,.30],[-1.6,.22],[1.6,.22],[2.0,.30],[2.174,.38]],
+    nT: 4.6, nB: 6,
+    cab: { z0: -1.35, z1: 0.95, nT: 4.4, wf: 0.93, bPos: 0.5, capTh: 0.32, cap: [-0.85, 0.45],
+      roof: [[-1.35,0.97],[-1.1,1.22],[-0.85,1.42],[-0.2,1.435],[0.45,1.42],[0.7,1.25],[0.95,0.92]],
+      belt: [[-1.35,0.96],[0.95,0.90]] },
+    doors: [0.93, -0.06, -0.74], seats: 5, plate: 'MAI 13000', chromeTrim: true,
+  },
 };
 
 function plateTexture(text) {
@@ -440,6 +463,10 @@ function badgeTexture(kind, text) {
     g.fillStyle = '#111'; g.fillRect(32, 52, 26, 10); g.fillRect(70, 34, 26, 12); g.fillRect(70, 88, 22, 8);
     g.fillStyle = '#e8c45a'; g.fillRect(54, 46, 20, 30);
     g.fillStyle = '#222'; g.font = 'bold 12px serif'; g.textAlign = 'center'; g.fillText('PORSCHE', m, 27);
+  } else if (kind === 'dacia') {
+    g.fillStyle = '#d9dde1'; g.beginPath(); g.moveTo(20, 16); g.lineTo(108, 16); g.lineTo(108, 66); g.quadraticCurveTo(108, 100, m, 120); g.quadraticCurveTo(20, 100, 20, 66); g.closePath(); g.fill();
+    g.fillStyle = '#1d4fa3'; g.beginPath(); g.moveTo(30, 26); g.lineTo(98, 26); g.lineTo(98, 64); g.quadraticCurveTo(98, 92, m, 108); g.quadraticCurveTo(30, 92, 30, 64); g.closePath(); g.fill();
+    g.fillStyle = '#fff'; g.font = 'bold 54px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('D', m, 66);
   } else if (kind === 'vw') {
     g.fillStyle = '#1b3a6b'; g.beginPath(); g.arc(m, m, 60, 0, 7); g.fill();
     g.strokeStyle = '#e4e7ea'; g.lineWidth = 9; g.beginPath(); g.arc(m, m, 56, 0, 7); g.stroke();
@@ -560,6 +587,12 @@ function makeWheel(W, front, side) {
       branch(a + 0.08, a + 0.2, hubR, rIn - 0.01, 0.034);
       const bar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, rIn * 0.42), rimMat);
       bar.position.set(face - side * 0.022, Math.cos(a) * rIn * 0.8, Math.sin(a) * rIn * 0.8); bar.rotation.x = a + PI / 2 - PI / 2; bar.rotation.x = -a; spin.add(bar);
+    } else if (W.style === 'steel') {       // jantă de tablă cu capac cromat
+      if (i === 0) {
+        const disc = new THREE.Mesh(new THREE.CylinderGeometry(rIn - 0.005, rIn - 0.005, 0.02, 32), rimMat); disc.rotation.z = PI / 2; disc.position.x = face - side * 0.03; spin.add(disc);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(rIn * 0.62, 24, 10, 0, PI * 2, 0, PI / 2), MAT.chrome); cap.scale.y = 0.25; cap.rotation.z = -side * PI / 2; cap.position.x = face - side * 0.02; spin.add(cap);
+      }
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.018, 10), MAT.black); hole.rotation.y = side * PI / 2; hole.position.set(face - side * 0.018, Math.cos(a + 0.6) * rIn * 0.82, Math.sin(a + 0.6) * rIn * 0.82); spin.add(hole);
     } else if (W.style === 'five') {        // 5 spițe simple, late (jante VW de 17")
       spoke(a, hubR, rIn - 0.01, 0.07);
     } else {                                // 5 spițe duble (Carrera)
@@ -860,6 +893,62 @@ function buildCar(spec) {
     glow('head', 0.63, Ftop - 0.11, front + 0.05, 0.85, 1);
     glow('tail', 0.55, Rtop - 0.1, rear - 0.05, 0.6, -1); glow('brake', 0.55, Rtop - 0.1, rear - 0.05, 0.86, -1);
     glow('rev', 0.63, Rtop - 0.13, rear - 0.05, 0.55, -1);
+  } else if (spec.body === 'dacia') {
+    // grilă neagră cu ramă cromată, faruri dreptunghiulare, bare de protecție cromate
+    const gy = Ftop - 0.16;
+    capDecal(rr(0, gy, 0.74, 0.22, 0.02), 1, MAT.chrome, 0.004);
+    capDecal(rr(0, gy, 0.70, 0.18, 0.015), 1, MAT.mesh, 0.008);
+    for (let k = 0; k < 4; k++) { const sl = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.012, 0.015), MAT.chrome); sl.position.set(0, gy - 0.06 + k * 0.04, front + 0.014); add(sl, false); }
+    badge('dacia', '', 0.09, 0.1, V(0, gy, front + 0.022));
+    capBoth(sx => rr(sx * 0.52, gy, 0.30, 0.18, 0.02), 1, MAT.chrome, 0.004);
+    capBoth(sx => rr(sx * 0.52, gy, 0.27, 0.15, 0.015), 1, MAT.lens, 0.008);
+    for (const sx of [-1, 1]) {
+      const b = new THREE.Mesh(new THREE.CircleGeometry(0.045, 20), MAT.head); b.position.set(sx * 0.52, gy, front + 0.012); add(b, false);
+      for (let k = -3; k <= 3; k++) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.14, 0.004), MAT.reflector); r.position.set(sx * 0.52 + k * 0.035, gy, front + 0.011); add(r, false); }
+    }
+    capBoth(sx => rr(sx * 0.71, gy, 0.07, 0.15, 0.012), 1, MAT.amber, 0.008);
+    for (const [zz, dir] of [[front + 0.07, 1], [rear - 0.07, -1]]) {
+      const bump = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.11, 0.1), MAT.chrome); bump.position.set(0, 0.32, zz); add(bump);
+      for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.11, 0.3), MAT.chrome); w.position.set(sx * 0.78, 0.32, zz - dir * 0.12); add(w); }
+      const rub = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.03, 0.02), MAT.black); rub.position.set(0, 0.32, zz + dir * 0.052); add(rub, false);
+    }
+    plateF.position.set(0, Fbot + 0.075, front + 0.012);
+    // spate: stopuri verticale în colțuri (poziție, semnalizare, marșarier), ornament cromat
+    capBoth(sx => rr(sx * 0.6, Rtop - 0.2, 0.22, 0.28, 0.02), -1, MAT.chrome, 0.004);
+    capBoth(sx => rr(sx * 0.6, Rtop - 0.2, 0.2, 0.26, 0.015), -1, MAT.redLens);
+    capBoth(sx => rr(sx * 0.6, Rtop - 0.12, 0.17, 0.07, 0.01), -1, tailMat, 0.008);
+    capBoth(sx => rr(sx * 0.6, Rtop - 0.21, 0.17, 0.035, 0.01), -1, revMat, 0.009);
+    capBoth(sx => rr(sx * 0.6, Rtop - 0.285, 0.17, 0.06, 0.01), -1, MAT.amber, 0.008);
+    capDecal(rr(0, Rtop - 0.07, 0.9, 0.018, 0.006), -1, MAT.chrome, 0.008);
+    exhaust(-0.45, 0.22, 0.025);
+    plateR.position.set(0, Rtop - 0.24, rear - 0.012);
+    badge('text', 'DACIA 1300', 0.26, 0.045, V(-0.5, Rtop - 0.035, rear - 0.01), PI);
+    glow('head', 0.52, gy, front + 0.05, 0.8, 1);
+    glow('tail', 0.6, Rtop - 0.12, rear - 0.05, 0.55, -1); glow('brake', 0.6, Rtop - 0.12, rear - 0.05, 0.8, -1);
+    glow('rev', 0.6, Rtop - 0.21, rear - 0.05, 0.5, -1);
+    // însemnele de poliție: dungă albastră, inscripții, girofar pe plafon
+    const blue = new THREE.MeshPhysicalMaterial({ color: 0x1546a8, roughness: 0.3, clearcoat: 1 });
+    const s0 = S(0), tA = thetaAt(s0, 0.56), tB = thetaAt(s0, 0.66);
+    both(M.z0 + 0.08, M.z1 - 0.08, Math.min(tA, tB), Math.max(tA, tB), blue, 0.004, S, 3);
+    const polTex = (txt, w, h, fs) => canvasTex(w, h, (g, W2, H2) => { g.clearRect(0, 0, W2, H2); g.fillStyle = '#1546a8'; g.font = `bold ${fs}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, W2 / 2, H2 / 2 + 2); });
+    const polMat = new THREE.MeshStandardMaterial({ map: polTex('POLIȚIA', 512, 96, 76), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.4 });
+    for (const sx of [-1, 1]) {
+      const dz = 0.42, sy = 0.73, ww = widthAt(S(dz), sy) + 0.006;
+      const t = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.18), polMat); t.position.set(sx * ww, sy, dz); t.rotation.y = sx * PI / 2; add(t, false);
+    }
+    decalOnTop(front - 0.35, 0.8, 0.15, polMat);
+    { const tb = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.11), polMat); tb.position.set(0.0, Rtop - 0.34, rear - 0.014); tb.rotation.y = PI; tb.scale.x = 1; add(tb, false);
+      plateR.position.y = Rtop - 0.22; tb.position.y = 0.46; }
+    const ry = roof(-0.15);
+    const barBase = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.07, 0.26), MAT.black); barBase.position.set(0, ry + 0.045, -0.15); add(barBase);
+    const pl = root.userData.police = { L: new THREE.MeshStandardMaterial({ color: 0x0b2a8a, emissive: 0x2a5cff, emissiveIntensity: 0.25, transparent: true, opacity: 0.92 }),
+      R: new THREE.MeshStandardMaterial({ color: 0x0b2a8a, emissive: 0x2a5cff, emissiveIntensity: 0.25, transparent: true, opacity: 0.92 }),
+      gL: glowMat(0x3a6bff), gR: glowMat(0x3a6bff) };
+    for (const [sx, mat, gm] of [[-1, pl.L, pl.gL], [1, pl.R, pl.gR]]) {
+      const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.13, 20), mat); dome.position.set(sx * 0.3, ry + 0.145, -0.15); dome.userData.keep = true; add(dome, false);
+      const sp = new THREE.Sprite(gm); sp.position.set(sx * 0.3, ry + 0.15, -0.15); sp.scale.setScalar(2.4); body.add(sp);
+    }
+    const spk = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.14), MAT.chrome); spk.position.set(0, ry + 0.12, -0.15); add(spk, false);
   } else {
     // 911 (997.2): faruri ovale bi-xenon pe aripi, DRL LED în prizele laterale
     for (const sx of [-1, 1]) {
@@ -1507,7 +1596,11 @@ function physicsStep(dt) {
   const torque = S.a * (FyF * cd + FxF * sd) - S.b * FyR;
 
   // rezistența aerului + rulare
-  const dragX = -S.cd * long * Math.abs(long) - 14 * long;
+  // rulare (~1,5% din greutate) + frâna de motor când nu apeși nimic: mașina încetinește și se oprește
+  const coast = !up && !down && !hb;
+  const rollF = m * G * (0.015 + (coast ? 0.16 : 0));
+  const rollX = -Math.sign(long) * Math.min(rollF, Math.abs(long) * m / dt * 0.5);
+  const dragX = -S.cd * long * Math.abs(long) - 14 * long + rollX;
   const dragY = -S.cd * lat * Math.abs(lat) - 14 * lat;
   let tq = torque;
   if (car.air) { Fx = 0; Fy = 0; tq = 0; car.w *= 1 - 0.4 * dt; car.spinR = 0; }   // în aer roțile nu mai prind
@@ -1522,7 +1615,7 @@ function physicsStep(dt) {
   const I = m * S.a * S.b * S.inertiaF;
   car.w += tq / I * dt;
   // la viteză foarte mică, fără motor, mașina se oprește de tot
-  if (speed < 0.6 && !throttle) { car.vx *= 0.9; car.vz *= 0.9; car.w *= 0.85; }
+  if (speed < (coast ? 1.2 : 0.6) && !throttle) { car.vx *= 0.9; car.vz *= 0.9; car.w *= 0.85; }
   if (brake && Math.abs(long) < 0.6) {
     car.vx -= long * sn * 0.5; car.vz -= long * cs * 0.5;
   }
@@ -1807,7 +1900,21 @@ const sound = (() => {
     o.connect(g); g.connect(master); o.start(); o.stop(ctx.currentTime + 0.25);
   }
   function toggle() { on = !on; if (master) master.gain.value = on ? 0.5 : 0; pop(on ? 'Sunet pornit' : 'Sunet oprit'); }
-  return { init, update, thump, toggle };
+  // sirenă: ton care urcă și coboară (wail), filtrat ca un difuzor de pe plafon
+  let sir = null;
+  function siren(want) {
+    if (!ctx) return;
+    if (want && !sir) {
+      const o = ctx.createOscillator(), lfo = ctx.createOscillator(), lg = ctx.createGain(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 1050; lfo.type = 'triangle'; lfo.frequency.value = 0.42; lg.gain.value = 420;
+      f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 0.9; g.gain.value = 0.16;
+      lfo.connect(lg); lg.connect(o.frequency); o.connect(f); f.connect(g); g.connect(master); o.start(); lfo.start();
+      sir = { o, lfo, g };
+    } else if (!want && sir) {
+      sir.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); const z = sir; setTimeout(() => { z.o.stop(); z.lfo.stop(); }, 300); sir = null;
+    }
+  }
+  return { init, update, thump, toggle, siren };
 })();
 
 // ------------------------------------------------------------------
@@ -1818,10 +1925,14 @@ const beams = [-1, 1].map(sx => {
   l.userData.sx = sx; l.target.position.set(sx * 0.9, 0, 18); return l;
 });
 const rearGlow = new THREE.PointLight(0xff1a0a, 0, 6, 2);
+const policeLight = new THREE.PointLight(0x3a6bff, 0, 22, 1.6);
+let sirenOn = false;
+function setSiren(on) { sirenOn = on && !!car.spec.police; sound.siren(sirenOn); }
 function attachBeams(mesh) {
   const b = mesh.userData.body, z = car.spec.len / 2 - 0.25;
   for (const l of beams) { l.position.set(l.userData.sx * 0.62, 0.7, z); l.target.position.set(l.userData.sx * 0.9, 0, z + 18); b.add(l); b.add(l.target); }
   rearGlow.position.set(0, 0.35, -car.spec.len / 2 - 1.6); b.add(rearGlow);
+  policeLight.position.set(0.3, 1.9, -0.15); b.add(policeLight);
 }
 const _cv = new THREE.Vector3();
 let braking = 0, reversing = 0;
@@ -1844,6 +1955,16 @@ function updateLights(mesh, dt) {
   G.brake.opacity = braking * (night ? 0.6 : 0.7) * (0.3 + 0.7 * back);
   G.rev.opacity = reversing * (night ? 0.9 : 0.6) * (0.3 + 0.7 * back);
   for (const l of beams) l.intensity = night ? 90 : 0;
+  const pl = ud.police;
+  if (pl) {
+    const t = performance.now() / 1000, ph = (t * 2.2) % 1;
+    const fl = k => sirenOn && ((ph < 0.5) === (k < 0)) && (((ph * 2) % 1) * 3 % 1 < 0.6) ? 1 : 0;   // dublu flash, stânga / dreapta
+    const a = fl(-1), b2 = fl(1);
+    pl.L.emissiveIntensity = 0.25 + a * 7; pl.R.emissiveIntensity = 0.25 + b2 * 7;
+    pl.gL.opacity = a * (night ? 1 : 0.8); pl.gR.opacity = b2 * (night ? 1 : 0.8);
+    policeLight.intensity = night && sirenOn ? (a + b2) * 6 : 0;
+    policeLight.position.x = a ? -0.3 : 0.3;
+  }
   rearGlow.intensity = night ? 0.3 + braking * 1.4 : 0;
 }
 const DAY = { bg: 0xa9c2d6, hemi: 0.7, sun: 2.0, exp: 1.0 };
@@ -1893,6 +2014,7 @@ function selectCar(i) {
   [...carsEl.querySelectorAll('.car')].forEach((b, j) => b.classList.toggle('on', j === i));
   descEl.textContent = car.spec.desc;
   attachBeams(carMeshes[i]);
+  if (sirenOn && !car.spec.police) setSiren(false);
   resetCar(true);
   try { localStorage.setItem('drift-car', i); } catch (e) {}
 }
@@ -1926,6 +2048,7 @@ addEventListener('keydown', e => {
   if (e.key === 'c' || e.key === 'C') camMode = (camMode + 1) % 3;
   if (e.key === 'm' || e.key === 'M') sound.toggle();
   if (e.key === 'n' || e.key === 'N') setNight(!night);
+  if ((e.key === 's' || e.key === 'S') && car.spec.police) { setSiren(!sirenOn); pop(sirenOn ? 'Girofar și sirenă pornite' : 'Sirenă oprită'); }
 });
 addEventListener('keyup', e => { if (e.key === 'Control') orbit.on = false; const k = e.code === 'Space' ? 'Space' : e.key; if (GAME_KEYS.includes(k)) keys[k] = false; });
 addEventListener('blur', () => { GAME_KEYS.forEach(k => keys[k] = false); orbit.on = false; });
@@ -2072,7 +2195,7 @@ $('loading').remove();
 requestAnimationFrame(frame);
 
 // pentru testare din consolă
-window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, groundAt, wetAt, setNight, ball, ballStep, resetBall };
+window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, setSiren, carMeshes, groundAt, wetAt, setNight, ball, ballStep, resetBall };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
