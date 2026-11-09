@@ -1237,6 +1237,50 @@ function walkStep(W, dt) {
   if (Math.floor(prev) !== Math.floor(W.ph) && Math.abs(v) > 0.3) sound.clop(0.25 + run * 0.3, true);
 }
 
+// Passat B7: modelul detaliat din fișierul .skp (convertit în models/passat.bin); până se încarcă (sau dacă lipsește) rămâne cel procedural
+let _passatData = null;
+function loadPassatModel(root, spec) {
+  _passatData = _passatData || Promise.all([fetch('models/passat.json').then(r => r.json()), fetch('models/passat.bin').then(r => r.arrayBuffer())]);
+  _passatData.then(([J, buf]) => {
+    const body = root.userData.body, cgZ = MODELS.passat.zR + spec.b;
+    const mk = J.mats.map((m, i) => {
+      const paint = i === 0 || i === 1 || i === 13 || i === 15;
+      const c = new THREE.Color().setRGB(m.c[0], m.c[1], m.c[2], THREE.SRGBColorSpace);
+      if (paint) return new THREE.MeshPhysicalMaterial({ color: spec.color, metalness: 0.3, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.1, envMapIntensity: 0.8 });
+      if (i === 24 || i === 26 || i === 35) return root.userData.tailMat;
+      if (i === 34) return root.userData.revMat;
+      if (m.a) return new THREE.MeshPhysicalMaterial({ color: 0x15191d, metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false, envMapIntensity: 1.4 });
+      return new THREE.MeshStandardMaterial({ color: c, metalness: Math.min(0.9, m.m), roughness: Math.max(0.25, m.r) });
+    });
+    const meshOf = g => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Int16Array(buf, g.po, g.nv * 3), 3, true));
+      geo.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(buf, g.no, g.nv * 3), 3, true));
+      geo.setIndex(new THREE.BufferAttribute(g.it === 4 ? new Uint32Array(buf, g.io, g.ni) : new Uint16Array(buf, g.io, g.ni), 1));
+      geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Math.hypot(...g.h) + 0.01); geo.boundingBox = new THREE.Box3(new THREE.Vector3(-g.h[0], -g.h[1], -g.h[2]), new THREE.Vector3(g.h[0], g.h[1], g.h[2]));
+      const m = new THREE.Mesh(geo, mk[g.mat]); m.scale.set(g.h[0], g.h[1], g.h[2]); m.position.set(...g.c);
+      m.castShadow = true; return m;
+    };
+    const skp = new THREE.Group(); const wheels = [];
+    const wg = {};
+    for (const g of J.groups) {
+      const m = meshOf(g);
+      if (g.k === 'w') { (wg[g.w] = wg[g.w] || new THREE.Group()).add(m); } else skp.add(m);
+    }
+    // ascunde caroseria procedurală (sprite-urile de lumină rămân)
+    for (const ch of body.children) if (!ch.isSprite) ch.visible = false;
+    body.add(skp);
+    for (const ch of root.children) if (ch.isGroup && ch !== body && ch.userData.wheelRoot !== false && root.userData.wheels.some(w => w.pivot === ch)) ch.visible = false;
+    for (const [k, c] of Object.entries(J.wheels)) {
+      const front = k[1] === '1', sx = k[0] === '0' ? -1 : 1;
+      const pivot = new THREE.Group(), spin = wg[k]; pivot.add(spin);
+      pivot.position.set(c[0], c[1], c[2] - cgZ); root.add(pivot);
+      wheels.push({ pivot, spin, front, sx });
+    }
+    root.userData.wheels = wheels;
+  }).catch(e => console.warn('model Passat indisponibil, rămâne cel procedural', e));
+}
+
 function buildCar(spec) {
   if (spec.body === 'mos') return buildMos(spec);
   if (spec.body === 'can') return buildCan(spec);
@@ -1630,6 +1674,7 @@ function buildCar(spec) {
   for (const w of wheels) mergeStatic(w.spin);
   root.userData.body = body;
   root.userData.wheels = wheels;
+  if (spec.body === 'passat') loadPassatModel(root, spec);
   return root;
 }
 
