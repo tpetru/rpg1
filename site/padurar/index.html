@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pădurarul 3D</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #a7c4b5; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 22px; background: #2f4a33; z-index: 50; }
+  .chip { background: rgba(18, 30, 22, .62); border-radius: 12px; padding: 7px 12px; backdrop-filter: blur(4px); }
+  #hud { position: fixed; left: 12px; top: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; align-items: flex-start; }
+  #money { font-size: 22px; font-weight: 800; }
+  #load, #clock, #strikes { font-size: 14px; font-weight: 600; }
+  #load.full { background: rgba(170, 90, 10, .8); }
+  #strikes b { color: #ff5a4a; }
+  #btns { position: fixed; right: 12px; top: 12px; display: flex; gap: 6px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; }
+  .ib { width: 40px; height: 40px; font-size: 19px; background: rgba(18, 30, 22, .62); color: #fff; }
+  .ib:hover { background: rgba(18, 30, 22, .85); }
+  #mm { position: fixed; left: 12px; bottom: 12px; width: 150px; height: 150px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); box-shadow: 0 3px 12px rgba(0,0,0,.35); pointer-events: none; }
+  #alert { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); font-weight: 700; font-size: 15px; display: none; align-items: center; gap: 8px; pointer-events: none; white-space: nowrap; }
+  #alert.show { display: flex; }
+  #alert.seen { background: rgba(200, 30, 20, .85); animation: pulse .6s infinite alternate; }
+  #alert .arr { display: inline-block; font-size: 18px; transition: transform .1s; }
+  @keyframes pulse { from { box-shadow: 0 0 0 0 rgba(255,60,40,.6); } to { box-shadow: 0 0 0 8px rgba(255,60,40,0); } }
+  #treeinfo { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); text-align: center; display: none; pointer-events: none; min-width: 220px; }
+  #treeinfo.show { display: block; }
+  #tiName { font-weight: 700; font-size: 15px; }
+  #tiTag { font-size: 13px; margin-top: 2px; }
+  #tiTag.bad { color: #ff7a6a; } #tiTag.ok { color: #8fe58a; } #tiTag.seal { color: #ffd34d; }
+  #tiBar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.2); margin-top: 6px; overflow: hidden; }
+  #tiBar i { display: block; height: 100%; width: 100%; background: #ffd34d; }
+  #toast { position: fixed; left: 50%; top: 30%; transform: translateX(-50%); font-size: 18px; font-weight: 700; text-align: center; pointer-events: none; opacity: 0; transition: opacity .3s; max-width: calc(100vw - 32px); }
+  #toast.show { opacity: 1; }
+  #toast.bad { background: rgba(190, 30, 20, .88); }
+  #toast.good { background: rgba(30, 120, 40, .85); }
+  #bubble { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); background: #fff; color: #222; font-weight: 700; font-size: 15px; padding: 9px 13px; border-radius: 14px; max-width: 260px; text-align: center; pointer-events: none; display: none; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  #bubble::after { content: ""; position: absolute; left: 50%; bottom: -9px; margin-left: -9px; border: 9px solid transparent; border-bottom: 0; border-top-color: #fff; }
+  #bubble.shout { background: #fff3c4; font-size: 16px; }
+  #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .5s; z-index: 15; }
+  #polaroid { position: fixed; right: 18px; bottom: 90px; background: #fdfdf8; color: #333; padding: 8px 8px 6px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.45); transform: rotate(4deg) scale(.6); opacity: 0; transition: all .45s; pointer-events: none; z-index: 14; text-align: center; font-size: 13px; font-weight: 700; }
+  #polaroid.show { opacity: 1; transform: rotate(4deg) scale(1); }
+  #polaroid canvas { width: 240px; height: 180px; display: block; margin-bottom: 4px; }
+  #joy { position: fixed; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); display: none; pointer-events: none; }
+  #joy i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255,255,255,.45); }
+  #bAxe { position: fixed; right: 16px; bottom: 18px; width: 84px; height: 84px; border-radius: 50%; font-size: 40px; background: rgba(150, 60, 20, .75); color: #fff; box-shadow: 0 4px 0 rgba(80,30,10,.8); }
+  #bAxe:active, #bAxe.on { transform: translateY(3px); box-shadow: 0 1px 0 rgba(80,30,10,.8); }
+  #hint { position: fixed; right: 12px; bottom: 112px; font-size: 13px; opacity: .85; pointer-events: none; text-align: right; }
+  body.touch #hint { display: none; }
+  body.touch #mm { left: auto; right: 12px; bottom: auto; top: 60px; width: 110px; height: 110px; }
+  body.touch #treeinfo { bottom: 120px; }
+  #overlay { position: fixed; inset: 0; display: none; place-items: center; background: rgba(10, 25, 15, .5); z-index: 20; padding: 16px; }
+  #overlay.show { display: grid; }
+  .panel { background: #fbf6ea; color: #33291c; border-radius: 22px; padding: 22px 24px; width: min(600px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .panel h1 { margin: 0 0 6px; font-size: 32px; color: #2f6b2c; text-align: center; }
+  .panel h2 { margin: 0 0 8px; font-size: 26px; color: #9b3a1a; text-align: center; }
+  .panel p { margin: 8px 0; line-height: 1.45; }
+  .panel ul { margin: 6px 0 10px; padding-left: 20px; line-height: 1.5; }
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+  .legend div { border-radius: 12px; padding: 10px; font-size: 14px; line-height: 1.4; }
+  .lg-ok { background: #e3f1dc; border: 2px solid #7cb26a; }
+  .lg-bad { background: #f6e6d2; border: 2px solid #c08a4a; }
+  .big { display: block; margin: 14px auto 4px; background: #2f7d32; color: #fff; font-size: 20px; font-weight: 800; padding: 13px 34px; box-shadow: 0 4px 0 #1d5420; }
+  .big:hover { background: #379139; }
+  .best { text-align: center; font-size: 13px; opacity: .75; }
+  .stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; margin: 10px auto; max-width: 340px; font-size: 16px; }
+  .stats b { text-align: right; }
+  .photos { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
+  .photos img { width: 150px; border: 6px solid #fff; border-bottom-width: 18px; box-shadow: 0 4px 12px rgba(0,0,0,.3); transform: rotate(-2deg); }
+  .photos img:nth-child(2) { transform: rotate(3deg); }
+  kbd { background: #e7dcc6; border-radius: 5px; padding: 1px 6px; font-size: 13px; }
+  @media (max-width: 520px) { .legend { grid-template-columns: 1fr; } .panel { padding: 16px; } .panel h1 { font-size: 26px; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+<div id="loading">Se încarcă pădurea… 🌲</div>
+<div id="hud">
+  <div class="chip" id="money">💰 0 lei</div>
+  <div class="chip" id="load">🪵 Lemne: 0/4</div>
+  <div class="chip" id="clock">⏱ 08:00</div>
+  <div class="chip" id="strikes">📷 Reportaje: 0/3</div>
+</div>
+<div id="btns">
+  <button class="ib" id="bSound" title="Sunet (M)">🔊</button>
+  <button class="ib" id="bPause" title="Pauză (Esc)">⏸</button>
+</div>
+<div id="alert" class="chip"><span id="alTxt"></span><span class="arr" id="alArr">⬆</span></div>
+<canvas id="mm" width="300" height="300"></canvas>
+<div id="treeinfo" class="chip"><div id="tiName"></div><div id="tiTag"></div><div id="tiBar"><i></i></div></div>
+<div id="toast" class="chip"></div>
+<div id="bubble"></div>
+<div id="flash"></div>
+<div id="polaroid"><canvas id="pc" width="320" height="240"></canvas><div>RecorderZ · „Ce faceți aici?”</div></div>
+<div id="joy"><i></i></div>
+<button id="bAxe" title="Taie (Space)">🪓</button>
+<div id="hint"><kbd>WASD</kbd> mers · <kbd>Shift</kbd> fugi · <kbd>Space</kbd> taie · trage cu mouse-ul ca să rotești camera</div>
+<div id="overlay" class="show"><div class="panel" id="panel"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = THREE.MathUtils.clamp;
+const TAU = Math.PI * 2;
+const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+const isTouch = matchMedia('(pointer: coarse)').matches;
+if (isTouch) document.body.classList.add('touch');
+
+// ---------------- reguli ----------------
+const FOREST_R = 104, WALL_R = 106, CLEAR_R = 14;
+const TRUCK = { x: 0, z: -9 };
+const SEE = 22, SEE_ANG = 0.9, HEAR = 28;
+const DAY = 300, CAP = 4, MAX_STRIKES = 3;
+const SHOUT = 'Alex Nedea este numele meu, de la RecorderZ. Ce faceți aici?';
+const SAVE = 'padurar3d';
+
+// ---------------- scenă ----------------
+const renderer = new THREE.WebGLRenderer({ antialias: !isTouch });
+renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xb8d6e6);
+scene.fog = new THREE.Fog(0xa9c6b8, 35, 120);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 400);
+const alexCam = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+scene.add(new THREE.HemisphereLight(0xe4f2ff, 0x3f5a35, 1.6));
+const sun = new THREE.DirectionalLight(0xfff0d0, 2.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 38, bottom: -38, near: 1, far: 160 });
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
+scene.add(sun, sun.target);
+
+function canvasTex(w, h, draw, repeat) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+const M = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
+const plaidTex = canvasTex(64, 64, (g, w, h) => {
+  g.fillStyle = '#b8281f'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(25,10,10,.55)'; g.fillRect(0, 18, w, 14); g.fillRect(18, 0, 14, h);
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, 50, w, 4); g.fillRect(50, 0, 4, h);
+}, true);
+const birchTex = (bg, n) => canvasTex(64, 128, (g, w, h) => {
+  g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = '#2a2622';
+  for (let i = 0; i < n; i++) g.fillRect(Math.random() * w, Math.random() * h, 5 + Math.random() * 16, 2 + Math.random() * 3);
+}, true);
+const ringTex = canvasTex(64, 64, (g, w, h) => {
+  g.fillStyle = '#d8b583'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(120,80,40,.5)'; g.lineWidth = 2;
+  for (let r = 4; r < 32; r += 5) { g.beginPath(); g.arc(32, 32, r, 0, TAU); g.stroke(); }
+});
+const tapeTex = canvasTex(64, 16, (g, w, h) => {
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#d0201a';
+  for (let x = -16; x < w; x += 16) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 8, h); g.lineTo(x + 16, 0); g.lineTo(x + 8, 0); g.fill(); }
+}, true);
+tapeTex.repeat.set(4, 1);
+
+const MAT = {
+  bark: M(0x5e4128), barkSick: M(0x7b7368), barkDead: M(0x928b80),
+  birch: M(0xffffff, { map: birchTex('#efebe2', 22) }), birchSick: M(0xffffff, { map: birchTex('#b9b1a3', 40) }),
+  leaf: [M(0x2f6e2c), M(0x3b7d31), M(0x2a6230)], spruce: [M(0x1d4a2a), M(0x235230), M(0x1a4426)],
+  birchLeaf: [M(0x6aa83e), M(0x7db34a)],
+  sick: [M(0xb08f35), M(0xa06a2a), M(0x8f7c38)], spruceSick: [M(0x8d5a2a), M(0xa06c33), M(0x7e5a36)],
+  fungus: M(0xdcc490), stumpTop: M(0xffffff, { map: ringTex }), tape: M(0xffffff, { map: tapeTex }),
+  black: M(0x151515), steel: M(0xb9c0c6), handle: M(0x8a5a2b), rock: M(0x8a8a84), bush: M(0x3d6e2e),
+  grass: M(0x4f8a35), truck: M(0x2f6aa8), truckDark: M(0x22303c), tire: M(0x1b1b1b), log: M(0x7a5532),
+};
+
+// ---------------- geometrii comune ----------------
+const BOX = new THREE.BoxGeometry(1, 1, 1);
+const geo = {
+  cyl: new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0),
+  cone: new THREE.ConeGeometry(1, 1, 7).translate(0, 0.5, 0),
+  blob: new THREE.IcosahedronGeometry(1, 0),
+  branch: new THREE.CylinderGeometry(0.55, 1, 1, 5).translate(0, 0.5, 0),
+  shelf: new THREE.CylinderGeometry(1, 1, 0.14, 8, 1, false, 0, Math.PI),
+  stump: new THREE.CylinderGeometry(1, 1.1, 1, 9).translate(0, 0.5, 0),
+  tape: new THREE.CylinderGeometry(1, 1, 1, 12, 1, true),
+  log: new THREE.CylinderGeometry(1, 1, 1, 7),
+};
+function part(g, m, sx, sy, sz, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, shadow = true) {
+  const o = new THREE.Mesh(g, m); o.scale.set(sx, sy, sz); o.position.set(x, y, z); o.rotation.set(rx, ry, rz);
+  o.castShadow = shadow; o.receiveShadow = true; return o;
+}
+
+// ---------------- teren ----------------
+{
+  const G = new THREE.PlaneGeometry(330, 330, 90, 90); G.rotateX(-Math.PI / 2);
+  const p = G.attributes.position, col = [], c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x, z);
+    const n = (Math.sin(x * 0.11) + Math.sin(z * 0.13 + 1) + Math.sin((x + z) * 0.05)) / 3;
+    c.setHSL(0.26 + n * 0.03, 0.42, 0.25 + n * 0.05 + Math.random() * 0.02);
+    if (r < CLEAR_R + 3) c.lerp(new THREE.Color(0x8a7a52), clamp((CLEAR_R + 3 - r) / 6, 0, 0.55));
+    col.push(c.r, c.g, c.b);
+    if (r > 115) p.setY(i, (r - 115) * 0.12);
+  }
+  G.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  G.computeVertexNormals();
+  const ground = new THREE.Mesh(G, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  ground.receiveShadow = true; scene.add(ground);
+
+  const dummy = new THREE.Object3D();
+  const scatter = (geom, mat, n, rMin, rMax, fn, shadow = false) => {
+    const im = new THREE.InstancedMesh(geom, mat, n);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * TAU, r = Math.sqrt(rand(rMin * rMin, rMax * rMax));
+      dummy.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); dummy.rotation.set(0, Math.random() * TAU, 0); dummy.scale.set(1, 1, 1);
+      fn(dummy); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix);
+    }
+    im.castShadow = shadow; im.receiveShadow = true; scene.add(im); return im;
+  };
+  scatter(new THREE.ConeGeometry(0.09, 0.5, 3).translate(0, 0.25, 0), MAT.grass, isTouch ? 1500 : 3500, 3, 112, d => d.scale.setScalar(rand(0.6, 1.4)));
+  scatter(geo.blob, MAT.rock, 70, 16, 108, d => { d.scale.set(rand(0.4, 1.1), rand(0.3, 0.7), rand(0.4, 1.1)); d.position.y = 0.1; }, true);
+  scatter(new THREE.IcosahedronGeometry(1, 0), MAT.bush, 140, 16, 110, d => { const s = rand(0.5, 1.1); d.scale.set(s, s * 0.7, s); d.position.y = s * 0.35; }, true);
+  // brazi de margine (decor, nu se taie)
+  const nB = 320, trunkIM = new THREE.InstancedMesh(geo.cyl, MAT.bark, nB), coneIM = new THREE.InstancedMesh(geo.cone, MAT.spruce[0], nB * 2);
+  for (let i = 0; i < nB; i++) {
+    const a = Math.random() * TAU, r = rand(110, 150), s = rand(1.1, 1.8), x = Math.cos(a) * r, z = Math.sin(a) * r, y = Math.max(0, (r - 115) * 0.12);
+    dummy.rotation.set(0, 0, 0);
+    dummy.position.set(x, y, z); dummy.scale.set(0.35 * s, 8 * s, 0.35 * s); dummy.updateMatrix(); trunkIM.setMatrixAt(i, dummy.matrix);
+    dummy.position.set(x, y + 1.6 * s, z); dummy.scale.set(2.4 * s, 4.5 * s, 2.4 * s); dummy.updateMatrix(); coneIM.setMatrixAt(i * 2, dummy.matrix);
+    dummy.position.set(x, y + 4.4 * s, z); dummy.scale.set(1.7 * s, 3.8 * s, 1.7 * s); dummy.updateMatrix(); coneIM.setMatrixAt(i * 2 + 1, dummy.matrix);
+  }
+  scene.add(trunkIM, coneIM);
+}
+
+// ---------------- camionul ----------------
+const truck = new THREE.Group();
+truck.position.set(TRUCK.x, 0, TRUCK.z);
+truck.add(part(BOX, MAT.truck, 2.3, 2.0, 2.4, 4.2, 1.7, 0));
+truck.add(part(BOX, MAT.truckDark, 0.1, 0.8, 2.0, 5.36, 2.1, 0));
+truck.add(part(BOX, MAT.truckDark, 2.0, 0.8, 0.1, 4.4, 2.15, 1.21));
+truck.add(part(BOX, MAT.truckDark, 2.0, 0.8, 0.1, 4.4, 2.15, -1.21));
+truck.add(part(BOX, MAT.truckDark, 8.4, 0.35, 2.3, 0.6, 0.85, 0));
+truck.add(part(BOX, MAT.log, 5.6, 0.2, 2.4, -0.7, 1.12, 0));
+for (const x of [-3.4, 2.0]) for (const z of [-1.21, 1.21]) truck.add(part(BOX, MAT.truckDark, 0.12, 1.5, 0.12, x, 1.9, z));
+for (const x of [-2.6, -1.0, 4.0]) for (const z of [-1.1, 1.1]) truck.add(part(geo.log, MAT.tire, 0.5, 0.36, 0.5, x, 0.5, z, Math.PI / 2));
+const truckLogs = new THREE.InstancedMesh(geo.log, MAT.log, 30);
+truckLogs.count = 0; truckLogs.castShadow = true; truck.add(truckLogs);
+scene.add(truck);
+const TRUCK_COLL = [[-3, 1.6], [-0.4, 1.6], [2.2, 1.6], [4.3, 1.6]];
+function setTruckLogs(n) {
+  n = Math.min(30, n); const d = new THREE.Object3D();
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / 6), k = i % 6;
+    d.position.set(-0.7, 1.45 + row * 0.42, -1.0 + k * 0.4 + (row % 2) * 0.2); d.rotation.set(0, 0, Math.PI / 2); d.scale.set(0.2, 5.2, 0.2);
+    d.updateMatrix(); truckLogs.setMatrixAt(i, d.matrix);
+  }
+  truckLogs.count = n; truckLogs.instanceMatrix.needsUpdate = true;
+}
+
+// ---------------- copacii ----------------
+const TYPE_NAME = { brad: 'Brad', stejar: 'Stejar', mesteacan: 'Mesteacăn' };
+const BASE_VALUE = { brad: 220, stejar: 300, mesteacan: 170 };
+let trees = [];
+let seed = 1;
+const srand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+function branch(par, mat, y, len, th, az, tilt) {
+  const h = new THREE.Object3D(); h.position.y = y; h.rotation.y = az;
+  h.add(part(geo.branch, mat, th, len, th, 0, 0, 0, 0, 0, tilt)); par.add(h); return h;
+}
+function makeTreeMesh(t) {
+  const g = new THREE.Group(), s = t.size, r = srand, pick = a => a[Math.floor(r() * a.length)];
+  const sick = !t.healthy;
+  if (t.type === 'brad') {
+    const H = 9 * s, tr = 0.3 * s;
+    g.add(part(geo.cyl, t.dead ? MAT.barkDead : sick ? MAT.barkSick : MAT.bark, tr, t.dead ? H * 0.72 : H * 0.88, tr));
+    if (!t.dead) {
+      const m = pick(sick ? MAT.spruceSick : MAT.spruce), k = sick ? 0.72 : 1;
+      for (const i of sick ? [0, 2, 3] : [0, 1, 2, 3, 4]) g.add(part(geo.cone, m, (2.3 - i * 0.4) * s * k, 2.6 * s, (2.3 - i * 0.4) * s * k, 0, (1.6 + i * 1.25) * s, 0, 0, r() * 6));
+      if (sick) for (let i = 0; i < 3; i++) branch(g, MAT.barkDead, (5.2 + i * 0.7) * s, 1.1 * s, 0.05 * s, r() * TAU, 1.3);
+    } else for (let i = 0; i < 6; i++) branch(g, MAT.barkDead, (1.8 + i * 0.75) * s, (1.6 - i * 0.15) * s, 0.06 * s, r() * TAU, 1.35);
+    t.trunkR = tr; t.H = H;
+  } else if (t.type === 'stejar') {
+    const tr = 0.38 * s, th = 3.8 * s;
+    g.add(part(geo.cyl, t.dead ? MAT.barkDead : sick ? MAT.barkSick : MAT.bark, tr, th + 1.2 * s, tr));
+    const bm = t.dead ? MAT.barkDead : sick ? MAT.barkSick : MAT.bark;
+    for (let i = 0; i < (t.dead || sick ? 5 : 3); i++) branch(g, bm, (2.8 + r() * 1.4) * s, (1.6 + r()) * s, 0.12 * s, r() * TAU, 0.6 + r() * 0.5);
+    if (!t.dead) {
+      const blobs = sick ? [[0.6, 4.6, 0.2, 1.2], [-0.9, 4.2, -0.5, 1.0], [0.2, 5.4, -0.6, 0.8]]
+        : [[0, 5.3, 0, 2.2], [1.5, 4.6, 0.3, 1.6], [-1.4, 4.8, -0.4, 1.7], [0.2, 4.5, 1.4, 1.5], [-0.3, 4.7, -1.5, 1.5], [0, 6.5, 0, 1.4]];
+      for (const [x, y, z, rr] of blobs) { const m = pick(sick ? MAT.sick : MAT.leaf); g.add(part(geo.blob, m, rr * s, rr * s * 0.85, rr * s, x * s, y * s, z * s, r(), r(), r())); }
+    }
+    if (sick || t.dead) for (let i = 0; i < 3; i++) {
+      const h = new THREE.Object3D(); h.rotation.y = r() * TAU; h.position.y = (0.7 + i * 0.55) * s;
+      h.add(part(geo.shelf, MAT.fungus, 0.24 * s, 1, 0.24 * s, tr * 0.85)); g.add(h);
+    }
+    t.trunkR = tr; t.H = 7 * s;
+  } else {
+    const tr = 0.22 * s, H = 7.5 * s;
+    g.add(part(geo.cyl, sick ? MAT.birchSick : MAT.birch, tr, t.dead ? H * 0.75 : H * 0.92, tr));
+    if (!t.dead) {
+      const blobs = sick ? [[0.5, 4.8, 0, 0.7], [-0.5, 5.6, 0.3, 0.6]] : [[0, 5.6, 0, 1.4], [0.7, 4.6, 0.2, 1.0], [-0.6, 4.9, -0.3, 1.1], [0.1, 6.6, 0.1, 0.9]];
+      for (const [x, y, z, rr] of blobs) g.add(part(geo.blob, pick(sick ? MAT.sick : MAT.birchLeaf), rr * s, rr * s * 1.6, rr * s, x * s, y * s, z * s, 0, r() * 3));
+    }
+    if (sick) for (let i = 0; i < 5; i++) branch(g, MAT.barkDead, (3 + i * 0.6) * s, (1 + r() * 0.6) * s, 0.04 * s, r() * TAU, 0.7 + r() * 0.5);
+    t.trunkR = tr; t.H = H;
+  }
+  g.rotation.y = r() * TAU;
+  if (sick) g.rotation.z = (r() - 0.5) * 0.08;
+  return g;
+}
+function clearForest() {
+  for (const t of trees) { scene.remove(t.pivot); if (t.stump) scene.remove(t.stump); }
+  trees = [];
+}
+function buildForest(sd) {
+  clearForest(); seed = sd;
+  const pts = [];
+  for (let tries = 0; tries < 4000 && pts.length < 160; tries++) {
+    const a = srand() * TAU, r = Math.sqrt(16 * 16 + srand() * (FOREST_R * FOREST_R - 256));
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.hypot(x - TRUCK.x, z - TRUCK.z) < 14) continue;
+    if (pts.every(p => (p.x - x) ** 2 + (p.z - z) ** 2 > 4.6 * 4.6)) pts.push({ x, z });
+  }
+  for (const p of pts) {
+    const tv = srand(), type = tv < 0.4 ? 'brad' : tv < 0.75 ? 'stejar' : 'mesteacan';
+    const healthy = srand() < 0.55, dead = !healthy && srand() < 0.3;
+    const size = 0.85 + srand() * 0.45;
+    const t = { x: p.x, z: p.z, type, healthy, dead, size, state: 'stand', th: 0, om: 0, wob: 0 };
+    t.value = healthy ? Math.round(BASE_VALUE[type] * size / 10) * 10 : Math.round((30 + srand() * 30) * size / 5) * 5;
+    t.maxHp = t.hp = Math.round(3 + size * 3 + (type === 'stejar' ? 1 : 0));
+    t.name = TYPE_NAME[type] + (healthy ? ' sănătos' : dead ? ' uscat' : ' bolnav');
+    t.mesh = makeTreeMesh(t);
+    t.pivot = new THREE.Group(); t.pivot.position.set(p.x, 0, p.z); t.pivot.add(t.mesh); scene.add(t.pivot);
+    trees.push(t);
+  }
+}
+
+// ---------------- personaje ----------------
+function makeHuman(o) {
+  const g = new THREE.Group();
+  const torso = part(BOX, o.shirt, 0.52, 0.62, 0.3, 0, 1.12, 0); g.add(torso);
+  g.add(part(BOX, o.pants, 0.48, 0.16, 0.28, 0, 0.86, 0));
+  const head = new THREE.Group(); head.position.y = 1.5; g.add(head);
+  head.add(part(BOX, o.skin, 0.3, 0.32, 0.3, 0, 0.17, 0));
+  for (const x of [-0.07, 0.07]) head.add(part(BOX, MAT.black, 0.05, 0.05, 0.02, x, 0.2, 0.152, 0, 0, 0, false));
+  head.add(part(BOX, o.hair, 0.32, 0.08, 0.32, 0, 0.35, 0));
+  head.add(part(BOX, o.hair, 0.32, 0.22, 0.06, 0, 0.24, -0.14));
+  if (o.beard) head.add(part(BOX, o.hair, 0.3, o.beard, 0.07, 0, 0.06 + (0.12 - o.beard) / 2, 0.14));
+  const leg = sx => { const p = new THREE.Group(); p.position.set(sx * 0.12, 0.86, 0); p.add(part(BOX, o.pants, 0.18, 0.78, 0.2, 0, -0.39, 0)); p.add(part(BOX, o.boots, 0.2, 0.12, 0.3, 0, -0.8, 0.04)); g.add(p); return p; };
+  const arm = sx => { const p = new THREE.Group(); p.position.set(sx * 0.34, 1.38, 0); p.add(part(BOX, o.shirt, 0.15, 0.6, 0.16, 0, -0.3, 0)); p.add(part(BOX, o.skin, 0.13, 0.13, 0.13, 0, -0.65, 0)); g.add(p); return p; };
+  return { g, torso, head, lLeg: leg(1), rLeg: leg(-1), lArm: arm(1), rArm: arm(-1) };
+}
+function walkAnim(h, phase, amt) {
+  const s = Math.sin(phase) * amt;
+  h.lLeg.rotation.x = s; h.rLeg.rotation.x = -s; h.lArm.rotation.x = -s * 0.8; h.rArm.rotation.x = s * 0.8;
+}
+
+// tăietorul
+const P = makeHuman({ shirt: M(0xffffff, { map: plaidTex }), pants: M(0x2e4a7a), boots: M(0x3b2a1a), skin: M(0xe0b08a), hair: M(0x6b3e1e), beard: 0.16 });
+P.head.add(part(BOX, M(0x2e6b3a), 0.34, 0.14, 0.34, 0, 0.38, 0));
+P.head.add(part(geo.blob, M(0xe8e0c8), 0.07, 0.07, 0.07, 0, 0.5, 0));
+const axe = new THREE.Group(); axe.position.y = -0.65; P.rArm.add(axe);
+axe.add(part(BOX, MAT.handle, 0.045, 0.85, 0.045, 0, -0.38, 0));
+axe.add(part(BOX, MAT.steel, 0.04, 0.2, 0.28, 0, -0.76, -0.1));
+axe.add(part(BOX, MAT.steel, 0.06, 0.12, 0.08, 0, -0.76, 0.07));
+const backLogs = new THREE.Group(); backLogs.position.set(0, 1.18, -0.26); P.g.add(backLogs);
+for (const [y, z] of [[0, 0], [0.18, 0.02], [0.09, -0.15]]) backLogs.add(part(geo.log, MAT.log, 0.09, 0.85, 0.09, 0, y, z, 0, 0, Math.PI / 2));
+scene.add(P.g);
+Object.assign(P, { x: 0, z: 5, yaw: Math.PI, phase: 0, swing: -1, swingT: 0, hitDone: false, swingTree: null, axeTilt: -2.3 });
+
+// Alex Nedea
+const A = makeHuman({ shirt: M(0x1d2b45), pants: M(0x2b303b), boots: M(0xeeeeee), skin: M(0xe3b591), hair: M(0x2a1c14), beard: 0.07 });
+A.head.add(part(BOX, MAT.black, 0.27, 0.03, 0.02, 0, 0.21, 0.155, 0, 0, 0, false));
+{
+  const t = canvasTex(256, 80, (g, w, h) => { g.fillStyle = '#fff'; g.font = 'bold 52px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('RecorderZ', w / 2, h / 2); });
+  const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.15), new THREE.MeshBasicMaterial({ map: t, transparent: true }));
+  pl.position.set(0, 1.25, -0.152); pl.rotation.y = Math.PI; A.g.add(pl);
+  const pf = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.065), new THREE.MeshBasicMaterial({ map: t, transparent: true }));
+  pf.position.set(-0.13, 1.3, 0.152); A.g.add(pf);
+}
+const aCam = new THREE.Group();
+aCam.add(part(BOX, MAT.black, 0.2, 0.13, 0.1));
+aCam.add(part(geo.log, MAT.black, 0.045, 0.1, 0.045, 0, 0, 0.09, Math.PI / 2));
+aCam.add(part(BOX, M(0x6a7a88), 0.04, 0.03, 0.02, 0.06, 0.05, 0.051));
+const aFlash = new THREE.PointLight(0xffffff, 0, 30); aFlash.position.set(0, 0.1, 0.3); aCam.add(aFlash);
+function camInHand() { A.rArm.add(aCam); aCam.position.set(0, -0.68, 0.06); aCam.rotation.set(Math.PI / 2, 0, 0); }
+function camAtFace() { A.g.add(aCam); aCam.position.set(0, 1.68, 0.36); aCam.rotation.set(0, 0, 0); }
+camInHand();
+const nameTag = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true, map: canvasTex(256, 64, (g, w, h) => {
+  g.fillStyle = 'rgba(180,25,20,.85)'; g.beginPath(); g.roundRect(4, 6, w - 8, h - 12, 20); g.fill();
+  g.fillStyle = '#fff'; g.font = 'bold 30px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('📷 Alex Nedea', w / 2, h / 2 + 1);
+}) }));
+nameTag.scale.set(2.2, 0.55, 1); nameTag.position.y = 2.35; nameTag.renderOrder = 10; A.g.add(nameTag);
+// conul de vedere
+const fan = (() => {
+  const n = 24, pos = [0, 0, 0], idx = [];
+  for (let i = 0; i <= n; i++) { const a = -SEE_ANG + 2 * SEE_ANG * i / n; pos.push(Math.sin(a) * SEE, 0, Math.cos(a) * SEE); }
+  for (let i = 0; i < n; i++) idx.push(0, i + 1, i + 2);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+  m.position.y = 0.07; m.renderOrder = 2; return m;
+})();
+A.g.add(fan);
+{
+  const pts = [new THREE.Vector3(0, 0, 0)];
+  for (let i = 0; i <= 24; i++) { const a = -SEE_ANG + 2 * SEE_ANG * i / 24; pts.push(new THREE.Vector3(Math.sin(a) * SEE, 0, Math.cos(a) * SEE)); }
+  pts.push(new THREE.Vector3(0, 0, 0));
+  const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.7 }));
+  ln.position.y = 0.04; fan.add(ln);
+}
+A.g.visible = false; scene.add(A.g);
+Object.assign(A, { active: false, x: 0, z: 0, yaw: 0, tYaw: 0, state: 'off', timer: 0, life: 0, wp: null, spawnIn: 15, phase: 0, said: false });
+
+// inel pe copacul țintă
+const ring = new THREE.Mesh(new THREE.RingGeometry(1, 1.18, 40), new THREE.MeshBasicMaterial({ color: 0x55dd55, transparent: true, opacity: 0.85, depthWrite: false }));
+ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; ring.visible = false; scene.add(ring);
+
+// așchii / frunze
+const parts = [];
+for (let i = 0; i < 70; i++) {
+  const m = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0xc89a5a })); m.visible = false; scene.add(m);
+  parts.push({ m, vx: 0, vy: 0, vz: 0, life: 0 });
+}
+let partI = 0;
+function spawnPart(x, y, z, vx, vy, vz, color, size, life) {
+  const p = parts[partI++ % parts.length];
+  p.m.position.set(x, y, z); p.m.scale.setScalar(size); p.m.material.color.setHex(color); p.m.visible = true;
+  Object.assign(p, { vx, vy, vz, life });
+}
+
+// ---------------- sunet ----------------
+let AC = null, master = null, muted = false, noiseBuf = null;
+try { muted = localStorage.getItem(SAVE + '-mute') === '1'; } catch (e) {}
+function audio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = muted ? 0 : 0.6; master.connect(AC.destination); } catch (e) { return; } }
+  if (AC.state === 'suspended') AC.resume();
+}
+function nz() {
+  if (!noiseBuf) { noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  return noiseBuf;
+}
+function sNoise(dur, type, freq, vol, t0 = 0, f2) {
+  if (!AC || muted) return; const t = AC.currentTime + t0;
+  const s = AC.createBufferSource(); s.buffer = nz(); const f = AC.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t);
+  if (f2) f.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + 0.05);
+}
+function sTone(freq, dur, type, vol, t0 = 0, f2) {
+  if (!AC || muted) return; const t = AC.currentTime + t0;
+  const o = AC.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+}
+const sfx = {
+  chop() { sNoise(0.12, 'bandpass', 900, 0.9); sTone(150, 0.16, 'sine', 0.6, 0, 60); },
+  crack() { sNoise(0.9, 'bandpass', 500, 0.5, 0, 150); sTone(90, 0.9, 'sawtooth', 0.07, 0, 50); },
+  thud() { sTone(70, 0.6, 'sine', 1, 0, 30); sNoise(0.5, 'lowpass', 400, 0.9, 0, 80); },
+  shutter() { sNoise(0.03, 'highpass', 3000, 0.9); sNoise(0.05, 'highpass', 2200, 0.7, 0.09); },
+  cash() { sTone(1318, 0.12, 'square', 0.1); sTone(1760, 0.35, 'square', 0.1, 0.1); },
+  bad() { sTone(220, 0.25, 'sawtooth', 0.15); sTone(165, 0.4, 'sawtooth', 0.15, 0.22); },
+  bird() { const f = rand(2600, 3800), n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) sTone(f, 0.09, 'sine', 0.05, i * 0.13, f * rand(1.15, 1.4)); },
+  nope() { sTone(300, 0.1, 'square', 0.06); },
+};
+function say(text) {
+  if (muted || !('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ro-RO'; u.rate = 1.05; u.pitch = 0.85;
+    const v = speechSynthesis.getVoices().find(v => /^ro/i.test(v.lang)); if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// ---------------- stare joc ----------------
+const S = { running: false, paused: false, time: 0, money: 0, load: [], strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0,
+  photos: [], target: null, msgCd: 0, freeze: 0, shake: 0, wantPhoto: false, endAt: 0, birdT: 3, best: 0, clock: 0 };
+try { S.best = +localStorage.getItem(SAVE + '-best') || 0; } catch (e) {}
+const keys = {};
+let camYaw = Math.PI, camPitch = 0.38, camDist = innerWidth < innerHeight ? 10.5 : 7.5;
+let joy = null, drag = null, axeBtn = false;
+
+// ---------------- HUD ----------------
+let toastT = 0;
+function toast(msg, cls = '', dur = 2.2) { const el = $('toast'); el.textContent = msg; el.className = 'chip show ' + cls; toastT = dur; }
+let bubbleT = 0;
+function bubble(text, dur, shout) { const b = $('bubble'); b.textContent = text; b.className = shout ? 'shout' : ''; b.style.display = 'block'; bubbleT = dur; }
+const fmt = n => n.toLocaleString('ro-RO');
+const loadSum = () => S.load.reduce((a, b) => a + b, 0);
+function hud() {
+  $('money').textContent = `💰 ${fmt(S.money)} lei`;
+  const L = $('load'); L.textContent = `🪵 Lemne: ${S.load.length}/${CAP}` + (S.load.length ? ` · ${fmt(loadSum())} lei` : '') + (S.load.length >= CAP ? ' · la camion!' : '');
+  L.classList.toggle('full', S.load.length >= CAP);
+  const min = 480 + Math.floor(S.time / DAY * 600);
+  $('clock').textContent = `⏱ ${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  $('strikes').innerHTML = `📷 Reportaje: <b>${'●'.repeat(S.strikes)}</b>${'○'.repeat(MAX_STRIKES - S.strikes)}`;
+  backLogs.visible = S.load.length > 0;
+}
+
+// ---------------- logică ----------------
+function solid(t) { return t.state === 'stand' || t.state === 'sealed'; }
+function pushOut(o, rad) {
+  for (const t of trees) {
+    if (!solid(t)) continue;
+    const dx = o.x - t.x, dz = o.z - t.z, d = Math.hypot(dx, dz), m = t.trunkR + rad;
+    if (d < m && d > 1e-4) { o.x = t.x + dx / d * m; o.z = t.z + dz / d * m; }
+  }
+  for (const [cx, cr] of TRUCK_COLL) {
+    const tx = TRUCK.x + cx, dx = o.x - tx, dz = o.z - TRUCK.z, d = Math.hypot(dx, dz), m = cr + rad;
+    if (d < m && d > 1e-4) { o.x = tx + dx / d * m; o.z = TRUCK.z + dz / d * m; }
+  }
+  const r = Math.hypot(o.x, o.z); if (r > WALL_R) { o.x *= WALL_R / r; o.z *= WALL_R / r; }
+}
+function findTarget() {
+  let best = null, bd = 1e9;
+  const fx = Math.sin(P.yaw), fz = Math.cos(P.yaw);
+  for (const t of trees) {
+    if (!solid(t)) continue;
+    const dx = t.x - P.x, dz = t.z - P.z, d = Math.hypot(dx, dz) - t.trunkR;
+    if (d > 2.3) continue;
+    const facing = (dx * fx + dz * fz) / Math.max(0.01, Math.hypot(dx, dz));
+    const score = d - facing * 0.8;
+    if (score < bd) { bd = score; best = t; }
+  }
+  return best;
+}
+function alexDist() { return Math.hypot(A.x - P.x, A.z - P.z); }
+function alexSees() {
+  if (!A.active || A.state === 'leave' || A.state === 'photo') return false;
+  if (alexDist() > SEE) return false;
+  return Math.abs(angDiff(A.yaw, Math.atan2(P.x - A.x, P.z - A.z))) < SEE_ANG;
+}
+function alexHears() {
+  if (!A.active || !(A.state === 'walk' || A.state === 'look') || alexDist() > HEAR) return;
+  if (Math.random() < 0.3) { A.state = 'turn'; A.timer = 2.6; A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); bubble('Hm? Ce se aude acolo?', 1.6); }
+}
+function hitTree(t) {
+  sfx.chop(); t.wob = 1;
+  const dx = P.x - t.x, dz = P.z - t.z, d = Math.hypot(dx, dz) || 1;
+  for (let i = 0; i < 6; i++) spawnPart(t.x + dx / d * t.trunkR, 0.75, t.z + dz / d * t.trunkR, dx / d * rand(1, 3) + rand(-1.5, 1.5), rand(2, 4), dz / d * rand(1, 3) + rand(-1.5, 1.5), 0xd9b07a, rand(0.05, 0.1), 1.2);
+  t.hp--;
+  if (t.healthy && alexSees()) { caught(t); return; }
+  alexHears();
+  if (t.hp <= 0) fell(t);
+}
+function fell(t) {
+  t.state = 'falling'; t.th = 0.03; t.om = 0.25; t.bounces = 0;
+  const dx = t.x - P.x, dz = t.z - P.z, d = Math.hypot(dx, dz) || 1;
+  t.dir = { x: dx / d, z: dz / d }; t.axis = new THREE.Vector3(t.dir.z, 0, -t.dir.x);
+  t.rest = Math.PI / 2 - (t.dead ? 0.03 : 0.1);
+  t.stump = part(geo.stump, [MAT.bark, MAT.stumpTop, MAT.stumpTop], t.trunkR * 1.08, 0.42, t.trunkR * 1.08, t.x, 0, t.z);
+  if (t.type === 'mesteacan') t.stump.material = [MAT.birch, MAT.stumpTop, MAT.stumpTop];
+  scene.add(t.stump);
+  S.load.push(t.value);
+  if (t.healthy) S.cutBad++; else S.cutOk++;
+  sfx.crack();
+  toast(`🌲 Cade! +${fmt(t.value)} lei în lemne` + (t.healthy ? ' (ilegal)' : ''), '', 1.6);
+  hud();
+}
+function caught(t) {
+  const lost = loadSum() + t.value;
+  S.strikes++; S.lost += lost; S.load = []; P.swing = -1; S.freeze = 1.8;
+  t.state = 'sealed';
+  t.tape = part(geo.tape, MAT.tape, t.trunkR * 1.15, 0.22, t.trunkR * 1.15, 0, 1.3, 0, 0, 0, 0, false);
+  t.pivot.add(t.tape);
+  A.state = 'photo'; A.timer = 0; A.said = false;
+  sfx.bad();
+  toast(`📷 Prins! Alex Nedea ți-a confiscat lemnele (−${fmt(lost)} lei)`, 'bad', 3.5);
+  if (S.strikes >= MAX_STRIKES) S.endAt = 5;
+  hud();
+}
+function sell() {
+  const sum = loadSum(); if (!sum) return;
+  S.money += sum; S.sold += S.load.length; S.load = []; sfx.cash();
+  toast(`🚚 Vândut! +${fmt(sum)} lei`, 'good'); setTruckLogs(S.sold * 2); hud();
+}
+
+// Alex
+function alexSpawn() {
+  for (let k = 0; k < 30; k++) {
+    const a = Math.random() * TAU, d = rand(30, 55), x = P.x + Math.cos(a) * d, z = P.z + Math.sin(a) * d;
+    if (Math.hypot(x, z) > FOREST_R - 4 || Math.hypot(x, z) < CLEAR_R) continue;
+    Object.assign(A, { x, z, yaw: Math.random() * TAU, active: true, state: 'walk', life: rand(55, 85) });
+    A.tYaw = A.yaw; A.g.visible = true; camInHand(); alexPickWp();
+    toast('📷 Alex Nedea a intrat în pădure!', '', 2.5);
+    return;
+  }
+}
+function alexPickWp() {
+  let x, z;
+  if (Math.random() < 0.55) { const a = Math.random() * TAU, d = rand(8, 22); x = P.x + Math.cos(a) * d; z = P.z + Math.sin(a) * d; }
+  else { const a = Math.random() * TAU, d = rand(12, 30); x = A.x + Math.cos(a) * d; z = A.z + Math.sin(a) * d; }
+  const r = Math.hypot(x, z); if (r > FOREST_R - 4) { x *= (FOREST_R - 4) / r; z *= (FOREST_R - 4) / r; }
+  A.wp = { x, z }; A.timer = 14;
+}
+function alexUpdate(dt) {
+  if (!A.active) {
+    A.spawnIn -= dt; if (A.spawnIn <= 0 && S.endAt <= 0) alexSpawn();
+    return;
+  }
+  A.life -= dt;
+  if (A.life <= 0 && (A.state === 'walk' || A.state === 'look' || A.state === 'turn')) alexLeave();
+  let speed = 0, turn = 2.2;
+  if (A.state === 'walk' || A.state === 'leave') {
+    const dx = A.wp.x - A.x, dz = A.wp.z - A.z, d = Math.hypot(dx, dz);
+    A.tYaw = Math.atan2(dx, dz); speed = A.state === 'leave' ? 3.2 : 1.7;
+    if (A.state === 'walk' && (A.timer -= dt) < 0) { A.state = 'look'; A.timer = rand(1.5, 3); }
+    else if (d < 1.2) {
+      if (A.state === 'leave') { A.active = false; A.g.visible = false; A.spawnIn = rand(12, 25); $('bubble').style.display = 'none'; return; }
+      A.state = 'look'; A.timer = rand(2, 4.5); A.tYaw = A.yaw + rand(-2.5, 2.5);
+    }
+  } else if (A.state === 'look') {
+    A.timer -= dt; if (Math.random() < dt * 0.5) A.tYaw = A.yaw + rand(-2, 2);
+    if (A.timer <= 0) { A.state = 'walk'; alexPickWp(); }
+  } else if (A.state === 'turn') {
+    A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 1.6; A.timer -= dt;
+    if (A.timer <= 0) { A.state = 'look'; A.timer = rand(1.5, 3); }
+  } else if (A.state === 'photo') {
+    A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 8; A.timer += dt;
+    if (A.timer > 0.3 && aCam.parent !== A.g) camAtFace();
+    if (A.timer > 0.65 && !A.said) {
+      A.said = true; S.wantPhoto = true; sfx.shutter(); aFlash.intensity = 60;
+      const f = $('flash'); f.style.transition = 'none'; f.style.opacity = alexDist() < 12 ? 0.85 : 0.5;
+      requestAnimationFrame(() => { f.style.transition = 'opacity .6s'; f.style.opacity = 0; });
+      bubble(SHOUT, 4.5, true); say(SHOUT);
+    }
+    if (A.timer > 4.6) { camInHand(); alexLeave(); }
+  }
+  aFlash.intensity *= Math.pow(0.001, dt);
+  const dy = angDiff(A.yaw, A.tYaw); A.yaw += clamp(dy, -turn * dt, turn * dt);
+  if (speed && Math.abs(dy) < 1.2) {
+    A.x += Math.sin(A.yaw) * speed * dt; A.z += Math.cos(A.yaw) * speed * dt;
+    if (A.state !== 'leave') pushOut(A, 0.4);
+    A.phase += dt * speed * 3.2; walkAnim(A, A.phase, 0.6);
+  } else {
+    walkAnim(A, 0, 0);
+    if (A.state === 'photo' && aCam.parent === A.g) { A.rArm.rotation.set(-2.0, 0, 0.35); A.lArm.rotation.set(-2.0, 0, -0.35); }
+  }
+  if (A.state !== 'photo') { A.rArm.rotation.z = 0; A.lArm.rotation.z = 0; }
+  A.g.position.set(A.x, 0, A.z); A.g.rotation.y = A.yaw;
+  const seen = alexSees();
+  fan.material.opacity = seen ? 0.3 + 0.1 * Math.sin(S.clock * 12) : 0.14;
+  fan.visible = A.state !== 'leave';
+  nameTag.visible = alexDist() < 60;
+}
+function alexLeave() {
+  A.state = 'leave'; const r = Math.hypot(A.x, A.z) || 1;
+  A.wp = { x: A.x / r * 112, z: A.z / r * 112 };
+}
+
+// ---------------- update ----------------
+function update(dt) {
+  S.clock += dt;
+  if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.remove('show');
+  if (bubbleT > 0 && (bubbleT -= dt) <= 0) $('bubble').style.display = 'none';
+  if (S.msgCd > 0) S.msgCd -= dt;
+  if (S.endAt > 0 && (S.endAt -= dt) <= 0) { endGame('strikes'); return; }
+  S.time += dt;
+  if (S.time >= DAY && S.endAt <= 0) { endGame('time'); return; }
+  if ((S.birdT -= dt) <= 0) { S.birdT = rand(3, 9); sfx.bird(); }
+
+  // mișcare
+  let f = 0, s = 0;
+  if (keys.KeyW || keys.ArrowUp) f += 1; if (keys.KeyS || keys.ArrowDown) f -= 1;
+  if (keys.KeyD || keys.ArrowRight) s += 1; if (keys.KeyA || keys.ArrowLeft) s -= 1;
+  if (joy) { f -= joy.y; s += joy.x; }
+  if (keys.KeyQ) camYaw += 2 * dt; if (keys.KeyE) camYaw -= 2 * dt;
+  const mag = Math.min(1, Math.hypot(f, s));
+  if (S.freeze > 0) S.freeze -= dt;
+  let moving = false;
+  if (mag > 0.15 && P.swing < 0 && S.freeze <= 0) {
+    const fx = Math.sin(camYaw), fz = Math.cos(camYaw), rx = -Math.cos(camYaw), rz = Math.sin(camYaw);
+    let mx = fx * f + rx * s, mz = fz * f + rz * s; const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
+    const sp = (keys.ShiftLeft || keys.ShiftRight || (joy && mag > 0.95) ? 7 : 4.2) * mag;
+    P.x += mx * sp * dt; P.z += mz * sp * dt;
+    P.yaw += clamp(angDiff(P.yaw, Math.atan2(mx, mz)), -10 * dt, 10 * dt);
+    P.phase += dt * sp * 2.6; moving = true;
+  }
+  pushOut(P, 0.42);
+
+  // tăiat
+  const T = findTarget(); S.target = T;
+  const want = keys.Space || keys.KeyF || axeBtn;
+  if (P.swing < 0 && want && !moving && S.freeze <= 0) {
+    if (!T) { if (S.msgCd <= 0) { toast('Apropie-te de un copac 🌲', '', 1.2); S.msgCd = 1.5; } }
+    else if (T.state === 'sealed') { if (S.msgCd <= 0) { sfx.nope(); toast('Copacul e sigilat, e probă în reportaj!', 'bad', 1.6); S.msgCd = 2; } }
+    else if (S.load.length >= CAP) { if (S.msgCd <= 0) { sfx.nope(); toast('Ai mâinile pline! Du lemnele la camion 🚚', '', 1.8); S.msgCd = 2; } }
+    else { P.swing = 0; P.swingT = 0; P.hitDone = false; P.swingTree = T; }
+  }
+  if (P.swing >= 0) {
+    const t = P.swingTree; P.swingT += dt;
+    const want2 = Math.atan2(t.x - P.x, t.z - P.z);
+    P.yaw += clamp(angDiff(P.yaw, want2), -12 * dt, 12 * dt);
+    const dx = P.x - t.x, dz = P.z - t.z, d = Math.hypot(dx, dz) || 1, goal = t.trunkR + 1.25;
+    const nd = d + (goal - d) * Math.min(1, dt * 6); P.x = t.x + dx / d * nd; P.z = t.z + dz / d * nd;
+    const k = P.swingT;
+    let th;
+    if (k < 0.3) th = THREE.MathUtils.lerp(-0.3, -2.8, k / 0.3);
+    else if (k < 0.42) th = THREE.MathUtils.lerp(-2.8, -1.2, (k - 0.3) / 0.12);
+    else th = THREE.MathUtils.lerp(-1.2, -0.3, Math.min(1, (k - 0.42) / 0.2));
+    P.rArm.rotation.x = th; P.lArm.rotation.x = th; P.lArm.rotation.z = -0.35; P.rArm.rotation.z = 0.1;
+    P.axeTilt += (0 - P.axeTilt) * Math.min(1, dt * 18);
+    P.lLeg.rotation.x = 0.25; P.rLeg.rotation.x = -0.2;
+    if (!P.hitDone && k >= 0.42) { P.hitDone = true; if (t.state === 'stand') hitTree(t); }
+    if (k >= 0.62) P.swing = -1;
+  } else {
+    walkAnim(P, P.phase, moving ? 0.7 : 0);
+    if (!moving) { P.rArm.rotation.x = -0.3; }
+    P.lArm.rotation.z = 0; P.rArm.rotation.z = 0;
+    P.axeTilt += (-2.3 - P.axeTilt) * Math.min(1, dt * 8);
+  }
+  axe.rotation.x = P.axeTilt;
+  P.g.position.set(P.x, 0, P.z); P.g.rotation.y = P.yaw;
+
+  // camion
+  if (S.load.length && Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 6.5) sell();
+
+  // copaci care cad
+  for (const t of trees) {
+    if (t.wob > 0) { t.wob = Math.max(0, t.wob - dt * 3); t.mesh.rotation.x = Math.sin(S.clock * 50) * t.wob * 0.025; }
+    if (t.state !== 'falling') continue;
+    t.om += (1.7 * Math.sin(t.th) + 0.15) * dt * 1.3; t.th += t.om * dt;
+    if (t.th >= t.rest) {
+      t.th = t.rest;
+      if (t.bounces === 0) {
+        sfx.thud(); S.shake = Math.max(S.shake, clamp(1 - Math.hypot(t.x - P.x, t.z - P.z) / 25, 0, 1) * 0.5);
+        const cx = t.x + t.dir.x * t.H * 0.7, cz = t.z + t.dir.z * t.H * 0.7;
+        const col = t.dead ? 0x8d877c : t.healthy ? 0x3b7d31 : 0xa98a35;
+        for (let i = 0; i < 16; i++) spawnPart(cx + rand(-2, 2), 0.6, cz + rand(-2, 2), rand(-2, 2), rand(1, 4), rand(-2, 2), col, rand(0.08, 0.16), 1.6);
+      }
+      if (t.om > 0.5 && t.bounces < 2) { t.om = -t.om * 0.18; t.bounces++; } else { t.state = 'down'; t.om = 0; }
+    }
+    t.pivot.quaternion.setFromAxisAngle(t.axis, t.th);
+  }
+
+  alexUpdate(dt);
+
+  // particule
+  for (const p of parts) {
+    if (p.life <= 0) continue;
+    p.life -= dt; p.vy -= 9.8 * dt;
+    p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
+    p.m.rotation.x += dt * 8; p.m.rotation.y += dt * 6;
+    if (p.m.position.y < 0.03) { p.m.position.y = 0.03; p.vx *= 0.5; p.vz *= 0.5; p.vy = 0; }
+    if (p.life <= 0) p.m.visible = false;
+  }
+  hud();
+}
+
+// ---------------- cameră, HUD 3D ----------------
+const _v = new THREE.Vector3();
+function toScreen(x, y, z) { _v.set(x, y, z).project(camera); return { x: (_v.x + 1) / 2 * innerWidth, y: (1 - _v.y) / 2 * innerHeight, vis: _v.z < 1 }; }
+function placeCamera(dt) {
+  const h = 1.5, cp = Math.cos(camPitch);
+  camera.position.set(P.x - Math.sin(camYaw) * camDist * cp, h + camDist * Math.sin(camPitch), P.z - Math.cos(camYaw) * camDist * cp);
+  if (S.shake > 0) { camera.position.x += rand(-1, 1) * S.shake * 0.3; camera.position.y += rand(-1, 1) * S.shake * 0.3; S.shake = Math.max(0, S.shake - dt * 1.5); }
+  camera.lookAt(P.x, h, P.z);
+  sun.position.set(P.x + 30, 55, P.z + 18); sun.target.position.set(P.x, 0, P.z);
+}
+const mm = $('mm'), mctx = mm.getContext('2d');
+let mmTick = 0;
+function drawMinimap() {
+  const W = mm.width, c = W / 2, k = c / 50, sy = Math.sin(camYaw), cy = Math.cos(camYaw);
+  const map = (x, z) => { const dx = x - P.x, dz = z - P.z; return [c + (-dx * cy + dz * sy) * k, c - (dx * sy + dz * cy) * k]; };
+  mctx.clearRect(0, 0, W, W);
+  mctx.save(); mctx.beginPath(); mctx.arc(c, c, c, 0, TAU); mctx.clip();
+  mctx.fillStyle = 'rgba(30,55,32,.82)'; mctx.fillRect(0, 0, W, W);
+  const [bx, by] = map(0, 0); mctx.strokeStyle = 'rgba(255,255,255,.25)'; mctx.lineWidth = 3; mctx.beginPath(); mctx.arc(bx, by, WALL_R * k, 0, TAU); mctx.stroke();
+  for (const t of trees) {
+    const [x, y] = map(t.x, t.z); if ((x - c) ** 2 + (y - c) ** 2 > c * c) continue;
+    mctx.fillStyle = t.state === 'sealed' ? '#ffd34d' : !solid(t) ? '#6b5a44' : t.healthy ? '#5fcf5a' : '#c9893a';
+    mctx.beginPath(); mctx.arc(x, y, solid(t) ? 5 : 3, 0, TAU); mctx.fill();
+  }
+  { const [x, y] = map(TRUCK.x, TRUCK.z); mctx.font = '26px sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('🚚', x, y); }
+  if (A.active) {
+    const [x, y] = map(A.x, A.z), ang = Math.atan2(-(Math.sin(A.yaw) * sy + Math.cos(A.yaw) * cy), -Math.sin(A.yaw) * cy + Math.cos(A.yaw) * sy);
+    mctx.fillStyle = 'rgba(255,60,40,.3)'; mctx.beginPath(); mctx.moveTo(x, y); mctx.arc(x, y, SEE * k, ang - SEE_ANG, ang + SEE_ANG); mctx.closePath(); mctx.fill();
+    mctx.fillStyle = '#ff3b2b'; mctx.strokeStyle = '#fff'; mctx.lineWidth = 2; mctx.beginPath(); mctx.arc(x, y, 7, 0, TAU); mctx.fill(); mctx.stroke();
+  }
+  mctx.restore();
+  const pa = -angDiff(camYaw, P.yaw);
+  mctx.save(); mctx.translate(c, c); mctx.rotate(pa); mctx.fillStyle = '#fff'; mctx.beginPath(); mctx.moveTo(0, -11); mctx.lineTo(8, 8); mctx.lineTo(0, 4); mctx.lineTo(-8, 8); mctx.closePath(); mctx.fill(); mctx.restore();
+}
+function hud3d() {
+  const T = S.running ? S.target : null;
+  if (T) {
+    ring.visible = true; ring.position.set(T.x, 0.06, T.z); ring.scale.setScalar(T.trunkR + 0.55);
+    ring.material.color.setHex(T.state === 'sealed' ? 0xffd34d : T.healthy ? 0xff4a3a : 0x55dd55);
+    $('treeinfo').classList.add('show');
+    $('tiName').textContent = `${T.healthy ? '🌲' : '🍂'} ${T.name} · ${fmt(T.value)} lei`;
+    const tag = $('tiTag');
+    if (T.state === 'sealed') { tag.textContent = '🚧 Sigilat de presă'; tag.className = 'seal'; }
+    else if (T.healthy) { tag.textContent = '⚠ ILEGAL de tăiat'; tag.className = 'bad'; }
+    else { tag.textContent = '✓ Legal de tăiat'; tag.className = 'ok'; }
+    $('tiBar').firstElementChild.style.width = (T.hp / T.maxHp * 100) + '%';
+  } else { ring.visible = false; $('treeinfo').classList.remove('show'); }
+  const al = $('alert');
+  if (A.active && S.running) {
+    al.classList.add('show'); const d = alexDist(), seen = alexSees();
+    al.classList.toggle('seen', seen);
+    $('alTxt').textContent = seen ? `📷 Alex Nedea TE VEDE! · ${Math.round(d)} m` : A.state === 'leave' ? '📷 Alex Nedea pleacă…' : `📷 Alex Nedea e prin pădure · ${Math.round(d)} m`;
+    const rel = angDiff(camYaw, Math.atan2(A.x - P.x, A.z - P.z));
+    $('alArr').style.transform = `rotate(${-rel}rad)`;
+  } else al.classList.remove('show');
+  const b = $('bubble');
+  if (b.style.display === 'block') {
+    const p = toScreen(A.x, 2.15, A.z);
+    if (p.vis && A.active) { b.style.visibility = 'visible'; b.style.left = clamp(p.x, 140, innerWidth - 140) + 'px'; b.style.top = clamp(p.y, 90, innerHeight - 20) + 'px'; }
+    else b.style.visibility = 'hidden';
+  }
+}
+function capturePhoto() {
+  S.wantPhoto = false;
+  alexCam.aspect = innerWidth / innerHeight; alexCam.updateProjectionMatrix();
+  alexCam.position.set(A.x + Math.sin(A.yaw) * 0.45, 1.72, A.z + Math.cos(A.yaw) * 0.45);
+  alexCam.lookAt(P.x, 1.15, P.z);
+  const hide = [nameTag, fan, ring, A.g], vis = hide.map(o => o.visible);
+  hide.forEach(o => o.visible = false);
+  renderer.render(scene, alexCam);
+  hide.forEach((o, i) => o.visible = vis[i]);
+  const pc = $('pc'), g = pc.getContext('2d'), src = renderer.domElement, W = src.width, H = src.height;
+  let sw = W, sh = W * 3 / 4; if (sh > H) { sh = H; sw = H * 4 / 3; }
+  g.drawImage(src, (W - sw) / 2, (H - sh) / 2, sw, sh, 0, 0, pc.width, pc.height);
+  g.fillStyle = '#e02020'; g.beginPath(); g.arc(18, 18, 7, 0, TAU); g.fill();
+  g.font = 'bold 16px system-ui,sans-serif'; g.fillStyle = '#fff'; g.fillText('REC · RecorderZ', 32, 24);
+  const min = 480 + Math.floor(S.time / DAY * 600);
+  g.fillText(`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`, pc.width - 56, pc.height - 12);
+  try { S.photos.push(pc.toDataURL('image/jpeg', 0.8)); } catch (e) {}
+  const pl = $('polaroid'); pl.classList.add('show'); setTimeout(() => pl.classList.remove('show'), 4200);
+}
+
+// ---------------- meniuri ----------------
+function showOverlay(html) { $('panel').innerHTML = html; $('overlay').classList.add('show'); }
+function hideOverlay() { $('overlay').classList.remove('show'); }
+function startPanel(resume) {
+  showOverlay(`<h1>🪓 Pădurarul</h1>
+  <p>Ești tăietor de lemne. Ai o zi de muncă (08:00–18:00) să faci cât mai mulți bani. Copacii <b>sănătoși</b> se vând scump, dar legal ai voie să tai <b>doar copacii bolnavi sau uscați</b>.</p>
+  <div class="legend">
+    <div class="lg-ok">🌲 <b>Sănătos</b>: coroană deasă, verde închis, scoarță maro. Bani mulți (150–390 lei), dar <b>ilegal</b>. Inel <span style="color:#d0301f">roșu</span>.</div>
+    <div class="lg-bad">🍂 <b>Bolnav / uscat</b>: frunze rare, galben-maronii sau deloc, scoarță gri, ciuperci. Puțini bani (25–90 lei), <b>legal</b>. Inel <span style="color:#2f8d2c">verde</span>.</div>
+  </div>
+  <p>📷 Prin pădure umblă <b>Alex Nedea de la RecorderZ</b>. Conul roșu de pe jos e ce vede el. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
+  <p>🚚 Încap ${CAP} copaci pe tine. Du-i la camion ca să-i vinzi.</p>
+  <ul>${isTouch ? '<li>Joystick: trage cu degetul în stânga ecranului</li><li>Camera: trage în dreapta ecranului</li><li>🪓 ține apăsat ca să tai</li>'
+    : '<li><kbd>W A S D</kbd> / săgeți: mers · <kbd>Shift</kbd>: fugi</li><li><kbd>Space</kbd> sau <kbd>F</kbd> (ține apăsat): taie</li><li>Trage cu mouse-ul (sau <kbd>Q</kbd>/<kbd>E</kbd>): rotești camera · rotița: zoom</li><li><kbd>Esc</kbd>: pauză · <kbd>M</kbd>: sunet</li>'}</ul>
+  <button class="big" id="go">${resume ? 'Continuă' : 'Începe ziua'}</button>
+  <div class="best">Record: ${fmt(S.best)} lei</div>`);
+  $('go').onclick = () => { audio(); if (resume) { S.paused = false; hideOverlay(); } else newGame(); };
+}
+function newGame() {
+  buildForest(1 + Math.floor(Math.random() * 1e6));
+  Object.assign(S, { running: true, paused: false, time: 0, money: 0, load: [], strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0, photos: [], freeze: 0, endAt: 0, shake: 0 });
+  Object.assign(P, { x: 0, z: 5, yaw: Math.PI, swing: -1 }); camYaw = Math.PI;
+  Object.assign(A, { active: false, state: 'off', spawnIn: rand(12, 20) }); A.g.visible = false;
+  setTruckLogs(0); hideOverlay(); hud();
+  toast('Bună dimineața! Taie copacii bolnavi 🍂', '', 2.5);
+}
+function endGame(why) {
+  S.running = false; ring.visible = false; $('bubble').style.display = 'none'; bubbleT = 0;
+  const rec = S.money > S.best; if (rec) { S.best = S.money; try { localStorage.setItem(SAVE + '-best', S.money); } catch (e) {} }
+  const photos = S.photos.length ? `<p style="text-align:center"><b>Pozele lui Alex Nedea:</b></p><div class="photos">${S.photos.map(s => `<img src="${s}" alt="poză">`).join('')}</div>` : '';
+  showOverlay(`<h2>${why === 'time' ? '🌇 S-a terminat ziua de muncă' : '📺 Reportajul a apărut pe RecorderZ!'}</h2>
+  <p style="text-align:center">${why === 'time' ? (S.strikes ? 'Ai scăpat, dar nu chiar curat.' : S.cutBad ? 'Nimeni nu te-a prins… de data asta.' : 'Pădurar model, totul legal! 👏') : '„Tăieri ilegale în pădure” — 3 reportaje, gata cu meseria.'}</p>
+  <div class="stats"><span>💰 Bani câștigați</span><b>${fmt(S.money)} lei</b><span>🍂 Copaci bolnavi tăiați</span><b>${S.cutOk}</b><span>🌲 Copaci sănătoși tăiați</span><b>${S.cutBad}</b><span>🚫 Lemne confiscate</span><b>${fmt(S.lost)} lei</b><span>📷 Reportaje</span><b>${S.strikes}/${MAX_STRIKES}</b></div>
+  ${photos}
+  <div class="best">${rec ? '🏆 Record nou!' : 'Record: ' + fmt(S.best) + ' lei'}</div>
+  <button class="big" id="again">Joacă din nou</button>`);
+  $('again').onclick = () => { audio(); newGame(); };
+}
+function togglePause() {
+  if (!S.running) return;
+  if (S.paused) { S.paused = false; hideOverlay(); } else { S.paused = true; startPanel(true); }
+}
+function toggleMute() {
+  muted = !muted; if (master) master.gain.value = muted ? 0 : 0.6;
+  if (muted && 'speechSynthesis' in window) speechSynthesis.cancel();
+  try { localStorage.setItem(SAVE + '-mute', muted ? '1' : '0'); } catch (e) {}
+  $('bSound').textContent = muted ? '🔇' : '🔊';
+}
+$('bSound').textContent = muted ? '🔇' : '🔊';
+$('bSound').onclick = () => { audio(); toggleMute(); };
+$('bPause').onclick = () => { audio(); togglePause(); };
+
+// ---------------- input ----------------
+addEventListener('keydown', e => {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  audio(); keys[e.code] = true;
+  if (e.code === 'Escape') togglePause();
+  else if (e.code === 'KeyM') toggleMute();
+  else if (e.code === 'Enter' && $('overlay').classList.contains('show')) { const b = $('go') || $('again'); if (b) b.click(); }
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; axeBtn = false; });
+const cv = renderer.domElement;
+cv.addEventListener('pointerdown', e => {
+  audio();
+  if (e.pointerType === 'touch' && e.clientX < innerWidth * 0.45 && !joy) {
+    joy = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: 0, y: 0 };
+    const j = $('joy'); j.style.display = 'block'; j.style.left = e.clientX + 'px'; j.style.top = e.clientY + 'px'; j.firstElementChild.style.transform = '';
+  } else if (!drag) drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if (joy && e.pointerId === joy.id) {
+    let dx = e.clientX - joy.x0, dy = e.clientY - joy.y0; const d = Math.hypot(dx, dy); if (d > 50) { dx *= 50 / d; dy *= 50 / d; }
+    joy.x = dx / 50; joy.y = dy / 50; $('joy').firstElementChild.style.transform = `translate(${dx}px,${dy}px)`;
+  } else if (drag && e.pointerId === drag.id) {
+    camYaw -= (e.clientX - drag.x) * 0.006; camPitch = clamp(camPitch + (e.clientY - drag.y) * 0.004, 0.1, 1.15);
+    drag.x = e.clientX; drag.y = e.clientY;
+  }
+});
+const endPtr = e => {
+  if (joy && e.pointerId === joy.id) { joy = null; $('joy').style.display = 'none'; }
+  if (drag && e.pointerId === drag.id) drag = null;
+};
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('wheel', e => { e.preventDefault(); camDist = clamp(camDist * (1 + Math.sign(e.deltaY) * 0.1), 4, 14); }, { passive: false });
+{
+  const b = $('bAxe');
+  b.addEventListener('pointerdown', e => { e.preventDefault(); audio(); axeBtn = true; b.classList.add('on'); b.setPointerCapture(e.pointerId); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, () => { axeBtn = false; b.classList.remove('on'); });
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && S.running && !S.paused) togglePause(); });
+
+// ---------------- pornire ----------------
+const clock = new THREE.Clock();
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (S.running && !S.paused) update(dt);
+  else if (!S.running) { camYaw += dt * 0.08; }
+  placeCamera(dt);
+  hud3d();
+  if ((mmTick++ & 1) === 0) drawMinimap();
+  if (S.wantPhoto) capturePhoto();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+buildForest(4242);
+hud(); placeCamera(0);
+startPanel(false);
+$('loading').remove();
+frame();
+
+// pentru teste
+window.__pd = { S, P, A, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
+  setCam(y) { camYaw = y; }, place(o, x, z, yaw) { o.x = x; o.z = z; if (yaw !== undefined) o.yaw = o.tYaw = yaw; } };
+</script>
+</body>
+</html>
