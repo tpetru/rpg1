@@ -85,7 +85,7 @@
 <div id="speedo" class="panel"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="a" id="ang">unghi 0°</div></div>
 <div id="help" class="panel">
   <kbd>↑</kbd> accelerație &nbsp; <kbd>↓</kbd> frână / marșarier &nbsp; <kbd>←</kbd><kbd>→</kbd> direcție<br>
-  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet
+  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>4</kbd> mașina &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet
 </div>
 <div id="pop"></div>
 <div id="touch">
@@ -129,6 +129,15 @@ const CARS = [
     muF:1.02, muR:1.10, BF:11, CF:1.35, BR:10, CR:1.55,
     steerMax:0.64, steerRate:3.8, assist:0.45, brake:1.1, hbGrip:0.40,
     cd:0.34, body:'p911', len:4.44, wid:1.81, wheelR:0.323
+  },
+  {
+    id:'passat', name:'VW Passat B6', tag:'Tracțiune față · 2.0 TFSI · 61/39',
+    desc:'Tracțiune pe față și greutatea pe bot: la accelerație iese din viraj (subvirare). Driftul vine din frâna de mână și din ridicarea piciorului de pe accelerație în viraj. Contrabracaj cu accelerația, ca la raliu.',
+    color:0xeeeeea, mass:1480, a:1.06, b:1.65, h:0.55, inertiaF:1.0,
+    power:147000, maxForce:7600, frontDrive:1.0,
+    muF:1.00, muR:1.00, BF:9.5, CF:1.30, BR:10, CR:1.50,
+    steerMax:0.62, steerRate:3.0, assist:0.55, brake:0.95, hbGrip:0.30,
+    cd:0.36, body:'passat', len:4.765, wid:1.82, wheelR:0.322
   },
 ];
 
@@ -338,7 +347,8 @@ function loftGeometry(sec, z0, z1, nz, nth, th0 = 0, th1 = Math.PI * 2, caps = t
 // Dimensiuni după datele oficiale: BMW M4 Competition Coupé (4801 × 1887 × 1398 mm,
 // ampatament 2857, ecartament 1617/1605, 275/35 R19 + 285/30 R20), Audi RS 6 Avant performance
 // (4995 × 1951 × 1460, ampatament 2929, ecartament 1668/1650, 285/30 R22), Porsche 911 Carrera S
-// 997.2 (4435 × 1808 × 1310, ampatament 2350, ecartament 1486/1534, 235/35 R19 + 295/30 R19).
+// 997.2 (4435 × 1808 × 1310, ampatament 2350, ecartament 1486/1534, 235/35 R19 + 295/30 R19),
+// VW Passat B6 sedan (4765 × 1820 × 1472, ampatament 2709, ecartament 1552/1551, 235/45 R17).
 const MODELS = {
   m4: {
     zF: 1.44, zR: -1.417, z0: -2.40, z1: 2.40, flare: 0.032,
@@ -380,6 +390,19 @@ const MODELS = {
       belt: [[-1.95,.95],[0.62,.90]] },
     doors: [0.58, -0.62], seats: 4, plate: '911 · 997',
   },
+  passat: {
+    zF: 1.39, zR: -1.319, z0: -2.3825, z1: 2.3825, flare: 0.018,
+    wheel: { rF: 0.322, rR: 0.322, wF: 0.235, wR: 0.235, tF: 0.776, tR: 0.7755, style: 'five', rim: 0xc4c8cd, cap: 'vw', caliper: 0x45484d },
+    top: [[-2.3825,.88],[-2.33,.96],[-2.15,1.00],[-1.7,1.01],[-1.0,1.0],[0.6,.97],[1.2,.94],[1.8,.89],[2.2,.83],[2.33,.79],[2.3825,.75]],
+    sh: [[-2.3825,.56],[-2.28,.70],[-1.4,.83],[0,.83],[1.4,.82],[2.22,.70],[2.3825,.56]],
+    hw: [[-2.3825,.78],[-2.32,.86],[-2.1,.895],[0,.91],[2.1,.895],[2.3,.85],[2.3825,.76]],
+    bot: [[-2.3825,.32],[-2.25,.24],[-1.8,.17],[1.9,.16],[2.30,.19],[2.3825,.24]],
+    nT: 3.0, nB: 5,
+    cab: { z0: -1.62, z1: 1.0, nT: 3.0, wf: 0.96, bPos: 0.55, capTh: 0.3, cap: [-0.98, 0.3],
+      roof: [[-1.62,1.0],[-1.3,1.18],[-0.95,1.36],[-0.5,1.455],[0.0,1.465],[0.35,1.40],[0.65,1.24],[1.0,0.96]],
+      belt: [[-1.62,0.99],[1.0,0.93]] },
+    doors: [0.98, -0.02, -0.9], seats: 5, plate: 'PASSAT · B6', chromeTrim: true,
+  },
 };
 
 function plateTexture(text) {
@@ -414,6 +437,11 @@ function badgeTexture(kind, text) {
     g.fillStyle = '#111'; g.fillRect(32, 52, 26, 10); g.fillRect(70, 34, 26, 12); g.fillRect(70, 88, 22, 8);
     g.fillStyle = '#e8c45a'; g.fillRect(54, 46, 20, 30);
     g.fillStyle = '#222'; g.font = 'bold 12px serif'; g.textAlign = 'center'; g.fillText('PORSCHE', m, 27);
+  } else if (kind === 'vw') {
+    g.fillStyle = '#1b3a6b'; g.beginPath(); g.arc(m, m, 60, 0, 7); g.fill();
+    g.strokeStyle = '#e4e7ea'; g.lineWidth = 9; g.beginPath(); g.arc(m, m, 56, 0, 7); g.stroke();
+    g.lineWidth = 9; g.lineJoin = 'miter'; g.beginPath(); g.moveTo(36, 22); g.lineTo(m, 72); g.lineTo(92, 22); g.stroke();   // V
+    g.beginPath(); g.moveTo(16, 50); g.lineTo(40, 106); g.lineTo(m, 64); g.lineTo(88, 106); g.lineTo(112, 50); g.stroke(); // W
   } else {   // text cromat
     c.width = 512; c.height = 96;
     const h = c.getContext('2d');
@@ -527,6 +555,8 @@ function makeWheel(W, front, side) {
       branch(a + 0.08, a + 0.2, hubR, rIn - 0.01, 0.034);
       const bar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, rIn * 0.42), rimMat);
       bar.position.set(face - side * 0.022, Math.cos(a) * rIn * 0.8, Math.sin(a) * rIn * 0.8); bar.rotation.x = a + PI / 2 - PI / 2; bar.rotation.x = -a; spin.add(bar);
+    } else if (W.style === 'five') {        // 5 spițe simple, late (jante VW de 17")
+      spoke(a, hubR, rIn - 0.01, 0.07);
     } else {                                // 5 spițe duble (Carrera)
       for (const o of [-0.1, 0.1]) branch(a + o * 0.6, a + o, hubR, rIn - 0.01, 0.03);
     }
@@ -614,7 +644,7 @@ function buildCar(spec) {
   const bz = c0 + (c1 - c0) * C.bPos;
   pil(bz - 0.04, bz + 0.04, MAT.gloss);                     // stâlp B
   if (spec.body === 'rs6') pil(-1.62, -1.55, MAT.gloss);    // stâlp C (break)
-  both(C.z0 + 0.08, C.z1 - 0.08, 0.0, 0.045 * PI, MAT.gloss, 0.009, cabSec, 4);   // chenar geamuri
+  both(C.z0 + 0.08, C.z1 - 0.08, 0.0, 0.045 * PI, M.chromeTrim ? MAT.chrome : MAT.gloss, 0.009, cabSec, 4);   // chenar geamuri
   both(c0 + 0.02, c1 - 0.02, C.capTh * PI - 0.03, C.capTh * PI, MAT.gloss, 0.009, cabSec, 3); // chenar plafon
 
   // interior vizibil prin geamuri: bord, volan, scaune
@@ -648,7 +678,7 @@ function buildCar(spec) {
     const zs = M.doors.length > 2 ? [M.doors[1] + 0.18, M.doors[2] + 0.18] : [M.doors[1] + 0.2];
     for (const hz of zs) {
       const hs = S(hz), hy = hs.yc + hs.hT * 0.55;
-      const dh = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.028, 0.18), spec.body === 'rs6' ? MAT.alu : paint);
+      const dh = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.028, 0.18), spec.body === 'rs6' ? MAT.alu : M.chromeTrim ? MAT.chrome : paint);
       dh.position.set(sx * (widthAt(hs, hy) + 0.005), hy, hz); add(dh, false);
     }
   }
@@ -746,6 +776,40 @@ function buildCar(spec) {
     // bare negre pe plafon (urmează plafonul) și eleron
     both(-1.95, 0.05, 0.355 * PI, 0.37 * PI, MAT.gloss, 0.016, cabSec, 3);
     patch(C.z0 + 0.04, C.z0 + 0.3, 0.3 * PI, 0.7 * PI, MAT.gloss, 0.014, cabSec, 12);   // eleron pe plafon
+  } else if (spec.body === 'passat') {
+    // grila cromată cu 3 lamele orizontale și emblema VW, prize jos, proiectoare
+    const gy = Ftop - 0.13;
+    const grille = [[-0.44, gy + 0.1], [0.44, gy + 0.1], [0.38, gy - 0.1], [-0.38, gy - 0.1]];
+    capDecal(grille.map(([x, y]) => [x * 1.06, gy + (y - gy) * 1.25]), 1, MAT.chrome, 0.004);
+    capDecal(grille, 1, MAT.mesh, 0.008);
+    for (let k = 0; k < 3; k++) { const y = gy - 0.06 + k * 0.06, w = 0.78 - 0.06 * (1 - k); const sl = new THREE.Mesh(new THREE.BoxGeometry(w, 0.018, 0.02), MAT.chrome); sl.position.set(0, y, front + 0.014); add(sl, false); }
+    badge('vw', '', 0.15, 0.15, V(0, gy, front + 0.026));
+    capDecal(rr(0, Fbot + 0.08, 0.76, 0.1, 0.04), 1, MAT.mesh);
+    capDecal(rr(0, Fbot + 0.08, 0.7, 0.012, 0.005), 1, MAT.chrome, 0.008);
+    capBoth(sx => rr(sx * 0.58, Fbot + 0.12, 0.14, 0.09, 0.04), 1, MAT.gloss);
+    capBoth(sx => rr(sx * 0.58, Fbot + 0.12, 0.08, 0.055, 0.027), 1, MAT.head, 0.008);     // proiectoare ceață
+    plateF.position.set(0, Fbot + 0.2, front + 0.012);
+    // faruri mari cu sticlă clară, două lupe rotunde și semnalizare
+    both(front - 0.45, front - 0.01, 0.10 * PI, 0.26 * PI, MAT.lens, 0.005, S, 14);
+    capBoth(sx => poly(sx, [[0.47, Ftop - 0.20], [0.79, Ftop - 0.15], [0.80, Ftop - 0.04], [0.49, Ftop - 0.06]]), 1, MAT.lens);
+    for (const sx of [-1, 1]) for (const ox of [0.56, 0.70]) {
+      const l = new THREE.Mesh(new THREE.CircleGeometry(0.042, 20), MAT.head); l.position.set(sx * ox, Ftop - 0.11, front + 0.012); add(l, false);
+      const rg = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.007, 6, 24), MAT.chrome); rg.position.set(sx * ox, Ftop - 0.11, front + 0.012); add(rg, false);
+    }
+    capBoth(sx => poly(sx, [[0.49, Ftop - 0.18], [0.62, Ftop - 0.165], [0.62, Ftop - 0.15], [0.49, Ftop - 0.165]]), 1, MAT.amber, 0.008);
+    // spate: stopuri care trec de pe aripă pe portbagaj, baghetă cromată, emblemă, două țevi pe stânga
+    both(rear + 0.02, rear + 0.36, 0.13 * PI, 0.30 * PI, MAT.redLens, 0.005, S, 14);
+    both(rear + 0.05, rear + 0.33, 0.20 * PI, 0.215 * PI, tailMat, 0.008);
+    capBoth(sx => poly(sx, [[0.34, Rtop - 0.17], [0.76, Rtop - 0.15], [0.76, Rtop - 0.04], [0.34, Rtop - 0.06]]), -1, MAT.redLens);
+    capBoth(sx => poly(sx, [[0.40, Rtop - 0.115], [0.74, Rtop - 0.10], [0.74, Rtop - 0.085], [0.40, Rtop - 0.10]]), -1, tailMat, 0.008);
+    capBoth(sx => rr(sx * 0.63, Rtop - 0.13, 0.08, 0.05, 0.02), -1, MAT.head, 0.008);       // lumini de marșarier
+    capDecal(rr(0, Rtop - 0.2, 0.66, 0.022, 0.008), -1, MAT.chrome, 0.008);
+    capDecal(rr(0, Rbot + 0.1, R.hw * 1.5, 0.1, 0.03), -1, MAT.gloss);
+    for (const ox of [0.5, 0.6]) exhaust(-ox, Rbot + 0.08, 0.035);
+    plateR.position.set(0, Rtop - 0.33, rear - 0.012);
+    badge('vw', '', 0.13, 0.13, V(0, Rtop - 0.1, rear - 0.01), PI);
+    badge('text', 'PASSAT', 0.22, 0.04, V(0.5, Rtop - 0.27, rear - 0.01), PI);
+    badge('text', 'TFSI', 0.12, 0.03, V(-0.5, Rtop - 0.27, rear - 0.01), PI);
   } else {
     // 911 (997.2): faruri ovale bi-xenon pe aripi, DRL LED în prizele laterale
     for (const sx of [-1, 1]) {
@@ -1610,7 +1674,7 @@ function selectCar(i) {
   try { localStorage.setItem('drift-car', i); } catch (e) {}
 }
 let startCar = 0;
-try { startCar = Math.min(2, Math.max(0, parseInt(localStorage.getItem('drift-car') || '0', 10) || 0)); } catch (e) {}
+try { startCar = Math.min(CARS.length - 1, Math.max(0, parseInt(localStorage.getItem('drift-car') || '0', 10) || 0)); } catch (e) {}
 selectCar(startCar);
 
 let camMode = 0;
@@ -1620,7 +1684,7 @@ addEventListener('keydown', e => {
   if (GAME_KEYS.includes(k)) { keys[k] = true; e.preventDefault(); }
   sound.init();
   if (e.repeat) return;
-  if (e.key === '1' || e.key === '2' || e.key === '3') selectCar(+e.key - 1);
+  if (e.key >= '1' && e.key <= String(CARS.length)) selectCar(+e.key - 1);
   if (e.key === 'r' || e.key === 'R') resetCar(false);
   if (e.key === 'c' || e.key === 'C') camMode = (camMode + 1) % 3;
   if (e.key === 'm' || e.key === 'M') sound.toggle();
@@ -1667,7 +1731,7 @@ function visuals(dt) {
   const spin = roll + (car.spinR > 0 ? 40 * dt : 0) * Math.sign(car.long || 1);
   for (const wh of mesh.userData.wheels) {
     if (wh.front) wh.pivot.rotation.y = car.steer;
-    wh.spin.rotation.x += wh.front && S.frontDrive === 0 ? roll : spin;
+    wh.spin.rotation.x += (wh.front ? S.frontDrive === 0 : S.frontDrive === 1) ? roll : spin;
   }
 
   // poziția roților din spate pe sol, pentru urme și fum
