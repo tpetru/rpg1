@@ -2293,8 +2293,9 @@ const PALACE = { x: -60, z: 128, w: 64, d: 30 };              // z = fațada (sp
       OBSTACLES.push({ x: lx, z: lz, r: 0.2 }); } }
   scene.add(mergeStatic(placeShadow(pg)));
   // coliziune: cercuri pe tot conturul clădirii, cu înălțime (se poate zbura doar pe deasupra)
-  const ring = (x0, z0, x1, z1, h) => { for (let x = x0; x <= x1 + 0.01; x += 2.5) for (let z = z0; z <= z1 + 0.01; z += 2.5) {
-      if (x > x0 + 0.1 && x < x1 - 0.1 && z > z0 + 0.1 && z < z1 - 0.1) continue; OBSTACLES.push({ x: X + x, z: Z + z, r: 1.5, h, bld: true }); } };
+  const ring = (x0, z0, x1, z1, h) => { const nx = Math.ceil((x1 - x0) / 2.2), nz = Math.ceil((z1 - z0) / 2.2);
+    for (let i = 0; i <= nx; i++) for (let j = 0; j <= nz; j++) { if (i > 0 && i < nx && j > 0 && j < nz) continue;
+      OBSTACLES.push({ x: X + x0 + (x1 - x0) * i / nx, z: Z + z0 + (z1 - z0) * j / nz, r: 1.6, h, bld: true }); } };
   ring(-PALACE.w / 2, 0, PALACE.w / 2, PALACE.d, 27);
   ring(-9, -5.5, 9, 0, 22);
   PALACE.foot = [[X - PALACE.w / 2, Z, X + PALACE.w / 2, Z + PALACE.d], [X - 9, Z - 5.5, X + 9, Z]];
