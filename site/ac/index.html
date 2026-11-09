@@ -48,6 +48,10 @@
   .ft.kill { color: #ffe14d; font-size: 24px; }
   .ft.blk { color: #fff; font-size: 16px; }
   .ft.bonus { color: #7dff8a; font-size: 26px; }
+  #rotate { position: fixed; inset: 0; display: none; place-items: center; background: rgba(10, 20, 40, .7); z-index: 40; padding: 20px; }
+  #rotate.show { display: grid; }
+  #rotate .phone { font-size: 64px; display: inline-block; animation: rot 2s ease-in-out infinite; }
+  @keyframes rot { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
   @media (max-width: 600px) { #hint { font-size: 12px; bottom: 76px; max-width: calc(100vw - 24px); } .panel h1 { font-size: 26px; } }
 </style>
 <script type="importmap">
@@ -74,6 +78,12 @@
   <button id="bLeft" title="Țintește la stânga (←)">◀</button>
   <button id="bRight" title="Țintește la dreapta (→)">▶</button>
 </div>
+<div id="rotate"><div class="panel">
+  <div class="phone">📱</div>
+  <h2>Întoarce telefonul</h2>
+  <p>Jocul se vede mult mai bine pe orizontală (landscape): ai loc să tragi de praștie și vezi toată cetatea.</p>
+  <div class="row"><button id="rFull">⛶ Ecran complet</button><button class="sec" id="rClose">Joacă așa</button></div>
+</div></div>
 <div id="overlay"><div class="panel" id="panel"></div></div>
 
 <script type="module">
@@ -1047,7 +1057,27 @@ $('bMenu').onclick = () => { audio(); showMenu(); };
 $('bRestart').onclick = () => { audio(); loadLevel(S.level); };
 $('bCam').onclick = resetCam;
 
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+addEventListener('resize', () => { checkRotate(); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// ---------- sfat pentru landscape ----------
+let rotDismissed = false;
+try { rotDismissed = sessionStorage.getItem(SAVE_KEY + '-rot') === '1'; } catch (e) {}
+function dismissRotate() { rotDismissed = true; try { sessionStorage.setItem(SAVE_KEY + '-rot', '1'); } catch (e) {} $('rotate').classList.remove('show'); }
+function checkRotate() {
+  const portrait = innerHeight > innerWidth;
+  const mobile = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
+  if (!portrait && $('rotate').classList.contains('show')) dismissRotate();
+  else if (portrait && mobile && !rotDismissed) $('rotate').classList.add('show');
+}
+$('rClose').onclick = () => { audio(); dismissRotate(); };
+$('rFull').onclick = async () => {
+  audio();
+  try { await document.documentElement.requestFullscreen(); } catch (e) {}
+  try { await screen.orientation.lock('landscape'); } catch (e) {}
+  dismissRotate();
+};
+addEventListener('orientationchange', () => setTimeout(checkRotate, 300));
+checkRotate();
 
 // =====================================================================
 //  Pornire
