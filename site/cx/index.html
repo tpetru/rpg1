@@ -47,11 +47,12 @@ const OUTFITS = [
   { name:'Fără palton: pulover cu reni',     sweater:1 },
   { name:'Costum de spiriduș',               elf:1 },
   { name:'Rochie de catifea de Crăciun',     velvet:1 },
+  { name:'Pulover urât cu beculețe',         ugly:1 },
   { name:'Rochie de gală aurie',             gold:1 },
 ];
 const MAXO = OUTFITS.length - 1;
 // ce își pune la loc când coboară la nivelul i (după o sticlă ratată)
-const PUT_BACK = ['mănușile', 'fularul', 'căciula', 'paltonul', 'puloverul', 'costumul de spiriduș', 'rochia de catifea'];
+const PUT_BACK = ['mănușile', 'fularul', 'căciula', 'paltonul', 'puloverul', 'costumul de spiriduș', 'rochia de catifea', 'puloverul urât'];
 const LANES = 5;
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -88,7 +89,7 @@ function laneX(i) { return L.fx + L.lw * (i + 0.5); }
 
 function reset() {
   Object.assign(S, { mode:'play', score:0, lives:5, outfit:0, maxOutfit:0, caught:0, missed:0, streak:0,
-    lane:2, sx:2, bottles:[], parts:[], flash:0, t:0, spawnT:0.6, msg:'Prinde berea!', msgT:1.6 });
+    lane:2, sx:2, bottles:[], parts:[], flash:0, t:0, spawnT:0.6, msg:'Prinde berea!', msgT:1.6, sleigh:0, stageFx:0, coal:0, fw:0 });
   ov.classList.add('hide');
 }
 
@@ -99,28 +100,67 @@ function gap()   { return Math.max(0.42, 1.25 - S.caught * 0.014); }            
 function spawn() {
   // nu pune sticle imposibil de prins: ultima sticlă trebuie să lase timp de mers
   let lane = Math.floor(Math.random() * LANES);
-  const last = S.bottles[S.bottles.length - 1];
+  const lastB = S.bottles.filter(b => b.kind !== 'coal');
+  const last = lastB[lastB.length - 1];
+  // cărbune (din 15 sticle): pe altă coloană decât ultima sticlă și decât unde trebuie să fie Moșul
+  if (stage(15) && last && Math.random() < Math.min(0.28, 0.12 + S.caught * 0.0015)) {
+    const bad = new Set([last.lane, S.lane]);
+    const free = [0,1,2,3,4].filter(i => !bad.has(i));
+    S.bottles.push({ lane: free[Math.floor(Math.random() * free.length)], y: L.fy - L.bh, kind:'coal',
+      rot: Math.random() * 6, vr: (Math.random() - .5) * 3 });
+    return;
+  }
   if (last) {
     const tLeft = (L.catchY - last.y) / speed();
     const lanesOk = Math.max(1, Math.floor(tLeft / 0.13));
     if (Math.abs(lane - last.lane) > lanesOk) lane = last.lane + Math.sign(lane - last.lane) * lanesOk;
   }
+  // nu pune sticla pe o coloană unde mai cade un cărbune (Moșul ar trebui să stea sub el)
+  const coalLanes = new Set(S.bottles.filter(b => b.kind === 'coal' && b.y + L.bh < L.catchY + L.bh * .5).map(b => b.lane));
+  if (coalLanes.has(lane)) {
+    const opts = [0,1,2,3,4].filter(i => !coalLanes.has(i)).sort((a, b) => Math.abs(a - lane) - Math.abs(b - lane));
+    if (opts.length) lane = opts[0];
+  }
   const kinds = ['brown','brown','brown','green','can'];
-  S.bottles.push({ lane, y: L.fy - L.bh, kind: kinds[Math.floor(Math.random() * kinds.length)],
+  let kind = kinds[Math.floor(Math.random() * kinds.length)];
+  if (stage(50) && Math.random() < 0.1) kind = 'gold';
+  S.bottles.push({ lane, y: L.fy - L.bh, kind,
     rot: (Math.random() - .5) * 0.3, vr: (Math.random() - .5) * 1.2 });
 }
 
 function say(m, t = 1.2) { S.msg = m; S.msgT = t; }
 
+// recompense: ce se deblochează după câte sticle prinse
+const STAGES = [
+  { at:10,  msg:'Moșul a prins curaj! 🍺' },
+  { at:20,  msg:'Doamna Crăciun dansează! 💃' },
+  { at:25,  msg:'Moșul e cherchelit… hic!' },
+  { at:30,  msg:'Petrecere! Lumini disco 🪩' },
+  { at:15,  msg:'Atenție la cărbuni! Nu-i prinde ⚫' },
+  { at:40,  msg:'Sosesc renii cu sania! 🦌' },
+  { at:50,  msg:'Sticle de aur! +50 ✨' },
+  { at:75,  msg:'Ninsoare de sărbătoare ❄️' },
+  { at:100, msg:'100 de beri! Artificii! 🎆' },
+];
+function stage(n) { return S.caught >= n; }
+function checkStages() {
+  for (const st of STAGES) if (S.caught === st.at) { say(st.msg, 2.2); S.stageFx = 1; sfx('stage'); }
+  if (S.caught >= 40 && S.caught % 20 === 0) S.sleigh = 0.001;     // sania trece la 40, 60, 80…
+  if (S.caught >= 25 && S.caught % 10 === 5 && S.caught !== 25 && S.msgT <= 0.3) say('Hic! 🍺', 0.9);
+}
+
 function catchBottle(b) {
+  if (b.kind === 'coal') return catchCoal(b);
   S.caught++; S.streak++;
-  let pts = 10 + Math.min(S.streak, 20);
+  let pts = 10 + Math.min(S.streak, 20) + (b.kind === 'gold' ? 50 : 0);
   if (S.outfit < MAXO) {
     S.outfit++;
     S.maxOutfit = Math.max(S.maxOutfit, S.outfit);
     say(OUTFITS[S.outfit].name);
   } else { pts += 15; say('Gala! +' + pts); }
   if (S.caught % 15 === 0 && S.lives < 5) { S.lives++; say('+1 viață 🎄'); }
+  if (b.kind === 'gold') say('Sticlă de aur! +' + pts, 1.4);
+  checkStages();
   S.score += pts;
   S.flash = 1;
   for (let i = 0; i < 14; i++) S.parts.push({ x: laneX(b.lane), y: L.catchY, vx:(Math.random()-.5)*220, vy:-Math.random()*260-60,
@@ -128,12 +168,23 @@ function catchBottle(b) {
   sfx('catch');
 }
 
+function catchCoal(b) {
+  S.streak = 0; S.lives--; S.coal = 1;
+  if (S.outfit > 0) { S.outfit--; say('Cărbune! Își pune la loc ' + PUT_BACK[S.outfit], 1.6); }
+  else say('Cărbune! ⚫', 1.2);
+  for (let i = 0; i < 16; i++) S.parts.push({ x: laneX(b.lane), y: L.catchY, vx:(Math.random()-.5)*240, vy:-Math.random()*200-40,
+    life:0.8, c: Math.random() < .5 ? '#2b2b2b' : '#555', r: 2 + Math.random()*3, g:500 });
+  sfx('miss');
+  if (S.lives <= 0) gameOver();
+}
+
 function missBottle(b) {
+  if (b.kind === 'coal') { for (let i = 0; i < 6; i++) S.parts.push({ x: laneX(b.lane), y: L.groundY - 4, vx:(Math.random()-.5)*120, vy:-Math.random()*80, life:.5, c:'#333', r:2, g:600 }); return; }
   S.missed++; S.streak = 0; S.lives--;
   if (S.outfit > 0) { S.outfit--; say('Ratat! Își pune la loc ' + PUT_BACK[S.outfit], 1.6); }
   else say('Ratat!');
   for (let i = 0; i < 16; i++) S.parts.push({ x: laneX(b.lane), y: L.groundY - 4, vx:(Math.random()-.5)*300, vy:-Math.random()*220,
-    life:0.7, c: b.kind === 'green' ? '#3f9d5a' : b.kind === 'can' ? '#c9ced8' : '#8a4a12', r: 1.5 + Math.random()*2.5, g:800, shard:1 });
+    life:0.7, c: b.kind === 'gold' ? '#ffd54a' : b.kind === 'green' ? '#3f9d5a' : b.kind === 'can' ? '#c9ced8' : '#8a4a12', r: 1.5 + Math.random()*2.5, g:800, shard:1 });
   sfx('miss');
   if (S.lives <= 0) gameOver();
 }
@@ -157,6 +208,7 @@ function menu() {
     <p>Sticlele de bere cad pe 5 coloane. Prinde-le în coș!</p>
     <p>La fiecare sticlă prinsă, <b>Doamna Crăciun</b> își schimbă ținuta: dă jos mănușile, fularul, căciula,
     paltonul… până ajunge la rochia de gală. La fiecare sticlă ratată se îmbracă la loc cu un strat.</p>
+    <p class="keys">Cu cât prinzi mai multe: Moșul se cherchelește, Doamna Crăciun dansează, vine petrecerea disco, trec renii cu sania, apar sticle de aur și artificii. Ai grijă la cărbuni!</p>
     <p class="keys">Calculator: <b>← →</b> sau <b>A D</b> (sau 1–5) · Telefon: atinge coloana unde vrei să meargă Moșul.<br>
     P = pauză · M = sunet</p>
     ${S.best ? '<p>Record: <b>' + S.best + '</b></p>' : ''}
@@ -218,6 +270,7 @@ function tone(f, d, type = 'sine', v = 0.15, when = 0, f2) {
 }
 function sfx(k) {
   if (k === 'catch') { tone(1568, .12, 'triangle', .12); tone(2093, .18, 'triangle', .1, .06); if (S.outfit === MAXO) tone(2637, .25, 'sine', .08, .12); }
+  else if (k === 'stage') { [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, .18, 'triangle', .09, i * .08)); }
   else if (k === 'miss') { tone(220, .25, 'sawtooth', .08, 0, 90); tone(3200, .05, 'square', .04, .02); tone(2700, .05, 'square', .03, .07); }
 }
 
@@ -237,6 +290,13 @@ function drawBg() {
     ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.025)' : 'rgba(255,255,255,.05)';
     ctx.fillRect(L.fx + i * L.lw, L.fy, L.lw, L.fh);
   }
+  if (S.mode !== 'menu' && stage(30)) { // lumini disco pe coloane
+    for (let i = 0; i < LANES; i++) {
+      const hue = (S.t * 90 + i * 72) % 360;
+      ctx.fillStyle = `hsla(${hue},90%,60%,${.06 + .05 * Math.sin(S.t * 6 + i)})`;
+      ctx.fillRect(L.fx + i * L.lw, L.fy, L.lw, L.fh);
+    }
+  }
   // marcaj coloană curentă
   ctx.fillStyle = 'rgba(255,207,90,.06)';
   ctx.fillRect(L.fx + S.lane * L.lw, L.fy, L.lw, L.fh);
@@ -245,14 +305,56 @@ function drawBg() {
   ctx.beginPath(); ctx.moveTo(L.fx, L.groundY);
   for (let x = 0; x <= L.fw; x += 20) ctx.lineTo(L.fx + x, L.groundY - 3 * Math.sin(x * 0.05));
   ctx.lineTo(L.fx + L.fw, H); ctx.lineTo(L.fx, H); ctx.fill();
-  // fulgi
+  // fulgi (din 75: ninsoare mai deasă și mai mare)
   ctx.fillStyle = 'rgba(255,255,255,.75)';
-  for (const f of snow) { ctx.beginPath(); ctx.arc(f.x + Math.sin(S.t + f.p) * 6, f.y, f.r, 0, 7); ctx.fill(); }
+  const big = S.mode !== 'menu' && stage(75) ? 1.8 : 1;
+  for (const f of snow) { ctx.beginPath(); ctx.arc(f.x + Math.sin(S.t + f.p) * 6, f.y, f.r * big, 0, 7); ctx.fill(); }
+  drawSleigh();
+}
+
+// sanie cu reni care traversează cerul terenului
+function drawSleigh() {
+  if (!S.sleigh) return;
+  const p = S.sleigh, s = Math.min(L.lw * 0.5, 48), x = L.fx - s * 6 + (L.fw + s * 10) * p, y = L.fy + L.fh * 0.16 + Math.sin(p * 12) * 10;
+  ctx.save(); ctx.translate(x, y);
+  // reni (doi, în față)
+  for (let k = 0; k < 2; k++) {
+    const rx = s * (1.6 + k * 1.3), leg = Math.sin(S.t * 14 + k) * s * .12;
+    ctx.fillStyle = '#8a5a2b';
+    ctx.beginPath(); ctx.ellipse(rx, 0, s * .45, s * .2, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(rx + s * .48, -s * .22, s * .14, s * .1, -.4, 0, 7); ctx.fill();
+    ctx.fillRect(rx + s * .34, -s * .22, s * .08, s * .2);
+    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = s * .06;
+    ctx.beginPath(); ctx.moveTo(rx - s * .3, s * .12); ctx.lineTo(rx - s * .35 - leg, s * .4); ctx.moveTo(rx + s * .3, s * .12); ctx.lineTo(rx + s * .35 + leg, s * .4); ctx.stroke();
+    ctx.strokeStyle = '#d9c39a'; ctx.lineWidth = s * .04;
+    ctx.beginPath(); ctx.moveTo(rx + s * .45, -s * .3); ctx.lineTo(rx + s * .4, -s * .48); ctx.moveTo(rx + s * .42, -s * .4); ctx.lineTo(rx + s * .3, -s * .48); ctx.stroke();
+  }
+  ctx.strokeStyle = '#e8b923'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s * .9, -s * .05); ctx.lineTo(s * 1.25, 0); ctx.stroke();
+  // sanie cu sacul de cadouri
+  ctx.fillStyle = '#c8102e'; rr(-s * .2, -s * .35, s * 1.1, s * .45, s * .12); ctx.fill();
+  ctx.strokeStyle = '#e8b923'; ctx.lineWidth = s * .06; ctx.beginPath(); ctx.moveTo(-s * .3, s * .2); ctx.lineTo(s * 1, s * .2); ctx.quadraticCurveTo(s * 1.15, s * .2, s * 1.1, s * .05); ctx.stroke();
+  ctx.fillStyle = '#7a5230'; ctx.beginPath(); ctx.arc(s * .2, -s * .45, s * .25, 0, 7); ctx.fill();
+  ctx.restore();
+  // praf de stele în urmă
+  if (Math.random() < .6) S.parts.push({ x: x - s * .3, y: y + s * .1, vx: -30, vy: 20, life: .7, c: '#ffe27a', r: 1.5, g: 40 });
+}
+
+function fireworks() {
+  const x = L.fx + L.fw * (.15 + Math.random() * .7), y = L.fy + L.fh * (.1 + Math.random() * .3), hue = Math.random() * 360;
+  for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2, v = 120 + Math.random() * 60;
+    S.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, c: `hsl(${hue},95%,65%)`, r: 2, g: 120 }); }
 }
 
 function drawBottle(b) {
   const h = L.bh, w = h * 0.3, x = laneX(b.lane), y = b.y;
   ctx.save(); ctx.translate(x, y + h / 2); ctx.rotate(b.rot);
+  if (b.kind === 'coal') {
+    const r = h * 0.22;
+    ctx.fillStyle = '#1e1e1e';
+    ctx.beginPath(); for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, rr2 = r * (0.75 + 0.25 * Math.sin(i * 2.7)); ctx.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); } ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(-r * .3, -r * .3, r * .25, 0, 7); ctx.fill();
+    ctx.restore(); return;
+  }
   if (b.kind === 'can') {
     const cw = h * 0.42, ch = h * 0.72;
     const g = ctx.createLinearGradient(-cw/2, 0, cw/2, 0);
@@ -263,7 +365,8 @@ function drawBottle(b) {
     ctx.fillText('BERE', 0, 1);
     ctx.restore(); return;
   }
-  const col = b.kind === 'green' ? ['#1f6b3a', '#3fae66'] : ['#5a2a07', '#b8641c'];
+  const col = b.kind === 'gold' ? ['#a87b10', '#ffe27a'] : b.kind === 'green' ? ['#1f6b3a', '#3fae66'] : ['#5a2a07', '#b8641c'];
+  if (b.kind === 'gold') { ctx.shadowColor = '#ffd54a'; ctx.shadowBlur = 14 + 6 * Math.sin(S.t * 8); }
   const g = ctx.createLinearGradient(-w/2, 0, w/2, 0);
   g.addColorStop(0, col[0]); g.addColorStop(.4, col[1]); g.addColorStop(1, col[0]);
   ctx.fillStyle = g;
@@ -292,6 +395,8 @@ function drawSanta() {
   ctx.save(); ctx.translate(x, base);
   const bob = Math.sin(S.t * 8) * (Math.abs(S.lane - S.sx) > .05 ? 2 : .6);
   ctx.translate(0, bob);
+  const tipsy = S.mode === 'menu' ? 0 : Math.min(1, Math.max(0, (S.caught - 10) / 40));
+  ctx.rotate(Math.sin(S.t * 2.3) * 0.13 * tipsy + Math.sin(S.t * 5.1) * 0.03 * tipsy);
   // cizme
   ctx.fillStyle = '#1b1b1b';
   rr(-22*u, -8*u, 18*u, 8*u, 3*u); ctx.fill(); rr(4*u, -8*u, 18*u, 8*u, 3*u); ctx.fill();
@@ -310,7 +415,8 @@ function drawSanta() {
   ctx.quadraticCurveTo(0, -58*u, -15*u, -68*u); ctx.fill();
   // ochi, nas
   ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(-5*u, -71*u, 1.6*u, 0, 7); ctx.arc(5*u, -71*u, 1.6*u, 0, 7); ctx.fill();
-  ctx.fillStyle = '#e88a7a'; ctx.beginPath(); ctx.arc(0, -66*u, 3*u, 0, 7); ctx.fill();
+  ctx.fillStyle = tipsy > .4 ? '#e8343a' : '#e88a7a'; ctx.beginPath(); ctx.arc(0, -66*u, (3 + tipsy * 1.5)*u, 0, 7); ctx.fill();
+  if (tipsy > .6) { ctx.fillStyle = 'rgba(255,90,90,.45)'; ctx.beginPath(); ctx.arc(-8*u, -66*u, 3*u, 0, 7); ctx.arc(8*u, -66*u, 3*u, 0, 7); ctx.fill(); }
   // căciulă
   ctx.fillStyle = '#c8102e';
   ctx.beginPath(); ctx.moveTo(-14*u, -76*u); ctx.quadraticCurveTo(0, -102*u, 22*u, -92*u); ctx.lineTo(14*u, -76*u); ctx.fill();
@@ -345,7 +451,9 @@ function drawMrs(cx, top, h, o, t) {
   ctx.save(); ctx.translate(cx, top);
   ctx.scale(u, u);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  const sway = Math.sin(t * 2) * 1.2;
+  const dancing = S.mode !== 'menu' && S.caught >= 20;
+  const sway = dancing ? Math.sin(t * 6) * 3 : Math.sin(t * 2) * 1.2;
+  if (dancing) { ctx.translate(0, -Math.abs(Math.sin(t * 6)) * 2.5); ctx.rotate(Math.sin(t * 6) * 0.05); }
 
   // pantofi / cizme
   ctx.fillStyle = o.coat ? '#3a2416' : o.gold ? '#c9a227' : o.elf ? '#7a1d1d' : '#2a1a14';
@@ -376,6 +484,11 @@ function drawMrs(cx, top, h, o, t) {
     ctx.restore();
   }
   if (o.velvet) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-22 - sway*.5, 95); ctx.quadraticCurveTo(0, 98, 22 - sway*.5, 95); ctx.lineTo(21, 91); ctx.quadraticCurveTo(0, 94, -21, 91); ctx.fill(); }
+  if (o.ugly) { // fustă verde lungă cu fulgi
+    ctx.save(); ctx.clip(skirt); ctx.fillStyle = '#145a32'; ctx.fillRect(-25, 50, 50, 48);
+    ctx.fillStyle = '#fff'; for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(((i * 29) % 36) - 18, 58 + ((i * 41) % 34), .9, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
   if (o.gold) { // sclipici
     ctx.save(); ctx.clip(skirt);
     for (let i = 0; i < 14; i++) {
@@ -388,6 +501,7 @@ function drawMrs(cx, top, h, o, t) {
   // ---- bust + mâneci lungi ----
   let bodice = dress, sleeve = dress;
   if (o.sweater) { bodice = sleeve = '#2e7d4f'; }
+  if (o.ugly) { bodice = sleeve = '#c8102e'; }
   ctx.fillStyle = bodice;
   rr(-12, 27, 24, 26, 6); ctx.fill();
   // mâneci
@@ -402,6 +516,16 @@ function drawMrs(cx, top, h, o, t) {
     ctx.beginPath(); ctx.arc(4, 38.5, 1.6, 0, 7); ctx.fill();
     ctx.strokeStyle = '#8a5a2b'; ctx.beginPath(); ctx.moveTo(4, 37); ctx.lineTo(3, 35); ctx.moveTo(5, 37); ctx.lineTo(6.5, 35); ctx.stroke();
     ctx.fillStyle = '#c8102e'; ctx.beginPath(); ctx.arc(5.5, 39, .8, 0, 7); ctx.fill();
+  }
+  if (o.ugly) { // pulover urât: zig-zag verde, brăduț, beculețe care clipesc
+    ctx.strokeStyle = '#2e7d4f'; ctx.lineWidth = 2;
+    ctx.beginPath(); for (let x = -11; x <= 11; x += 2.5) ctx.lineTo(x, Math.round(x / 2.5) % 2 ? 30 : 32.5); ctx.stroke();
+    ctx.beginPath(); for (let x = -11; x <= 11; x += 2.5) ctx.lineTo(x, Math.round(x / 2.5) % 2 ? 49 : 51.5); ctx.stroke();
+    ctx.fillStyle = '#2e7d4f'; ctx.beginPath(); ctx.moveTo(0, 34); ctx.lineTo(-6, 46); ctx.lineTo(6, 46); ctx.fill();
+    ctx.fillStyle = '#ffd54a'; ctx.beginPath(); ctx.arc(0, 34, 1.4, 0, 7); ctx.fill();
+    const bulbs = [[-3,40],[2.5,42],[-1,44],[3,38.5],[-9,37],[9,41],[-8,45],[8,35]];
+    bulbs.forEach(([x, y], i) => { ctx.fillStyle = Math.sin(t * 5 + i * 1.7) > 0 ? ['#ffd54a','#5ad1ff','#ff8a6a','#fff'][i % 4] : 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(x, y, 1.1, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 40.5, 1, 0, 7); ctx.fill(); // pom-pom pe nas de ren
   }
   if (o.elf) { // guler cu colțuri și centură
     ctx.fillStyle = '#c8102e';
@@ -495,6 +619,19 @@ function drawPanel() {
   g.addColorStop(0, '#3a1f2c'); g.addColorStop(1, '#5b2e2a');
   ctx.fillStyle = g; ctx.fillRect(px, py, pw, ph);
   ctx.fillStyle = 'rgba(255,207,90,.08)'; ctx.fillRect(px, py + ph * .82, pw, ph * .18);
+  if (S.mode !== 'menu' && stage(30)) { // spoturi disco în cameră
+    for (let i = 0; i < 3; i++) {
+      const a = S.t * (1.2 + i * .3) + i * 2, sx = px + pw * (.5 + .4 * Math.sin(a)), sy = py + ph * (.55 + .25 * Math.cos(a * 1.3));
+      const gr = ctx.createRadialGradient(sx, sy, 0, sx, sy, pw * .3);
+      gr.addColorStop(0, `hsla(${(S.t * 80 + i * 120) % 360},90%,60%,.28)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.fillRect(px, py, pw, ph);
+    }
+    // glob disco
+    const gx = px + pw * .5, gy = py + 26, gr2 = Math.min(14, pw * .04);
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(gx, py); ctx.lineTo(gx, gy - gr2); ctx.stroke();
+    ctx.fillStyle = '#cfd6e0'; ctx.beginPath(); ctx.arc(gx, gy, gr2, 0, 7); ctx.fill();
+    for (let i = 0; i < 8; i++) { ctx.fillStyle = `hsla(${(S.t * 200 + i * 45) % 360},90%,75%,.9)`; ctx.fillRect(gx - gr2 * .7 + (i % 4) * gr2 * .4, gy - gr2 * .5 + Math.floor(i / 4) * gr2 * .5, gr2 * .3, gr2 * .3); }
+  }
   // ghirlandă de beculețe
   for (let i = 0; i < 14; i++) {
     const lx = px + (i + .5) * pw / 14, ly = py + 10 + Math.sin(i * 1.3) * 4;
@@ -592,6 +729,8 @@ function frame(now) {
   if (S.mode === 'play') step(dt);
   else if (S.mode === 'menu') { S.sx += (Math.round(2 + 2 * Math.sin(S.t * .8)) - S.sx) * Math.min(1, dt * 6); }
   S.flash = Math.max(0, S.flash - dt * 2);
+  if (S.sleigh) { S.sleigh += dt / 4.5; if (S.sleigh >= 1) S.sleigh = 0; }
+  if (S.mode === 'play' && stage(100)) { S.fw -= dt; if (S.fw <= 0) { fireworks(); S.fw = 0.9 + Math.random() * 1.2; } }
   S.msgT = Math.max(0, S.msgT - dt);
   for (const p of S.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; p.life -= dt; }
   S.parts = S.parts.filter(p => p.life > 0);
@@ -618,7 +757,7 @@ function step(dt) {
     b.y += v * dt; b.rot += b.vr * dt;
     const bottom = b.y + L.bh;
     if (!b.done && bottom >= L.catchY && bottom <= L.catchY + L.bh * 0.5) {
-      if (Math.abs(S.sx - b.lane) < 0.55) { b.done = 'caught'; catchBottle(b); }
+      if (Math.abs(S.sx - b.lane) < (b.kind === 'coal' ? 0.3 : 0.55)) { b.done = 'caught'; catchBottle(b); }
     }
     if (!b.done && bottom >= L.groundY) { b.done = 'miss'; missBottle(b); }
     if (S.mode !== 'play') break;
