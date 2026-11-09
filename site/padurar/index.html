@@ -45,6 +45,12 @@
   #polaroid canvas { width: 240px; height: 180px; display: block; margin-bottom: 4px; }
   #joy { position: fixed; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); display: none; pointer-events: none; }
   #joy i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255,255,255,.45); }
+  #bTruck { position: fixed; right: 112px; bottom: 30px; padding: 12px 16px; font-size: 16px; font-weight: 800; background: rgba(40, 90, 160, .9); color: #fff; box-shadow: 0 4px 0 rgba(20,45,90,.9); display: none; }
+  #bTruck.show { display: block; }
+  body.touch #bTruck { bottom: 34px; }
+  #bearIcon { position: fixed; left: 50%; top: 58px; margin-left: -34px; font-size: 60px; line-height: 1; display: none; pointer-events: none; filter: drop-shadow(0 0 10px rgba(255,40,20,.9)); animation: shake .12s infinite; }
+  #bearIcon.show { display: block; }
+  @keyframes shake { 0% { transform: translate(-3px, 1px) rotate(-8deg); } 50% { transform: translate(3px, -2px) rotate(8deg); } 100% { transform: translate(-2px, 2px) rotate(-5deg); } }
   #bAxe { position: fixed; right: 16px; bottom: 18px; width: 84px; height: 84px; border-radius: 50%; font-size: 40px; background: rgba(150, 60, 20, .75); color: #fff; box-shadow: 0 4px 0 rgba(80,30,10,.8); }
   #bAxe:active, #bAxe.on { transform: translateY(3px); box-shadow: 0 1px 0 rgba(80,30,10,.8); }
   #hint { position: fixed; right: 12px; bottom: 112px; font-size: 13px; opacity: .85; pointer-events: none; text-align: right; }
@@ -100,6 +106,8 @@
 <div id="polaroid"><canvas id="pc" width="320" height="240"></canvas><div>RecorderZ · „Ce faceți aici?”</div></div>
 <div id="joy"><i></i></div>
 <button id="bAxe" title="Taie (Space)">🪓</button>
+<button id="bTruck">🚚 Urcă în camion</button>
+<div id="bearIcon">🐻</div>
 <div id="hint"><kbd>WASD</kbd> mers · <kbd>Shift</kbd> fugi · <kbd>Space</kbd> taie · trage cu mouse-ul ca să rotești camera</div>
 <div id="overlay" class="show"><div class="panel" id="panel"></div></div>
 
@@ -130,12 +138,12 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xb8d6e6);
-scene.fog = new THREE.Fog(0xa9c6b8, 35, 120);
-const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 400);
+scene.background = new THREE.Color(0xdcc8a6);
+scene.fog = new THREE.Fog(0xcdb896, 30, 150);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 600);
 const alexCam = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
-scene.add(new THREE.HemisphereLight(0xe4f2ff, 0x3f5a35, 1.6));
-const sun = new THREE.DirectionalLight(0xfff0d0, 2.2);
+scene.add(new THREE.HemisphereLight(0xffe6c0, 0x5a4630, 1.55));
+const sun = new THREE.DirectionalLight(0xffc98a, 2.5);
 sun.castShadow = true;
 sun.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 38, bottom: -38, near: 1, far: 160 });
@@ -172,9 +180,9 @@ tapeTex.repeat.set(4, 1);
 const MAT = {
   bark: M(0x5e4128), barkSick: M(0x7b7368), barkDead: M(0x928b80),
   birch: M(0xffffff, { map: birchTex('#efebe2', 22) }), birchSick: M(0xffffff, { map: birchTex('#b9b1a3', 40) }),
-  leaf: [M(0x2f6e2c), M(0x3b7d31), M(0x2a6230)], spruce: [M(0x1d4a2a), M(0x235230), M(0x1a4426)],
-  birchLeaf: [M(0x6aa83e), M(0x7db34a)],
-  sick: [M(0xb08f35), M(0xa06a2a), M(0x8f7c38)], spruceSick: [M(0x8d5a2a), M(0xa06c33), M(0x7e5a36)],
+  leaf: [M(0xc8641e), M(0xd9a02a), M(0x8a9a2a), M(0xb4421c), M(0xe0b23a)], spruce: [M(0x1d4a2a), M(0x235230), M(0x1a4426)],
+  birchLeaf: [M(0xe8c23a), M(0xf0d050), M(0xd8a82a)],
+  sick: [M(0x6e5a40), M(0x75644c), M(0x5f5040)], spruceSick: [M(0x8d5a2a), M(0xa06c33), M(0x7e5a36)],
   fungus: M(0xdcc490), stumpTop: M(0xffffff, { map: ringTex }), tape: M(0xffffff, { map: tapeTex }),
   black: M(0x151515), steel: M(0xb9c0c6), handle: M(0x8a5a2b), rock: M(0x8a8a84), bush: M(0x3d6e2e),
   grass: M(0x4f8a35), truck: M(0x2f6aa8), truckDark: M(0x22303c), tire: M(0x1b1b1b), log: M(0x7a5532),
@@ -197,46 +205,196 @@ function part(g, m, sx, sy, sz, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sha
   o.castShadow = shadow; o.receiveShadow = true; return o;
 }
 
-// ---------------- teren ----------------
+// ---------------- teren: dealuri, vale cu pârâu, drum forestier ----------------
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const curve = (arr, n) => new THREE.CatmullRomCurve3(arr.map(([x, z]) => new THREE.Vector3(x, 0, z))).getPoints(n).map(v => [v.x, v.z]);
+function makePath(pts) {
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (const [x, z] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  return { pts, x0, x1, z0, z1 };
+}
+function segInfo(px, pz, P, pad = 12) {
+  if (px < P.x0 - pad || px > P.x1 + pad || pz < P.z0 - pad || pz > P.z1 + pad) return { d: 99, i: 0 };
+  const pts = P.pts; let best = 1e9, bi = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const ax = pts[i][0], az = pts[i][1], dx = pts[i + 1][0] - ax, dz = pts[i + 1][1] - az;
+    const t = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz), 0, 1);
+    const ex = px - ax - dx * t, ez = pz - az - dz * t, d = ex * ex + ez * ez;
+    if (d < best) { best = d; bi = i + t; }
+  }
+  return { d: Math.sqrt(best), i: bi };
+}
+const lerpArr = (a, i) => { const k = Math.min(a.length - 1, Math.floor(i)), f = i - k; return a[k] + (a[Math.min(k + 1, a.length - 1)] - a[k]) * f; };
+const ROADS = [
+  makePath(curve([[0, -9], [-14, -20], [-32, -30], [-52, -26], [-70, -38], [-88, -58], [-104, -72], [-130, -84]], 70)),
+  makePath(curve([[0, -9], [14, 2], [26, 20], [31, 42], [42, 62], [64, 78], [88, 86], [130, 96]], 70)),
+];
+const CREEK = makePath(curve([[-160, 28], [-112, 52], [-72, 38], [-32, 62], [8, 50], [48, 68], [90, 56], [160, 74]], 90));
+function baseH(x, z, dc) {
+  const r = Math.hypot(x, z);
+  let h = 5.5 * Math.sin(x * 0.033 + 1.3) * Math.cos(z * 0.029 - 0.4) + 3.2 * Math.sin(x * 0.071 + z * 0.052)
+    + 1.4 * Math.sin(x * 0.16 - z * 0.13) + 0.5 * Math.sin(x * 0.33 + z * 0.29);
+  h *= smooth(10, 34, r);
+  const v = Math.exp(-((dc / 14) ** 2));
+  h = h + (-3.6 + h * 0.15 - h) * v - 0.9 * Math.exp(-((dc / 2.2) ** 2));
+  return h + Math.max(0, r - 108) * 0.35;
+}
+const ROAD_H = ROADS.map(P => {
+  let h = P.pts.map(([x, z]) => baseH(x, z, segInfo(x, z, CREEK).d));
+  for (let it = 0; it < 5; it++) h = h.map((_, i) => { let s = 0; for (let k = -5; k <= 5; k++) s += h[clamp(i + k, 0, h.length - 1)]; return s / 11; });
+  for (let i = 0; i < 4; i++) h[i] *= i / 4;
+  return h;
+});
+function heightAt(x, z) {
+  const dc = segInfo(x, z, CREEK, 30).d;
+  let h = baseH(x, z, dc);
+  for (let r = 0; r < ROADS.length; r++) {
+    const s = segInfo(x, z, ROADS[r]);
+    if (s.d < 8) { const w = (1 - smooth(3.2, 7.5, s.d)) * smooth(3.5, 6.5, dc); h += (lerpArr(ROAD_H[r], s.i) - h) * w; }
+  }
+  return h;
+}
+const roadDist = (x, z) => Math.min(...ROADS.map(P => segInfo(x, z, P).d));
+const creekDist = (x, z) => segInfo(x, z, CREEK, 30).d;
+// podul peste pârâu (unde drumul 2 taie pârâul)
+const BRIDGE = (() => {
+  let best = 1e9, bi = 0; const pts = ROADS[1].pts;
+  pts.forEach(([x, z], i) => { const d = creekDist(x, z); if (d < best) { best = d; bi = i; } });
+  const [x, z] = pts[bi], [ax, az] = pts[bi - 1], [bx, bz] = pts[bi + 1], L = Math.hypot(bx - ax, bz - az);
+  return { x, z, dx: (bx - ax) / L, dz: (bz - az) / L, y: ROAD_H[1][bi] + 0.15, len: 15 };
+})();
+function walkH(x, z) {
+  let h = heightAt(x, z);
+  const rx = x - BRIDGE.x, rz = z - BRIDGE.z, along = rx * BRIDGE.dx + rz * BRIDGE.dz, across = -rx * BRIDGE.dz + rz * BRIDGE.dx;
+  if (Math.abs(along) < BRIDGE.len / 2 && Math.abs(across) < 2.3) h = Math.max(h, BRIDGE.y + 0.12);
+  return h;
+}
 {
-  const G = new THREE.PlaneGeometry(330, 330, 90, 90); G.rotateX(-Math.PI / 2);
-  const p = G.attributes.position, col = [], c = new THREE.Color();
+  const N = isTouch ? 120 : 150;
+  const G = new THREE.PlaneGeometry(340, 340, N, N); G.rotateX(-Math.PI / 2);
+  const p = G.attributes.position, col = [], c = new THREE.Color(), dirt = new THREE.Color(0x7a5a38), moss = new THREE.Color(0x4f6a2c);
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x, z);
+    p.setY(i, heightAt(x, z));
     const n = (Math.sin(x * 0.11) + Math.sin(z * 0.13 + 1) + Math.sin((x + z) * 0.05)) / 3;
-    c.setHSL(0.26 + n * 0.03, 0.42, 0.25 + n * 0.05 + Math.random() * 0.02);
-    if (r < CLEAR_R + 3) c.lerp(new THREE.Color(0x8a7a52), clamp((CLEAR_R + 3 - r) / 6, 0, 0.55));
+    c.setHSL(0.09 + n * 0.035 + Math.random() * 0.01, 0.36, 0.27 + n * 0.05 + Math.random() * 0.025);
+    c.lerp(moss, clamp(1 - creekDist(x, z) / 12, 0, 0.7));
+    if (r < CLEAR_R + 3) c.lerp(dirt, clamp((CLEAR_R + 3 - r) / 6, 0, 0.6));
+    const rd = roadDist(x, z); if (rd < 6) c.lerp(dirt, (1 - rd / 6) * 0.8);
     col.push(c.r, c.g, c.b);
-    if (r > 115) p.setY(i, (r - 115) * 0.12);
   }
   G.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   G.computeVertexNormals();
   const ground = new THREE.Mesh(G, new THREE.MeshLambertMaterial({ vertexColors: true }));
   ground.receiveShadow = true; scene.add(ground);
 
-  const dummy = new THREE.Object3D();
-  const scatter = (geom, mat, n, rMin, rMax, fn, shadow = false) => {
+  // panglici: drumul și apa
+  const ribbon = (pts, width, yf, mat, skip) => {
+    const pos = [], uv = [], idx = []; let v = 0, dist = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const [x, z] = pts[i], a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+      let tx = b[0] - a[0], tz = b[1] - a[1]; const L = Math.hypot(tx, tz) || 1; tx /= L; tz /= L;
+      if (i) dist += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]);
+      for (const s of [-1, 1]) { const px = x - tz * width / 2 * s, pz = z + tx * width / 2 * s; pos.push(px, yf(px, pz, i), pz); uv.push(s < 0 ? 0 : 1, dist / width); }
+      if (i && !(skip && skip(x, z))) idx.push(v - 2, v - 1, v, v - 1, v + 1, v);
+      v += 2;
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m); return m;
+  };
+  const roadTex = canvasTex(64, 64, (g, w, h) => {
+    g.fillStyle = '#86653f'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { g.fillStyle = Math.random() < 0.5 ? 'rgba(60,40,20,.35)' : 'rgba(170,140,100,.35)'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    g.fillStyle = 'rgba(55,35,18,.45)'; g.fillRect(12, 0, 9, h); g.fillRect(w - 21, 0, 9, h);
+    g.fillStyle = 'rgba(95,110,40,.5)'; g.fillRect(28, 0, 8, h);
+  }, true);
+  const roadMat = new THREE.MeshLambertMaterial({ map: roadTex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const nearBridge = (x, z) => Math.hypot(x - BRIDGE.x, z - BRIDGE.z) < BRIDGE.len / 2;
+  for (const P of ROADS) ribbon(P.pts, 4.6, (x, z) => heightAt(x, z) + 0.06, roadMat, nearBridge);
+  ribbon(CREEK.pts, 3.4, (x, z, i) => heightAt(...CREEK.pts[i]) + 0.5, new THREE.MeshLambertMaterial({ color: 0x4d7f94, transparent: true, opacity: 0.85, emissive: 0x10283a }));
+
+  // podul
+  const br = new THREE.Group(); br.position.set(BRIDGE.x, BRIDGE.y, BRIDGE.z); br.rotation.y = Math.atan2(BRIDGE.dx, BRIDGE.dz);
+  const plank = M(0x6e4c2c), beam = M(0x4a3420);
+  br.add(part(BOX, plank, 4.8, 0.25, BRIDGE.len));
+  for (const s of [-1, 1]) {
+    br.add(part(BOX, beam, 0.15, 0.15, BRIDGE.len, s * 2.3, 1.0, 0));
+    for (let k = -3; k <= 3; k++) br.add(part(BOX, beam, 0.15, 1.0, 0.15, s * 2.3, 0.5, k * BRIDGE.len / 7));
+    for (const k of [-0.3, 0.3]) br.add(part(BOX, beam, 0.3, 5, 0.3, s * 2.1, -2.5, k * BRIDGE.len));
+  }
+  scene.add(br);
+
+  const dummy = new THREE.Object3D(), cc = new THREE.Color();
+  const scatter = (geom, mat, n, rMin, rMax, fn, shadow = false, colors, ok) => {
     const im = new THREE.InstancedMesh(geom, mat, n);
     for (let i = 0; i < n; i++) {
-      const a = Math.random() * TAU, r = Math.sqrt(rand(rMin * rMin, rMax * rMax));
-      dummy.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); dummy.rotation.set(0, Math.random() * TAU, 0); dummy.scale.set(1, 1, 1);
+      let x, z;
+      for (let k = 0; k < 20; k++) { const a = Math.random() * TAU, r = Math.sqrt(rand(rMin * rMin, rMax * rMax)); x = Math.cos(a) * r; z = Math.sin(a) * r; if (!ok || ok(x, z)) break; }
+      dummy.position.set(x, heightAt(x, z), z); dummy.rotation.set(0, Math.random() * TAU, 0); dummy.scale.set(1, 1, 1);
       fn(dummy); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix);
+      if (colors) im.setColorAt(i, cc.setHex(colors[Math.floor(Math.random() * colors.length)]));
     }
     im.castShadow = shadow; im.receiveShadow = true; scene.add(im); return im;
   };
-  scatter(new THREE.ConeGeometry(0.09, 0.5, 3).translate(0, 0.25, 0), MAT.grass, isTouch ? 1500 : 3500, 3, 112, d => d.scale.setScalar(rand(0.6, 1.4)));
-  scatter(geo.blob, MAT.rock, 70, 16, 108, d => { d.scale.set(rand(0.4, 1.1), rand(0.3, 0.7), rand(0.4, 1.1)); d.position.y = 0.1; }, true);
-  scatter(new THREE.IcosahedronGeometry(1, 0), MAT.bush, 140, 16, 110, d => { const s = rand(0.5, 1.1); d.scale.set(s, s * 0.7, s); d.position.y = s * 0.35; }, true);
+  const offRoad = (x, z) => roadDist(x, z) > 3 && creekDist(x, z) > 2;
+  scatter(new THREE.ConeGeometry(0.09, 0.5, 3).translate(0, 0.25, 0), new THREE.MeshLambertMaterial(), isTouch ? 1500 : 3500, 3, 112, d => d.scale.setScalar(rand(0.6, 1.4)), false, [0x8f8a3a, 0x7a7a30, 0x9c8040, 0x6b7a2e], offRoad);
+  // frunze căzute
+  const leafGeo = new THREE.PlaneGeometry(0.32, 0.22).rotateX(-Math.PI / 2);
+  const leafCols = [0xc8641e, 0xd99a2a, 0xb4421c, 0xe0b040, 0x8a4a1c, 0xa87a2a, 0x9a3018];
+  scatter(leafGeo, new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }), isTouch ? 4000 : 9000, 2, 112, d => { d.position.y += 0.04; d.rotation.set(rand(-0.25, 0.25), Math.random() * TAU, rand(-0.25, 0.25)); d.scale.setScalar(rand(0.7, 1.5)); }, false, leafCols);
+  scatter(geo.blob, MAT.rock, 60, 16, 108, d => { d.scale.set(rand(0.4, 1.1), rand(0.3, 0.7), rand(0.4, 1.1)); d.position.y += 0.1; }, true, null, offRoad);
+  { // pietre pe malul pârâului
+    const im = new THREE.InstancedMesh(geo.blob, MAT.rock, 90);
+    for (let i = 0; i < 90; i++) {
+      const [x, z] = CREEK.pts[Math.floor(Math.random() * CREEK.pts.length)], a = Math.random() * TAU, d = rand(1.2, 3.5);
+      const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
+      dummy.position.set(px, heightAt(px, pz) + 0.1, pz); dummy.rotation.set(0, Math.random() * TAU, 0); dummy.scale.set(rand(0.3, 0.8), rand(0.2, 0.45), rand(0.3, 0.8));
+      dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix);
+    }
+    im.castShadow = true; scene.add(im);
+  }
+  scatter(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 150, 16, 110, d => { const s = rand(0.5, 1.1); d.scale.set(s, s * 0.7, s); d.position.y += s * 0.3; }, true, [0x9a3a22, 0x7a6a2a, 0xb0602a, 0x5a6a2a, 0x8a2a1a], offRoad);
   // brazi de margine (decor, nu se taie)
-  const nB = 320, trunkIM = new THREE.InstancedMesh(geo.cyl, MAT.bark, nB), coneIM = new THREE.InstancedMesh(geo.cone, MAT.spruce[0], nB * 2);
+  const nB = 340, trunkIM = new THREE.InstancedMesh(geo.cyl, MAT.bark, nB), coneIM = new THREE.InstancedMesh(geo.cone, MAT.spruce[0], nB * 2);
   for (let i = 0; i < nB; i++) {
-    const a = Math.random() * TAU, r = rand(110, 150), s = rand(1.1, 1.8), x = Math.cos(a) * r, z = Math.sin(a) * r, y = Math.max(0, (r - 115) * 0.12);
+    const a = Math.random() * TAU, r = rand(110, 165), s = rand(1.1, 1.8), x = Math.cos(a) * r, z = Math.sin(a) * r, y = heightAt(x, z) - 0.3;
     dummy.rotation.set(0, 0, 0);
     dummy.position.set(x, y, z); dummy.scale.set(0.35 * s, 8 * s, 0.35 * s); dummy.updateMatrix(); trunkIM.setMatrixAt(i, dummy.matrix);
     dummy.position.set(x, y + 1.6 * s, z); dummy.scale.set(2.4 * s, 4.5 * s, 2.4 * s); dummy.updateMatrix(); coneIM.setMatrixAt(i * 2, dummy.matrix);
     dummy.position.set(x, y + 4.4 * s, z); dummy.scale.set(1.7 * s, 3.8 * s, 1.7 * s); dummy.updateMatrix(); coneIM.setMatrixAt(i * 2 + 1, dummy.matrix);
   }
   scene.add(trunkIM, coneIM);
+  // munții din zare
+  const mtn = new THREE.Group(), mM = [0x8b8f9e, 0x7d8494, 0x969aa6].map(c => new THREE.MeshBasicMaterial({ color: c, fog: false }));
+  const snow = new THREE.MeshBasicMaterial({ color: 0xe8e6e0, fog: false });
+  for (let i = 0; i < 46; i++) {
+    const a = i / 46 * TAU + rand(-0.05, 0.05), r = rand(270, 320), h = rand(45, 95), w = rand(55, 95);
+    const m = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 5).translate(0, 0.5, 0), mM[i % 3]); m.scale.set(w, h, w * 0.7);
+    m.position.set(Math.cos(a) * r, -8, Math.sin(a) * r); m.rotation.y = Math.random() * TAU; mtn.add(m);
+    if (h > 80) { const s = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 5).translate(0, 0.5, 0), snow); s.scale.set(w * 0.22, h * 0.22, w * 0.7 * 0.22); s.position.set(m.position.x, -8 + h * 0.78 + 0.5, m.position.z); s.rotation.y = m.rotation.y; mtn.add(s); }
+  }
+  scene.add(mtn);
+}
+
+// frunze care cad prin aer
+const FALL_N = isTouch ? 90 : 180;
+const fallIM = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.22, 0.16), new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }), FALL_N);
+const fallL = [];
+for (let i = 0; i < FALL_N; i++) {
+  fallL.push({ x: rand(-30, 30), y: rand(0, 14), z: rand(-30, 30), ph: Math.random() * TAU, sp: rand(0.6, 1.2), rx: Math.random() * TAU });
+  fallIM.setColorAt(i, new THREE.Color([0xc8641e, 0xd99a2a, 0xb4421c, 0xe0b040, 0xa04a1c][i % 5]));
+}
+fallIM.frustumCulled = false; scene.add(fallIM);
+const _fd = new THREE.Object3D();
+function fallingLeaves(dt, cx, cy, cz) {
+  for (let i = 0; i < FALL_N; i++) {
+    const l = fallL[i];
+    l.ph += dt * 2 * l.sp; l.y -= dt * 0.9 * l.sp; l.x += Math.sin(l.ph) * dt * 0.8 + dt * 0.4; l.z += Math.cos(l.ph * 0.7) * dt * 0.6;
+    if (l.y < -1 || Math.abs(l.x) > 30 || Math.abs(l.z) > 30) { l.x = rand(-28, 28); l.z = rand(-28, 28); l.y = rand(8, 16); }
+    _fd.position.set(cx + l.x, cy + l.y, cz + l.z); _fd.rotation.set(l.rx + l.ph, l.ph * 0.6, Math.sin(l.ph) * 0.8); _fd.updateMatrix();
+    fallIM.setMatrixAt(i, _fd.matrix);
+  }
+  fallIM.instanceMatrix.needsUpdate = true;
 }
 
 // ---------------- camionul ----------------
@@ -326,7 +484,7 @@ function buildForest(sd) {
   for (let tries = 0; tries < 4000 && pts.length < 160; tries++) {
     const a = srand() * TAU, r = Math.sqrt(16 * 16 + srand() * (FOREST_R * FOREST_R - 256));
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (Math.hypot(x - TRUCK.x, z - TRUCK.z) < 14) continue;
+    if (Math.hypot(x - TRUCK.x, z - TRUCK.z) < 14 || roadDist(x, z) < 5.5 || creekDist(x, z) < 4.5) continue;
     if (pts.every(p => (p.x - x) ** 2 + (p.z - z) ** 2 > 4.6 * 4.6)) pts.push({ x, z });
   }
   for (const p of pts) {
@@ -338,7 +496,8 @@ function buildForest(sd) {
     t.maxHp = t.hp = Math.round(3 + size * 3 + (type === 'stejar' ? 1 : 0));
     t.name = TYPE_NAME[type] + (healthy ? ' sănătos' : dead ? ' uscat' : ' bolnav');
     t.mesh = makeTreeMesh(t);
-    t.pivot = new THREE.Group(); t.pivot.position.set(p.x, 0, p.z); t.pivot.add(t.mesh); scene.add(t.pivot);
+    t.y = Math.min(...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => heightAt(p.x + a * (t.trunkR + 0.2), p.z + b * (t.trunkR + 0.2)))) - 0.12;
+    t.pivot = new THREE.Group(); t.pivot.position.set(p.x, t.y, p.z); t.pivot.add(t.mesh); scene.add(t.pivot);
     trees.push(t);
   }
 }
@@ -374,7 +533,7 @@ axe.add(part(BOX, MAT.steel, 0.06, 0.12, 0.08, 0, -0.76, 0.07));
 const backLogs = new THREE.Group(); backLogs.position.set(0, 1.18, -0.26); P.g.add(backLogs);
 for (const [y, z] of [[0, 0], [0.18, 0.02], [0.09, -0.15]]) backLogs.add(part(geo.log, MAT.log, 0.09, 0.85, 0.09, 0, y, z, 0, 0, Math.PI / 2));
 scene.add(P.g);
-Object.assign(P, { x: 0, z: 5, yaw: Math.PI, phase: 0, swing: -1, swingT: 0, hitDone: false, swingTree: null, axeTilt: -2.3 });
+Object.assign(P, { x: 0, y: 0, z: 5, yaw: Math.PI, phase: 0, swing: -1, swingT: 0, hitDone: false, swingTree: null, axeTilt: -2.3 });
 
 // Alex Nedea
 function makeAlex() {
@@ -415,7 +574,7 @@ function makeAlex() {
     ln.position.y = 0.04; fan.add(ln);
   }
   A.g.visible = false; scene.add(A.g);
-  Object.assign(A, { active: false, x: 0, z: 0, yaw: 0, tYaw: 0, state: 'off', timer: 0, life: 0, wp: null, spawnIn: 15, phase: 0, said: false });
+  Object.assign(A, { active: false, x: 0, y: 0, z: 0, yaw: 0, tYaw: 0, state: 'off', timer: 0, life: 0, wp: null, spawnIn: 15, phase: 0, said: false });
   Object.assign(A, { aCam, aFlash, nameTag, fan });
   camInHand(A);
   return A;
@@ -423,11 +582,43 @@ function makeAlex() {
 function camInHand(A) { A.rArm.add(A.aCam); A.aCam.position.set(0, -0.68, 0.06); A.aCam.rotation.set(Math.PI / 2, 0, 0); }
 function camAtFace(A) { A.g.add(A.aCam); A.aCam.position.set(0, 1.68, 0.36); A.aCam.rotation.set(0, 0, 0); }
 const ALEXES = [makeAlex(), makeAlex()];
+
+// urșii
+const BEAR_SEE = 16, BEAR_ANG = 1.2, BEAR_SMELL = 6, BEAR_RUN = 6.3;
+const bearFur = M(0x5a3a22), bearDark = M(0x3a2414), bearSnout = M(0x9a7550);
+const exclTex = canvasTex(64, 64, (g, w, h) => {
+  g.fillStyle = '#e8261b'; g.beginPath(); g.arc(32, 32, 28, 0, TAU); g.fill();
+  g.fillStyle = '#fff'; g.font = 'bold 46px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('!', 32, 35);
+});
+function makeBear() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  body.add(part(BOX, bearFur, 1.05, 0.95, 1.9, 0, 1.05, 0));
+  body.add(part(BOX, bearFur, 0.95, 0.35, 0.7, 0, 1.6, 0.35));
+  const head = new THREE.Group(); head.position.set(0, 1.25, 1.05); body.add(head);
+  head.add(part(BOX, bearFur, 0.62, 0.55, 0.55, 0, 0, 0.15));
+  head.add(part(BOX, bearSnout, 0.32, 0.26, 0.32, 0, -0.08, 0.52));
+  head.add(part(BOX, MAT.black, 0.12, 0.08, 0.05, 0, -0.02, 0.69, 0, 0, 0, false));
+  for (const x of [-0.22, 0.22]) {
+    head.add(part(BOX, bearDark, 0.14, 0.14, 0.08, x, 0.33, 0.05));
+    head.add(part(BOX, MAT.black, 0.06, 0.06, 0.02, x * 0.6, 0.1, 0.43, 0, 0, 0, false));
+  }
+  const legs = [];
+  for (const [x, z] of [[-0.36, 0.7], [0.36, 0.7], [-0.36, -0.7], [0.36, -0.7]]) {
+    const p = new THREE.Group(); p.position.set(x, 0.75, z);
+    p.add(part(BOX, bearFur, 0.3, 0.78, 0.36, 0, -0.38, 0)); p.add(part(BOX, bearDark, 0.32, 0.12, 0.42, 0, -0.74, 0.04));
+    body.add(p); legs.push(p);
+  }
+  const excl = new THREE.Sprite(new THREE.SpriteMaterial({ map: exclTex, depthTest: false, transparent: true }));
+  excl.scale.set(0.8, 0.8, 1); excl.position.set(0, 2.6, 0.4); excl.renderOrder = 11; excl.visible = false; g.add(excl);
+  g.visible = false; scene.add(g);
+  return { g, body, head, legs, excl, x: 0, y: 0, z: 0, yaw: 0, tYaw: 0, state: 'off', timer: 0, chaseT: 0, cool: 0, wp: null, phase: 0 };
+}
+const BEARS = [makeBear(), makeBear()];
 ALEXES[1].spawnIn = 35;
 
 // inel pe copacul țintă
-const ring = new THREE.Mesh(new THREE.RingGeometry(1, 1.18, 40), new THREE.MeshBasicMaterial({ color: 0x55dd55, transparent: true, opacity: 0.85, depthWrite: false }));
-ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; ring.visible = false; scene.add(ring);
+const ring = new THREE.Mesh(new THREE.RingGeometry(1, 1.18, 40), new THREE.MeshBasicMaterial({ color: 0x55dd55, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false }));
+ring.rotation.x = -Math.PI / 2; ring.renderOrder = 5; ring.position.y = 0.06; ring.visible = false; scene.add(ring);
 
 // așchii / frunze
 const parts = [];
@@ -475,6 +666,7 @@ const sfx = {
   bad() { sTone(220, 0.25, 'sawtooth', 0.15); sTone(165, 0.4, 'sawtooth', 0.15, 0.22); },
   bird() { const f = rand(2600, 3800), n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) sTone(f, 0.09, 'sine', 0.05, i * 0.13, f * rand(1.15, 1.4)); },
   nope() { sTone(300, 0.1, 'square', 0.06); },
+  growl() { sTone(70, 1.1, 'sawtooth', 0.22, 0, 45); sNoise(1.1, 'lowpass', 260, 0.6, 0, 120); sTone(95, 0.9, 'square', 0.06, 0.1, 60); },
 };
 function say(text) {
   if (muted || !('speechSynthesis' in window)) return;
@@ -554,19 +746,19 @@ function alexHears() {
 function hitTree(t) {
   sfx.chop(); t.wob = 1;
   const dx = P.x - t.x, dz = P.z - t.z, d = Math.hypot(dx, dz) || 1;
-  for (let i = 0; i < 6; i++) spawnPart(t.x + dx / d * t.trunkR, 0.75, t.z + dz / d * t.trunkR, dx / d * rand(1, 3) + rand(-1.5, 1.5), rand(2, 4), dz / d * rand(1, 3) + rand(-1.5, 1.5), 0xd9b07a, rand(0.05, 0.1), 1.2);
+  for (let i = 0; i < 6; i++) spawnPart(t.x + dx / d * t.trunkR, t.y + 0.85, t.z + dz / d * t.trunkR, dx / d * rand(1, 3) + rand(-1.5, 1.5), rand(2, 4), dz / d * rand(1, 3) + rand(-1.5, 1.5), 0xd9b07a, rand(0.05, 0.1), 1.2);
   t.hp--;
   const w = t.healthy && alexSees();
   if (w) { caught(t, w); return; }
-  alexHears();
+  alexHears(); bearsHear();
   if (t.hp <= 0) fell(t);
 }
 function fell(t) {
   t.state = 'falling'; t.th = 0.03; t.om = 0.25; t.bounces = 0;
   const dx = t.x - P.x, dz = t.z - P.z, d = Math.hypot(dx, dz) || 1;
   t.dir = { x: dx / d, z: dz / d }; t.axis = new THREE.Vector3(t.dir.z, 0, -t.dir.x);
-  t.rest = Math.PI / 2 - (t.dead ? 0.03 : 0.1);
-  t.stump = part(geo.stump, [MAT.bark, MAT.stumpTop, MAT.stumpTop], t.trunkR * 1.08, 0.42, t.trunkR * 1.08, t.x, 0, t.z);
+  { const L = t.H * 0.6, hc = heightAt(t.x + t.dir.x * L, t.z + t.dir.z * L) - t.y; t.rest = Math.acos(clamp((hc + (t.dead ? 0.3 : 0.9)) / L, -0.6, 0.98)); }
+  t.stump = part(geo.stump, [MAT.bark, MAT.stumpTop, MAT.stumpTop], t.trunkR * 1.08, 0.55, t.trunkR * 1.08, t.x, t.y, t.z);
   if (t.type === 'mesteacan') t.stump.material = [MAT.birch, MAT.stumpTop, MAT.stumpTop];
   scene.add(t.stump);
   S.load.push(t.value);
@@ -584,7 +776,7 @@ function caught(t, A) {
   A.state = 'photo'; A.timer = 0; A.said = false;
   sfx.bad();
   toast(`📷 Prins! Alex Nedea ți-a confiscat lemnele (−${fmt(lost)} lei)`, 'bad', 3.5);
-  if (S.strikes >= MAX_STRIKES) S.endAt = 5;
+  if (S.strikes >= MAX_STRIKES && S.endAt <= 0) { S.endAt = 5; S.endWhy = 'strikes'; }
   hud();
 }
 function sell() {
@@ -655,7 +847,15 @@ function alexUpdate(A, dt) {
     if (A.state === 'photo' && A.aCam.parent === A.g) { A.rArm.rotation.set(-2.0, 0, 0.35); A.lArm.rotation.set(-2.0, 0, -0.35); }
   }
   if (A.state !== 'photo') { A.rArm.rotation.z = 0; A.lArm.rotation.z = 0; }
-  A.g.position.set(A.x, 0, A.z); A.g.rotation.y = A.yaw;
+  A.y = walkH(A.x, A.z); A.g.position.set(A.x, A.y, A.z); A.g.rotation.y = A.yaw;
+  { // conul se mulează pe teren
+    const cs = Math.cos(A.yaw), sn = Math.sin(A.yaw);
+    for (const pa of [A.fan.geometry.attributes.position, A.fan.children[0].geometry.attributes.position]) {
+      for (let i = 0; i < pa.count; i++) { const lx = pa.getX(i), lz = pa.getZ(i); pa.setY(i, heightAt(A.x + lx * cs + lz * sn, A.z - lx * sn + lz * cs) - A.y + 0.1 - (pa === A.fan.geometry.attributes.position ? 0 : -0.03)); }
+      pa.needsUpdate = true;
+    }
+    A.fan.position.y = 0; A.fan.children[0].position.y = 0;
+  }
   const seen = sees(A);
   A.fan.material.opacity = seen ? 0.3 + 0.1 * Math.sin(S.clock * 12) : 0.14;
   A.fan.visible = A.state !== 'leave';
@@ -666,13 +866,92 @@ function alexLeave(A) {
   A.wp = { x: A.x / r * 112, z: A.z / r * 112 };
 }
 
+// Urșii
+function bearSpawn(B, i) {
+  for (let k = 0; k < 50; k++) {
+    const a = i * Math.PI + rand(-1.2, 1.2), r = rand(55, 95), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.hypot(x - P.x, z - P.z) < 45) continue;
+    Object.assign(B, { x, z, yaw: Math.random() * TAU, state: 'wander', timer: 0, cool: 0, chaseT: 0 });
+    B.tYaw = B.yaw; B.g.visible = true; bearPickWp(B); return;
+  }
+}
+function bearPickWp(B) {
+  for (let k = 0; k < 20; k++) {
+    const a = Math.random() * TAU, d = rand(10, 30), x = B.x + Math.cos(a) * d, z = B.z + Math.sin(a) * d, r = Math.hypot(x, z);
+    if (r > FOREST_R - 3 || r < CLEAR_R + 12) continue;
+    B.wp = { x, z }; B.timer = 20; return;
+  }
+  B.wp = { x: B.x * 0.8, z: B.z * 0.8 }; B.timer = 20;
+}
+function bearSees(B) {
+  if (B.cool > 0 || S.endAt > 0 || S.inTruck) return false;
+  const d = Math.hypot(P.x - B.x, P.z - B.z);
+  if (d < BEAR_SMELL) return true;
+  return d < BEAR_SEE && Math.abs(angDiff(B.yaw, Math.atan2(P.x - B.x, P.z - B.z))) < BEAR_ANG;
+}
+function bearsHear() {
+  for (const B of BEARS) {
+    if (B.state !== 'wander' || B.cool > 0 || Math.hypot(P.x - B.x, P.z - B.z) > 22 || Math.random() > 0.4) continue;
+    B.state = 'listen'; B.timer = 2.5;
+  }
+}
+function bearUpdate(B, dt) {
+  if (B.state === 'off') return;
+  const dx = P.x - B.x, dz = P.z - B.z, dist = Math.hypot(dx, dz), toP = Math.atan2(dx, dz);
+  if (B.cool > 0) B.cool -= dt;
+  let speed = 0, turn = 2;
+  if (B.state === 'wander' || B.state === 'listen') {
+    if (B.state === 'listen') { B.tYaw = toP; turn = 1.8; if ((B.timer -= dt) <= 0) B.state = 'wander'; }
+    else {
+      const wx = B.wp.x - B.x, wz = B.wp.z - B.z;
+      B.tYaw = Math.atan2(wx, wz); speed = 1.3;
+      if (Math.hypot(wx, wz) < 1.5 || (B.timer -= dt) <= 0) bearPickWp(B);
+    }
+    if (bearSees(B) && !S.inTruck) {
+      B.state = 'notice'; B.timer = 1.1; sfx.growl();
+      toast('🐻 Te-a văzut ursul! FUGI la camion! (Shift)', 'bad', 2.5);
+    }
+  } else if (B.state === 'notice') {
+    B.tYaw = toP; turn = 6; B.timer -= dt;
+    if (B.timer <= 0) { B.state = 'chase'; B.chaseT = 0; }
+  } else if (B.state === 'chase') {
+    B.tYaw = toP; turn = 5; speed = BEAR_RUN; B.chaseT += dt;
+    if (dist < 1.6 && S.endAt <= 0 && !S.inTruck) {
+      B.state = 'eat'; B.timer = 0; S.freeze = 99; P.swing = -1; S.endAt = 2.2; S.endWhy = 'bear'; S.shake = 1;
+      sfx.growl(); sfx.growl(); const f = $('flash'); f.style.background = '#b01010'; f.style.transition = 'none'; f.style.opacity = 0.75;
+      requestAnimationFrame(() => { f.style.transition = 'opacity 1.6s'; f.style.opacity = 0; setTimeout(() => f.style.background = '#fff', 1700); });
+    } else if (S.inTruck || dist > 38 || B.chaseT > 14) {
+      B.state = 'wander'; B.cool = S.inTruck ? 12 : 8;
+      const r = Math.hypot(B.x, B.z) || 1; B.wp = { x: B.x / r * 80, z: B.z / r * 80 }; B.timer = 25;
+      toast(S.inTruck ? '🐻 Ursul a renunțat și pleacă în treaba lui.' : '😮‍💨 Ai scăpat de urs!', 'good', 2.2);
+    }
+  } else if (B.state === 'eat') {
+    B.tYaw = toP; turn = 8; B.timer += dt;
+    B.body.rotation.x = -0.5 + Math.sin(B.timer * 10) * 0.08; B.head.rotation.x = Math.sin(B.timer * 14) * 0.25;
+  }
+  const dy = angDiff(B.yaw, B.tYaw); B.yaw += clamp(dy, -turn * dt, turn * dt);
+  if (speed && Math.abs(dy) < 1.3) {
+    B.x += Math.sin(B.yaw) * speed * dt; B.z += Math.cos(B.yaw) * speed * dt;
+    pushOut(B, 0.8);
+    if (B.state !== 'chase' && Math.hypot(B.x, B.z) < CLEAR_R + 10) { const r = Math.hypot(B.x, B.z); B.x *= (CLEAR_R + 10) / r; B.z *= (CLEAR_R + 10) / r; }
+    B.phase += dt * speed * (speed > 3 ? 2.2 : 3.5);
+    const a = Math.sin(B.phase) * (speed > 3 ? 0.8 : 0.45);
+    B.legs[0].rotation.x = a; B.legs[3].rotation.x = speed > 3 ? a : -a; B.legs[1].rotation.x = -a; B.legs[2].rotation.x = speed > 3 ? -a : a;
+    if (speed > 3) B.body.rotation.x = Math.sin(B.phase * 2) * 0.06;
+  } else if (B.state !== 'eat') { for (const l of B.legs) l.rotation.x *= 0.85; B.body.rotation.x *= 0.85; }
+  if (B.state === 'notice') B.body.rotation.x = -0.35;
+  B.y = walkH(B.x, B.z); B.g.position.set(B.x, B.y, B.z); B.g.rotation.y = B.yaw;
+  B.excl.visible = B.state === 'notice' || B.state === 'chase';
+  if (B.excl.visible) B.excl.scale.setScalar(0.8 + Math.sin(S.clock * 12) * 0.1);
+}
+
 // ---------------- update ----------------
 function update(dt) {
   S.clock += dt;
   if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.remove('show');
   if (bubbleT > 0 && (bubbleT -= dt) <= 0) $('bubble').style.display = 'none';
   if (S.msgCd > 0) S.msgCd -= dt;
-  if (S.endAt > 0 && (S.endAt -= dt) <= 0) { endGame('strikes'); return; }
+  if (S.endAt > 0 && (S.endAt -= dt) <= 0) { endGame(S.endWhy || 'strikes'); return; }
   S.time += dt;
   if (S.time >= DAY && S.endAt <= 0) { endGame('time'); return; }
   if ((S.birdT -= dt) <= 0) { S.birdT = rand(3, 9); sfx.bird(); }
@@ -686,7 +965,7 @@ function update(dt) {
   const mag = Math.min(1, Math.hypot(f, s));
   if (S.freeze > 0) S.freeze -= dt;
   let moving = false;
-  if (mag > 0.15 && P.swing < 0 && S.freeze <= 0) {
+  if (mag > 0.15 && P.swing < 0 && S.freeze <= 0 && !S.inTruck) {
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw), rx = -Math.cos(camYaw), rz = Math.sin(camYaw);
     let mx = fx * f + rx * s, mz = fz * f + rz * s; const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
     const sp = (keys.ShiftLeft || keys.ShiftRight || (joy && mag > 0.95) ? 7 : 4.2) * mag;
@@ -699,7 +978,7 @@ function update(dt) {
   // tăiat
   const T = findTarget(); S.target = T;
   const want = keys.Space || keys.KeyF || axeBtn;
-  if (P.swing < 0 && want && !moving && S.freeze <= 0) {
+  if (P.swing < 0 && want && !moving && S.freeze <= 0 && !S.inTruck) {
     if (!T) { if (S.msgCd <= 0) { toast('Apropie-te de un copac 🌲', '', 1.2); S.msgCd = 1.5; } }
     else if (T.state === 'sealed') { if (S.msgCd <= 0) { sfx.nope(); toast('Copacul e sigilat, e probă în reportaj!', 'bad', 1.6); S.msgCd = 2; } }
     else if (S.load.length >= CAP) { if (S.msgCd <= 0) { sfx.nope(); toast('Ai mâinile pline! Du lemnele la camion 🚚', '', 1.8); S.msgCd = 2; } }
@@ -728,7 +1007,10 @@ function update(dt) {
     P.axeTilt += (-2.3 - P.axeTilt) * Math.min(1, dt * 8);
   }
   axe.rotation.x = P.axeTilt;
-  P.g.position.set(P.x, 0, P.z); P.g.rotation.y = P.yaw;
+  if (S.inTruck) { P.x = TRUCK.x + 4.2; P.z = TRUCK.z; }
+  P.y = walkH(P.x, P.z); P.g.position.set(P.x, P.y, P.z); P.g.rotation.y = P.yaw; P.g.visible = !S.inTruck;
+  $('bTruck').classList.toggle('show', S.inTruck || (Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 9 && S.freeze <= 0));
+  $('bTruck').textContent = S.inTruck ? '⬇ Coboară din camion' : '🚚 Urcă în camion';
 
   // camion
   if (S.load.length && Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 6.5) sell();
@@ -743,8 +1025,8 @@ function update(dt) {
       if (t.bounces === 0) {
         sfx.thud(); S.shake = Math.max(S.shake, clamp(1 - Math.hypot(t.x - P.x, t.z - P.z) / 25, 0, 1) * 0.5);
         const cx = t.x + t.dir.x * t.H * 0.7, cz = t.z + t.dir.z * t.H * 0.7;
-        const col = t.dead ? 0x8d877c : t.healthy ? 0x3b7d31 : 0xa98a35;
-        for (let i = 0; i < 16; i++) spawnPart(cx + rand(-2, 2), 0.6, cz + rand(-2, 2), rand(-2, 2), rand(1, 4), rand(-2, 2), col, rand(0.08, 0.16), 1.6);
+        const col = t.dead ? 0x8d877c : t.type === 'brad' ? (t.healthy ? 0x235230 : 0x8d5a2a) : t.healthy ? 0xd08a2a : 0x6e5a40;
+        for (let i = 0; i < 16; i++) spawnPart(cx + rand(-2, 2), heightAt(cx, cz) + 0.6, cz + rand(-2, 2), rand(-2, 2), rand(1, 4), rand(-2, 2), col, rand(0.08, 0.16), 1.6);
       }
       if (t.om > 0.5 && t.bounces < 2) { t.om = -t.om * 0.18; t.bounces++; } else { t.state = 'down'; t.om = 0; }
     }
@@ -752,6 +1034,7 @@ function update(dt) {
   }
 
   for (const A of ALEXES) alexUpdate(A, dt);
+  for (const B of BEARS) bearUpdate(B, dt);
 
   // particule
   for (const p of parts) {
@@ -759,7 +1042,8 @@ function update(dt) {
     p.life -= dt; p.vy -= 9.8 * dt;
     p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
     p.m.rotation.x += dt * 8; p.m.rotation.y += dt * 6;
-    if (p.m.position.y < 0.03) { p.m.position.y = 0.03; p.vx *= 0.5; p.vz *= 0.5; p.vy = 0; }
+    const gy = heightAt(p.m.position.x, p.m.position.z) + 0.03;
+    if (p.m.position.y < gy) { p.m.position.y = gy; p.vx *= 0.5; p.vz *= 0.5; p.vy = 0; }
     if (p.life <= 0) p.m.visible = false;
   }
   hud();
@@ -770,10 +1054,12 @@ const _v = new THREE.Vector3();
 function toScreen(x, y, z) { _v.set(x, y, z).project(camera); return { x: (_v.x + 1) / 2 * innerWidth, y: (1 - _v.y) / 2 * innerHeight, vis: _v.z < 1 }; }
 function placeCamera(dt) {
   const h = 1.5, cp = Math.cos(camPitch);
-  camera.position.set(P.x - Math.sin(camYaw) * camDist * cp, h + camDist * Math.sin(camPitch), P.z - Math.cos(camYaw) * camDist * cp);
+  camera.position.set(P.x - Math.sin(camYaw) * camDist * cp, P.y + h + camDist * Math.sin(camPitch), P.z - Math.cos(camYaw) * camDist * cp);
+  camera.position.y = Math.max(camera.position.y, heightAt(camera.position.x, camera.position.z) + 0.8);
   if (S.shake > 0) { camera.position.x += rand(-1, 1) * S.shake * 0.3; camera.position.y += rand(-1, 1) * S.shake * 0.3; S.shake = Math.max(0, S.shake - dt * 1.5); }
-  camera.lookAt(P.x, h, P.z);
-  sun.position.set(P.x + 30, 55, P.z + 18); sun.target.position.set(P.x, 0, P.z);
+  camera.lookAt(P.x, P.y + h, P.z);
+  sun.position.set(P.x + 50, P.y + 40, P.z + 28); sun.target.position.set(P.x, P.y, P.z);
+  fallingLeaves(Math.min(dt, 0.05), P.x, P.y, P.z);
 }
 const mm = $('mm'), mctx = mm.getContext('2d');
 let mmTick = 0;
@@ -782,14 +1068,23 @@ function drawMinimap() {
   const map = (x, z) => { const dx = x - P.x, dz = z - P.z; return [c + (-dx * cy + dz * sy) * k, c - (dx * sy + dz * cy) * k]; };
   mctx.clearRect(0, 0, W, W);
   mctx.save(); mctx.beginPath(); mctx.arc(c, c, c, 0, TAU); mctx.clip();
-  mctx.fillStyle = 'rgba(30,55,32,.82)'; mctx.fillRect(0, 0, W, W);
+  mctx.fillStyle = 'rgba(62,48,28,.85)'; mctx.fillRect(0, 0, W, W);
   const [bx, by] = map(0, 0); mctx.strokeStyle = 'rgba(255,255,255,.25)'; mctx.lineWidth = 3; mctx.beginPath(); mctx.arc(bx, by, WALL_R * k, 0, TAU); mctx.stroke();
+  mctx.lineCap = 'round'; mctx.lineJoin = 'round';
+  const line = (pts, col, w) => { mctx.strokeStyle = col; mctx.lineWidth = w; mctx.beginPath(); pts.forEach(([x, z], i) => { const [u, v] = map(x, z); i ? mctx.lineTo(u, v) : mctx.moveTo(u, v); }); mctx.stroke(); };
+  line(CREEK.pts, '#4d8fb0', 3.4 * k); for (const R of ROADS) line(R.pts, '#a4825a', 4.6 * k);
   for (const t of trees) {
     const [x, y] = map(t.x, t.z); if ((x - c) ** 2 + (y - c) ** 2 > c * c) continue;
     mctx.fillStyle = t.state === 'sealed' ? '#ffd34d' : !solid(t) ? '#6b5a44' : t.healthy ? '#5fcf5a' : '#c9893a';
     mctx.beginPath(); mctx.arc(x, y, solid(t) ? 5 : 3, 0, TAU); mctx.fill();
   }
   { const [x, y] = map(TRUCK.x, TRUCK.z); mctx.font = '26px sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('🚚', x, y); }
+  for (const B of BEARS) {
+    if (!(B.state === 'notice' || B.state === 'chase' || B.state === 'eat')) continue;
+    const [x, y] = map(B.x, B.z), j = Math.sin(S.clock * 40) * 2;
+    mctx.fillStyle = 'rgba(220,30,20,.85)'; mctx.beginPath(); mctx.arc(x, y, 16, 0, TAU); mctx.fill();
+    mctx.font = '24px sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('🐻', x + j, y);
+  }
   mctx.restore();
   const pa = -angDiff(camYaw, P.yaw);
   mctx.save(); mctx.translate(c, c); mctx.rotate(pa); mctx.fillStyle = '#fff'; mctx.beginPath(); mctx.moveTo(0, -11); mctx.lineTo(8, 8); mctx.lineTo(0, 4); mctx.lineTo(-8, 8); mctx.closePath(); mctx.fill(); mctx.restore();
@@ -797,7 +1092,7 @@ function drawMinimap() {
 function hud3d() {
   const T = S.running ? S.target : null;
   if (T) {
-    ring.visible = true; ring.position.set(T.x, 0.06, T.z); ring.scale.setScalar(T.trunkR + 0.55);
+    ring.visible = true; ring.position.set(T.x, heightAt(T.x, T.z) + 0.12, T.z); ring.scale.setScalar(T.trunkR + 0.55);
     ring.material.color.setHex(T.state === 'sealed' ? 0xffd34d : T.healthy ? 0xff4a3a : 0x55dd55);
     $('treeinfo').classList.add('show');
     $('tiName').textContent = `${T.healthy ? '🌲' : '🍂'} ${T.name} · ${fmt(T.value)} lei`;
@@ -809,14 +1104,17 @@ function hud3d() {
   } else { ring.visible = false; $('treeinfo').classList.remove('show'); }
   const al = $('alert');
   const nAct = ALEXES.filter(a => a.active && a.state !== 'leave').length;
-  if (nAct && S.running) {
+  const bearOn = S.running && BEARS.some(b => b.state === 'notice' || b.state === 'chase' || b.state === 'eat');
+  $('bearIcon').classList.toggle('show', bearOn && !BEARS.some(b => b.state === 'eat'));
+  if (bearOn) { al.classList.add('show', 'seen'); $('alTxt').textContent = '🐻 URSUL TE FUGĂREȘTE! Fugi la camion!'; }
+  else if (nAct && S.running) {
     al.classList.add('show'); const seen = !!alexSees();
     al.classList.toggle('seen', seen);
     $('alTxt').textContent = seen ? '📷 Alex Nedea TE VEDE!' : nAct > 1 ? `📷 ${nAct} Alex Nedea sunt prin pădure` : '📷 Alex Nedea e prin pădure';
   } else al.classList.remove('show');
   const b = $('bubble');
   if (b.style.display === 'block') {
-    const A = bubbleA, p = toScreen(A.x, 2.15, A.z);
+    const A = bubbleA, p = toScreen(A.x, A.y + 2.15, A.z);
     if (p.vis && A.active) { b.style.visibility = 'visible'; b.style.left = clamp(p.x, 140, innerWidth - 140) + 'px'; b.style.top = clamp(p.y, 90, innerHeight - 20) + 'px'; }
     else b.style.visibility = 'hidden';
   }
@@ -824,8 +1122,8 @@ function hud3d() {
 function capturePhoto() {
   const A = S.wantPhoto; S.wantPhoto = false;
   alexCam.aspect = innerWidth / innerHeight; alexCam.updateProjectionMatrix();
-  alexCam.position.set(A.x + Math.sin(A.yaw) * 0.45, 1.72, A.z + Math.cos(A.yaw) * 0.45);
-  alexCam.lookAt(P.x, 1.15, P.z);
+  alexCam.position.set(A.x + Math.sin(A.yaw) * 0.45, A.y + 1.72, A.z + Math.cos(A.yaw) * 0.45);
+  alexCam.lookAt(P.x, P.y + 1.15, P.z);
   const hide = [ring, ...ALEXES.map(a => a.g)], vis = hide.map(o => o.visible);
   hide.forEach(o => o.visible = false);
   renderer.render(scene, alexCam);
@@ -848,10 +1146,11 @@ function startPanel(resume) {
   showOverlay(`<h1>🪓 Pădurarul</h1>
   <p>Ești tăietor de lemne. Ai o zi de muncă (08:00–18:00) să faci cât mai mulți bani. Copacii <b>sănătoși</b> se vând scump, dar legal ai voie să tai <b>doar copacii bolnavi sau uscați</b>.</p>
   <div class="legend">
-    <div class="lg-ok">🌲 <b>Sănătos</b>: coroană deasă, verde închis, scoarță maro. Bani mulți (150–390 lei), dar <b>ilegal</b>. Inel <span style="color:#d0301f">roșu</span>.</div>
-    <div class="lg-bad">🍂 <b>Bolnav / uscat</b>: frunze rare, galben-maronii sau deloc, scoarță gri, ciuperci. Puțini bani (25–90 lei), <b>legal</b>. Inel <span style="color:#2f8d2c">verde</span>.</div>
+    <div class="lg-ok">🍁 <b>Sănătos</b>: coroană plină, în culori vii de toamnă (brazii: ace verzi), scoarță maro. Bani mulți (150–390 lei), dar <b>ilegal</b>. Inel <span style="color:#d0301f">roșu</span>.</div>
+    <div class="lg-bad">🍂 <b>Bolnav / uscat</b>: coroană rară, frunze maro-cenușii sau deloc, crengi goale, scoarță gri, ciuperci, brazi ruginii. Puțini bani (25–90 lei), <b>legal</b>. Inel <span style="color:#2f8d2c">verde</span>.</div>
   </div>
   <p>📷 Prin pădure umblă <b>doi Alex Nedea de la RecorderZ</b> și nu apar pe hartă, așa că fii atent în jur. Conul roșu de pe jos e ce vede fiecare. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
+  <p>🐻 În pădure sunt și <b>doi urși</b>. Dacă te văd (sau te miros de aproape), mârâie, apare un <b style="color:#d0201a">!</b> deasupra lor și apoi aleargă după tine. Fugi (<b>Shift</b> sau joystick-ul tras la maxim) la camion și urcă în el (butonul 🚚 sau <kbd>T</kbd>): acolo ursul renunță și pleacă. Dacă te prinde, te mănâncă.</p>
   <p>🚚 Încap ${CAP} copaci pe tine. Du-i la camion ca să-i vinzi.</p>
   <ul>${isTouch ? '<li>Joystick: trage cu degetul în stânga ecranului</li><li>Camera: trage în dreapta ecranului</li><li>🪓 ține apăsat ca să tai</li>'
     : '<li><kbd>W A S D</kbd> / săgeți: mers · <kbd>Shift</kbd>: fugi</li><li><kbd>Space</kbd> sau <kbd>F</kbd> (ține apăsat): taie</li><li>Trage cu mouse-ul (sau <kbd>Q</kbd>/<kbd>E</kbd>): rotești camera · rotița: zoom</li><li><kbd>Esc</kbd>: pauză · <kbd>M</kbd>: sunet</li>'}</ul>
@@ -863,6 +1162,7 @@ function newGame() {
   buildForest(1 + Math.floor(Math.random() * 1e6));
   Object.assign(S, { running: true, paused: false, time: 0, money: 0, load: [], strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0, photos: [], freeze: 0, endAt: 0, shake: 0 });
   Object.assign(P, { x: 0, z: 5, yaw: Math.PI, swing: -1 }); camYaw = Math.PI;
+  S.endWhy = ''; S.inTruck = false; P.g.visible = true; BEARS.forEach((B, i) => { B.body.rotation.x = 0; B.head.rotation.x = 0; bearSpawn(B, i); });
   ALEXES.forEach((A, i) => { Object.assign(A, { active: false, state: 'off', spawnIn: i ? rand(35, 50) : rand(12, 20) }); A.g.visible = false; });
   setTruckLogs(0); hideOverlay(); hud();
   toast('Bună dimineața! Taie copacii bolnavi 🍂', '', 2.5);
@@ -871,8 +1171,8 @@ function endGame(why) {
   S.running = false; ring.visible = false; $('bubble').style.display = 'none'; bubbleT = 0;
   const rec = S.money > S.best; if (rec) { S.best = S.money; try { localStorage.setItem(SAVE + '-best', S.money); } catch (e) {} }
   const photos = S.photos.length ? `<p style="text-align:center"><b>Pozele lui Alex Nedea:</b></p><div class="photos">${S.photos.map(s => `<img src="${s}" alt="poză">`).join('')}</div>` : '';
-  showOverlay(`<h2>${why === 'time' ? '🌇 S-a terminat ziua de muncă' : '📺 Reportajul a apărut pe RecorderZ!'}</h2>
-  <p style="text-align:center">${why === 'time' ? (S.strikes ? 'Ai scăpat, dar nu chiar curat.' : S.cutBad ? 'Nimeni nu te-a prins… de data asta.' : 'Pădurar model, totul legal! 👏') : '„Tăieri ilegale în pădure” — 3 reportaje, gata cu meseria.'}</p>
+  showOverlay(`<h2>${why === 'time' ? '🌇 S-a terminat ziua de muncă' : why === 'bear' ? '🐻 Te-a mâncat ursul!' : '📺 Reportajul a apărut pe RecorderZ!'}</h2>
+  <p style="text-align:center">${why === 'bear' ? 'Urșii din pădurile românești nu glumesc. Data viitoare fugi la camion mai repede!' : why === 'time' ? (S.strikes ? 'Ai scăpat, dar nu chiar curat.' : S.cutBad ? 'Nimeni nu te-a prins… de data asta.' : 'Pădurar model, totul legal! 👏') : '„Tăieri ilegale în pădure” — 3 reportaje, gata cu meseria.'}</p>
   <div class="stats"><span>💰 Bani câștigați</span><b>${fmt(S.money)} lei</b><span>🍂 Copaci bolnavi tăiați</span><b>${S.cutOk}</b><span>🌲 Copaci sănătoși tăiați</span><b>${S.cutBad}</b><span>🚫 Lemne confiscate</span><b>${fmt(S.lost)} lei</b><span>📷 Reportaje</span><b>${S.strikes}/${MAX_STRIKES}</b></div>
   ${photos}
   <div class="best">${rec ? '🏆 Record nou!' : 'Record: ' + fmt(S.best) + ' lei'}</div>
@@ -893,12 +1193,19 @@ $('bSound').textContent = muted ? '🔇' : '🔊';
 $('bSound').onclick = () => { audio(); toggleMute(); };
 $('bPause').onclick = () => { audio(); togglePause(); };
 
+function toggleTruck() {
+  if (S.inTruck) { S.inTruck = false; P.x = TRUCK.x + 4.2; P.z = TRUCK.z + 2.9; P.yaw = 0; toast('⬇ Ai coborât din camion', '', 1.4); }
+  else if (Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 9 && S.freeze <= 0) { S.inTruck = true; P.swing = -1; toast('🚚 Ești în camion. Aici urșii nu te pot prinde.', 'good', 2); }
+}
+$('bTruck').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); if (S.running && !S.paused) toggleTruck(); });
+
 // ---------------- input ----------------
 addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   audio(); keys[e.code] = true;
   if (e.code === 'Escape') togglePause();
   else if (e.code === 'KeyM') toggleMute();
+  else if (e.code === 'KeyT' && S.running && !S.paused) toggleTruck();
   else if (e.code === 'Enter' && $('overlay').classList.contains('show')) { const b = $('go') || $('again'); if (b) b.click(); }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
@@ -955,7 +1262,7 @@ $('loading').remove();
 frame();
 
 // pentru teste
-window.__pd = { S, P, A: ALEXES[0], ALEXES, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
+window.__pd = { toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
   setCam(y) { camYaw = y; }, place(o, x, z, yaw) { o.x = x; o.z = z; if (yaw !== undefined) o.yaw = o.tYaw = yaw; } };
 </script>
 </body>
