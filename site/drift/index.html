@@ -1512,36 +1512,57 @@ function wetAt(x, z) {
 {
   const w = WET.x1 - WET.x0, h = WET.z1 - WET.z0, cx = (WET.x0 + WET.x1) / 2, cz = (WET.z0 + WET.z1) / 2;
   const wetTex = canvasTex(512, 512, (g, W, H) => {
-    g.fillStyle = '#2a2c30'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#1b2430'; g.fillRect(0, 0, W, H);
     const img = g.getImageData(0, 0, W, H);
-    for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 22; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n + 2; }
+    for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 18; img.data[i] += n; img.data[i + 1] += n + 2; img.data[i + 2] += n + 8; }
     g.putImageData(img, 0, 0);
   }, [w / 6, h / 6]);
-  const wetMat = new THREE.MeshPhysicalMaterial({ map: wetTex, roughness: 0.22, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.5 });
+  const wetMat = new THREE.MeshPhysicalMaterial({ map: wetTex, roughness: 0.4, metalness: 0.0, clearcoat: 0.5, clearcoatRoughness: 0.1, envMapIntensity: 0.45 });
+  // pelicula de apă: albastră, semitransparentă, cu valuri mici care se mișcă (normal map generat, se repetă fără cusături)
+  const ripple = (() => {
+    const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d'), img = g.createImageData(N, N), hgt = new Float32Array(N * N);
+    const waves = [[3, 2, 0.0], [5, -4, 1.3], [-7, 6, 2.1], [11, 3, 0.7], [-2, 13, 2.9], [17, -9, 1.9]];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let v = 0; for (const [a, b, ph] of waves) v += Math.sin((a * x + b * y) / N * PI * 2 + ph) / Math.hypot(a, b); hgt[y * N + x] = v; }
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const dx = hgt[y * N + (x + 1) % N] - hgt[y * N + (x + N - 1) % N], dy = hgt[((y + 1) % N) * N + x] - hgt[((y + N - 1) % N) * N + x];
+      const nx = -dx * 6, ny = -dy * 6, nz = 1, l = Math.hypot(nx, ny, nz), i = (y * N + x) * 4;
+      img.data[i] = (nx / l * 0.5 + 0.5) * 255; img.data[i + 1] = (ny / l * 0.5 + 0.5) * 255; img.data[i + 2] = (nz / l * 0.5 + 0.5) * 255; img.data[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w / 9, h / 9); return t;
+  })();
+  const waterMat = new THREE.MeshPhysicalMaterial({ color: 0x1d78d6, transparent: true, opacity: 0.42, roughness: 0.08, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05,
+    normalMap: ripple, normalScale: new THREE.Vector2(0.6, 0.6), envMapIntensity: 0.7, depthWrite: false });
+  WET.water = waterMat;
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(w - 1, h - 1), waterMat);
+  water.rotation.x = -PI / 2; water.position.set(cx, 0.0105, cz); water.receiveShadow = true; scene.add(water);
   const pad = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wetMat);
   pad.rotation.x = -PI / 2; pad.position.set(cx, 0.008, cz); pad.receiveShadow = true; scene.add(pad);
   // bălți
-  const puddleMat = new THREE.MeshPhysicalMaterial({ color: 0x0d1014, roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0, envMapIntensity: 2.2, transparent: true, opacity: 0.9, depthWrite: false });
+  const puddleMat = new THREE.MeshPhysicalMaterial({ color: 0x0f4f9e, roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0, envMapIntensity: 0.8, transparent: true, opacity: 0.72, depthWrite: false, normalMap: ripple, normalScale: new THREE.Vector2(0.3, 0.3) });
   const pg = new THREE.CircleGeometry(1, 32);
   for (let i = 0; i < 34; i++) {
     const p = new THREE.Mesh(pg, puddleMat);
     p.rotation.x = -PI / 2; p.rotation.z = rnd() * PI;
     p.scale.set(2 + rnd() * 5, 1.2 + rnd() * 3, 1);
-    p.position.set(WET.x0 + 6 + rnd() * (w - 12), 0.011, WET.z0 + 6 + rnd() * (h - 12));
+    p.position.set(WET.x0 + 6 + rnd() * (w - 12), 0.015, WET.z0 + 6 + rnd() * (h - 12));
     scene.add(p);
   }
   // margine albastră întreruptă
-  const blue = new THREE.MeshBasicMaterial({ color: 0x2f8cff, transparent: true, opacity: 0.8, depthWrite: false });
-  for (let x = WET.x0; x < WET.x1; x += 4) { stripe(x + 1, WET.z0, 2, 0.4, 0, blue); stripe(x + 1, WET.z1, 2, 0.4, 0, blue); }
-  for (let z = WET.z0; z < WET.z1; z += 4) { stripe(WET.x0, z + 1, 0.4, 2, 0, blue); stripe(WET.x1, z + 1, 0.4, 2, 0, blue); }
+  const blue = new THREE.MeshBasicMaterial({ color: 0x1f8bff, depthWrite: false });
+  const white = new THREE.MeshBasicMaterial({ color: 0xffffff, depthWrite: false });
+  // bordură groasă albastru-alb, ca o bandă de avertizare
+  for (let x = WET.x0; x < WET.x1; x += 4) for (const zz of [WET.z0, WET.z1]) { stripe(x + 1, zz, 2, 0.9, 0, blue); stripe(x + 3, zz, 2, 0.9, 0, white); }
+  for (let z = WET.z0; z < WET.z1; z += 4) for (const xx of [WET.x0, WET.x1]) { stripe(xx, z + 1, 0.9, 2, 0, blue); stripe(xx, z + 3, 0.9, 2, 0, white); }
   // inscripție pe asfalt
   const label = canvasTex(512, 128, (g, W, H) => {
-    g.clearRect(0, 0, W, H); g.fillStyle = 'rgba(120,190,255,.9)'; g.font = 'bold 84px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('ZONĂ UMEDĂ', W / 2, H / 2);
+    g.clearRect(0, 0, W, H); g.font = 'bold 84px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 10; g.strokeStyle = '#0b3d8c'; g.strokeText('ZONĂ UMEDĂ', W / 2, H / 2); g.fillStyle = '#ffffff'; g.fillText('ZONĂ UMEDĂ', W / 2, H / 2);
   });
   const lm = new THREE.MeshBasicMaterial({ map: label, transparent: true, depthWrite: false });
   for (const [x, z, r] of [[cx, WET.z1 - 5, PI], [WET.x0 + 5, cz, -PI / 2], [cx, WET.z0 + 5, 0]]) {
-    const t = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), lm); t.rotation.x = -PI / 2; t.rotation.z = r; t.position.set(x, 0.013, z); scene.add(t);
+    const t = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), lm); t.rotation.x = -PI / 2; t.rotation.z = r; t.position.set(x, 0.02, z); scene.add(t);
   }
   // indicatoare „drum alunecos”
   const signTex = canvasTex(128, 128, (g) => {
@@ -2433,6 +2454,7 @@ function frame(now) {
   acc += dt;
   while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); acc -= STEP; }
   updateBallMesh(dt);
+  if (WET.water) { WET.water.normalMap.offset.x += dt * 0.012; WET.water.normalMap.offset.y += dt * 0.007; }
   updateDrift(dt);
   updateCones(dt);
   updateSmoke(dt);
