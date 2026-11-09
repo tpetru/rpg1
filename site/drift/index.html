@@ -111,7 +111,7 @@
 <div id="speedo" class="panel"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="a" id="ang">unghi 0°</div></div>
 <div id="help" class="panel">
   <kbd>↑</kbd> accelerație &nbsp; <kbd>↓</kbd> frână / marșarier &nbsp; <kbd>←</kbd><kbd>→</kbd> direcție<br>
-  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>0</kbd> <kbd>-</kbd> vehicul &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>S</kbd> sirenă &nbsp; <kbd>H</kbd> claxon &nbsp; <kbd>A</kbd> aripi &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
+  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>0</kbd> <kbd>-</kbd> vehicul &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>S</kbd> sirenă &nbsp; <kbd>H</kbd> claxon &nbsp; <kbd>A</kbd> aripi &nbsp; trage cu mouse-ul sau <kbd>Ctrl</kbd>+mouse: cameră 360°
 </div>
 <button id="optBtn" aria-label="Meniu">☰</button>
 <div id="optPanel"></div>
@@ -3386,7 +3386,7 @@ let camMode = 0;
 // cameră liberă: cât ții Ctrl apăsat, mouse-ul rotește camera în jurul mașinii (rotița = zoom)
 const orbit = { on: false, yaw: 0, pitch: 0.28, dist: 8, k: 0 };
 addEventListener('mousemove', e => {
-  if (!orbit.on) return;
+  if (!orbit.on || !e.ctrlKey) return;
   orbit.yaw -= e.movementX * 0.006;
   orbit.pitch = Math.max(-0.05, Math.min(1.35, orbit.pitch + e.movementY * 0.005));
 });
@@ -3416,6 +3416,21 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { if (e.key === 'Control') orbit.on = false; if (e.key === 'h' || e.key === 'H') sound.horn(false); const k = e.code === 'Space' ? 'Space' : e.key; if (GAME_KEYS.includes(k)) keys[k] = false; });
 addEventListener('blur', () => { GAME_KEYS.forEach(k => keys[k] = false); orbit.on = false; });
+// camera liberă și cu mouse-ul sau degetul: tragi pe ecran ca să ocolești mașina; după ce dai drumul, camera revine singură
+{ const cv = document.getElementById('game'); let drag = null, back = 0, lx = 0, ly = 0;
+  cv.addEventListener('pointerdown', e => {
+    if (e.button > 0 || drag) return; drag = e.pointerId; lx = e.clientX; ly = e.clientY; clearTimeout(back);
+    if (!orbit.on) { orbit.on = true; orbit.yaw = 0; orbit.pitch = 0.28; }
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  cv.addEventListener('pointermove', e => {
+    if (e.pointerId !== drag) return;
+    orbit.yaw -= (e.clientX - lx) * 0.008; orbit.pitch = Math.max(-0.05, Math.min(1.35, orbit.pitch + (e.clientY - ly) * 0.006)); lx = e.clientX; ly = e.clientY;
+  });
+  const end = e => { if (e.pointerId !== drag) return; drag = null; clearTimeout(back); back = setTimeout(() => { if (!drag && !keys.Control) orbit.on = false; }, 3500); };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.style.touchAction = 'none';
+}
 document.querySelectorAll('#touch button').forEach(b => {
   const k = b.dataset.k;
   const set = v => e => { e.preventDefault(); if (v && k === 'Space') car.flapQ = true; keys[k] = v; b.classList.toggle('on', v); sound.init(); };
