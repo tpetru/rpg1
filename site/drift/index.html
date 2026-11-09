@@ -25,6 +25,8 @@
   #cars .hdr:hover { background:rgba(255,255,255,.08); }
   #cars .opt { display:none; align-items:center; gap:8px; padding:4px 10px 6px; font-size:13px; cursor:pointer; user-select:none; }
   #cars .opt.show { display:flex; }
+  #cars .setlink { display:block; padding:8px 10px 4px; font-size:13px; color:#ffb22e; text-decoration:none; }
+  #cars.collapsed .setlink { display:none; }
   #cars .opt input { width:16px; height:16px; accent-color:#ffb22e; margin:0; }
   #cars .hb { font-size:18px; line-height:1; width:18px; text-align:center; }
   #cars .cur { font-weight:700; font-size:14px; }
@@ -1550,7 +1552,57 @@ const aoTex = (() => {
   return new THREE.CanvasTexture(c);
 })();
 
-const carMeshes = CARS.map(spec => { const m = buildCar(spec); m.visible = false; scene.add(m); return m; });
+// setările din /drift/settings/ (salvate în localStorage) se aplică peste valorile din fabrică
+function applySettings() {
+  let st = {}; try { st = JSON.parse(localStorage.getItem('drift-settings') || '{}') || {}; } catch (e) {}
+  for (const S of CARS) {
+    const o = st[S.id]; if (!o) continue;
+    if ('lights' in o) S.noLights = !o.lights;
+    if ('police' in o) S.police = !!o.police;
+    if ('wings' in o) S.wings = !!o.wings;
+    if (o.cp > 0) {                                    // mai mulți cai putere: și forța la roată, și viteza maximă cresc
+      const r = o.cp * 735.5 / S.power; S.power = o.cp * 735.5;
+      S.maxForce *= Math.min(2.5, Math.max(0.35, Math.sqrt(r)));
+      if (S.vmax) S.vmax *= Math.min(3, Math.max(0.5, Math.cbrt(r)));
+    }
+    if (o.drive) S.frontDrive = o.drive === 'fwd' ? 1 : o.drive === 'rwd' ? 0 : (S.frontDrive > 0 && S.frontDrive < 1 ? S.frontDrive : 0.4);
+    for (const k of ['muF', 'muR', 'assist']) if (typeof o[k] === 'number') S[k] = o[k];
+    if (typeof o.steerDeg === 'number') S.steerMax = o.steerDeg * PI / 180;
+  }
+}
+applySettings();
+// girofar pe plafon pentru orice vehicul (Dacia are deja unul al ei)
+const topOf = root => new THREE.Box3().setFromObject(root).max.y;   // înălțimea reală a modelului
+function addLightbar(root, spec) {
+  const y = topOf(root) + 0.02, z = spec.bike || spec.walker ? -0.3 : 0;
+  const g = new THREE.Group(); g.position.set(0, y, z); root.add(g);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(Math.min(1.0, spec.wid * 0.6), 0.07, 0.26), MAT.black); g.add(base);
+  const pl = root.userData.police = { L: new THREE.MeshStandardMaterial({ color: 0x0b2a8a, emissive: 0x2a5cff, emissiveIntensity: 0.25, transparent: true, opacity: 0.92 }),
+    R: new THREE.MeshStandardMaterial({ color: 0x0b2a8a, emissive: 0x2a5cff, emissiveIntensity: 0.25, transparent: true, opacity: 0.92 }), gL: glowMat(0x3a6bff), gR: glowMat(0x3a6bff) };
+  const off = Math.min(0.3, spec.wid * 0.18);
+  for (const [sx, mat, gm] of [[-1, pl.L, pl.gL], [1, pl.R, pl.gR]]) {
+    const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.13, 20), mat); dome.position.set(sx * off, 0.1, 0); g.add(dome);
+    const sp = new THREE.Sprite(gm); sp.position.set(sx * off, 0.1, 0); sp.scale.setScalar(2.4); g.add(sp);
+  }
+}
+// aripi pentru orice vehicul: câte una pe fiecare parte, la jumătatea înălțimii
+const WING_GEO = (() => { const g = new THREE.CircleGeometry(1, 12); g.scale(0.5, 0.09, 1); g.rotateX(-PI / 2); g.translate(0.5, 0, 0); return g; })();
+function makeWing(sx, scale) {
+  const featherM = new THREE.MeshStandardMaterial({ color: 0xfbfbf7, roughness: 0.6, side: THREE.DoubleSide });
+  const piv = new THREE.Group(); piv.scale.setScalar(scale);
+  const wing = new THREE.Group(); wing.scale.x = sx; piv.add(wing);
+  const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.9, 4, 8), featherM); arm.rotation.z = PI / 2; arm.position.set(0.5, 0.02, 0.05); wing.add(arm);
+  for (let k = 0; k < 9; k++) { const f = new THREE.Mesh(WING_GEO, featherM), len = 0.55 + k * 0.09; f.scale.set(len, 1, 1); f.position.set(0.1 + k * 0.1, -0.005 * k, 0.02); f.rotation.y = -0.35 - k * 0.13; wing.add(f); }
+  piv.traverse(o => { if (o.isMesh) o.castShadow = true; }); piv.visible = false;
+  return piv;
+}
+function addWings(root, spec) {
+  const sc = Math.min(2.6, Math.max(0.9, spec.len / 2.6)), list = [], H = topOf(root);
+  for (const sx of [-1, 1]) { const piv = makeWing(sx, sc); piv.position.set(sx * spec.wid * 0.45, H * (spec.bike || spec.walker ? 0.55 : 0.62), 0); root.add(piv); list.push({ piv, sx }); }
+  root.userData.wings = list; root.userData.flapPh = 0;
+}
+const carMeshes = CARS.map(spec => { const m = buildCar(spec); if (spec.police && !m.userData.police) addLightbar(m, spec); if (spec.wings && !m.userData.wings) addWings(m, spec);
+  m.visible = false; scene.add(m); return m; });
 const trailerMesh = buildTrailer();
 // starea semiremorcii: (tx, tz) = mijlocul grupului de axe; urmează cârligul ca o bară rigidă
 const trailer = { tx: 0, tz: 0, yaw: 0, vx: 0, vz: 0, ang: 0 };
@@ -2427,11 +2479,11 @@ function physicsStep(dt) {
   const flying = !!(S.wings && wingsOn);
   const up = keys.ArrowUp, down = keys.ArrowDown, hb = keys.Space && !flying;
   // zbor ca la Flappy Bird: fiecare apăsare pe Space dă un impuls în sus
-  if (flying && keys.Space && !car.flapHeld) {
+  if (flying && (car.flapQ || keys.Space && !car.flapHeld)) {
     if (!car.air) { car.air = true; car.airT = 0; car.vy = 0; }
     car.vy = Math.max(car.vy, 0) * 0.3 + 6.2; car.flapT = 1; sound.flap();
   }
-  car.flapHeld = keys.Space;
+  car.flapHeld = keys.Space; car.flapQ = false;
   let throttle = 0, brake = 0;
   if (up && long > -0.5) throttle = S.vmax && long > S.vmax ? 0 : 1;
   else if (up) brake = 1;
@@ -2935,7 +2987,7 @@ function updateLights(mesh, dt) {
   const fw = _cv.x * Math.sin(car.yaw) + _cv.z * Math.cos(car.yaw);
   const front = Math.max(0, fw), back = Math.max(0, -fw);
   const k = night ? 1 : 0.55;
-  G.head.opacity = k * (0.25 + 0.75 * front) * (night ? 1 : 0.8);
+  G.head.opacity = car.spec.noLights ? 0 : k * (0.25 + 0.75 * front) * (night ? 1 : 0.8);
   G.tail.opacity = (night ? 0.75 : 0.3) * (0.3 + 0.7 * back);
   G.brake.opacity = braking * (night ? 0.6 : 0.7) * (0.3 + 0.7 * back);
   G.rev.opacity = reversing * (night ? 0.9 : 0.6) * (0.3 + 0.7 * back);
@@ -2993,10 +3045,11 @@ CARS.forEach((s, i) => {
   carsEl.appendChild(b);
 });
 const descEl = document.createElement('div'); descEl.id = 'desc'; carsEl.appendChild(descEl);
+const setLink = document.createElement('a'); setLink.className = 'setlink'; setLink.href = 'settings/'; setLink.textContent = '⚙ Setări vehicule'; carsEl.appendChild(setLink);
 // aripi: bifă (și tasta A); contează doar la vehiculele care pot avea aripi
 let wingsOn = false;
 const wingOpt = document.createElement('label'); wingOpt.className = 'opt';
-wingOpt.innerHTML = '<input type="checkbox" id="wingsChk"> Aripi la cai <span style="opacity:.6">(A · Space = zbor)</span>';
+wingOpt.innerHTML = '<input type="checkbox" id="wingsChk"> <span id="wingsLbl">Aripi</span> <span style="opacity:.6">(A · Space = zbor)</span>';
 carsEl.insertBefore(wingOpt, hdr.nextSibling);
 function setWings(v) {
   wingsOn = v; $('wingsChk').checked = v;
@@ -3019,7 +3072,7 @@ function selectCar(i) {
   [...carsEl.querySelectorAll('.car')].forEach((b, j) => b.classList.toggle('on', j === i));
   descEl.textContent = car.spec.desc;
   $('curCar').textContent = car.spec.name;
-  wingOpt.classList.toggle('show', !!car.spec.wings); setWings(wingsOn);
+  wingOpt.classList.toggle('show', !!car.spec.wings); $('wingsLbl').textContent = car.spec.horses ? 'Aripi la cai' : 'Aripi'; setWings(wingsOn);
   attachBeams(carMeshes[i]);
   if (sirenOn && !car.spec.police) setSiren(false);
   resetCar(true);
@@ -3047,6 +3100,7 @@ const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
 addEventListener('keydown', e => {
   if (e.key === 'Control') { if (!orbit.on) { orbit.on = true; orbit.yaw = 0; orbit.pitch = 0.28; } e.preventDefault(); }
   const k = e.code === 'Space' ? 'Space' : e.key;
+  if (k === 'Space' && !e.repeat) car.flapQ = true;     // o apăsare scurtă nu se pierde între două cadre
   if (GAME_KEYS.includes(k)) { keys[k] = true; e.preventDefault(); }
   sound.init();
   if (e.repeat) return;
@@ -3057,14 +3111,14 @@ addEventListener('keydown', e => {
   if (e.key === 'm' || e.key === 'M') sound.toggle();
   if (e.key === 'n' || e.key === 'N') setNight(!night);
   if (e.key === 'h' || e.key === 'H') sound.horn(true, car.spec.horn);
-  if ((e.key === 'a' || e.key === 'A') && !e.repeat) { setWings(!wingsOn); pop(car.spec.wings ? (wingsOn ? 'Aripi activate · Space = zbor' : 'Aripi dezactivate') : (wingsOn ? 'Aripi activate (doar la căruța cu cai)' : 'Aripi dezactivate')); }
+  if ((e.key === 'a' || e.key === 'A') && !e.repeat) { setWings(!wingsOn); pop(car.spec.wings ? (wingsOn ? 'Aripi activate · Space = zbor' : 'Aripi dezactivate') : (wingsOn ? 'Vehiculul ăsta nu poate avea aripi (vezi Setări)' : 'Aripi dezactivate')); }
   if ((e.key === 's' || e.key === 'S') && car.spec.police) { setSiren(!sirenOn); pop(sirenOn ? 'Girofar și sirenă pornite' : 'Sirenă oprită'); }
 });
 addEventListener('keyup', e => { if (e.key === 'Control') orbit.on = false; if (e.key === 'h' || e.key === 'H') sound.horn(false); const k = e.code === 'Space' ? 'Space' : e.key; if (GAME_KEYS.includes(k)) keys[k] = false; });
 addEventListener('blur', () => { GAME_KEYS.forEach(k => keys[k] = false); orbit.on = false; });
 document.querySelectorAll('#touch button').forEach(b => {
   const k = b.dataset.k;
-  const set = v => e => { e.preventDefault(); keys[k] = v; b.classList.toggle('on', v); sound.init(); };
+  const set = v => e => { e.preventDefault(); if (v && k === 'Space') car.flapQ = true; keys[k] = v; b.classList.toggle('on', v); sound.init(); };
   b.addEventListener('pointerdown', set(true)); b.addEventListener('pointerup', set(false));
   b.addEventListener('pointerleave', set(false)); b.addEventListener('pointercancel', set(false));
 });
@@ -3099,7 +3153,6 @@ function wingStep(ud, dt) {
   }
 }
 function horseGait(ud, dt) {
-  if (ud.wings) wingStep(ud, dt);
   const v = Math.abs(car.long), gallop = v > 7;
   ud.team.rotation.y += (car.steer * 0.9 - ud.team.rotation.y) * Math.min(1, dt * 6);
   const prev = ud.gait; ud.gait += dt * (v < 0.2 ? 0 : 1.2 + v * 0.38);
@@ -3135,6 +3188,7 @@ function visuals(dt) {
     body.rotation.z += (want - body.rotation.z) * Math.min(1, dt * 8);
   } else body.rotation.z = THREE.MathUtils.clamp(-car.ay * 0.009, -0.07, 0.07);   // ruliu
   if (mesh.userData.steerWheel) mesh.userData.steerWheel.rotation.z = -car.steer * 2.2;
+  if (mesh.userData.wings) wingStep(mesh.userData, dt);
   if (mesh.userData.horses) horseGait(mesh.userData, dt);
   if (mesh.userData.walker) walkStep(mesh.userData.walker, dt);
   body.rotation.x = THREE.MathUtils.clamp(-car.ax * 0.006, -0.05, 0.05);   // tangaj
