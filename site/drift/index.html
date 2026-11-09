@@ -57,7 +57,7 @@
   #touch button { width:68px; height:68px; border-radius:50%; border:1px solid var(--line); background:var(--glass);
     color:var(--ink); font-size:26px; touch-action:none; }
   #touch button.on { background:rgba(255,178,46,.35); }
-  @media (pointer:coarse) { #touch { display:flex; } #help { display:none; } }
+  @media (pointer:coarse) { #touch { display:flex; } #help { display:none; } body.menu-open #touch { display:none; } }
   @media (max-width:720px) {
     #cars { width:auto; flex-direction:column; padding:5px; top:auto; bottom:12px; left:12px; }
     #cars { max-height:calc(100% - 150px); }
@@ -98,7 +98,7 @@
 <div id="speedo" class="panel"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="a" id="ang">unghi 0°</div></div>
 <div id="help" class="panel">
   <kbd>↑</kbd> accelerație &nbsp; <kbd>↓</kbd> frână / marșarier &nbsp; <kbd>←</kbd><kbd>→</kbd> direcție<br>
-  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>9</kbd> vehicul &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>S</kbd> sirenă &nbsp; <kbd>H</kbd> claxon &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
+  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>0</kbd> vehicul &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>S</kbd> sirenă &nbsp; <kbd>H</kbd> claxon &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
 </div>
 <div id="pop"></div>
 <div id="touch">
@@ -196,6 +196,15 @@ const CARS = [
     muF:0.9, muR:0.7, BF:8, CF:1.30, BR:8, CR:1.50,
     steerMax:0.55, steerRate:2.2, assist:0.5, brake:0.6, hbGrip:0.5,
     cd:1.0, body:'cart', len:6.2, wid:1.8, wheelR:0.45, hgt:2.2, headY:1.2, camK:1.35, rpmK:0, horn:'horse', noLights:true, horses:true
+  },
+  {
+    id:'mos', name:'Moșul cu roaba', tag:'1 moș-putere · roabă cu o roată',
+    desc:'Un moș cu căciulă care împinge roaba cu pământ. Merge la pas și, dacă îl grăbești, aleargă (cam 15 km/h). Roaba virează strâns, iar pe frâna de mână moșul se învârte pe loc. H = fluieră.',
+    color:0x2f6b3a, mass:110, a:0.45, b:0.9, h:0.7, inertiaF:1.2,
+    power:900, maxForce:420, frontDrive:0.0, vmax:4.3,
+    muF:0.9, muR:1.1, BF:10, CF:1.30, BR:10, CR:1.40,
+    steerMax:0.75, steerRate:3.0, assist:0.6, brake:1.2, hbGrip:0.4,
+    cd:0.5, body:'mos', len:2.0, wid:0.7, wheelR:0.2, hgt:1.7, headY:0.6, camK:0.6, rpmK:0, horn:'whistle', noLights:true, walker:true
   },
 ];
 
@@ -484,6 +493,7 @@ const MODELS = {
   kart: { zF: 0.52, zR: -0.52, z0: -0.91, z1: 0.91 },     // ampatament 1040 mm
   r1: { zF: 0.70, zR: -0.705, z0: -1.03, z1: 1.03 },      // YZF-R1: 2055 mm lungime, ampatament 1405
   cart: { zF: 1.6, zR: -1.65, z0: -3.1, z1: 3.1 },        // „puntea” din față e la cai
+  mos: { zF: 0.6, zR: -0.75, z0: -1.0, z1: 0.85 },        // roata roabei / picioarele moșului
 };
 
 function plateTexture(text) {
@@ -938,6 +948,7 @@ function buildBike(spec) {
   const seat = box(0.26, 0.06, 0.42, 0, 0.84, -0.32, MAT.black, lean); seat.rotation.x = 0.12;
   const tail = box(0.22, 0.14, 0.45, 0, 0.88, -0.62, paint, lean); tail.rotation.x = 0.28;
   box(0.16, 0.04, 0.1, 0, 0.82, -0.86, V.tailMat, lean, false);
+  box(0.08, 0.03, 0.04, 0, 0.76, -0.84, V.revMat, lean, false);          // lampa de marșarier
   const fair = sph(0.28, 0, 0.72, 0.48, paint, [0.95, 0.85, 1.15], lean);
   for (const sx of [-1, 1]) { const side = box(0.02, 0.32, 0.6, sx * 0.21, 0.55, 0.22, white, lean); side.rotation.x = -0.25; }
   const screen = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 10, 0, PI * 2, 0, 1.0), MAT.projGlass); screen.position.set(0, 0.92, 0.58); screen.rotation.x = 1.0; lean.add(screen);
@@ -961,7 +972,7 @@ function buildBike(spec) {
       const bar = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.025, 0.025), MAT.black); bar.position.set(0, 0.58, -0.28); w.pivot.add(bar);
     }
   }
-  V.glow('head', 0.08, 0.7, 0.85, 0.5, lean); V.glow('tail', 0, 0.82, -0.92, 0.45, lean); V.glow('brake', 0, 0.82, -0.92, 0.6, lean);
+  V.glow('head', 0.08, 0.7, 0.85, 0.5, lean); V.glow('tail', 0, 0.82, -0.92, 0.45, lean); V.glow('brake', 0, 0.82, -0.92, 0.6, lean); V.glow('rev', 0, 0.76, -0.9, 0.4, lean);
   mergeStatic(lean); for (const w of wheels) mergeStatic(w.spin);
   return V.root;
 }
@@ -1049,7 +1060,84 @@ function buildCart(spec) {
   return V.root;
 }
 
+function buildMos(spec) {
+  const M = MODELS.mos, V = vehicleShell(spec, M), { box, cyl, sph, tube, body } = V;
+  const green = new THREE.MeshStandardMaterial({ color: spec.color, metalness: 0.5, roughness: 0.45 });
+  const iron = new THREE.MeshStandardMaterial({ color: 0x2a2b2c, metalness: 0.6, roughness: 0.5 });
+  const wood = new THREE.MeshStandardMaterial({ color: 0x9a6a3c, roughness: 0.8 });
+  const dirt = new THREE.MeshStandardMaterial({ color: 0x5a3e28, roughness: 1, flatShading: true });
+  // roaba: cuva de tablă (mai lată sus), mânere de lemn, picioare, furca roții
+  { const g = new THREE.CylinderGeometry(0.42, 0.26, 0.3, 4, 1, true); g.rotateY(PI / 4); g.scale(1, 1, 1.35);
+    const tray = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: spec.color, metalness: 0.5, roughness: 0.45, side: THREE.DoubleSide })); tray.position.set(0, 0.55, 0.12); V.add(tray);
+    box(0.36, 0.02, 0.48, 0, 0.41, 0.12, green);
+    const pile = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 1), dirt); pile.scale.set(1.05, 0.38, 1.3); pile.position.set(0, 0.68, 0.12); V.add(pile); }
+  { const shovel = new THREE.Group(); shovel.position.set(0.08, 0.66, 0.3); shovel.rotation.set(-0.55, 0, -0.3); body.add(shovel);
+    const hd = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 1.0, 6), wood); hd.position.y = 0.5; shovel.add(hd);
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.03), wood); grip.position.y = 1.0; shovel.add(grip);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.015), iron); blade.position.y = -0.08; shovel.add(blade); }
+  for (const sx of [-1, 1]) {
+    tube([sx * 0.2, 0.42, 0.62], [sx * 0.28, 0.72, -0.45], 0.022, wood);                    // mânerele
+    tube([sx * 0.24, 0.45, -0.08], [sx * 0.26, 0.02, -0.14], 0.016, iron);                  // picioarele
+    tube([sx * 0.07, 0.2, 0.6], [sx * 0.18, 0.43, 0.42], 0.012, iron);                      // furca
+  }
+  // moșul: picioare și brațe pe pivoți, ca să meargă
+  const coat = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.9 }), vest = new THREE.MeshStandardMaterial({ color: 0x2c2620, roughness: 0.9 });
+  const pants = new THREE.MeshStandardMaterial({ color: 0x3a3b40, roughness: 0.9 }), skin = new THREE.MeshStandardMaterial({ color: 0xd8a07c, roughness: 0.7 });
+  const furM = new THREE.MeshStandardMaterial({ color: 0x1b1714, roughness: 1 }), beardM = new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: 1, flatShading: true });
+  const man = new THREE.Group(); man.position.set(0, 0, -0.78); man.rotation.x = 0.18; body.add(man);
+  const legs = [];
+  for (const sx of [-1, 1]) {
+    const hip = new THREE.Group(); hip.position.set(sx * 0.1, 0.88, 0); man.add(hip);
+    const th = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.44, 8), pants); th.position.y = -0.22; hip.add(th);
+    const knee = new THREE.Group(); knee.position.y = -0.44; hip.add(knee);
+    const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.42, 8), pants); sh.position.y = -0.21; knee.add(sh);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.08, 0.25), furM); boot.position.set(0, -0.42, 0.05); knee.add(boot);
+    legs.push({ hip, knee, sx });
+  }
+  { const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.42, 6, 12), coat); torso.position.set(0, 1.18, 0.03); torso.scale.set(1.05, 1, 0.8); man.add(torso);
+    const v = new THREE.Mesh(new THREE.CapsuleGeometry(0.175, 0.3, 6, 12), vest); v.position.set(0, 1.22, 0.03); v.scale.set(1.08, 1, 0.84); man.add(v);
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), coat); belly.position.set(0, 1.05, 0.1); man.add(belly);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 12), skin); head.position.set(0, 1.62, 0.06); man.add(head);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), skin); nose.position.set(0, 1.61, 0.18); man.add(nose);
+    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 10), beardM); beard.rotation.x = PI; beard.position.set(0, 1.47, 0.12); man.add(beard);
+    const mus = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.12, 4, 8), beardM); mus.rotation.z = PI / 2; mus.position.set(0, 1.57, 0.17); man.add(mus);
+    for (const sx of [-1, 1]) { const brow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.015, 0.02), beardM); brow.position.set(sx * 0.045, 1.67, 0.165); man.add(brow);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), MAT.black); eye.position.set(sx * 0.042, 1.645, 0.168); man.add(eye); }
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.125, 0.17, 14), furM); cap.position.set(0, 1.74, 0.05); cap.rotation.x = -0.15; man.add(cap); }
+  // brațele țin mânerele roabei
+  const arm = (a, b, r, mat) => { const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.9, va.distanceTo(vb), 8), mat);
+    m.position.copy(va).add(vb).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.clone().sub(va).normalize()); man.add(m); return m; };
+  for (const sx of [-1, 1]) { arm([sx * 0.2, 1.38, 0.03], [sx * 0.25, 1.02, 0.12], 0.055, coat); arm([sx * 0.25, 1.02, 0.12], [sx * 0.28, 0.82, 0.33], 0.045, coat);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), skin); hand.position.set(sx * 0.28, 0.8, 0.35); man.add(hand); }
+  // roata roabei
+  const wheels = V.root.userData.wheels;
+  { const pivot = new THREE.Group(), spin = new THREE.Group(); pivot.add(spin); pivot.position.set(0, 0.2, M.zF); body.add(pivot); pivot.userData.keep = true;
+    const tyre = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.045, 10, 24), MAT.tyre); tyre.rotation.y = PI / 2; spin.add(tyre);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.05, 16), new THREE.MeshStandardMaterial({ color: 0xc23b22, metalness: 0.4, roughness: 0.5 })); rim.rotation.z = PI / 2; spin.add(rim);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.16, 8), iron); hub.rotation.z = PI / 2; spin.add(hub);
+    spin.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    wheels.push({ pivot, spin, front: true, sx: 1 }); }
+  man.userData.keep = true; man.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  Object.assign(V.root.userData, { walker: { man, legs, ph: 0 } });
+  mergeStatic(body);
+  return V.root;
+}
+// moșul merge: picioarele alternează, iar la viteză mare aleargă (pași mai lungi, se apleacă mai mult)
+function walkStep(W, dt) {
+  const v = car.long, run = Math.min(1, Math.max(0, (Math.abs(v) - 1.6) / 2));
+  const prev = W.ph; W.ph += v * dt * (1.6 - run * 0.5);
+  const amp = Math.min(1, Math.abs(v) / 1.2) * (0.45 + run * 0.35);
+  for (const L of W.legs) {
+    const a = Math.sin(W.ph * PI + (L.sx > 0 ? 0 : PI));
+    L.hip.rotation.x = -a * amp; L.knee.rotation.x = Math.max(0, Math.cos(W.ph * PI + (L.sx > 0 ? 0 : PI))) * amp * 1.4;
+  }
+  W.man.position.y = Math.abs(Math.sin(W.ph * PI)) * amp * 0.06;
+  W.man.rotation.x = 0.18 + run * 0.18;
+  if (Math.floor(prev) !== Math.floor(W.ph) && Math.abs(v) > 0.3) sound.clop(0.25 + run * 0.3, true);
+}
+
 function buildCar(spec) {
+  if (spec.body === 'mos') return buildMos(spec);
   if (spec.body === 'volvo') return buildTruck(spec);
   if (spec.body === 'kart') return buildKart(spec);
   if (spec.body === 'r1') return buildBike(spec);
@@ -1785,7 +1873,7 @@ function wetAt(x, z) {
   })();
   const waterMat = new THREE.MeshPhysicalMaterial({ color: 0x1d78d6, transparent: true, opacity: 0.42, roughness: 0.08, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05,
     normalMap: ripple, normalScale: new THREE.Vector2(0.6, 0.6), envMapIntensity: 0.7, depthWrite: false });
-  WET.water = waterMat;
+  WET.water = waterMat; WET.ripple = ripple;
   const water = new THREE.Mesh(new THREE.PlaneGeometry(w - 1, h - 1), waterMat);
   water.rotation.x = -PI / 2; water.position.set(cx, 0.0105, cz); water.receiveShadow = true; scene.add(water);
   const pad = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wetMat);
@@ -1829,6 +1917,192 @@ function wetAt(x, z) {
     const s = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), signMat); s.position.set(x, 2.5, z); s.rotation.y = PI / 4 * (z > 0 ? 1 : 3); scene.add(s);
     OBSTACLES.push({ x, z, r: 0.25 });
   }
+}
+
+// ------------------------------------------------------------------
+// Parcul: iarbă, alei, lac cu lebede, bănci, flori, copaci, felinare
+// ------------------------------------------------------------------
+const PARK = { x0: 91, x1: 171, z0: 64, z1: 136, r: 9 };
+const LAKE = { x: 136, z: 102, r: 11 };
+function grassAt(x, z) {                                 // 1 pe iarbă, 0 pe asfalt / alei
+  const cx = Math.min(Math.max(x, PARK.x0 + PARK.r), PARK.x1 - PARK.r), cz = Math.min(Math.max(z, PARK.z0 + PARK.r), PARK.z1 - PARK.r);
+  if (Math.hypot(x - cx, z - cz) > PARK.r) return 0;
+  const d = Math.hypot(x - LAKE.x, z - LAKE.z);
+  if (Math.abs(d - 16) < 1.4) return 0;                    // aleea din jurul lacului
+  if (Math.abs(z - LAKE.z) < 1.4 && x < LAKE.x - 16) return 0;   // aleea de la intrare
+  if (Math.abs(x - LAKE.x) < 1.4 && z > LAKE.z + 16) return 0;
+  return 1;
+}
+const parkAnim = { swans: [], t: 0 };
+{
+  const pk = new THREE.Group();
+  const flat = (geo, mat, x, z, y, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -PI / 2; m.rotation.z = rz; m.position.set(x, y, z); m.receiveShadow = true; pk.add(m); return m; };
+  const w = PARK.x1 - PARK.x0, h = PARK.z1 - PARK.z0, cx = (PARK.x0 + PARK.x1) / 2, cz = (PARK.z0 + PARK.z1) / 2;
+  // gazon: textură cu fire de iarbă în mai multe nuanțe
+  const grassTex = canvasTex(256, 256, (g, W, H) => {
+    g.fillStyle = '#4f8a2f'; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 5000; i++) { g.fillStyle = ['#5c9a36', '#447a28', '#67a83d', '#3d6f24', '#78b347'][i % 5]; const x = Math.random() * W, y = Math.random() * H; g.fillRect(x, y, 1.2, 2 + Math.random() * 4); }
+    for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(40,70,20,.18)'; g.beginPath(); g.arc(Math.random() * W, Math.random() * H, 8 + Math.random() * 24, 0, 7); g.fill(); }
+  }, [w / 7, h / 7]);
+  const grassMat = new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.95 });
+  const sh = new THREE.Shape(), r = PARK.r, hw = w / 2, hh = h / 2;
+  sh.moveTo(-hw + r, -hh); sh.lineTo(hw - r, -hh); sh.quadraticCurveTo(hw, -hh, hw, -hh + r); sh.lineTo(hw, hh - r); sh.quadraticCurveTo(hw, hh, hw - r, hh);
+  sh.lineTo(-hw + r, hh); sh.quadraticCurveTo(-hw, hh, -hw, hh - r); sh.lineTo(-hw, -hh + r); sh.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+  const lawnGeo = new THREE.ShapeGeometry(sh, 8);
+  { const uv = lawnGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) + hw) / w, (uv.getY(i) + hh) / h); }
+  flat(lawnGeo, grassMat, cx, cz, 0.012);
+  // bordură de piatră în jurul gazonului
+  const curbMat = new THREE.MeshStandardMaterial({ color: 0xbdb8ac, roughness: 0.85 });
+  { const pts = sh.getSpacedPoints(160); for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], L = Math.hypot(b.x - a.x, b.y - a.y);
+      const c = new THREE.Mesh(new THREE.BoxGeometry(L + 0.02, 0.1, 0.22), curbMat); c.position.set(cx + (a.x + b.x) / 2, 0.05, cz - (a.y + b.y) / 2); c.rotation.y = Math.atan2(b.y - a.y, b.x - a.x); c.receiveShadow = true; pk.add(c); } }
+  // alei pietruite
+  const pathTex = canvasTex(128, 128, (g, W, H) => { g.fillStyle = '#cbbd9c'; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 1400; i++) { g.fillStyle = ['#b9a985', '#ddd0b2', '#a8977a', '#e6dcc4'][i % 4]; g.beginPath(); g.arc(Math.random() * W, Math.random() * H, 0.6 + Math.random() * 1.6, 0, 7); g.fill(); } }, [1, 1]);
+  pathTex.repeat.set(1, 1);
+  const pathMat = new THREE.MeshStandardMaterial({ map: pathTex, roughness: 1 });
+  { const ring = new THREE.RingGeometry(14.6, 17.4, 96, 1); const uv = ring.attributes.uv, pos = ring.attributes.position;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / 3, pos.getY(i) / 3);
+    pathTex.wrapS = pathTex.wrapT = THREE.RepeatWrapping; flat(ring, pathMat, LAKE.x, LAKE.z, 0.016); }
+  const pathA = new THREE.Mesh(new THREE.PlaneGeometry(LAKE.x - 15 - PARK.x0, 2.8), new THREE.MeshStandardMaterial({ map: pathTex.clone(), roughness: 1 }));
+  pathA.material.map.repeat.set((LAKE.x - 15 - PARK.x0) / 3, 1); pathA.material.map.needsUpdate = true;
+  pathA.rotation.x = -PI / 2; pathA.position.set((PARK.x0 + LAKE.x - 15) / 2, 0.016, LAKE.z); pathA.receiveShadow = true; pk.add(pathA);
+  const pathB = new THREE.Mesh(new THREE.PlaneGeometry(2.8, PARK.z1 - LAKE.z - 15), new THREE.MeshStandardMaterial({ map: pathTex.clone(), roughness: 1 }));
+  pathB.material.map.repeat.set(1, (PARK.z1 - LAKE.z - 15) / 3); pathB.material.map.needsUpdate = true;
+  pathB.rotation.x = -PI / 2; pathB.position.set(LAKE.x, 0.016, (PARK.z1 + LAKE.z + 15) / 2); pathB.receiveShadow = true; pk.add(pathB);
+
+  // lacul: fund închis, apă albastră cu valuri, mal de pietre, nuferi și stuf
+  flat(new THREE.CircleGeometry(LAKE.r + 0.3, 64), new THREE.MeshStandardMaterial({ color: 0x23402f, roughness: 1 }), LAKE.x, LAKE.z, 0.02);
+  const lakeRip = WET.ripple.clone(); lakeRip.repeat.set(3, 3); lakeRip.needsUpdate = true;
+  const lakeMat = new THREE.MeshPhysicalMaterial({ color: 0x2f8fd8, transparent: true, opacity: 0.82, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.04,
+    normalMap: lakeRip, normalScale: new THREE.Vector2(0.45, 0.45), envMapIntensity: 0.9, depthWrite: false });
+  LAKE.mat = lakeMat;
+  flat(new THREE.CircleGeometry(LAKE.r, 64), lakeMat, LAKE.x, LAKE.z, 0.12);
+  { const stoneGeo = new THREE.DodecahedronGeometry(0.5, 0), n = 92, stones = new THREE.InstancedMesh(stoneGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true }), n);
+    const M4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color();
+    for (let i = 0; i < n; i++) { const a = i / n * PI * 2, rr = LAKE.r + 0.15 + rnd() * 0.35, sc = 0.55 + rnd() * 0.5;
+      q.setFromEuler(e.set(rnd() * 3, rnd() * 3, rnd() * 3)); M4.compose(new THREE.Vector3(LAKE.x + Math.cos(a) * rr, 0.08, LAKE.z + Math.sin(a) * rr), q, new THREE.Vector3(sc, sc * 0.55, sc));
+      stones.setMatrixAt(i, M4); stones.setColorAt(i, c.setHSL(0.08, 0.06, 0.45 + rnd() * 0.25)); }
+    stones.castShadow = stones.receiveShadow = true; scene.add(stones); }
+  const padMat = new THREE.MeshStandardMaterial({ color: 0x3f8a35, roughness: 0.6, side: THREE.DoubleSide });
+  for (let i = 0; i < 14; i++) { const a = rnd() * PI * 2, rr = 6 + rnd() * 4.2;
+    const pad = flat(new THREE.CircleGeometry(0.35 + rnd() * 0.3, 16, 0.4, PI * 2 - 0.4), padMat, LAKE.x + Math.cos(a) * rr, LAKE.z + Math.sin(a) * rr, 0.13, rnd() * 6);
+    if (i % 3 === 0) { const fl = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.14, 8), new THREE.MeshStandardMaterial({ color: 0xf6c6dc, roughness: 0.5 })); fl.position.set(pad.position.x, 0.18, pad.position.z); pk.add(fl); } }
+  const reedMat = new THREE.MeshStandardMaterial({ color: 0x6c8a3a, roughness: 0.9 }), catMat = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 1 });
+  for (const a0 of [0.4, 2.3, 4.1, 5.4]) for (let k = 0; k < 16; k++) {
+    const a = a0 + (rnd() - 0.5) * 0.35, rr = LAKE.r - 0.6 - rnd() * 1.2, hgt = 1.0 + rnd() * 0.9, x = LAKE.x + Math.cos(a) * rr, z = LAKE.z + Math.sin(a) * rr;
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, hgt, 4), reedMat); st.position.set(x, hgt / 2, z); st.rotation.set((rnd() - 0.5) * 0.2, 0, (rnd() - 0.5) * 0.2); pk.add(st);
+    if (k % 3 === 0) { const ct = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 6), catMat); ct.position.set(x, hgt - 0.05, z); pk.add(ct); }
+  }
+  OBSTACLES.push({ x: LAKE.x, z: LAKE.z, r: LAKE.r + 0.6, lake: true });
+
+  // bănci de lemn cu picioare de fontă, cu fața spre lac
+  const benchWood = new THREE.MeshStandardMaterial({ color: 0x9a5b2e, roughness: 0.75 }), castIron = new THREE.MeshStandardMaterial({ color: 0x1d2420, metalness: 0.6, roughness: 0.5 });
+  const bench = (x, z, yaw) => {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = yaw;
+    for (let i = 0; i < 3; i++) { const sl = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.12), benchWood); sl.position.set(0, 0.45, -0.15 + i * 0.15); g.add(sl); }
+    for (let i = 0; i < 2; i++) { const sl = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.11, 0.035), benchWood); sl.position.set(0, 0.62 + i * 0.16, -0.27 - i * 0.04); sl.rotation.x = -0.22; g.add(sl); }
+    for (const sx of [-0.78, 0.78]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.06), castIron); leg.position.set(sx, 0.22, 0.12); g.add(leg);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.92, 0.06), castIron); back.position.set(sx, 0.44, -0.26); back.rotation.x = -0.18; g.add(back);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.48), castIron); arm.position.set(sx, 0.66, -0.02); g.add(arm);
+      const sup = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.45), castIron); sup.position.set(sx, 0.42, -0.05); g.add(sup);
+    }
+    pk.add(g); OBSTACLES.push({ x, z, r: 0.9 });
+  };
+  for (let i = 0; i < 8; i++) { const a = i / 8 * PI * 2 + PI / 8, rr = 18.6; bench(LAKE.x + Math.cos(a) * rr, LAKE.z + Math.sin(a) * rr, -a - PI / 2); }
+  bench(PARK.x0 + 10, LAKE.z + 3.2, PI); bench(PARK.x0 + 22, LAKE.z - 3.2, 0);
+
+  // felinare
+  const lampPost = new THREE.MeshStandardMaterial({ color: 0x1b211e, metalness: 0.7, roughness: 0.4 });
+  const lampGlass = new THREE.MeshStandardMaterial({ color: 0xfff1c8, emissive: 0xffd88a, emissiveIntensity: 0.6, roughness: 0.3 });
+  PARK.lampMat = lampGlass;
+  for (const [x, z] of [[LAKE.x - 15.2, LAKE.z + 2.6], [LAKE.x + 2.6, LAKE.z + 15.4], [LAKE.x + 15.4, LAKE.z - 2.6], [LAKE.x - 2.6, LAKE.z - 15.4], [PARK.x0 + 3, LAKE.z + 2.6], [PARK.x0 + 3, LAKE.z - 2.6], [LAKE.x + 2.6, PARK.z1 - 3]]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 3.4, 10), lampPost); pole.position.set(x, 1.7, z); pole.castShadow = true; pk.add(pole);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.25, 8), lampPost); cap.position.set(x, 3.95, z); pk.add(cap);
+    const lan = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.14, 0.45, 8), lampGlass); lan.position.set(x, 3.6, z); pk.add(lan);
+    OBSTACLES.push({ x, z, r: 0.2 });
+  }
+
+  // straturi de flori: pământ și sute de flori colorate (instanțiate)
+  const soilMat = new THREE.MeshStandardMaterial({ color: 0x4a3324, roughness: 1 });
+  const beds = [[PARK.x0 + 9, PARK.z0 + 9, 4.5], [PARK.x0 + 9, PARK.z1 - 9, 4.5], [PARK.x1 - 9, PARK.z0 + 9, 4.5], [PARK.x1 - 9, PARK.z1 - 9, 4.5],
+    [PARK.x0 + 26, LAKE.z + 8, 3], [PARK.x0 + 26, LAKE.z - 8, 3], [LAKE.x + 8, PARK.z1 - 8, 2.6], [LAKE.x - 8, PARK.z1 - 8, 2.6], [LAKE.x + 24, LAKE.z + 20, 3.2], [LAKE.x - 2, PARK.z0 + 8, 3.6]];
+  const palette = [0xe8344a, 0xf7c531, 0xffffff, 0xb04ad8, 0xff7a2f, 0xf28fc2, 0x3f6fe0];
+  const N = beds.reduce((a, b) => a + Math.round(b[2] * b[2] * 14), 0);
+  const heads = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.1, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, flatShading: true }), N);
+  const stems = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.012, 0.016, 1, 4).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x3e7a2a, roughness: 0.9 }), N);
+  const leaves = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 6, 4), new THREE.MeshStandardMaterial({ color: 0x356d26, roughness: 0.9 }), N);
+  const M4 = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color(); let n = 0;
+  for (const [bx, bz, br] of beds) {
+    flat(new THREE.CircleGeometry(br, 32), soilMat, bx, bz, 0.018);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(br, 0.08, 6, 40), curbMat); ring.rotation.x = -PI / 2; ring.position.set(bx, 0.04, bz); pk.add(ring);
+    const cnt = Math.round(br * br * 14), base = rnd() * palette.length | 0;
+    for (let i = 0; i < cnt; i++) {
+      const a = rnd() * PI * 2, rr = Math.sqrt(rnd()) * (br - 0.2), x = bx + Math.cos(a) * rr, z = bz + Math.sin(a) * rr, hg = 0.25 + rnd() * 0.25;
+      M4.compose(new THREE.Vector3(x, 0.02, z), q.identity(), new THREE.Vector3(1, hg, 1)); stems.setMatrixAt(n, M4);
+      M4.compose(new THREE.Vector3(x + 0.04, 0.1, z), q.identity(), new THREE.Vector3(1, 0.5, 1.4)); leaves.setMatrixAt(n, M4);
+      const s = 0.8 + rnd() * 0.6; M4.compose(new THREE.Vector3(x, 0.02 + hg, z), q.identity(), new THREE.Vector3(s, s * 0.7, s)); heads.setMatrixAt(n, M4);
+      const ci = rr < br * 0.45 ? base : (base + 1 + (i % 3)) % palette.length;     // fiecare strat: centru de o culoare, margini amestecate
+      heads.setColorAt(n, col.setHex(palette[ci])); n++;
+    }
+  }
+  heads.castShadow = true; scene.add(heads, stems, leaves);
+
+  // copaci în parc (foioase) și tufe
+  const pt = [[PARK.x0 + 5, PARK.z0 + 20], [PARK.x0 + 16, PARK.z1 - 5], [PARK.x0 + 38, PARK.z1 - 6], [PARK.x1 - 5, PARK.z0 + 24], [PARK.x1 - 6, PARK.z1 - 24], [PARK.x0 + 40, PARK.z0 + 5],
+    [PARK.x1 - 22, PARK.z0 + 4], [LAKE.x + 21, LAKE.z - 9], [LAKE.x - 21, LAKE.z - 12], [PARK.x0 + 6, LAKE.z - 18]];
+  for (const [x, z] of pt) OBSTACLES.push({ x, z, r: 0.45 });
+  buildTrees(pt.map(([x, z]) => [x, z, true]), true);
+  const bushMat = new THREE.MeshStandardMaterial({ color: 0x2f6a2a, roughness: 0.95, flatShading: true });
+  for (let i = 0; i < 18; i++) { const a = i / 18 * PI * 2, rr = 20.5 + (i % 2) * 0.6; if (i % 4 === 0) continue;
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 1), bushMat); b.scale.set(1, 0.7, 1); b.position.set(LAKE.x + Math.cos(a) * rr, 0.45, LAKE.z + Math.sin(a) * rr); b.castShadow = true; pk.add(b);
+    OBSTACLES.push({ x: b.position.x, z: b.position.z, r: 0.7 }); }
+
+  // inscripția de la intrare
+  const sign = canvasTex(512, 160, (g, W, H) => { g.fillStyle = '#2e5a23'; g.fillRect(0, 0, W, H); g.strokeStyle = '#e9dcb2'; g.lineWidth = 10; g.strokeRect(8, 8, W - 16, H - 16);
+    g.fillStyle = '#f3ead0'; g.font = 'bold 74px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PARCUL LEBEDELOR', W / 2, H / 2 + 4); });
+  { const sx = PARK.x0 + 1.5, sz = LAKE.z + 4.2;
+    const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, 2.9), [benchWood, benchWood, benchWood, benchWood, new THREE.MeshStandardMaterial({ map: sign }), new THREE.MeshStandardMaterial({ map: sign })]);
+    board.position.set(sx, 1.6, sz); board.material[4].map.center.set(0.5, 0.5); pk.add(board);
+    board.rotation.y = PI / 2; board.rotation.y = 0;
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.9), new THREE.MeshStandardMaterial({ map: sign })); face.position.set(sx - 0.05, 1.6, sz); face.rotation.y = -PI / 2; pk.add(face);
+    for (const d of [-1.3, 1.3]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2, 0.1), benchWood); p.position.set(sx, 1, sz + d); pk.add(p); }
+    OBSTACLES.push({ x: sx, z: sz - 1.3, r: 0.15 }, { x: sx, z: sz + 1.3, r: 0.15 }); }
+
+  scene.add(mergeStatic(placeShadow(pk)));
+
+  // lebede: corp alb, gât în formă de S, cioc portocaliu; înoată în cercuri pe lac
+  const white = new THREE.MeshStandardMaterial({ color: 0xf7f7f2, roughness: 0.55 }), beakM = new THREE.MeshStandardMaterial({ color: 0xf07a1a, roughness: 0.5 });
+  const neckCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.25, 0.32), new THREE.Vector3(0, 0.45, 0.42), new THREE.Vector3(0, 0.72, 0.3), new THREE.Vector3(0, 0.92, 0.36), new THREE.Vector3(0, 0.98, 0.48)]);
+  const neckGeo = new THREE.TubeGeometry(neckCurve, 20, 0.055, 8);
+  for (let i = 0; i < 5; i++) {
+    const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+    const torso = new THREE.Mesh(new THREE.SphereGeometry(0.32, 18, 12), white); torso.scale.set(0.85, 0.62, 1.35); torso.position.y = 0.15; body.add(torso);
+    for (const sx of [-1, 1]) { const wing = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 10), white); wing.scale.set(0.5, 0.55, 1.3); wing.position.set(sx * 0.17, 0.27, -0.05); wing.rotation.set(-0.25, 0, sx * 0.35); body.add(wing); }
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 8), white); tail.rotation.x = -2.0; tail.position.set(0, 0.3, -0.45); body.add(tail);
+    body.add(new THREE.Mesh(neckGeo, white));
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), white); head.scale.set(0.9, 0.9, 1.3); head.position.set(0, 0.99, 0.5); body.add(head);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.15, 8), beakM); beak.rotation.x = PI / 2 + 0.5; beak.position.set(0, 0.95, 0.62); body.add(beak);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), MAT.black); knob.position.set(0, 0.99, 0.56); body.add(knob);
+    for (const sx of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), MAT.black); eye.position.set(sx * 0.055, 1.01, 0.53); body.add(eye); }
+    body.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    const sc = i === 4 ? 0.6 : 1;                           // un pui
+    g.scale.setScalar(sc); scene.add(g);
+    parkAnim.swans.push({ g, body, rad: i === 4 ? 3.3 : 2.5 + i * 1.6, sp: (i % 2 ? -1 : 1) * (0.05 + 0.025 * (i % 3)), ph: i * 1.7 + (i === 4 ? -0.35 : 0), bob: i * 0.9 });
+  }
+  parkAnim.swans[4].sp = parkAnim.swans[0].sp; parkAnim.swans[4].rad = parkAnim.swans[0].rad; // puiul își urmează părintele
+}
+function parkStep(dt) {
+  const A = parkAnim; A.t += dt;
+  for (const s of A.swans) {
+    const a = s.ph + A.t * s.sp, wob = Math.sin(A.t * 0.3 + s.bob) * 0.8;
+    const x = LAKE.x + Math.cos(a) * (s.rad + wob), z = LAKE.z + Math.sin(a) * (s.rad + wob);
+    s.g.position.set(x, 0.1 + Math.sin(A.t * 1.6 + s.bob) * 0.015, z);
+    s.g.rotation.y = Math.atan2(-Math.sin(a) * s.sp, Math.cos(a) * s.sp);   // spre direcția de înot
+    s.body.rotation.x = Math.sin(A.t * 0.8 + s.bob) * 0.06;                  // își apleacă ușor gâtul
+  }
+  if (LAKE.mat) { LAKE.mat.normalMap.offset.x += dt * 0.008; LAKE.mat.normalMap.offset.y -= dt * 0.005; }
+  if (PARK.lampMat) PARK.lampMat.emissiveIntensity = night ? 3.2 : 0.6;
 }
 
 // rampe: pornesc din (x, z), urcă pe direcția dir pe lungimea L până la înălțimea H, apoi cad vertical
@@ -2054,8 +2328,10 @@ function physicsStep(dt) {
   // aderența pe ud: fiecare punte după poziția ei (pe ud rămâne cam 45% din aderență)
   const wetF = wetAt(car.x + sn * S.a, car.z + cs * S.a), wetR = wetAt(car.x - sn * S.b, car.z - cs * S.b);
   car.wet = Math.max(wetF, wetR);
-  const muF = S.muF * (1 - 0.55 * wetF);
-  let gripR = S.muR * (1 - 0.55 * wetR);
+  // pe iarbă: aderență ceva mai mică (dar nu ca pe ud)
+  const grF = grassAt(car.x + sn * S.a, car.z + cs * S.a), grR = grassAt(car.x - sn * S.b, car.z - cs * S.b);
+  const muF = S.muF * (1 - 0.55 * wetF) * (1 - 0.3 * grF);
+  let gripR = S.muR * (1 - 0.55 * wetR) * (1 - 0.3 * grR);
   if (hb) {
     gripR *= S.hbGrip;
     FxR = -(Math.sign(long) || 0) * gripR / S.hbGrip * Nr * 0.55 + FxR * 0.2;
@@ -2422,10 +2698,10 @@ const sound = (() => {
     }
   }
   // tropot de copită: un „toc” scurt, filtrat
-  function clop(k) {
+  function clop(k, step) {
     if (!ctx || !on) return;
     const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-    o.type = 'triangle'; o.frequency.setValueAtTime(900 + Math.random() * 300, t); o.frequency.exponentialRampToValueAtTime(300, t + 0.05);
+    o.type = 'triangle'; o.frequency.setValueAtTime(step ? 160 + Math.random() * 40 : 900 + Math.random() * 300, t); o.frequency.exponentialRampToValueAtTime(step ? 70 : 300, t + 0.05);
     f.type = 'bandpass'; f.frequency.value = 1200; f.Q.value = 2;
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12 * (0.4 + k * 0.6), t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
     o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + 0.09);
@@ -2440,11 +2716,21 @@ const sound = (() => {
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.06); g.gain.setValueAtTime(0.16, t + 0.9); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.25);
     o.connect(f); f.connect(g); g.connect(master); o.start(t); lfo.start(t); o.stop(t + 1.3); lfo.stop(t + 1.3);
   }
+  // fluieratul moșului: două note care urcă
+  function whistle() {
+    if (!ctx) return;
+    const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(1500, t); o.frequency.exponentialRampToValueAtTime(2300, t + 0.18); o.frequency.setValueAtTime(1700, t + 0.3); o.frequency.exponentialRampToValueAtTime(2600, t + 0.55);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.03); g.gain.setValueAtTime(0.1, t + 0.22); g.gain.exponentialRampToValueAtTime(0.01, t + 0.27);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.33); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.62);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.65);
+  }
   // claxon: două tonuri; la camion e claxonul pneumatic, grav și puternic
   let hornN = null;
   function horn(want, kind) {
     if (!ctx) return;
     if (kind === 'horse') { if (want) neigh(); return; }
+    if (kind === 'whistle') { if (want) whistle(); return; }
     if (want && !hornN) {
       const g = ctx.createGain(), f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = kind === 'truck' ? 1400 : 2600;
       g.gain.value = kind === 'truck' ? 0.22 : 0.14; f.connect(g); g.connect(master);
@@ -2535,13 +2821,13 @@ const carsEl = $('cars');
 const hdr = document.createElement('button'); hdr.className = 'hdr';
 hdr.innerHTML = '<span class="hb">☰</span><span class="cur" id="curCar"></span><span class="chev">▾</span>';
 carsEl.appendChild(hdr);
-const setCollapsed = c => { carsEl.classList.toggle('collapsed', c); try { localStorage.setItem('drift-menu', c ? '1' : '0'); } catch (e) {} };
+const setCollapsed = c => { carsEl.classList.toggle('collapsed', c); document.body.classList.toggle('menu-open', !c); try { localStorage.setItem('drift-menu', c ? '1' : '0'); } catch (e) {} };
 hdr.onclick = () => { setCollapsed(!carsEl.classList.contains('collapsed')); hdr.blur(); };
 { let c = matchMedia('(max-width:720px)').matches; try { const v = localStorage.getItem('drift-menu'); if (v !== null) c = v === '1'; } catch (e) {} setCollapsed(c); }
 CARS.forEach((s, i) => {
   const b = document.createElement('button'); b.className = 'car'; b.dataset.i = i;
   b.innerHTML = `<span class="sw" style="background:#${s.color.toString(16).padStart(6, '0')}"></span>
-    <span><div class="nm">${s.name}</div><div class="tg">${s.tag}</div></span><span class="k">${i + 1}</span>`;
+    <span><div class="nm">${s.name}</div><div class="tg">${s.tag}</div></span><span class="k">${(i + 1) % 10}</span>`;
   b.onclick = () => { selectCar(i); b.blur(); };
   carsEl.appendChild(b);
 });
@@ -2590,7 +2876,8 @@ addEventListener('keydown', e => {
   if (GAME_KEYS.includes(k)) { keys[k] = true; e.preventDefault(); }
   sound.init();
   if (e.repeat) return;
-  if (e.key >= '1' && e.key <= String(CARS.length)) selectCar(+e.key - 1);
+  if (e.key >= '1' && e.key <= '9' && +e.key <= CARS.length) selectCar(+e.key - 1);
+  if (e.key === '0' && CARS.length >= 10) selectCar(9);
   if (e.key === 'r' || e.key === 'R') { resetCar(false); resetBall(); }
   if (e.key === 'c' || e.key === 'C') camMode = (camMode + 1) % 3;
   if (e.key === 'm' || e.key === 'M') sound.toggle();
@@ -2658,6 +2945,7 @@ function visuals(dt) {
   } else body.rotation.z = THREE.MathUtils.clamp(-car.ay * 0.009, -0.07, 0.07);   // ruliu
   if (mesh.userData.steerWheel) mesh.userData.steerWheel.rotation.z = -car.steer * 2.2;
   if (mesh.userData.horses) horseGait(mesh.userData, dt);
+  if (mesh.userData.walker) walkStep(mesh.userData.walker, dt);
   body.rotation.x = THREE.MathUtils.clamp(-car.ax * 0.006, -0.05, 0.05);   // tangaj
   updateLights(mesh, dt);
   placeTrailer(dt);
@@ -2672,7 +2960,7 @@ function visuals(dt) {
   }
 
   // poziția roților din spate pe sol, pentru urme și fum
-  const track = S.bike ? 0.02 : S.wid / 2 - 0.16;
+  const track = S.bike || S.walker ? 0.02 : S.wid / 2 - 0.16;
   const wheelsW = [];
   for (const [zo, sx] of [[-S.b, -1], [-S.b, 1], [S.a, -1], [S.a, 1]]) {
     wheelsW.push([car.x + sn * zo + cs * sx * track, car.z + cs * zo - sn * sx * track]);
@@ -2688,6 +2976,10 @@ function visuals(dt) {
       const wet = wetAt(wheelsW[i][0], wheelsW[i][1]);
       if (wet > 0.5) {                               // pe ud: stropi de apă în loc de urme și fum
         if (i < 2 && speed > 6 && Math.random() < Math.min(1, (speed / 30 + it * 0.3)) * dt * 60 * 0.6) puff(wheelsW[i][0], wheelsW[i][1], car.vx, car.vz, Math.min(1.4, 0.4 + speed / 40 + it * 0.2), 0xbfd8f2);
+        continue;
+      }
+      if (grassAt(wheelsW[i][0], wheelsW[i][1])) {     // pe iarbă: fără urme negre, doar praf și fire de iarbă
+        if (i < 2 && (it > 0.5 || speed > 12) && Math.random() < Math.min(1, it * 0.3 + speed / 60) * dt * 60 * 0.4) puff(wheelsW[i][0], wheelsW[i][1], car.vx, car.vz, Math.min(1.2, 0.4 + it * 0.3), 0x9a8f62);
         continue;
       }
       if (it > 0.35 && speed > 1.5) addSkid(prevWheels[i][0], prevWheels[i][1], wheelsW[i][0], wheelsW[i][1], 0.24);
@@ -2761,6 +3053,7 @@ function frame(now) {
   while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); acc -= STEP; }
   updateBallMesh(dt);
   if (WET.water) { WET.water.normalMap.offset.x += dt * 0.012; WET.water.normalMap.offset.y += dt * 0.007; }
+  parkStep(dt);
   updateDrift(dt);
   updateCones(dt);
   updateSmoke(dt);
@@ -2791,8 +3084,11 @@ function mmBuild() {
     g.save(); const [x, z] = mmPos(r.x, r.z); g.translate(x, z); g.rotate(-r.dir);
     g.fillStyle = '#ffc400'; g.fillRect(-r.W / 2 * k, -r.L * k, r.W * k, r.L * k); g.restore();
   }
-  for (const o of OBSTACLES) { const [x, z] = mmPos(o.x, o.z); g.fillStyle = o.r > 1.5 ? '#6b6f4a' : o.r > 0.3 ? '#2f7d36' : '#bbb'; g.beginPath(); g.arc(x, z, Math.max(1, o.r * k), 0, 7); g.fill(); }
+  { const [x0, z0] = mmPos(PARK.x1, PARK.z1); g.fillStyle = '#5a9a3a'; g.beginPath(); g.roundRect(x0, z0, (PARK.x1 - PARK.x0) * k, (PARK.z1 - PARK.z0) * k, PARK.r * k); g.fill();
+    const [lx, lz] = mmPos(LAKE.x, LAKE.z); g.strokeStyle = '#d8cba8'; g.lineWidth = Math.max(1, 2.8 * k); g.beginPath(); g.arc(lx, lz, 16 * k, 0, 7); g.stroke(); }
+  for (const o of OBSTACLES) { if (o.lake) continue; const [x, z] = mmPos(o.x, o.z); g.fillStyle = o.r > 1.5 ? '#6b6f4a' : o.r > 0.3 ? '#2f7d36' : '#bbb'; g.beginPath(); g.arc(x, z, Math.max(1, o.r * k), 0, 7); g.fill(); }
   for (const pl of PILLARS) { const [x, z] = mmPos(pl.x, pl.z); g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(x, z, pl.r * k, 0, 7); g.fill(); }
+  { const [x, z] = mmPos(LAKE.x, LAKE.z); g.fillStyle = '#2f8fd8'; g.beginPath(); g.arc(x, z, LAKE.r * k, 0, 7); g.fill(); }
   { const [x, z] = mmPos(BALL_SPAWN[0], BALL_SPAWN[1]); g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1; g.beginPath(); g.arc(x, z, (BALL_R + 0.7) * k, 0, 7); g.stroke(); }
 }
 function drawMinimap() {
