@@ -593,6 +593,62 @@ const LEVELS = [
     B.enemy('boss', 31, y3, 0);
     for (const z of [-3.5, 3.5]) { const t = B.room('glass', 25, 0, z, 1.8, 1.4, 'wood'); B.enemy('rat', 25, 0, z); B.enemy('rat', 25, t, z); }
   } },
+  { name: 'Podul șoarecilor', cats: ['tigru', 'fulger', 'umbra'], build() {
+    B.post('stone', 25, 0, 0, 3, 1); B.post('stone', 31, 0, 0, 3, 1);
+    const y = B.slab('wood', 28, 3, 0, 7.4, 1.4);
+    for (const x of [25.6, 28, 30.4]) B.enemy('rat', x, y, 0);
+    B.box('glass', 26.8, 0, 0, 0.5, 1.6, 1.6); B.box('glass', 29.2, 0, 0, 0.5, 1.6, 1.6);
+    B.enemy('dog', 28, 0, 0);
+  } },
+  { name: 'Piramida', cats: ['tigru', 'tigru', 'bomba', 'umbra'], build() {
+    const rows = [5, 4, 3, 2, 1];
+    let y = 0;
+    rows.forEach((n, r) => {
+      for (let i = 0; i < n; i++) B.box(r === 0 ? 'stone' : r === 4 ? 'glass' : 'wood', 27 - (n - 1) / 2 + i, y, 0, 1, 1, 1.4);
+      y += 1;
+    });
+    B.enemy('dog', 27, y, 0);
+    B.enemy('rat', 23.9, 0, 0); B.enemy('rat', 30.1, 0, 0);
+    B.enemy('rat', 27, 0, 1.3); B.enemy('rat', 27, 0, -1.3);
+  } },
+  { name: 'Satul câinilor', cats: ['umbra', 'fulger', 'bomba', 'tigru'], build() {
+    for (const [x, z, m] of [[25, -4, 'wood'], [29, 3, 'stone'], [33, -1.5, 'wood']]) {
+      const t = B.room(m, x, 0, z, 2.4, 1.8, 'wood'); B.enemy('dog', x, 0, z);
+      B.box('tnt', x, t, z, 0.8, 0.8, 0.8);
+    }
+    B.enemy('rat', 29, 2.1, 3.9);
+    B.box('glass', 27, 0, -0.5, 1, 1, 1); B.enemy('rat', 27, 1, -0.5);
+  } },
+  { name: 'Turnul înalt', cats: ['fulger', 'tigru', 'umbra', 'tigru'], build() {
+    let y = 0;
+    const mats = ['stone', 'wood', 'glass', 'wood', 'glass'];
+    mats.forEach((m, i) => { const t = B.room(m, 28, y, 0, 2.2, 1.6, 'wood'); B.enemy(i === 0 ? 'dog' : 'rat', 28, y, 0); y = t; });
+    B.enemy('dog', 28, y, 0);
+    B.box('wood', 25, 0, 0, 1, 2, 1); B.enemy('rat', 25, 2, 0);
+  } },
+  { name: 'Zidul cel mare', cats: ['bomba', 'tigru', 'umbra', 'fulger', 'bomba'], build() {
+    B.wall('stone', 24, 0, 0, 0.8, 3.4, 9);
+    for (const z of [-2.8, 0, 2.8]) { const t = B.room('wood', 27.5, 0, z, 2.2, 1.6, 'wood'); B.enemy(z === 0 ? 'dog' : 'rat', 27.5, 0, z); B.enemy('rat', 27.5, t, z); }
+    B.box('tnt', 25.4, 0, -1.4, 0.8, 0.8, 0.8); B.box('tnt', 25.4, 0, 1.4, 0.8, 0.8, 0.8);
+    let y = B.room('stone', 31.5, 0, 0, 2.6, 2.2, 'wood'); B.enemy('dog', 31.5, 0, 0); B.enemy('dog', 31.5, y, 0);
+  } },
+  { name: 'Castelul de gheață', cats: ['tigru', 'umbra', 'fulger', 'tigru'], build() {
+    for (const z of [-3, 3]) { let y = 0; for (let i = 0; i < 3; i++) { const t = B.room('glass', 26, y, z, 2, 1.5, 'glass'); B.enemy('rat', 26, y, z); y = t; } }
+    let y = B.room('glass', 30, 0, 0, 3, 2, 'wood'); B.enemy('dog', 30, 0, 0);
+    y = B.room('glass', 30, y, 0, 2.6, 1.8, 'glass'); B.enemy('dog', 30, y - 2.1, 0);
+    y = B.room('glass', 30, y, 0, 2.2, 1.6, 'wood'); B.enemy('rat', 30, y - 1.9, 0);
+    B.enemy('dog', 30, y, 0);
+  } },
+  { name: 'Răzbunarea Motanului', cats: ['tigru', 'umbra', 'fulger', 'bomba', 'umbra', 'bomba'], build() {
+    let y = B.box('base', 33, 0, 0, 7, 2, 6);
+    for (const z of [-2, 2]) { const t = B.room('stone', 31, y, z, 1.8, 2, 'wood'); B.enemy('dog', 31, y, z); B.enemy('rat', 31, t, z); }
+    let c = B.room('stone', 34.5, y, 0, 3.2, 2.4, 'wood'); B.enemy('dog', 34.5, y, 0.5); B.box('tnt', 34.5, y, -0.8, 0.8, 0.8, 0.8);
+    c = B.room('wood', 34.5, c, 0, 2.8, 2.2); B.enemy('dog', 34.5, c - 2.5, 0);
+    c = B.room('glass', 34.5, c, 0, 2.6, 2.0, 'wood');
+    B.enemy('boss', 34.5, c, 0);
+    for (const z of [-5, 5]) { let t = B.room('wood', 26, 0, z, 2, 1.6, 'glass'); B.enemy('rat', 26, 0, z); t = B.room('glass', 26, t, z, 2, 1.4, 'wood'); B.enemy('rat', 26, t - 1.7, z); B.enemy('dog', 26, t, z); }
+    B.wall('wood', 28.6, 0, 0, 0.5, 2.4, 3);
+  } },
 ];
 
 // =====================================================================
