@@ -89,7 +89,7 @@ function laneX(i) { return L.fx + L.lw * (i + 0.5); }
 
 function reset() {
   Object.assign(S, { mode:'play', score:0, lives:5, outfit:0, maxOutfit:0, caught:0, missed:0, streak:0,
-    lane:2, sx:2, bottles:[], parts:[], flash:0, t:0, spawnT:0.6, msg:'Prinde cadourile!', msgT:1.6, sleigh:0, stageFx:0, coal:0, fw:0, drunk:0, smoke:0, bad:0 });
+    lane:2, sx:2, bottles:[], parts:[], flash:0, t:0, spawnT:0.6, msg:'Prinde cadourile!', msgT:1.6, sleigh:0, stageFx:0, coal:0, fw:0, drunk:0, smoke:0, bad:0, warned:0 });
   ov.classList.add('hide');
 }
 
@@ -102,8 +102,8 @@ function spawn() {
   let lane = Math.floor(Math.random() * LANES);
   const gifts = S.bottles.filter(b => b.kind === 'gift');
   const last = gifts[gifts.length - 1];
-  // alcool sau țigară (din 15 cadouri): pe altă coloană decât ultimul cadou și decât unde e Moșul
-  if (stage(15) && last && Math.random() < Math.min(0.28, 0.12 + S.caught * 0.0015)) {
+  // alcool sau țigară: pe altă coloană decât ultimul cadou și decât unde e Moșul
+  if (last && Math.random() < badChance()) {
     const busy = new Set([last.lane, S.lane]);
     const free = [0,1,2,3,4].filter(i => !busy.has(i));
     S.bottles.push({ lane: free[Math.floor(Math.random() * free.length)], y: L.fy - L.bh, kind:'bad',
@@ -126,12 +126,14 @@ function spawn() {
     rot: (Math.random() - .5) * 0.3, vr: (Math.random() - .5) * 1.2 });
 }
 
+// șansa de alcool/țigări: încep de la 5 puncte și cresc la fiecare 5 puncte (10%, 14%, 18%… max 50%)
+function badChance() { const k = Math.floor(Math.max(0, S.score) / 5); return k < 1 ? 0 : Math.min(0.5, 0.10 + (k - 1) * 0.04); }
+
 function say(m, t = 1.2) { S.msg = m; S.msgT = t; }
 
 // recompense: ce se deblochează după câte cadouri prinse
 const STAGES = [
   { at:10,  msg:'10 cadouri! Moșul e în formă 🎁' },
-  { at:15,  msg:'Atenție: alcool și țigări! −10 puncte 🚫' },
   { at:20,  msg:'Bradul sclipește! ✨' },
   { at:30,  msg:'Petrecere! Lumini disco 🪩' },
   { at:40,  msg:'Sosesc renii cu sania! 🦌' },
@@ -161,6 +163,7 @@ function catchBottle(b) {
   if (S.caught % 15 === 0 && S.lives < 5) { S.lives++; say('+1 viață 🎄'); }
   checkStages();
   updateTree();
+  if (!S.warned && S.score >= 5) { S.warned = 1; say('Atenție: încep să cadă alcool și țigări! −10 puncte 🚫', 2.4); }
   for (let i = 0; i < 12; i++) S.parts.push({ x: laneX(b.lane), y: L.catchY, vx:(Math.random()-.5)*220, vy:-Math.random()*260-60,
     life:0.8, c: Math.random() < .5 ? b.col[0] : b.col[1], r: 2 + Math.random()*3, g:600 });
   sfx('catch');
