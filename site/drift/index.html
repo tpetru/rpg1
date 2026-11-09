@@ -1246,8 +1246,9 @@ function loadPassatModel(root, spec) {
     const mk = J.mats.map((m, i) => {
       const paint = i === 0 || i === 1 || i === 13 || i === 15;
       const c = new THREE.Color().setRGB(m.c[0], m.c[1], m.c[2], THREE.SRGBColorSpace);
-      if (paint) return new THREE.MeshPhysicalMaterial({ color: spec.color, metalness: 0.3, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.1, envMapIntensity: 0.8 });
-      if (i === 24 || i === 26 || i === 35) return root.userData.tailMat;
+      if (paint) return new THREE.MeshPhysicalMaterial({ color: spec.color, metalness: 0.3, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.1, envMapIntensity: 0.8, side: THREE.DoubleSide });
+      if (i === 26) return root.userData.tailMat;
+      if (i === 24 || i === 35) return new THREE.MeshStandardMaterial({ color: 0x3a0a0a, roughness: 0.3, metalness: 0.2 });
       if (i === 34) return root.userData.revMat;
       if (m.a) return new THREE.MeshPhysicalMaterial({ color: 0x15191d, metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false, envMapIntensity: 1.4 });
       return new THREE.MeshStandardMaterial({ color: c, metalness: Math.min(0.9, m.m), roughness: Math.max(0.25, m.r) });
@@ -1277,6 +1278,17 @@ function loadPassatModel(root, spec) {
       pivot.position.set(c[0], c[1], c[2] - cgZ); root.add(pivot);
       wheels.push({ pivot, spin, front, sx });
     }
+    // aripile din față lipsesc din model (se vede compartimentul motorului): panouri de tablă cu decupaj pentru roată
+    { const pm = mk[1];
+      const fenderPanel = (z0, z1, zc, rIn) => { const sh = new THREE.Shape(), yb = 0.34;
+        sh.moveTo(z0, yb); sh.lineTo(zc - rIn, yb); sh.absarc(zc, yb, rIn, PI, 0, true); sh.lineTo(z1, yb);
+        sh.lineTo(z1, 0.66); sh.quadraticCurveTo(z1 - 0.05, 0.84, z1 - 0.3, 0.88); sh.lineTo(z0, 0.89); sh.closePath();
+        return new THREE.ShapeGeometry(sh, 24); };
+      for (const sx of [-1, 1]) {
+        const g = fenderPanel(0.92, 2.12, 1.39, 0.4); g.rotateY(-PI / 2 * sx);    // planul (z,y) -> (x,y) pe latura sx
+        const m = new THREE.Mesh(g, pm);
+        m.position.x = sx * 0.875; m.castShadow = true; skp.add(m);
+      } }
     root.userData.wheels = wheels;
   }).catch(e => console.warn('model Passat indisponibil, rămâne cel procedural', e));
 }
