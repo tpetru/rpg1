@@ -2996,6 +2996,39 @@ const ballMesh = (() => {
 }
 function resetBall() { Object.assign(ball, { x: BALL_SPAWN[0], y: BALL_R, z: BALL_SPAWN[1], vx: 0, vy: 0, vz: 0 }); ballMesh.quaternion.identity(); }
 const _bq = new THREE.Quaternion(), _bax = new THREE.Vector3();
+// două porți de fotbal: gol = mingea trece linia porții → scor, iar mașina și mingea se resetează
+const GOALS = [{ x: -72, z: BALL_SPAWN[1], sd: 1, col: 0xe23b2e, name: 'roșie' }, { x: 28, z: BALL_SPAWN[1], sd: -1, col: 0x2e6be2, name: 'albastră' }];
+const GOAL_W = 7, GOAL_H = 4.6, GOAL_D = 3.2, goalScore = [0, 0];
+{
+  const netTex = canvasTex(128, 128, (g, W, H) => { g.clearRect(0, 0, W, H); g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 3; for (let i = 0; i <= W; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, H); g.moveTo(0, i); g.lineTo(W, i); g.stroke(); } }, true);
+  netTex.repeat.set(6, 3); netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
+  const netMat = new THREE.MeshBasicMaterial({ map: netTex, transparent: true, side: THREE.DoubleSide, depthWrite: false });
+  for (const G of GOALS) {
+    const gr = new THREE.Group(), pm = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.4 });
+    const post = (zz) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, GOAL_H, 12), pm); m.position.set(0, GOAL_H / 2, zz); gr.add(m); };
+    post(-GOAL_W); post(GOAL_W);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, GOAL_W * 2, 12), pm); bar.rotation.x = PI / 2; bar.position.y = GOAL_H; gr.add(bar);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, GOAL_W * 2 + 0.4), new THREE.MeshStandardMaterial({ color: G.col, roughness: 0.5 })); stripe.position.y = GOAL_H + 0.3; gr.add(stripe);
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_W * 2, GOAL_H), netMat); back.rotation.y = PI / 2; back.position.set(-G.sd * 0 + GOAL_D * -1, GOAL_H / 2, 0); gr.add(back);
+    const roof = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_D, GOAL_W * 2), netMat); roof.rotation.x = -PI / 2; roof.rotation.z = PI / 2; roof.position.set(-GOAL_D / 2, GOAL_H, 0); gr.add(roof);
+    for (const zz of [-GOAL_W, GOAL_W]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(GOAL_D, GOAL_H), netMat); side.position.set(-GOAL_D / 2, GOAL_H / 2, zz); gr.add(side); }
+    gr.position.set(G.x, 0, G.z); gr.rotation.y = G.sd > 0 ? -PI / 2 + PI : PI / 2 + PI;   // deschiderea spre minge
+    gr.traverse(o => { o.castShadow = o.isMesh && o.material === pm; });
+    scene.add(gr);
+    for (const zz of [-GOAL_W, GOAL_W]) OBSTACLES.push({ x: G.x, z: G.z + zz, r: 0.35, h: GOAL_H });
+  }
+}
+let goalCool = 0;
+function goalCheck(dt) {
+  goalCool = Math.max(0, goalCool - dt); if (goalCool > 0) return;
+  GOALS.forEach((G, i) => {
+    const inside = G.sd > 0 ? ball.x < G.x - 0.3 : ball.x > G.x + 0.3;
+    if (inside && Math.abs(ball.z - G.z) < GOAL_W - 0.4 && ball.y < GOAL_H && Math.abs(ball.x - G.x) < GOAL_D + 2) {
+      goalScore[i]++; goalCool = 2; resetBall(); resetCar(false);
+      pop(`⚽ GOL în poarta ${G.name}!  ${goalScore[0]} – ${goalScore[1]}`);
+    }
+  });
+}
 function ballStep(dt) {
   const b = ball;
   b.hitT = Math.max(0, b.hitT - dt);
@@ -3610,7 +3643,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   adaptQuality(dt);
   acc += dt;
-  while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); acc -= STEP; }
+  while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); goalCheck(STEP); acc -= STEP; }
   updateBallMesh(dt);
   if (WET.water) { WET.water.normalMap.offset.x += dt * 0.012; WET.water.normalMap.offset.y += dt * 0.007; }
   parkStep(dt); palaceStep(); for (const ct of CATS) catStep(ct, dt);
@@ -3674,7 +3707,7 @@ function drawMinimap() {
 }
 
 // pentru testare din consolă
-window.__drift = { CATS, car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, setSiren, carMeshes, trailer, trailerStep, groundAt, wetAt, setNight, ball, ballStep, resetBall };
+window.__drift = { GOALS, goalCheck, goalScore, CATS, car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, setSiren, carMeshes, trailer, trailerStep, groundAt, wetAt, setNight, ball, ballStep, resetBall };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
