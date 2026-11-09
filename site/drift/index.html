@@ -111,7 +111,7 @@
 <div id="speedo" class="panel"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="a" id="ang">unghi 0°</div></div>
 <div id="help" class="panel">
   <kbd>↑</kbd> accelerație &nbsp; <kbd>↓</kbd> frână / marșarier &nbsp; <kbd>←</kbd><kbd>→</kbd> direcție<br>
-  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>0</kbd> vehicul &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>S</kbd> sirenă &nbsp; <kbd>H</kbd> claxon &nbsp; <kbd>A</kbd> aripi &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
+  <kbd>Space</kbd> frână de mână &nbsp; <kbd>1</kbd>–<kbd>0</kbd> <kbd>-</kbd> vehicul &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> cameră &nbsp; <kbd>M</kbd> sunet &nbsp; <kbd>N</kbd> noapte &nbsp; <kbd>S</kbd> sirenă &nbsp; <kbd>H</kbd> claxon &nbsp; <kbd>A</kbd> aripi &nbsp; <kbd>Ctrl</kbd>+mouse cameră 360°
 </div>
 <button id="optBtn" aria-label="Meniu">☰</button>
 <div id="optPanel"></div>
@@ -220,6 +220,15 @@ const CARS = [
     muF:0.9, muR:1.1, BF:10, CF:1.30, BR:10, CR:1.40,
     steerMax:0.75, steerRate:3.0, assist:0.6, brake:1.2, hbGrip:0.4,
     cd:0.5, body:'mos', len:2.0, wid:0.7, wheelR:0.2, hgt:1.7, headY:0.6, camK:0.6, rpmK:0, horn:'whistle', noLights:true, walker:true
+  },
+  {
+    id:'ciucas', name:'Doza de Ciucaș', tag:'Doză uriașă · 4 roți · 0,5 l la rezervor',
+    desc:'O doză de Ciucaș cât un butoi, pe patru roți mici. Centrul de greutate e sus, deci se înclină în viraje, dar roțile sunt late și prind bine. Mică, rapidă și foarte vizibilă; frâna de mână o pune de-a curmezișul.',
+    color:0xc8102e, mass:380, a:0.7, b:0.7, h:0.85, inertiaF:1.05,
+    power:34000, maxForce:3200, frontDrive:0.0, vmax:36,
+    muF:1.05, muR:1.0, BF:9, CF:1.30, BR:9, CR:1.45,
+    steerMax:0.5, steerRate:3.5, assist:0.5, brake:1.0, hbGrip:0.4,
+    cd:0.6, body:'can', len:1.9, wid:1.4, wheelR:0.26, hgt:1.7, headY:0.5, camK:0.85, rpmK:1.2, noLights:true
   },
 ];
 
@@ -508,6 +517,7 @@ const MODELS = {
     wheel: { rF: 0.536, rR: 0.536, wF: 0.315, wR: 0.315, tF: 1.03, tR: 0.92, style: 'truck', rim: 0xd5d8dc, cap: 'volvo', caliper: 0x222222 } },
   kart: { zF: 0.52, zR: -0.52, z0: -0.91, z1: 0.91 },     // ampatament 1040 mm
   r1: { zF: 0.70, zR: -0.705, z0: -1.03, z1: 1.03 },      // YZF-R1: 2055 mm lungime, ampatament 1405
+  can: { zF: 0.7, zR: -0.7, z0: -0.95, z1: 0.95 },        // doza: ampatament 1,4 m
   cart: { zF: 1.6, zR: -1.65, z0: -3.1, z1: 3.1 },        // „puntea” din față e la cai
   mos: { zF: 0.6, zR: -0.75, z0: -1.0, z1: 0.85 },        // roata roabei / picioarele moșului
 };
@@ -1091,6 +1101,46 @@ function buildCart(spec) {
   return V.root;
 }
 
+function buildCan(spec) {
+  const M = MODELS.can, V = vehicleShell(spec, M), { body } = V;
+  const R = 0.52, Hc = 1.32, y0 = 0.22;
+  // eticheta: roșu Ciucaș, bandă aurie, siluetă de munte și numele
+  const lab = canvasTex(1024, 512, (g, W, H) => {
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#d11a33'); gr.addColorStop(1, '#8e0b1e'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#e8b830'; g.fillRect(0, H * 0.06, W, H * 0.035); g.fillRect(0, H * 0.905, W, H * 0.035);
+    for (let k = 0; k < 2; k++) {                                   // eticheta se repetă pe cealaltă parte
+      const ox = k * W / 2; g.save(); g.translate(ox, 0);
+      g.fillStyle = '#6e0716'; g.beginPath(); g.moveTo(0, H * 0.78); g.lineTo(W * 0.08, H * 0.58); g.lineTo(W * 0.14, H * 0.66); g.lineTo(W * 0.22, H * 0.4); g.lineTo(W * 0.31, H * 0.62); g.lineTo(W * 0.38, H * 0.52); g.lineTo(W * 0.5, H * 0.78); g.closePath(); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 92px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('CIUCAȘ', W * 0.25, H * 0.3);
+      g.fillStyle = '#e8b830'; g.font = 'italic 34px Georgia, serif'; g.fillText('bere blondă · 5,0% vol.', W * 0.25, H * 0.46);
+      g.fillStyle = '#fff'; g.font = '30px system-ui, sans-serif'; g.fillText('0,5 L', W * 0.25, H * 0.85);
+      g.restore();
+    }
+  });
+  const canMat = [new THREE.MeshStandardMaterial({ map: lab, metalness: 0.55, roughness: 0.32, envMapIntensity: 1.2 }),
+    new THREE.MeshStandardMaterial({ color: 0xcfd3d8, metalness: 0.95, roughness: 0.22 }), new THREE.MeshStandardMaterial({ color: 0xcfd3d8, metalness: 0.95, roughness: 0.3 })];
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.97, Hc, 40), canMat); tube.position.set(0, y0 + Hc / 2, 0); tube.castShadow = true; tube.userData.keep = true; body.add(tube);
+  const alu = MAT.alu;
+  for (const [yy, rr0, rr1, h] of [[y0 + Hc + 0.05, R * 0.97, R * 0.8, 0.1], [y0 + Hc + 0.125, R * 0.8, R * 0.78, 0.05], [y0 - 0.03, R * 0.88, R * 0.97, 0.08]]) {     // gât, buza de sus, talpa
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rr0, rr1, h, 40), alu); m.position.set(0, yy, 0); m.castShadow = true; body.add(m); }
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.77, R * 0.77, 0.02, 40), MAT.alu); top.position.set(0, y0 + Hc + 0.13, 0); body.add(top);
+  const tab = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.018, 6, 20), MAT.chrome); tab.rotation.x = -PI / 2; tab.position.set(0, y0 + Hc + 0.15, -0.12); body.add(tab);   // inelul de desfacere
+  const opening = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), MAT.black); opening.rotation.x = -PI / 2; opening.position.set(0, y0 + Hc + 0.142, 0.14); body.add(opening);
+  // șasiu simplu sub doză: axe și o platformă
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 1.5), MAT.black); frame.position.set(0, 0.2, 0); body.add(frame);
+  for (const z of [M.zF, M.zR]) { const ax = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.3, 8), MAT.alu); ax.rotation.z = PI / 2; ax.position.set(0, 0.26, z); body.add(ax); }
+  // faruri/stopuri minuscule ca să fie „vehicul”
+  for (const sx of [-1, 1]) { const hl = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), MAT.head); hl.position.set(sx * 0.25, y0 + 0.35, R * 0.97 + 0.01); body.add(hl);
+    const tl = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), V.tailMat); tl.rotation.y = PI; tl.position.set(sx * 0.25, y0 + 0.35, -R * 0.97 - 0.01); body.add(tl); }
+  const W = { rF: 0.26, rR: 0.26, wF: 0.17, wR: 0.17, style: 'steel', rim: 0xd8d8d8, cap: 'text', caliper: 0x222222 };
+  const wheels = V.root.userData.wheels;
+  for (const sx of [-1, 1]) for (const [front, z] of [[true, M.zF], [false, M.zR]]) {
+    const w = makeWheel(W, front, sx); w.pivot.position.set(sx * 0.62, W.rF, z - V.cgZ); V.root.add(w.pivot); wheels.push({ pivot: w.pivot, spin: w.spin, front, sx });
+  }
+  mergeStatic(body); for (const w of wheels) mergeStatic(w.spin);
+  return V.root;
+}
+
 function buildMos(spec) {
   const M = MODELS.mos, V = vehicleShell(spec, M), { box, cyl, sph, tube, body } = V;
   const green = new THREE.MeshStandardMaterial({ color: spec.color, metalness: 0.5, roughness: 0.45 });
@@ -1169,6 +1219,7 @@ function walkStep(W, dt) {
 
 function buildCar(spec) {
   if (spec.body === 'mos') return buildMos(spec);
+  if (spec.body === 'can') return buildCan(spec);
   if (spec.body === 'volvo') return buildTruck(spec);
   if (spec.body === 'kart') return buildKart(spec);
   if (spec.body === 'r1') return buildBike(spec);
@@ -2362,6 +2413,88 @@ const PALACE = { x: -60, z: 128, w: 64, d: 30 };              // z = fațada (sp
   }
   scene.add(mergeStatic(placeShadow(pg)));
 }
+// ------------------------------------------------------------------
+// Pisica curcubeu: umblă prin arenă și fuge din calea mașinilor, lăsând o dâră de curcubeu
+// ------------------------------------------------------------------
+const CAT = { x: 40, z: 30, yaw: 0.5, sp: 0, y: 0, vy: 0, t: 0, wanderT: 0, wanderYaw: 0.5, hit: 0, gait: 0, sit: 0, trail: [], tn: 0 };
+const catMesh = (() => {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const fur = canvasTex(256, 64, (c, W, H) => { const cols = ['#ff3b3b', '#ff9a1f', '#ffe135', '#3ddc5a', '#2fa8ff', '#7a4dff', '#e04cff']; cols.forEach((col, i) => { c.fillStyle = col; c.fillRect(i * W / 7, 0, W / 7 + 1, H); }); });
+  const furM = new THREE.MeshStandardMaterial({ map: fur, roughness: 0.85 }), pink = new THREE.MeshStandardMaterial({ color: 0xffb3d9, roughness: 0.6 }), dark = new THREE.MeshStandardMaterial({ color: 0x1b1b24, roughness: 0.5 });
+  const sh = m => { m.castShadow = true; return m; };
+  const torso = sh(new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.55, 8, 14), furM)); torso.rotation.x = PI / 2; torso.position.set(0, 0.52, 0); torso.rotation.z = PI / 2; body.add(torso);
+  const head = new THREE.Group(); head.position.set(0, 0.68, 0.52); body.add(head);
+  head.add(sh(new THREE.Mesh(new THREE.SphereGeometry(0.2, 18, 14), furM)));
+  for (const sx of [-1, 1]) {
+    const ear = sh(new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.16, 8), furM)); ear.position.set(sx * 0.12, 0.19, -0.02); ear.rotation.z = -sx * 0.25; head.add(ear);
+    const inn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.09, 6), pink); inn.position.set(sx * 0.12, 0.185, 0.0); inn.rotation.z = -sx * 0.25; head.add(inn);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), dark); eye.position.set(sx * 0.08, 0.04, 0.17); head.add(eye);
+    const hi = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff })); hi.position.set(sx * 0.08 + 0.01, 0.055, 0.2); head.add(hi);
+    for (const k of [-1, 0, 1]) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.28, 4), new THREE.MeshBasicMaterial({ color: 0xffffff })); wh.rotation.z = PI / 2 + k * 0.18; wh.position.set(sx * 0.2, -0.04 + k * 0.025, 0.15); wh.rotation.y = sx * 0.2; head.add(wh); }
+  }
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), pink); nose.position.set(0, -0.02, 0.2); head.add(nose);
+  const tailG = new THREE.Group(); tailG.position.set(0, 0.6, -0.55); body.add(tailG);
+  const tail = sh(new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.6, 6, 10), furM)); tail.position.set(0, 0.3, -0.05); tail.rotation.x = -0.35; tail.rotation.z = PI / 2; tailG.add(tail);
+  const legs = [];
+  for (const [z, front] of [[0.3, true], [-0.3, false]]) for (const sx of [-1, 1]) {
+    const piv = new THREE.Group(); piv.position.set(sx * 0.13, 0.42, z); body.add(piv);
+    const l = sh(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.42, 8), furM)); l.position.y = -0.2; piv.add(l);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), pink); paw.position.set(0, -0.42, 0.02); piv.add(paw);
+    legs.push({ piv, front, sx });
+  }
+  g.userData = { body, head, tailG, legs };
+  g.scale.setScalar(1.7); g.visible = true; scene.add(g);
+  return g;
+})();
+const CAT_TRAIL = 26, catTrailMesh = (() => {
+  const m = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }), CAT_TRAIL);
+  m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  for (let i = 0; i < CAT_TRAIL; i++) { m.setColorAt(i, new THREE.Color().setHSL(i / 7 % 1, 0.95, 0.55)); CAT.trail.push([CAT.x, CAT.z, 0]); }
+  scene.add(m); return m;
+})();
+const _cm = new THREE.Matrix4(), _cq = new THREE.Quaternion(), _cv3 = new THREE.Vector3(), _cs3 = new THREE.Vector3();
+function catStep(dt) {
+  const C = CAT; C.t += dt;
+  const dx = C.x - car.x, dz = C.z - car.z, d = Math.hypot(dx, dz) || 0.001, carSp = Math.hypot(car.vx, car.vz);
+  const danger = d < 24 && (carSp > 1.5 || d < 7);
+  let want = C.wanderYaw, spT = C.sit > 0 ? 0 : 1.3;
+  C.sit = Math.max(0, C.sit - dt); C.wanderT -= dt;
+  if (danger) {                                          // fuge direct în direcția opusă mașinii, cu puțin zig-zag
+    want = Math.atan2(dx, dz) + Math.sin(C.t * 3.1) * 0.5; spT = Math.min(15, 8 + (24 - d) * 0.55);
+  } else if (C.wanderT <= 0) { C.wanderT = 2 + Math.random() * 3; C.wanderYaw = Math.random() * PI * 2; if (Math.random() < 0.3) C.sit = 1.5 + Math.random() * 2; }
+  const lim = ARENA - 7;                                 // la zid se întoarce spre centru (sau aleargă de-a lungul zidului)
+  if (Math.abs(C.x) > lim || Math.abs(C.z) > lim) { const toC = Math.atan2(-C.x, -C.z); want = danger ? toC + (Math.sin(C.t * 2) > 0 ? 1.2 : -1.2) : toC; if (!danger) C.wanderYaw = toC; }
+  let dy = want - C.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  C.yaw += dy * Math.min(1, dt * (danger ? 9 : 3));
+  C.sp += (spT - C.sp) * Math.min(1, dt * (danger ? 5 : 2));
+  C.x += Math.sin(C.yaw) * C.sp * dt; C.z += Math.cos(C.yaw) * C.sp * dt;
+  for (const o of OBSTACLES) {                           // ocolește obstacolele și lacul
+    if (o.h && o.bld && o.h < 0) continue;
+    const ox = C.x - o.x, oz = C.z - o.z, od = Math.hypot(ox, oz), min = o.r + 0.55;
+    if (od < min && od > 1e-4) { C.x += ox / od * (min - od); C.z += oz / od * (min - od); if (danger) C.yaw += (Math.sin(C.t * 5) > 0 ? 0.08 : -0.08); }
+  }
+  // a fost atinsă de mașină: sare în sus și miaună
+  C.hit = Math.max(0, C.hit - dt);
+  if (d < Math.max(1.0, car.spec.wid * 0.42) + 0.8 && car.y < 1.5 && carSp > 2 && C.hit <= 0 && C.y < 0.3) {
+    C.hit = 1.2; C.vy = 6.5; C.sp = 14; C.yaw = Math.atan2(dx, dz) + (Math.random() - 0.5); sound.meow(); pop('Miau! Pisica a scăpat', false);
+  }
+  C.y += C.vy * dt; if (C.y > 0 || C.vy > 0) C.vy -= 16 * dt; if (C.y <= 0) { C.y = 0; C.vy = 0; }
+  const gi = groundAt(C.x, C.z); catMesh.position.set(C.x, gi.h + C.y, C.z); catMesh.rotation.y = C.yaw;
+  catMesh.rotation.z = Math.sin(C.t * 8) * 0.03 * C.sp / 4;
+  const U = catMesh.userData; C.gait += dt * (0.5 + C.sp * 1.7);
+  const amp = Math.min(1, C.sp / 8) * 0.9, run = C.sp > 5;
+  for (const L of U.legs) { const ph = C.gait * (run ? 1.3 : 1) + (run ? (L.front ? 0 : PI * 0.9) + (L.sx > 0 ? 0.3 : 0) : (L.front === (L.sx > 0) ? 0 : PI)); L.piv.rotation.x = C.sp < 0.25 ? 0 : Math.sin(ph) * amp; }
+  U.body.position.y = C.sit > 0 && C.sp < 0.3 ? -0.12 : (run ? Math.abs(Math.sin(C.gait * 1.3)) * 0.1 : 0);
+  U.body.rotation.x = C.sit > 0 && C.sp < 0.3 ? -0.5 : (run ? Math.sin(C.gait * 1.3) * 0.08 : 0);
+  U.tailG.rotation.x = run ? -0.5 : -0.1 + Math.sin(C.t * 2) * 0.12; U.tailG.rotation.z = Math.sin(C.t * (run ? 14 : 3)) * (run ? 0.2 : 0.35);
+  U.head.rotation.y = C.sp < 0.5 ? Math.sin(C.t * 0.8) * 0.5 : 0;
+  // dâra de curcubeu: apare doar când aleargă
+  C.tn += dt; if (C.tn > 0.045) { C.tn = 0; C.trail.pop(); C.trail.unshift([C.x, C.z, gi.h + C.y + 0.4]); }
+  const show = Math.min(1, Math.max(0, (C.sp - 4) / 4));
+  for (let i = 0; i < CAT_TRAIL; i++) { const t = C.trail[i], sc = show * (1 - i / CAT_TRAIL) * 0.9 + 0.001;
+    _cm.compose(_cv3.set(t[0], t[2], t[1]), _cq.identity(), _cs3.set(sc, sc, sc)); catTrailMesh.setMatrixAt(i, _cm); }
+  catTrailMesh.instanceMatrix.needsUpdate = true;
+}
 function palaceStep() {
   const d = new Date(), m = d.getMinutes() + d.getSeconds() / 60, h = (d.getHours() % 12) + m / 60;
   for (const hg of PALACE.hands) hg.rotation.z = -(hg.userData.min ? m / 60 : h / 12) * PI * 2;   // ceasul arată ora reală
@@ -2975,6 +3108,15 @@ const sound = (() => {
       sir.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); const z = sir; setTimeout(() => { z.o.stop(); z.lfo.stop(); }, 300); sir = null;
     }
   }
+  // miauit: ton scurt care urcă și coboară
+  function meow() {
+    if (!ctx || !on) return;
+    const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(900, t + 0.16); o.frequency.linearRampToValueAtTime(480, t + 0.5);
+    f.type = 'bandpass'; f.frequency.setValueAtTime(1300, t); f.frequency.linearRampToValueAtTime(2200, t + 0.2); f.Q.value = 3;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + 0.6);
+  }
   // tropot de copită: un „toc” scurt, filtrat
   function clop(k, step) {
     if (!ctx || !on) return;
@@ -3025,7 +3167,7 @@ const sound = (() => {
       hornN = { g, os };
     } else if (!want && hornN) { hornN.g.gain.setTargetAtTime(0, ctx.currentTime, 0.03); const z = hornN; setTimeout(() => z.os.forEach(o => o.stop()), 200); hornN = null; }
   }
-  return { init, update, thump, toggle, siren, horn, clop, flap };
+  return { init, update, thump, toggle, siren, horn, clop, flap, meow };
 })();
 
 // ------------------------------------------------------------------
@@ -3114,7 +3256,7 @@ hdr.onclick = () => { setCollapsed(!carsEl.classList.contains('collapsed')); hdr
 CARS.forEach((s, i) => {
   const b = document.createElement('button'); b.className = 'car'; b.dataset.i = i;
   b.innerHTML = `<span class="sw" style="background:#${s.color.toString(16).padStart(6, '0')}"></span>
-    <span><div class="nm">${s.name}</div><div class="tg">${s.tag}</div></span><span class="k">${(i + 1) % 10}</span>`;
+    <span><div class="nm">${s.name}</div><div class="tg">${s.tag}</div></span><span class="k">${i < 9 ? i + 1 : i === 9 ? 0 : "-"}</span>`;
   b.onclick = () => { selectCar(i); b.blur(); };
   carsEl.appendChild(b);
 });
@@ -3196,6 +3338,7 @@ addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.key >= '1' && e.key <= '9' && +e.key <= CARS.length) selectCar(+e.key - 1);
   if (e.key === '0' && CARS.length >= 10) selectCar(9);
+  if (e.key === '-' && CARS.length >= 11) selectCar(10);
   if (e.key === 'r' || e.key === 'R') { resetCar(false); resetBall(); }
   if (e.key === 'c' || e.key === 'C') camMode = (camMode + 1) % 3;
   if (e.key === 'm' || e.key === 'M') sound.toggle();
@@ -3388,7 +3531,7 @@ function frame(now) {
   while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); acc -= STEP; }
   updateBallMesh(dt);
   if (WET.water) { WET.water.normalMap.offset.x += dt * 0.012; WET.water.normalMap.offset.y += dt * 0.007; }
-  parkStep(dt); palaceStep();
+  parkStep(dt); palaceStep(); catStep(dt);
   updateDrift(dt);
   updateCones(dt);
   updateSmoke(dt);
@@ -3438,6 +3581,7 @@ function drawMinimap() {
     const [a, b] = mmPos(hx + Math.sin(trailer.yaw) * TRAILER.front, hz + Math.cos(trailer.yaw) * TRAILER.front), [c, d] = mmPos(hx - Math.sin(trailer.yaw) * rear, hz - Math.cos(trailer.yaw) * rear);
     g.strokeStyle = '#f2f2f2'; g.lineWidth = Math.max(3, TRAILER.wid * k); g.lineCap = 'butt'; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke();
   }
+  { const [x, z] = mmPos(CAT.x, CAT.z); g.fillStyle = '#ff4fd8'; g.beginPath(); g.arc(x, z, 3, 0, 7); g.fill(); g.strokeStyle = '#ffe135'; g.lineWidth = 1.2; g.stroke(); }
   { const [x, z] = mmPos(ball.x, ball.z); g.fillStyle = '#fff'; g.strokeStyle = '#111'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, z, Math.max(3, BALL_R * k), 0, 7); g.fill(); g.stroke(); }
   // mașina: săgeată în culoarea ei, cu contur alb
   const [x, z] = mmPos(car.x, car.z), sz = Math.max(7, car.spec.len * k * 1.6);
@@ -3448,7 +3592,7 @@ function drawMinimap() {
 }
 
 // pentru testare din consolă
-window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, setSiren, carMeshes, trailer, trailerStep, groundAt, wetAt, setNight, ball, ballStep, resetBall };
+window.__drift = { car, drift, keys, CARS, selectCar, physicsStep, updateDrift, camOverride: null, orbit, setSiren, carMeshes, trailer, trailerStep, groundAt, wetAt, setNight, ball, ballStep, resetBall, CAT, catMesh };
 </script>
 <noscript>Jocul are nevoie de JavaScript.</noscript>
 </body>
