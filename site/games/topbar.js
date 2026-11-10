@@ -12,6 +12,7 @@
     { href: '/tom-and-jerry/', icon: '🐭', name: 'Pisica și șoarecii', short: 'Șoareci', desc: 'Ești o pisică într-un sat românesc. Vezi lumea dintre urechi și prinzi 15 șoareci prin curți.', color: '#e0823a' },
     { href: '/fastfood/', icon: '🍔', name: 'Fastfood Owner', short: 'Fastfood', desc: 'Ai o rulotă cu fastfood în oraș. Clienții vin la geam, tu gătești ce comandă.', color: '#d4421e' },
     { href: '/car-mechanic/', icon: '🔧', name: 'Car Mechanic', short: 'Mecanic', desc: 'Ai un service auto. Cauți defectul, schimbi piesele stricate și iei banii de la client.', color: '#c2410c' },
+    { href: '/pc-builder/', icon: '🖥️', name: 'PC Builder', short: 'PC', desc: 'Clienții comandă calculatoare online. Alegi piesele, le montezi și livrezi PC-ul perfect în bugetul lor.', color: '#2b6cd6' },
     { href: 'https://city.no-santos.com/', icon: '🏙️', name: 'City', short: 'City', desc: 'Orașul No-Santos: case, magazine, drumuri și locuitori care trăiesc și circulă prin el.', color: '#7aa95c' }
   ];
   window.NS_GAMES = GAMES;
