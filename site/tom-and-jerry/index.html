@@ -489,13 +489,13 @@ const CHAIN = 3.2;
 const MICE = [];
 const tailCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.05, 0.1), new THREE.Vector3(0, 0.03, 0.2), new THREE.Vector3(0.05, 0.02, 0.28), new THREE.Vector3(0.02, 0.03, 0.36)]);
 const TAILG = new THREE.TubeGeometry(tailCurve, 10, 0.007, 5, false);
-const EARG = new THREE.CylinderGeometry(0.03, 0.03, 0.006, 12);
+const MOUSE_EARG = new THREE.CylinderGeometry(0.03, 0.03, 0.006, 12);
 function mouseMesh() {
   const g = new THREE.Group(), fur = mat(pick([0x8a8580, 0x7b6f63, 0x9a948c, 0x6d655c])), pink = mat(0xf0a0a8);
   ball(0.065, 0.055, 0.11, fur, 0, 0.055, 0, g);
   ball(0.045, 0.042, 0.065, fur, 0, 0.07, -0.1, g);
   ball(0.012, 0.012, 0.012, pink, 0, 0.068, -0.162, g, false);
-  for (const s of [-1, 1]) { const e = add(new THREE.Mesh(EARG, pink), g, s * 0.032, 0.115, -0.085, false); e.rotation.x = Math.PI / 2; e.rotation.z = s * 0.3; ball(0.009, 0.009, 0.009, mat(0x0a0a0a), s * 0.022, 0.085, -0.14, g, false); }
+  for (const s of [-1, 1]) { const e = add(new THREE.Mesh(MOUSE_EARG, pink), g, s * 0.032, 0.115, -0.085, false); e.rotation.x = Math.PI / 2; e.rotation.z = s * 0.3; ball(0.009, 0.009, 0.009, mat(0x0a0a0a), s * 0.022, 0.085, -0.14, g, false); }
   const tail = add(new THREE.Mesh(TAILG, pink), g, 0, 0, 0, false);
   g.scale.setScalar(1.25);
   return { g, tail };
@@ -517,47 +517,118 @@ function spawnMice() {
   }
 }
 
-// ---------------- pisica: urechi și lăbuțe ----------------
-const furMat = new THREE.MeshLambertMaterial({ color: 0xd9822f, fog: false });
-const furDark = new THREE.MeshLambertMaterial({ color: 0xb5662a, fog: false });
-const furPale = new THREE.MeshLambertMaterial({ color: 0xf0c48a, fog: false });
+// ---------------- pisica: blană, urechi, mustăți, lăbuțe ----------------
+// blana: textură desenată fir cu fir (roșcat tigrat) + câteva „cochilii” cu fire transparente peste, ca să pară pufoasă
+function furCanvas(alphaOnly, stripes) {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  if (!alphaOnly) {
+    const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#df9550'); gr.addColorStop(1, '#cf7c34');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    if (stripes) { g.filter = 'blur(6px)'; g.fillStyle = 'rgba(150,72,22,.55)'; for (let k = 0; k < stripes; k++) { const y = (k + 0.5) * 256 / stripes; g.beginPath(); g.moveTo(-10, y); for (let x = 0; x <= 270; x += 20) g.lineTo(x, y + Math.sin(x / 40 + k) * 6 - 7); for (let x = 270; x >= -10; x -= 20) g.lineTo(x, y + Math.sin(x / 40 + k) * 6 + 7); g.fill(); } g.filter = 'none'; }
+  }
+  const band = y => stripes ? 0.5 + 0.5 * Math.sin((y + Math.sin(y * 0.03) * 10) / 256 * TAU * stripes) : 0;
+  const n = alphaOnly ? 5200 : 9000;
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * 256, y = Math.random() * 256, b = band(y);
+    const dark = b > 0.72 && Math.random() < 0.85;
+    const l = alphaOnly ? 3 + Math.random() * 7 : 4 + Math.random() * 9;
+    const hue = 24 + Math.random() * 10, sat = 55 + Math.random() * 25;
+    const lig = dark ? 34 + Math.random() * 10 : (Math.random() < 0.15 ? 66 + Math.random() * 10 : 48 + Math.random() * 12);
+    g.strokeStyle = `hsla(${hue},${sat}%,${lig}%,${alphaOnly ? 1 : 0.35})`;
+    g.lineWidth = alphaOnly ? 0.9 : 0.8 + Math.random() * 0.5;
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 0.7;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l * 0.4, y + Math.sin(a) * l); g.stroke();
+  }
+  if (!alphaOnly) { const c2 = document.createElement('canvas'); c2.width = c2.height = 256; const g2 = c2.getContext('2d'); g2.filter = 'blur(0.6px)'; g2.drawImage(c, 0, 0); g.drawImage(c2, 0, 0); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  return t;
+}
+const furTex = furCanvas(false, 4), furTexPlain = furCanvas(false, 0), shellTex = furCanvas(true, 0);
+const rep = (t, x, y) => { const c = t.clone(); c.repeat.set(x, y); c.needsUpdate = true; return c; };
+const furMat = new THREE.MeshLambertMaterial({ map: rep(furTex, 2, 1), fog: false });
+const furPlainMat = new THREE.MeshLambertMaterial({ map: rep(furTexPlain, 2, 2), fog: false });
+const shellMat = new THREE.MeshLambertMaterial({ map: rep(shellTex, 3, 3), alphaTest: 0.5, side: THREE.DoubleSide, fog: false });
+const headMat = new THREE.MeshLambertMaterial({ map: rep(furTex, 3, 1), emissive: 0x2a1406, fog: false });
+furMat.emissive.setHex(0x2a1406); furPlainMat.emissive.setHex(0x2a1406); shellMat.emissive.setHex(0x2a1406);
+const hairMat = new THREE.MeshLambertMaterial({ color: 0xf6ead8, fog: false });
+const pinkMat = new THREE.MeshLambertMaterial({ color: 0xd9867e, fog: false });
+const clawMat = new THREE.MeshLambertMaterial({ color: 0xf4efe4, transparent: true, opacity: 0.92, fog: false });
+function furry(geo, mat = furMat, shells = 3, grow = [1.035, 1.03, 1.06]) {
+  const g = new THREE.Group(); g.add(new THREE.Mesh(geo, mat));
+  for (let k = 1; k <= shells; k++) { const s = new THREE.Mesh(geo, shellMat); s.scale.set(1 + (grow[0] - 1) * k, 1 + (grow[1] - 1) * k, 1 + (grow[2] - 1) * k); g.add(s); }
+  return g;
+}
+const strand = (pts, r, mat) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 8, r, 4, false), mat);
+// urechea: o „cupă” rotunjită, văzută din spate (partea cu blană spre noi)
+const CAT_EARG = (() => {
+  const prof = [[0.5, 0], [0.5, 0.18], [0.46, 0.4], [0.37, 0.62], [0.24, 0.82], [0.1, 0.96], [0.0, 1.0]].map(([r, y]) => new THREE.Vector2(r, y));
+  const g = new THREE.LatheGeometry(prof, 22, -Math.PI / 2 - 0.15, Math.PI + 0.3);
+  g.scale(0.85, 1, 0.42);
+  return g;
+})();
 function earMesh() {
   const g = new THREE.Group();
-  const s = new THREE.Shape(); s.moveTo(-0.5, 0); s.quadraticCurveTo(-0.32, 0.6, 0.02, 1); s.quadraticCurveTo(0.32, 0.55, 0.5, 0); s.closePath();
-  const geo = new THREE.ExtrudeGeometry(s, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2, curveSegments: 10 });
-  g.add(new THREE.Mesh(geo, furMat));
-  for (const k of [0.22, 0.42]) { const st = new THREE.Mesh(BOXG, furDark); st.scale.set(0.5 - k * 0.6, 0.035, 0.02); st.position.set(0, k, 0.18); g.add(st); }
-  const tuft = new THREE.Shape(); tuft.moveTo(-0.5, 0); tuft.quadraticCurveTo(-0.38, 0.45, -0.3, 0.55); tuft.lineTo(-0.36, 0); tuft.closePath();
-  const tm = new THREE.Mesh(new THREE.ShapeGeometry(tuft), furPale); tm.position.z = 0.175; g.add(tm);
+  g.add(furry(CAT_EARG, furPlainMat, 3, [1.03, 1.02, 1.06]));
+  // câteva fire deschise la culoare ies din ureche, pe margine
+  for (const [x, y] of [[0.36, 0.42], [0.3, 0.55], [-0.36, 0.42]]) g.add(strand([[x, y, -0.06], [x * 1.12, y + 0.1, -0.08], [x * 1.22, y + 0.17, -0.07]], 0.005, hairMat));
   return g;
 }
 const ears = [earMesh(), earMesh()];
 ears.forEach(e => camera.add(e));
+// lăbuța: antebraț, talpă rotundă, 4 degete și gheare care ies la prindere
 function pawMesh() {
   const g = new THREE.Group();
-  const leg = new THREE.Mesh(cylG(0.5, 0.55, 2.4, 12), furMat); leg.rotation.x = -1.2; leg.position.set(0, -0.3, 1.0); g.add(leg);
-  const p = new THREE.Mesh(SPH, furMat); p.scale.set(0.62, 0.42, 0.7); g.add(p);
-  for (const k of [-0.3, 0, 0.3]) { const s = new THREE.Mesh(BOXG, furDark); s.scale.set(0.12, 0.05, 0.9); s.position.set(k, 0.38, 0.6); g.add(s); }
-  for (const k of [-0.35, -0.12, 0.12, 0.35]) { const c = new THREE.Mesh(cylG(0, 0.04, 0.22, 5), new THREE.MeshBasicMaterial({ color: 0xf2efe6, fog: false })); c.rotation.x = -Math.PI / 2; c.position.set(k, 0.05, -0.72); g.add(c); }
+  const arm = furry(new THREE.CylinderGeometry(0.42, 0.5, 2.6, 18, 1, true), furMat, 2, [1.05, 1, 1.05]); arm.rotation.x = -1.15; arm.position.set(0, -0.45, 1.25); g.add(arm);
+  const pad = furry(new THREE.SphereGeometry(0.5, 20, 14), furPlainMat, 3, [1.04, 1.04, 1.04]); pad.scale.set(1.15, 0.62, 1.3); g.add(pad);
+  const claws = [];
+  [-0.39, -0.13, 0.13, 0.39].forEach((x, k) => {
+    const toe = furry(new THREE.SphereGeometry(0.2, 14, 10), furPlainMat, 2, [1.06, 1.06, 1.06]);
+    toe.scale.set(1, 0.85, 1.15); toe.position.set(x, 0.04, -0.55 + Math.abs(x) * 0.25); g.add(toe);
+    const cl = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.3, 6), clawMat);
+    cl.rotation.x = -Math.PI / 2 - 0.5; cl.position.set(x, -0.03, -0.7 + Math.abs(x) * 0.25); g.add(cl); claws.push(cl);
+  });
+  g.userData.claws = claws;
   return g;
 }
 const paws = [pawMesh(), pawMesh()];
 paws.forEach(p => { p.visible = false; camera.add(p); });
-// creștetul capului, jos în imagine
+// creștetul capului, jos în imagine, și mustățile
 const head = new THREE.Group(); camera.add(head);
-const headBall = new THREE.Mesh(SPH, furMat); head.add(headBall);
-const headStripes = [-0.5, 0, 0.5].map(k => { const st = new THREE.Mesh(BOXG, furDark); st.userData.k = k; head.add(st); return st; });
+const headDome = furry(new THREE.SphereGeometry(1, 32, 16, 0, TAU, 0, Math.PI / 2), headMat, 2, [1.01, 1.03, 1.015]);
+head.add(headDome);
+// laturile capului urcă spre baza urechilor (capul e „în șa” între urechi)
+const sideHead = [-1, 1].map(s => { const m = furry(new THREE.SphereGeometry(1, 24, 16), headMat, 2, [1.02, 1.02, 1.02]); m.userData.s = s; camera.add(m); return m; });
+let whiskers = new THREE.Group(); camera.add(whiskers);
+const whiskerMat = new THREE.MeshBasicMaterial({ color: 0xfbf8f0, transparent: true, opacity: 0.6, fog: false });
 const EAR_Z = 0.12;
 let halfH = 0, halfW = 0;
 function layoutEars() {
   halfH = EAR_Z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   halfW = halfH * camera.aspect;
-  const h = Math.min(halfH * 0.95, halfW * 0.85), ex = halfW - h * 0.28;
-  ears.forEach((e, k) => { const s = k ? 1 : -1; e.scale.set(h * 0.78 * (k ? -1 : 1), h, h * 0.3); e.position.set(s * ex, halfH * 0.3, -EAR_Z); e.rotation.set(-0.15, 0, -s * 0.32); });
-  headBall.scale.set(halfW * 1.1, halfH * 0.2, 0.02); head.position.set(0, -halfH * 1.1, -EAR_Z - 0.02);
-  headStripes.forEach(st => { st.scale.set(halfW * 0.025, halfH * 0.16, 0.004); st.position.set(st.userData.k * halfW * 0.35, halfH * 0.12, 0.021); st.rotation.z = -st.userData.k * 0.35; });
-  paws.forEach((p, k) => { const s = k ? 1 : -1; p.scale.setScalar(halfH * 0.32); p.userData.x = s * halfH * 0.42; });
+  const h = Math.min(halfH * 0.95, halfW * 0.6), ex = halfW - h * 0.32;
+  ears.forEach((e, k) => { const s = k ? 1 : -1; e.scale.set(h * (k ? -1 : 1), h, h); e.position.set(s * ex, -halfH * 0.12, -EAR_Z); e.userData.base = s; });
+  sideHead.forEach(m => { const s = m.userData.s; const sy = Math.min(halfH * 0.7, h * 1.3); m.scale.set(h * 0.5, sy, h * 0.3); m.position.set(s * (ex + h * 0.55), -h * 0.12 - sy * 0.95, -EAR_Z - h * 0.05); m.rotation.z = s * 0.2; });
+  headDome.scale.set(halfW * 1.05, halfH * 0.3, EAR_Z * 0.35); head.position.set(0, -halfH * 1.18, -EAR_Z - 0.01); head.rotation.x = -0.25;
+  // mustățile: din bot (sub imagine) spre colțurile de jos
+  camera.remove(whiskers); whiskers = new THREE.Group(); camera.add(whiskers);
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
+    const y0 = -halfH * (1.3 + k * 0.05), y1 = -halfH * (0.82 + k * 0.12), x1 = s * halfW * (1.25 + k * 0.1);
+    const w = strand([[s * halfW * 0.3, y0, -EAR_Z * 0.9], [s * halfW * 0.8, (y0 + y1) / 2 + halfH * 0.06, -EAR_Z * 1.15], [x1, y1, -EAR_Z * 1.35]], halfH * 0.003, whiskerMat);
+    w.userData = { s, k }; whiskers.add(w);
+  }
+  paws.forEach((p, k) => { const s = k ? 1 : -1; p.scale.setScalar(halfH * 0.36); p.userData.x = s * halfH * 0.42; });
 }
+// corpul pisicii nu se vede (ești în capul ei), dar își face umbra pe jos: corp, picioare și coadă
+const catBody = new THREE.Group(); scene.add(catBody);
+const shadowOnly = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+const bodyPart = (geo, x, y, z, sx = 1, sy = 1, sz = 1, p = catBody) => { const m = new THREE.Mesh(geo, shadowOnly); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.castShadow = true; p.add(m); return m; };
+bodyPart(SPH, 0, 0.2, 0.25, 0.1, 0.09, 0.24);
+bodyPart(SPH, 0, 0.27, -0.03, 0.075, 0.07, 0.07);
+for (const s of [-1, 1]) { const e = bodyPart(new THREE.ConeGeometry(0.025, 0.06, 4), s * 0.04, 0.345, -0.03); e.rotation.z = -s * 0.3; }
+const catLegs = [[-0.05, 0.08], [0.05, 0.08], [-0.05, 0.42], [0.05, 0.42]].map(([x, z]) => { const p = new THREE.Group(); p.position.set(x, 0.17, z); catBody.add(p); bodyPart(BOXG, 0, -0.085, 0, 0.035, 0.17, 0.035, p); return p; });
+const tailPivot = new THREE.Group(); tailPivot.position.set(0, 0.24, 0.47); catBody.add(tailPivot);
+const tailM = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([[0, 0, 0], [0, 0.08, 0.1], [0.02, 0.22, 0.16], [0.06, 0.34, 0.12]].map(p => new THREE.Vector3(...p))), 12, 0.02, 5), shadowOnly);
+tailM.castShadow = true; tailPivot.add(tailM);
 
 // ---------------- sunet ----------------
 let AC = null, master = null, muted = false;
@@ -951,16 +1022,23 @@ function frame() {
   earTw = Math.max(0, earTw - dt);
   ears.forEach((e, k) => {
     const s = k ? 1 : -1, toward = earTw > 0 && Math.sign(earSide) === s ? 0.25 * Math.sin(earTw * 20) : 0;
-    e.rotation.z = -s * 0.32 + toward + Math.sin(T * 0.7 + k) * 0.02;
-    e.rotation.x = -0.15 + (cat.pc > 0 ? -0.35 : 0) + (cat.knock > 0 ? 0.6 : 0);
+    e.rotation.z = -s * 0.26 + toward + Math.sin(T * 0.7 + k) * 0.02;
+    e.rotation.x = -0.12 + (cat.pc > 0 ? -0.35 : 0) + (cat.knock > 0 ? 0.6 : 0);
+    e.rotation.y = s * (0.25 + (earTw > 0 && Math.sign(earSide) === s ? 0.3 : 0));
   });
+  whiskers.children.forEach(w => { w.rotation.z = w.userData.s * Math.sin(T * 2.3 + w.userData.k) * 0.015 + (cat.pc > 0 ? w.userData.s * 0.06 : 0); });
   // lăbuțele la prindere
   const pp = cat.pc > 0 ? Math.sin((1 - cat.pc / 0.32) * Math.PI) : 0;
   paws.forEach((p, k) => {
     p.visible = pp > 0.01;
     p.position.set(p.userData.x * (1 - pp * 0.25), -halfH * (1.35 - pp * 0.85), -EAR_Z * (1 + pp * 0.5));
     p.rotation.set(0.4 - pp * 0.3, 0, (k ? -1 : 1) * 0.15);
+    p.userData.claws.forEach(c => c.scale.setScalar(0.3 + pp * 0.9));
   });
+  // umbra corpului
+  catBody.position.set(cat.x, cat.y, cat.z); catBody.rotation.y = cat.yaw;
+  catLegs.forEach((l, k) => l.rotation.x = moving ? Math.sin(cat.bob * 2 + (k === 0 || k === 3 ? 0 : Math.PI)) * 0.6 : 0);
+  tailPivot.rotation.z = Math.sin(T * 1.6) * 0.35; tailPivot.rotation.x = cat.running ? 0.9 : 0;
   sun.position.set(cat.x + 30, 55, cat.z + 18); sun.target.position.set(cat.x, 0, cat.z);
   renderer.render(scene, camera);
   drawMini(T);
