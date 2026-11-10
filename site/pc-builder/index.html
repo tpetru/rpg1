@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>PC Builder 3D</title>
+<meta name="description" content="Clienții comandă calculatoare online. Tu alegi piesele, le montezi în carcasă și livrezi PC-ul perfect, în bugetul lor.">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #22252b; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; }
+  .chip { background: rgba(18, 20, 26, .72); border-radius: 12px; padding: 7px 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  #hud { position: fixed; left: 12px; top: calc(12px + var(--gb, 0px)); display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; z-index: 5; max-width: calc(100vw - 500px); }
+  #hud .chip { font-weight: 800; font-size: 16px; }
+  #rep { color: #ffcf3a; letter-spacing: 1px; }
+  #btns { position: fixed; right: 392px; top: calc(12px + var(--gb, 0px)); display: flex; gap: 6px; z-index: 5; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; color: inherit; }
+  .ib { width: 40px; height: 40px; font-size: 19px; background: rgba(18, 20, 26, .72); color: #fff; }
+  .ib:hover { background: rgba(18, 20, 26, .92); }
+  .card { background: rgba(18, 20, 26, .88); border-radius: 16px; padding: 12px 14px; box-shadow: 0 8px 30px rgba(0,0,0,.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 6; }
+
+  #order { position: fixed; left: 10px; bottom: 10px; width: 360px; max-height: calc(100vh - 80px - var(--gb, 0px)); overflow: auto; }
+  #order .who { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  #order .who .av { font-size: 28px; }
+  #order .who small { opacity: .75; display: block; font-size: 12px; }
+  #order .who .tog { margin-left: auto; display: none; background: #343a44; width: 30px; height: 30px; }
+  #order .say { font-size: 15px; font-weight: 600; margin: 8px 0; line-height: 1.35; color: #ffe9b0; }
+  .reqs { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 8px; }
+  .reqs span { font-size: 12.5px; font-weight: 700; padding: 4px 8px; border-radius: 9px; background: #3a2a2a; color: #ffb4a8; }
+  .reqs span.ok { background: #213a26; color: #8ff0a0; }
+  .reqs span i { font-style: normal; opacity: .75; font-weight: 600; }
+  .cost { font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+  .cost b.over { color: #ff7a6a; }
+  .cost b.pos { color: #6dff86; }
+  .bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; margin: 5px 0 9px; position: relative; }
+  .bar i { display: block; height: 100%; width: 0; background: #4fd36a; transition: width .25s; }
+  .bar i.over { background: #ff5a4a; }
+  .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .acts button { padding: 10px 6px; font-weight: 800; font-size: 15px; background: #343a44; }
+  .acts button:hover:not(:disabled) { background: #48505c; }
+  .acts #bGo { background: #1f7a3a; }
+  .acts #bGo:hover:not(:disabled) { background: #26944a; }
+  .acts button:disabled { opacity: .35; cursor: default; }
+  .errs { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: #ff9a8a; }
+  .errs li { padding: 2px 0; }
+  .errs li.w { color: #ffd34a; }
+  .okmsg { margin-top: 8px; font-size: 12.5px; color: #8ff0a0; }
+
+  #shop { position: fixed; right: 10px; top: calc(10px + var(--gb, 0px)); bottom: 10px; width: 370px; display: flex; flex-direction: column; padding: 10px; }
+  #tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  #tabs button { background: #343a44; padding: 6px 2px 5px; font-size: 11.5px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 1px; position: relative; }
+  #tabs button .e { font-size: 19px; }
+  #tabs button:hover:not(:disabled) { background: #48505c; }
+  #tabs button.on { background: #2f5d8a; }
+  #tabs button:disabled { opacity: .35; cursor: default; }
+  #tabs button.has::after { content: '✓'; position: absolute; right: 4px; top: 2px; color: #6dff86; font-size: 12px; }
+  #tabs button.bad::after { content: '!'; position: absolute; right: 5px; top: 1px; color: #ff6a5a; font-size: 14px; font-weight: 900; }
+  #cathead { margin: 9px 2px 6px; font-size: 13px; opacity: .85; }
+  #list { flex: 1; overflow: auto; padding-right: 2px; }
+  .it { display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 11px; background: rgba(255,255,255,.05); margin-bottom: 6px; cursor: pointer; border: 2px solid transparent; }
+  .it:hover { background: rgba(255,255,255,.11); }
+  .it.inst { border-color: #4fd36a; background: rgba(79, 211, 106, .1); }
+  .it .sw { width: 18px; height: 18px; border-radius: 5px; flex: none; border: 1px solid rgba(255,255,255,.3); }
+  .it .tx { flex: 1; min-width: 0; }
+  .it .tx b { display: block; font-size: 14px; }
+  .it .tx small { display: block; font-size: 12px; opacity: .8; line-height: 1.35; }
+  .it .tx .wa { color: #ff8a7a; opacity: 1; }
+  .it .pr { font-weight: 800; color: #ffd34a; white-space: nowrap; font-size: 14px; text-align: right; }
+  .it .pr small { display: block; font-size: 11px; color: #8ff0a0; font-weight: 700; }
+  .lockmsg { font-size: 13px; color: #ffd34a; padding: 10px 4px; }
+
+  #toast { position: fixed; left: 50%; top: calc(64px + var(--gb, 0px)); transform: translateX(-50%); font-size: 16px; font-weight: 800; text-align: center; pointer-events: none; opacity: 0; transition: opacity .25s; max-width: min(520px, calc(100vw - 32px)); z-index: 9; }
+  #toast.show { opacity: 1; }
+  #toast.good { background: rgba(40, 130, 50, .92); }
+  #toast.bad { background: rgba(190, 40, 30, .92); }
+  #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: calc(16px + var(--gb, 0px)) 16px 16px; background: rgba(10, 12, 16, .55); z-index: 20; }
+  #overlay.show { display: flex; }
+  .panel { background: #f1f3f6; color: #23262c; border-radius: 22px; padding: 22px 24px; width: min(600px, 100%); max-height: calc(100vh - 32px - var(--gb, 0px)); overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+  .panel h1 { margin: 0 0 6px; font-size: 32px; color: #2b6cd6; text-align: center; }
+  .panel h2 { margin: 0 0 8px; font-size: 24px; color: #2b6cd6; text-align: center; }
+  .panel p { margin: 8px 0; line-height: 1.45; }
+  .panel ul { margin: 6px 0 10px; padding-left: 20px; line-height: 1.55; }
+  .panel kbd { background: #dde1e8; border-radius: 5px; padding: 1px 6px; font: inherit; font-weight: 700; font-size: 13px; }
+  .res { list-style: none; padding: 0 !important; }
+  .res li { padding: 6px 10px; border-radius: 10px; margin: 4px 0; background: #e3e7ee; }
+  .res li.g { background: #d6efd8; }
+  .res li.r { background: #f7d6d0; }
+  .res li.y { background: #f6ecc8; }
+  .res li b { float: right; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
+  .stats div { background: #e3e7ee; border-radius: 10px; padding: 8px 10px; }
+  .stats b { display: block; font-size: 22px; }
+  .quote { text-align: center; font-size: 18px; font-weight: 700; margin: 6px 0 10px; }
+  .go { display: block; margin: 14px auto 2px; padding: 12px 30px; font-size: 20px; font-weight: 800; background: #2b6cd6; color: #fff; box-shadow: 0 4px 0 #17428a; }
+  .go:active { transform: translateY(3px); box-shadow: 0 1px 0 #17428a; }
+  .go2 { display: block; margin: 8px auto 0; padding: 8px 18px; font-size: 15px; font-weight: 700; background: #d3d8e0; color: #23262c; }
+
+  @media (max-width: 900px) {
+    #hud { max-width: calc(100vw - 110px); }
+    #hud .chip { font-size: 13.5px; padding: 5px 9px; }
+    #btns { right: 8px; }
+    .ib { width: 36px; height: 36px; font-size: 17px; }
+    #order { left: 6px; right: 6px; width: auto; top: calc(52px + var(--gb, 0px)); bottom: auto; padding: 8px 10px; max-height: 40vh; }
+    #order .who .tog { display: block; }
+    #order:not(.open) .say { display: none; }
+    #order:not(.open) .reqs span:not(.no) { display: none; }
+    #order .say { font-size: 13.5px; margin: 5px 0; }
+    .reqs { margin: 4px 0 6px; }
+    .reqs span { font-size: 11.5px; padding: 3px 7px; }
+    .bar { margin: 3px 0 6px; }
+    .acts button { padding: 7px 4px; font-size: 14px; }
+    .errs { max-height: 60px; overflow: auto; }
+    #shop { left: 6px; right: 6px; width: auto; top: auto; bottom: 6px; height: 40vh; padding: 8px; }
+    #tabs { grid-template-columns: repeat(8, 1fr); gap: 3px; }
+    #tabs button { font-size: 0; padding: 5px 0 4px; }
+    #tabs button .e { font-size: 18px; }
+    #cathead { margin: 6px 2px 4px; font-size: 12px; }
+    .it { padding: 6px 8px; margin-bottom: 4px; }
+    .it .tx b { font-size: 13px; }
+    .it .tx small { font-size: 11px; }
+    #toast { top: auto; bottom: calc(40vh + 16px); font-size: 14px; }
+    .panel { padding: 16px; } .panel h1 { font-size: 26px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+<script src="/games/topbar.js"></script>
+<div id="hud">
+  <div class="chip" id="money">💰 0 lei</div>
+  <div class="chip" id="rep">★★★☆☆</div>
+  <div class="chip" id="day">📅 Ziua 1 · 🧾 1/3</div>
+</div>
+<div id="btns">
+  <button class="ib" id="bSound" title="Sunet (M)">🔊</button>
+  <button class="ib" id="bHelp" title="Ajutor (Esc)">❔</button>
+</div>
+<div class="card" id="order"></div>
+<div class="card" id="shop"><div id="tabs"></div><div id="cathead"></div><div id="list"></div></div>
+<div id="toast" class="chip"></div>
+<div id="overlay" class="show"><div class="panel" id="panel"><h1>🖥️ PC Builder</h1><p style="text-align:center">Se deschide atelierul…</p></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const clamp = THREE.MathUtils.clamp;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const lei = n => Math.round(n).toLocaleString('ro-RO') + ' lei';
+const SAVE = 'pcbuilder3d';
+
+// ================= piese =================
+// prețurile sunt cât te costă piesa la furnizor; clientul plătește bugetul lui
+const CATS = [
+  { k: 'case', n: 'Carcasă',       s: 'Carcasă', i: '🗄️' },
+  { k: 'mb',   n: 'Placă de bază', s: 'Placă',   i: '🟩' },
+  { k: 'cpu',  n: 'Procesor',      s: 'CPU',     i: '🔲' },
+  { k: 'cool', n: 'Cooler',        s: 'Cooler',  i: '❄️' },
+  { k: 'ram',  n: 'Memorie RAM',   s: 'RAM',     i: '📏' },
+  { k: 'gpu',  n: 'Placă video',   s: 'Video',   i: '🎮' },
+  { k: 'sto',  n: 'Stocare',       s: 'SSD',     i: '💾' },
+  { k: 'psu',  n: 'Sursă',         s: 'Sursă',   i: '🔌' },
+];
+const P = {
+  case: [
+    { id: 'c1',  n: 'Carcasă ATX neagră',      ff: 'ATX',  col: 'neagră',   hex: 0x1d1f24, pr: 300 },
+    { id: 'c2',  n: 'Carcasă ATX albă',        ff: 'ATX',  col: 'albă',     hex: 0xe6e9ed, pr: 350 },
+    { id: 'c3',  n: 'Carcasă ATX neagră RGB',  ff: 'ATX',  col: 'neagră',   hex: 0x17181c, rgb: 1, pr: 520 },
+    { id: 'c4',  n: 'Carcasă ATX albă RGB',    ff: 'ATX',  col: 'albă',     hex: 0xf0f2f5, rgb: 1, pr: 560 },
+    { id: 'c5',  n: 'Carcasă ATX roz RGB',     ff: 'ATX',  col: 'roz',      hex: 0xf09cc0, rgb: 1, pr: 490 },
+    { id: 'c6',  n: 'Carcasă ATX roșie',       ff: 'ATX',  col: 'roșie',    hex: 0xb3242b, pr: 420 },
+    { id: 'c7',  n: 'Carcasă mATX albastră',   ff: 'mATX', col: 'albastră', hex: 0x2f63c9, pr: 280 },
+    { id: 'c8',  n: 'Carcasă mATX verde',      ff: 'mATX', col: 'verde',    hex: 0x3e8f4e, pr: 290 },
+    { id: 'c9',  n: 'Carcasă mini-ITX neagră', ff: 'ITX',  col: 'neagră',   hex: 0x1a1b1f, pr: 450 },
+    { id: 'c10', n: 'Carcasă mini-ITX albă',   ff: 'ITX',  col: 'albă',     hex: 0xeceef0, pr: 480 },
+  ],
+  mb: [
+    { id: 'm1',  n: 'B550M',           sock: 'AM4',     mem: 'DDR4', ff: 'mATX', pr: 450 },
+    { id: 'm2',  n: 'B550 Wi-Fi',      sock: 'AM4',     mem: 'DDR4', ff: 'ATX',  wifi: 1, pr: 650 },
+    { id: 'm3',  n: 'A620M',           sock: 'AM5',     mem: 'DDR5', ff: 'mATX', pr: 520 },
+    { id: 'm4',  n: 'B650 Wi-Fi',      sock: 'AM5',     mem: 'DDR5', ff: 'ATX',  wifi: 1, pr: 850 },
+    { id: 'm5',  n: 'B650I Wi-Fi',     sock: 'AM5',     mem: 'DDR5', ff: 'ITX',  wifi: 1, pr: 1100 },
+    { id: 'm6',  n: 'X670E Wi-Fi RGB', sock: 'AM5',     mem: 'DDR5', ff: 'ATX',  wifi: 1, rgb: 1, pr: 1600 },
+    { id: 'm7',  n: 'H610M',           sock: 'LGA1700', mem: 'DDR4', ff: 'mATX', pr: 400 },
+    { id: 'm8',  n: 'B760M Wi-Fi',     sock: 'LGA1700', mem: 'DDR5', ff: 'mATX', wifi: 1, pr: 720 },
+    { id: 'm9',  n: 'B760I Wi-Fi',     sock: 'LGA1700', mem: 'DDR5', ff: 'ITX',  wifi: 1, pr: 1000 },
+    { id: 'm10', n: 'Z790 Wi-Fi RGB',  sock: 'LGA1700', mem: 'DDR5', ff: 'ATX',  wifi: 1, rgb: 1, pr: 1400 },
+  ],
+  // g = putere în jocuri, m = putere multi-core (video, programare), w = consum, ig = grafică integrată
+  cpu: [
+    { id: 'p1',  n: 'Intel Core i3-12100F', br: 'Intel', sock: 'LGA1700', c: 4,  g: 45,  m: 25,  w: 60,  ig: 0,  pr: 450 },
+    { id: 'p2',  n: 'Intel Core i3-12100',  br: 'Intel', sock: 'LGA1700', c: 4,  g: 45,  m: 25,  w: 60,  ig: 6,  pr: 550 },
+    { id: 'p3',  n: 'Intel Core i5-12400',  br: 'Intel', sock: 'LGA1700', c: 6,  g: 58,  m: 40,  w: 65,  ig: 6,  pr: 750 },
+    { id: 'p4',  n: 'Intel Core i5-13600K', br: 'Intel', sock: 'LGA1700', c: 14, g: 78,  m: 70,  w: 125, ig: 8,  pr: 1500 },
+    { id: 'p5',  n: 'Intel Core i7-14700K', br: 'Intel', sock: 'LGA1700', c: 20, g: 88,  m: 86,  w: 160, ig: 8,  pr: 2100 },
+    { id: 'p6',  n: 'Intel Core i9-14900K', br: 'Intel', sock: 'LGA1700', c: 24, g: 94,  m: 95,  w: 200, ig: 8,  pr: 2900 },
+    { id: 'p7',  n: 'AMD Ryzen 5 5600',     br: 'AMD',   sock: 'AM4',     c: 6,  g: 55,  m: 38,  w: 65,  ig: 0,  pr: 520 },
+    { id: 'p8',  n: 'AMD Ryzen 7 5700X',    br: 'AMD',   sock: 'AM4',     c: 8,  g: 58,  m: 52,  w: 65,  ig: 0,  pr: 700 },
+    { id: 'p9',  n: 'AMD Ryzen 5 7600',     br: 'AMD',   sock: 'AM5',     c: 6,  g: 72,  m: 52,  w: 65,  ig: 5,  pr: 950 },
+    { id: 'p10', n: 'AMD Ryzen 5 8600G',    br: 'AMD',   sock: 'AM5',     c: 6,  g: 66,  m: 50,  w: 65,  ig: 25, pr: 1000 },
+    { id: 'p11', n: 'AMD Ryzen 7 7800X3D',  br: 'AMD',   sock: 'AM5',     c: 8,  g: 100, m: 66,  w: 120, ig: 5,  pr: 2000 },
+    { id: 'p12', n: 'AMD Ryzen 9 7950X',    br: 'AMD',   sock: 'AM5',     c: 16, g: 90,  m: 100, w: 170, ig: 5,  pr: 2900 },
+  ],
+  cool: [
+    { id: 'k1', n: 'Cooler stock',              t: 'stock', cap: 65,  pr: 60 },
+    { id: 'k2', n: 'Cooler turn (aer)',         t: 'tower', cap: 160, q: 1, pr: 190 },
+    { id: 'k3', n: 'Cooler turn RGB',           t: 'tower', cap: 160, q: 1, rgb: 1, pr: 250 },
+    { id: 'k4', n: 'Răcire lichidă 240 mm RGB', t: 'aio', len: 2.4, cap: 230, q: 1, rgb: 1, pr: 480 },
+    { id: 'k5', n: 'Răcire lichidă 360 mm RGB', t: 'aio', len: 3.6, cap: 320, q: 1, rgb: 1, pr: 720 },
+  ],
+  ram: [
+    { id: 'r1', n: '8 GB DDR4 (1×8)',       mem: 'DDR4', gb: 8,  st: 1, pr: 110 },
+    { id: 'r2', n: '16 GB DDR4 (2×8)',      mem: 'DDR4', gb: 16, st: 2, pr: 190 },
+    { id: 'r3', n: '16 GB DDR4 RGB (2×8)',  mem: 'DDR4', gb: 16, st: 2, rgb: 1, pr: 240 },
+    { id: 'r4', n: '32 GB DDR4 (2×16)',     mem: 'DDR4', gb: 32, st: 2, pr: 340 },
+    { id: 'r9', n: '64 GB DDR4 (2×32)',     mem: 'DDR4', gb: 64, st: 2, pr: 700 },
+    { id: 'r5', n: '16 GB DDR5 (2×8)',      mem: 'DDR5', gb: 16, st: 2, pr: 270 },
+    { id: 'r6', n: '32 GB DDR5 (2×16)',     mem: 'DDR5', gb: 32, st: 2, pr: 460 },
+    { id: 'r7', n: '32 GB DDR5 RGB (2×16)', mem: 'DDR5', gb: 32, st: 2, rgb: 1, pr: 540 },
+    { id: 'r8', n: '64 GB DDR5 (2×32)',     mem: 'DDR5', gb: 64, st: 2, pr: 920 },
+  ],
+  gpu: [
+    { id: 'g1', n: 'GeForce GTX 1650 4 GB',       br: 'NVIDIA', p: 22,  w: 75,  sz: 'S', pr: 650 },
+    { id: 'g2', n: 'Radeon RX 6600 8 GB',         br: 'AMD',    p: 40,  w: 130, sz: 'M', pr: 1100 },
+    { id: 'g3', n: 'GeForce RTX 4060 8 GB',       br: 'NVIDIA', p: 47,  w: 115, sz: 'M', pr: 1450 },
+    { id: 'g4', n: 'Radeon RX 7700 XT 12 GB',     br: 'AMD',    p: 60,  w: 245, sz: 'M', pr: 2100 },
+    { id: 'g5', n: 'GeForce RTX 4070 Super 12 GB', br: 'NVIDIA', p: 72,  w: 220, sz: 'M', pr: 3100 },
+    { id: 'g6', n: 'Radeon RX 7900 XT 20 GB',     br: 'AMD',    p: 82,  w: 300, sz: 'L', pr: 3900 },
+    { id: 'g7', n: 'GeForce RTX 4080 Super 16 GB', br: 'NVIDIA', p: 90,  w: 320, sz: 'L', rgb: 1, pr: 5300 },
+    { id: 'g8', n: 'GeForce RTX 4090 24 GB',      br: 'NVIDIA', p: 100, w: 450, sz: 'L', rgb: 1, pr: 9200 },
+  ],
+  sto: [
+    { id: 's1', n: 'HDD 1 TB',         t: 'hdd',  tb: 1,   pr: 200 },
+    { id: 's2', n: 'SSD SATA 500 GB',  t: 'sata', tb: 0.5, pr: 170 },
+    { id: 's3', n: 'SSD NVMe 1 TB',    t: 'nvme', tb: 1,   pr: 310 },
+    { id: 's4', n: 'SSD NVMe 2 TB',    t: 'nvme', tb: 2,   pr: 560 },
+    { id: 's5', n: 'SSD NVMe 4 TB',    t: 'nvme', tb: 4,   pr: 1150 },
+  ],
+  psu: [
+    { id: 'u1', n: 'Sursă 450 W',  w: 450,  pr: 210 },
+    { id: 'u2', n: 'Sursă 650 W',  w: 650,  pr: 330 },
+    { id: 'u3', n: 'Sursă 850 W',  w: 850,  pr: 540 },
+    { id: 'u4', n: 'Sursă 1000 W', w: 1000, pr: 760 },
+    { id: 'u5', n: 'Sursă 1200 W', w: 1200, pr: 1050 },
+  ],
+};
+const FFR = { ITX: 0, mATX: 1, ATX: 2 };
+const CASED = { ATX: { D: 4.4, H: 4.7, W: 2.1 }, mATX: { D: 3.9, H: 4.0, W: 2.0 }, ITX: { D: 3.2, H: 3.3, W: 1.8 } };
+const GPUL = { S: 1.9, M: 2.6, L: 3.2 };
+const fitsMb = (cs, mb) => FFR[mb.ff] <= FFR[cs.ff];
+const fitsGpu = (cs, g) => !(cs.ff === 'ITX' && g.sz === 'L');
+const fitsCool = (cs, k) => k.t === 'tower' ? cs.ff !== 'ITX' : k.t === 'aio' ? k.len <= CASED[cs.ff].D - 0.6 : true;
+const psuNeed = B => (B.cpu ? B.cpu.w : 0) + (B.gpu ? B.gpu.w : 0) + 100;
+
+function spec(cat, it) {
+  switch (cat) {
+    case 'case': return `${it.ff} · ${it.col}${it.rgb ? ' · ventilatoare RGB' : ''}`;
+    case 'mb': return `socket ${it.sock} · ${it.mem} · ${it.ff}${it.wifi ? ' · Wi-Fi' : ''}${it.rgb ? ' · RGB' : ''}`;
+    case 'cpu': return `${it.sock} · ${it.c} nuclee · jocuri ${it.g} · multi-core ${it.m} · ${it.w} W${it.ig ? (it.ig > 10 ? ' · grafică integrată bună' : ' · grafică integrată') : ' · fără grafică integrată'}`;
+    case 'cool': return `răcește până la ${it.cap} W${it.q ? ' · silențios' : ' · zgomotos'}${it.rgb ? ' · RGB' : ''}${it.t === 'tower' ? ' · nu intră în mini-ITX' : it.t === 'aio' && it.len > 3 ? ' · doar carcasă ATX' : ''}`;
+    case 'ram': return `${it.mem} · ${it.st === 1 ? '1 modul' : '2 module'}${it.rgb ? ' · RGB' : ''}`;
+    case 'gpu': return `${it.br} · putere ${it.p} · ${it.w} W · ${it.sz === 'L' ? 'lungă (nu intră în mini-ITX)' : it.sz === 'S' ? 'scurtă' : 'medie'}${it.rgb ? ' · RGB' : ''}`;
+    case 'sto': return it.t === 'hdd' ? 'hard disk, lent' : it.t === 'sata' ? 'SSD SATA, rapid' : 'SSD NVMe, foarte rapid (pe placa de bază)';
+    case 'psu': return `${it.w} W`;
+  }
+  return '';
+}
+// avertismente de compatibilitate cu restul pieselor montate
+function compat(cat, it, B) {
+  const w = [];
+  if (cat === 'case') { if (B.mb && !fitsMb(it, B.mb)) w.push(`placa ${B.mb.ff} nu încape`); if (B.gpu && !fitsGpu(it, B.gpu)) w.push('placa video nu încape'); if (B.cool && !fitsCool(it, B.cool)) w.push('coolerul nu încape'); }
+  if (cat === 'mb') { if (B.case && !fitsMb(B.case, it)) w.push(`nu încape în carcasa ${B.case.ff}`); if (B.cpu && B.cpu.sock !== it.sock) w.push(`procesorul e ${B.cpu.sock}`); if (B.ram && B.ram.mem !== it.mem) w.push(`RAM-ul e ${B.ram.mem}`); }
+  if (cat === 'cpu') { if (B.mb && B.mb.sock !== it.sock) w.push(`placa e ${B.mb.sock}`); if (B.cool && B.cool.cap < it.w) w.push('coolerul e prea slab'); if (B.psu && B.psu.w < psuNeed({ ...B, cpu: it })) w.push('sursa e prea slabă'); }
+  if (cat === 'cool') { if (B.case && !fitsCool(B.case, it)) w.push('nu încape în carcasă'); if (B.cpu && it.cap < B.cpu.w) w.push(`prea slab pentru ${B.cpu.w} W`); }
+  if (cat === 'ram') { if (B.mb && B.mb.mem !== it.mem) w.push(`placa vrea ${B.mb.mem}`); }
+  if (cat === 'gpu') { if (B.case && !fitsGpu(B.case, it)) w.push('nu încape în carcasă'); if (B.psu && B.psu.w < psuNeed({ ...B, gpu: it })) w.push('sursa e prea slabă'); }
+  if (cat === 'psu') { const n = psuNeed(B); if ((B.cpu || B.gpu) && it.w < n) w.push(`trebuie minim ${n} W`); }
+  return w;
+}
+
+// ================= performanță și verificare =================
+function perf(B, hot) {
+  const c = B.cpu; if (!c) return { gaming: 0, video: 0, prog: 0 };
+  let cg = c.g, cm = c.m; if (hot) { cg *= 0.75; cm *= 0.7; }
+  const gp = B.gpu ? B.gpu.p : (c.ig || 0);
+  const ram = B.ram ? B.ram.gb : 0, ramS = Math.min(100, ram / 64 * 100);
+  const st = B.sto, stS = !st ? 0 : st.t === 'nvme' ? 100 : st.t === 'sata' ? 60 : 20;
+  let gaming = 0.72 * gp + 0.28 * cg; if (ram < 16) gaming *= 0.8; if (st && st.t === 'hdd') gaming *= 0.9;
+  let video = 0.45 * cm + 0.3 * gp + 0.25 * ramS; if (st && st.t === 'hdd') video *= 0.85;
+  let prog = 0.6 * cm + 0.3 * ramS + 0.1 * stS;
+  return { gaming: Math.round(gaming), video: Math.round(video), prog: Math.round(prog) };
+}
+const cost = B => CATS.reduce((s, c) => s + (B[c.k] ? B[c.k].pr : 0), 0);
+function evalBuild(B) {
+  const e = [], w = [];
+  const { case: cs, mb, cpu, ram, gpu, cool, sto, psu } = B;
+  if (!cs) e.push('Lipsește carcasa');
+  if (!mb) e.push('Lipsește placa de bază');
+  if (!cpu) e.push('Lipsește procesorul');
+  if (!cool) e.push('Lipsește coolerul procesorului');
+  if (!ram) e.push('Lipsește memoria RAM');
+  if (!sto) e.push('Lipsește stocarea (SSD sau HDD)');
+  if (!psu) e.push('Lipsește sursa');
+  if (mb && cpu && mb.sock !== cpu.sock) e.push(`Procesorul ${cpu.sock} nu intră în placa ${mb.sock}`);
+  if (mb && ram && mb.mem !== ram.mem) e.push(`RAM ${ram.mem} nu merge pe o placă ${mb.mem}`);
+  if (cs && mb && !fitsMb(cs, mb)) e.push(`Placa ${mb.ff} nu încape în carcasa ${cs.ff}`);
+  if (cs && gpu && !fitsGpu(cs, gpu)) e.push('Placa video e prea lungă pentru carcasă');
+  if (cs && cool && !fitsCool(cs, cool)) e.push('Coolerul nu încape în carcasă');
+  if (cpu && !gpu && !cpu.ig) e.push('Procesorul n-are grafică integrată: trebuie placă video');
+  const need = psuNeed(B);
+  if (psu && psu.w < need) e.push(`Sursa e prea slabă: ${psu.w} W, trebuie ${need} W`);
+  const hot = !!(cpu && cool && cool.cap < cpu.w);
+  if (hot) w.push('Procesorul se încinge, coolerul e prea slab: merge mai încet');
+  return { e, w, hot, need, pf: perf(B, hot), cost: cost(B) };
+}
+
+// ================= comenzi =================
+const USES = {
+  gaming: { n: 'Gaming', i: '🎮', tiers: [
+    { min: 40, t: '1080p', say: 'Vreau un PC de jocuri, să meargă fluent în 1080p.' },
+    { min: 60, t: '1440p', say: 'Vreau un PC de gaming pentru 1440p, pe setări mari.' },
+    { min: 80, t: '4K', say: 'Vreau să joc tot în 4K, pe Ultra!' }] },
+  video: { n: 'Video', i: '🎬', tiers: [
+    { min: 40, t: '1080p', say: 'Fac montaj video pentru YouTube, în 1080p.' },
+    { min: 60, t: '4K', say: 'Editez clipuri 4K cu multe efecte.' },
+    { min: 78, t: '8K', say: 'Lucrez la filme în 8K, cu efecte speciale și randări grele.' }] },
+  prog: { n: 'Programare', i: '💻', tiers: [
+    { min: 35, t: 'web', say: 'Sunt student la informatică, fac site-uri.' },
+    { min: 55, t: 'proiecte mari', say: 'Sunt programator, compilez proiecte mari și rulez multe containere.' },
+    { min: 72, t: 'AI', say: 'Antrenez modele AI și rulez mașini virtuale.' }] },
+};
+const EXTRAS = {
+  cpuAMD:   { l: '🔲 Procesor AMD',   say: 'Procesorul să fie AMD.',              t: B => B.cpu && B.cpu.br === 'AMD' },
+  cpuIntel: { l: '🔲 Procesor Intel', say: 'Vreau neapărat procesor Intel.',      t: B => B.cpu && B.cpu.br === 'Intel' },
+  gpuNV:    { l: '🎮 Placă NVIDIA',   say: 'Placa video doar NVIDIA GeForce.',    t: B => B.gpu && B.gpu.br === 'NVIDIA' },
+  gpuAMD:   { l: '🎮 Placă AMD',      say: 'Placa video să fie AMD Radeon.',      t: B => B.gpu && B.gpu.br === 'AMD' },
+  ram32:    { l: '📏 RAM ≥ 32 GB',    say: 'Minim 32 GB de RAM.',                 t: B => B.ram && B.ram.gb >= 32 },
+  ram64:    { l: '📏 RAM 64 GB',      say: 'Îmi trebuie 64 GB de RAM.',           t: B => B.ram && B.ram.gb >= 64 },
+  sto2:     { l: '💾 NVMe ≥ 2 TB',    say: 'Un SSD NVMe de cel puțin 2 TB.',      t: B => B.sto && B.sto.t === 'nvme' && B.sto.tb >= 2 },
+  sto4:     { l: '💾 NVMe 4 TB',      say: '4 TB pe SSD NVMe, am multe fișiere.', t: B => B.sto && B.sto.t === 'nvme' && B.sto.tb >= 4 },
+  wifi:     { l: '📶 Wi-Fi',          say: 'N-am cablu de internet la birou, deci Wi-Fi.', t: B => B.mb && B.mb.wifi },
+  small:    { l: '📦 Mini-ITX',       say: 'Să fie mic, să încapă pe birou (mini-ITX).', t: B => B.case && B.case.ff === 'ITX' },
+  rgb:      { l: '🌈 Lumini RGB',     say: 'Să aibă lumini RGB!',                 t: B => [B.case, B.ram, B.cool, B.mb, B.gpu].some(x => x && x.rgb) },
+  quiet:    { l: '🤫 Silențios',      say: 'Să fie silențios, fără cooler stock.', t: B => B.cool && B.cool.q },
+};
+const CONFLICT = [['cpuAMD', 'cpuIntel'], ['gpuNV', 'gpuAMD'], ['ram32', 'ram64'], ['sto2', 'sto4']];
+const NAMES = [['Andrei', '🧑'], ['Ioana', '👩'], ['Mihai', '👨'], ['Elena', '👩‍🦰'], ['Vlad', '🧔'], ['Cristina', '👱‍♀️'], ['Radu', '🧑‍💻'], ['Alexandra', '👩‍💻'],
+  ['Bogdan', '👨‍🦱'], ['Diana', '👩‍🦱'], ['Tudor', '👦'], ['Larisa', '👧'], ['Sorin', '🧔‍♂️'], ['Bianca', '👩‍🎤'], ['Domnul Popescu', '👴'], ['Doamna Ionescu', '👵'], ['Matei', '🧑‍🦱'], ['Ana', '👱‍♀️']];
+
+function meets(o, B, r) {
+  const res = [];
+  const u = USES[o.use], tier = u.tiers[o.tier], v = r.pf[o.use];
+  res.push({ k: 'use', l: `${u.i} ${u.n} ${tier.t}`, v: `${v}/${tier.min}`, ok: v >= tier.min });
+  res.push({ k: 'color', l: `🎨 Carcasă ${o.color}`, ok: !!(B.case && B.case.col === o.color) });
+  for (const x of o.extras) res.push({ k: x, l: EXTRAS[x].l, ok: !!EXTRAS[x].t(B) });
+  return res;
+}
+// cel mai ieftin PC care bifează tot (din el iese bugetul)
+function solve(o) {
+  let best = Infinity, bestB = null;
+  const psus = P.psu.slice().sort((a, b) => a.pr - b.pr);
+  for (const cpu of P.cpu) for (const gpu of [null, ...P.gpu]) {
+    if (!gpu && !cpu.ig) continue;
+    const need = cpu.w + (gpu ? gpu.w : 0) + 100;
+    const psu = psus.find(p => p.w >= need); if (!psu) continue;
+    for (const mb of P.mb) {
+      if (mb.sock !== cpu.sock) continue;
+      for (const ram of P.ram) {
+        if (ram.mem !== mb.mem) continue;
+        for (const cs of P.case) {
+          if (!fitsMb(cs, mb) || (gpu && !fitsGpu(cs, gpu)) || cs.col !== o.color) continue;
+          for (const cool of P.cool) {
+            if (!fitsCool(cs, cool) || cool.cap < cpu.w) continue;
+            const base = cpu.pr + (gpu ? gpu.pr : 0) + psu.pr + mb.pr + ram.pr + cs.pr + cool.pr;
+            if (base + 170 >= best) continue;
+            for (const sto of P.sto) {
+              const c = base + sto.pr; if (c >= best) continue;
+              const B = { case: cs, mb, cpu, cool, ram, gpu, sto, psu };
+              const r = evalBuild(B);
+              if (r.e.length || r.hot) continue;
+              if (meets(o, B, r).every(x => x.ok)) { best = c; bestB = B; }
+            }
+          }
+        }
+      }
+    }
+  }
+  return { best, B: bestB };
+}
+function genOrder(day) {
+  for (let tries = 0; tries < 40; tries++) {
+    const use = pick(['gaming', 'gaming', 'video', 'prog']);
+    const maxTier = day <= 1 ? 0 : day === 2 ? 1 : 2;
+    const tier = ri(0, maxTier);
+    const nEx = day <= 1 ? 1 : day === 2 ? ri(1, 2) : ri(2, 3);
+    let pool = Object.keys(EXTRAS);
+    if (use === 'prog') pool = pool.filter(x => x !== 'gpuAMD');
+    const extras = [];
+    for (const x of shuffle(pool)) {
+      if (extras.length >= nEx) break;
+      if (CONFLICT.some(([a, b]) => (x === a && extras.includes(b)) || (x === b && extras.includes(a)))) continue;
+      extras.push(x);
+    }
+    const colors = [...new Set(P.case.filter(c => !extras.includes('small') || c.ff === 'ITX').map(c => c.col))];
+    const color = pick(colors);
+    const o = { use, tier, extras, color };
+    const s = solve(o);
+    if (!s.B) continue;
+    const mult = Math.max(1.08, 1.34 - 0.04 * (day - 1)) + rr(-0.04, 0.06);
+    o.cheap = s.best; o.cheapB = s.B;
+    o.budget = Math.ceil(s.best * mult / 100) * 100;
+    const nm = pick(NAMES); o.name = nm[0]; o.av = nm[1];
+    o.say = [USES[use].tiers[tier].say, ...extras.map(x => EXTRAS[x].say), `Carcasa să fie ${color}.`, `Am un buget de ${lei(o.budget)}.`].join(' ');
+    return o;
+  }
+  return null;
+}
+
+// ================= stare =================
+const S = { day: 1, idx: 0, perDay: 3, money: 0, rep: 3, best: 0, sound: true, order: null, B: {}, tab: 'case', on: false, tested: false, errs: null, dayProfit: 0, dayPerfect: 0, mode: 'menu', open: false };
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE) || 'null');
+    if (d && d.rep > 0) Object.assign(S, { day: d.day, idx: d.idx || 0, money: d.money, rep: d.rep, dayProfit: d.dayProfit || 0, dayPerfect: d.dayPerfect || 0 });
+    S.best = +(localStorage.getItem(SAVE + '.best') || 0);
+    S.sound = localStorage.getItem(SAVE + '.snd') !== '0';
+  } catch (e) {}
+}
+function save() {
+  try {
+    localStorage.setItem(SAVE, JSON.stringify({ day: S.day, idx: S.idx, money: S.money, rep: S.rep, dayProfit: S.dayProfit, dayPerfect: S.dayPerfect }));
+    if (S.money > S.best) { S.best = S.money; localStorage.setItem(SAVE + '.best', S.best); }
+  } catch (e) {}
+}
+
+// ================= sunet =================
+let AC = null, master = null;
+function audio() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = S.sound ? 0.4 : 0; master.connect(AC.destination); } catch (e) {}
+}
+function tone(f, d, type = 'sine', v = 0.3, at = 0, f2) {
+  if (!AC || !S.sound) return;
+  const t = AC.currentTime + at, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.02);
+}
+const SFX = {
+  click: () => { tone(320, 0.05, 'square', 0.12); tone(180, 0.06, 'square', 0.1, 0.04); },
+  out: () => tone(500, 0.12, 'triangle', 0.15, 0, 250),
+  post: () => tone(1000, 0.16, 'square', 0.14),
+  err: () => { tone(700, 0.5, 'square', 0.13); tone(700, 0.15, 'square', 0.13, 0.65); tone(700, 0.15, 'square', 0.13, 0.9); },
+  fan: () => tone(90, 1.2, 'sawtooth', 0.05, 0, 160),
+  cash: () => { tone(880, 0.12, 'triangle', 0.25); tone(1320, 0.25, 'triangle', 0.25, 0.1); },
+  bad: () => { tone(300, 0.3, 'sawtooth', 0.15, 0, 150); },
+  ding: () => { tone(1200, 0.4, 'sine', 0.2); tone(1600, 0.5, 'sine', 0.15, 0.08); },
+};
+
+// ================= scena 3D =================
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.prepend(renderer.domElement);
+const cv = renderer.domElement;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2a2e35);
+scene.fog = new THREE.Fog(0x2a2e35, 30, 70);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 200);
+
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3530, 0.9));
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(6, 14, 10); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -10, right: 10, top: 10, bottom: -6, near: 1, far: 40 });
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xbcd4ff, 0.5); fill.position.set(-8, 6, 6); scene.add(fill);
+const lamp = new THREE.PointLight(0xffe0b0, 12, 18, 1.6); lamp.position.set(4.5, 7, 1); scene.add(lamp);
+const glow = new THREE.PointLight(0x66aaff, 0, 6, 2); glow.position.set(0, 2.4, 2); scene.add(glow);
+const inLight = new THREE.PointLight(0xffffff, 7, 9, 1.5); inLight.position.set(0.3, 2.6, 3.2); scene.add(inLight);
+
+const MC = new Map();
+function M(color, o = {}) {
+  const k = color + JSON.stringify(o);
+  if (!MC.has(k)) MC.set(k, new THREE.MeshStandardMaterial({ color, roughness: o.r ?? 0.6, metalness: o.m ?? 0.1, transparent: !!o.op, opacity: o.op ?? 1, emissive: o.e ?? 0x000000, emissiveIntensity: o.ei ?? 1, side: o.ds ? THREE.DoubleSide : THREE.FrontSide }));
+  return MC.get(k);
+}
+function box(w, h, d, mat, x = 0, y = 0, z = 0, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  if (parent) parent.add(m);
+  return m;
+}
+function cyl(r1, r2, h, mat, seg = 20) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat); m.castShadow = true; m.receiveShadow = true; return m; }
+const TC = new Map();
+function labelTex(lines, bg = '#111', fg = '#fff', w = 256, h = 128) {
+  const k = lines.join('|') + bg + fg + w + h;
+  if (TC.has(k)) return TC.get(k);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+  lines.forEach((l, i) => { g.font = `${i ? 600 : 900} ${Math.round(h / (lines.length + 0.8) * (i ? 0.6 : 0.8))}px system-ui, sans-serif`; g.fillText(l, w / 2, h * (i + 0.9) / (lines.length + 0.8)); });
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  TC.set(k, t); return t;
+}
+
+// ---- camera / atelier ----
+const floorY = -7.6;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), M(0x55524e, { r: 0.9 }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = floorY; floor.receiveShadow = true; scene.add(floor);
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(80, 30), M(0x8d97a3, { r: 0.95 }));
+wall.position.set(0, floorY + 15, -7); wall.receiveShadow = true; scene.add(wall);
+const wall2 = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), M(0x7f8994, { r: 0.95 }));
+wall2.rotation.y = Math.PI / 2; wall2.position.set(-14, floorY + 15, 10); scene.add(wall2);
+// birou
+const wood = M(0xa8744a, { r: 0.7 });
+box(16, 0.45, 8, wood, 0, -0.225, -0.5, scene);
+for (const [x, z] of [[-7.6, -4.2], [7.6, -4.2], [-7.6, 3.2], [7.6, 3.2]]) box(0.4, 7.2, 0.4, M(0x3a3d42, { m: 0.5, r: 0.4 }), x, floorY + 3.6, z, scene);
+const mat = box(6.2, 0.04, 4.4, M(0x2b5d8a, { r: 0.9 }), 0.4, 0.02, 0.2, scene); mat.castShadow = false;
+// monitor
+const mon = new THREE.Group(); scene.add(mon);
+mon.position.set(-5.3, 0, -1.8); mon.rotation.y = 0.45;
+box(1.6, 0.08, 1.0, M(0x222428, { m: 0.4, r: 0.4 }), 0, 0.04, 0, mon);
+box(0.25, 1.5, 0.15, M(0x222428, { m: 0.4, r: 0.4 }), 0, 0.8, -0.2, mon);
+box(4.6, 2.75, 0.14, M(0x15161a, { r: 0.4 }), 0, 2.8, -0.12, mon);
+const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360;
+const scrT = new THREE.CanvasTexture(scrC); scrT.colorSpace = THREE.SRGBColorSpace;
+const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.36, 2.5), new THREE.MeshBasicMaterial({ map: scrT, toneMapped: false }));
+scr.position.set(0, 2.8, -0.04); mon.add(scr);
+box(3.2, 0.12, 1.1, M(0x2a2c31, { r: 0.6 }), -3.6, 0.06, 2.2, scene).rotation.y = 0.2;
+// cană + șurubelniță
+const mug = cyl(0.32, 0.3, 0.75, M(0xd9433a, { r: 0.5 })); mug.position.set(5.6, 0.375, 1.5); scene.add(mug);
+const sd = new THREE.Group(); sd.position.set(4.2, 0.13, 2.6); sd.rotation.y = -0.6; scene.add(sd);
+const sdh = cyl(0.13, 0.13, 0.9, M(0xf2b51d, { r: 0.5 })); sdh.rotation.z = Math.PI / 2; sd.add(sdh);
+const sdm = cyl(0.04, 0.04, 1.0, M(0xcfd4da, { m: 0.9, r: 0.3 })); sdm.rotation.z = Math.PI / 2; sdm.position.x = 0.95; sd.add(sdm);
+// rafturi cu cutii de piese
+const shelfMat = M(0x6b4a2e, { r: 0.8 });
+const boxCols = ['#2b6cd6', '#d6452b', '#2ba15a', '#8a4bd6', '#e0a020', '#3a3f48', '#d65fa0', '#1f9fb0'];
+for (let s = 0; s < 3; s++) {
+  const y = floorY + 9.4 + s * 3.1;
+  box(22, 0.25, 2.2, shelfMat, 0, y, -5.9, scene);
+  let x = -10.4;
+  while (x < 10) {
+    const w = rr(1.2, 2.4), h = rr(1.0, 2.2), ci = ri(0, 7);
+    const cat = CATS[ci];
+    const mats = [M(new THREE.Color(boxCols[ci]).multiplyScalar(0.8).getHex()), M(new THREE.Color(boxCols[ci]).multiplyScalar(0.8).getHex()), M(new THREE.Color(boxCols[ci]).getHex()), M(0x000000),
+      new THREE.MeshStandardMaterial({ map: labelTex([cat.i, cat.s], boxCols[ci], '#fff', 128, 128), roughness: 0.8 }), M(0x000000)];
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.6), mats);
+    b.position.set(x + w / 2, y + 0.125 + h / 2, -5.8); b.castShadow = true; scene.add(b);
+    x += w + rr(0.15, 0.5);
+  }
+}
+// afiș pe perete
+const poster = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.2), new THREE.MeshBasicMaterial({ map: labelTex(['PC BUILDER', 'service · asamblare · livrare'], '#1d2b45', '#7fc0ff', 512, 220) }));
+poster.position.set(-6.5, 5.6, -6.95); scene.add(poster);
+
+// ---- ventilatoare ----
+const fans = [], rgbMats = [];
+function rgbMat(base = 0xffffff) { const m = new THREE.MeshStandardMaterial({ color: base, emissive: base, emissiveIntensity: 0.25, roughness: 0.4 }); m.userData.ph = Math.random(); rgbMats.push(m); return m; }
+function fan(d, frameMat, rgb) {
+  const g = new THREE.Group();
+  const t = 0.18, b = 0.07;
+  box(d, b, t, frameMat, 0, d / 2 - b / 2, 0, g); box(d, b, t, frameMat, 0, -d / 2 + b / 2, 0, g);
+  box(b, d, t, frameMat, d / 2 - b / 2, 0, 0, g); box(b, d, t, frameMat, -d / 2 + b / 2, 0, 0, g);
+  const rot = new THREE.Group(); g.add(rot);
+  const hub = cyl(d * 0.14, d * 0.14, t * 0.8, M(0x1b1c20)); hub.rotation.x = Math.PI / 2; rot.add(hub);
+  const bm = M(0x2a2c31, { r: 0.5 });
+  for (let i = 0; i < 7; i++) {
+    const p = new THREE.Group(); p.rotation.z = i / 7 * Math.PI * 2; rot.add(p);
+    const bl = box(d * 0.34, d * 0.14, 0.02, bm, d * 0.27, 0, 0, p); bl.rotation.x = 0.5;
+  }
+  if (rgb) { const ring = new THREE.Mesh(new THREE.TorusGeometry(d * 0.43, 0.03, 8, 32), rgbMat()); ring.position.z = t / 2; g.add(ring); }
+  fans.push(rot);
+  return g;
+}
+
+// ---- PC-ul ----
+const pc = new THREE.Group(); scene.add(pc);
+let parts = {}, ledMat = null, fly = [];
+const MBL = {
+  ATX:  { w: 2.44, h: 3.05, sock: [1.0, 0.85], ram: [1.72, 1.84, 1.96, 2.08], ramY: 0.95, m2: [1.0, 1.72], pcie: 2.05 },
+  mATX: { w: 2.44, h: 2.44, sock: [1.0, 0.85], ram: [1.72, 1.84, 1.96, 2.08], ramY: 0.95, m2: [1.0, 1.72], pcie: 2.05 },
+  ITX:  { w: 1.7,  h: 1.7,  sock: [0.72, 0.7], ram: [1.36, 1.5], ramY: 0.78, m2: [0.72, 1.28], pcie: 1.5 },
+};
+function rebuild(added) {
+  // golește
+  pc.traverse(o => { if (o.isMesh && o.geometry) o.geometry.dispose(); });
+  pc.clear(); fans.length = 0; rgbMats.length = 0; parts = {}; ledMat = null;
+  const B = S.B, cs = B.case;
+  const cd = CASED[cs ? cs.ff : 'ATX'], { D, H, W } = cd, T = 0.07;
+  const grp = k => { const g = new THREE.Group(); g.userData.cat = k; pc.add(g); parts[k] = g; return g; };
+  if (cs) {
+    const g = grp('case');
+    const cm = M(cs.hex, { r: 0.45, m: 0.25 }), ic = new THREE.Color(cs.hex).multiplyScalar(0.72); ic.lerp(new THREE.Color(0x4a4f58), 0.35); const inner = M(ic.getHex(), { r: 0.7, m: 0.1 });
+    box(D, H, T, inner, 0, H / 2, -W / 2 + T / 2, g);
+    box(D, T, W, cm, 0, H - T / 2, 0, g);
+    box(D, T, W, inner, 0, T / 2, 0, g);
+    box(T, H, W, cm, D / 2 - T / 2, H / 2, 0, g);
+    box(T, H, W, inner, -D / 2 + T / 2, H / 2, 0, g);
+    // margini pe partea deschisă
+    box(D, 0.12, 0.08, cm, 0, H - 0.06, W / 2 - 0.04, g); box(D, 0.12, 0.08, cm, 0, 0.06, W / 2 - 0.04, g);
+    box(0.12, H, 0.08, cm, D / 2 - 0.06, H / 2, W / 2 - 0.04, g); box(0.12, H, 0.08, cm, -D / 2 + 0.06, H / 2, W / 2 - 0.04, g);
+    // I/O spate
+    box(0.02, 0.6, 0.9, M(0x0c0c0e), -D / 2 - 0.005, H - 0.75, -0.2, g);
+    for (let i = 0; i < (cs.ff === 'ITX' ? 2 : 7); i++) box(0.02, 0.08, 0.9, M(0x0c0c0e), -D / 2 - 0.005, H - 2.0 - i * 0.16 * (cs.ff === 'ATX' ? 1 : 0.8), 0.05, g);
+    // picioare
+    for (const [x, z] of [[-D / 2 + 0.3, -W / 2 + 0.25], [D / 2 - 0.3, -W / 2 + 0.25], [-D / 2 + 0.3, W / 2 - 0.25], [D / 2 - 0.3, W / 2 - 0.25]]) { const f = cyl(0.12, 0.14, 0.1, M(0x111111)); f.position.set(x, -0.05, z); g.add(f); }
+    // ventilatoare față (în interior)
+    const nf = cs.ff === 'ATX' ? 3 : cs.ff === 'mATX' ? 2 : 1;
+    for (let i = 0; i < nf; i++) { const f = fan(0.95, M(0x1b1c20), cs.rgb); f.rotation.y = -Math.PI / 2; f.position.set(D / 2 - T - 0.1, H - 0.75 - i * 1.05 - (cs.ff === 'ITX' ? 0.6 : 0), 0); g.add(f); }
+    // buton + LED
+    const btn = cyl(0.09, 0.09, 0.04, M(0x333333, { m: 0.6 })); btn.position.set(D / 2 - 0.4, H + 0.01, 0.2); g.add(btn);
+    ledMat = new THREE.MeshStandardMaterial({ color: 0x223322, emissive: 0x000000 });
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), ledMat); led.position.set(D / 2 - 0.4, H + 0.02, -0.1); g.add(led);
+    // logo
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.3), new THREE.MeshBasicMaterial({ map: labelTex(['NO-SANTOS'], '#00000000', cs.col === 'albă' ? '#555' : '#ddd', 256, 80), transparent: true }));
+    logo.rotation.y = Math.PI / 2; logo.position.set(D / 2 + 0.002, 0.5, 0); g.add(logo);
+    // sticlă laterală la carcasele RGB
+    g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+    if (cs.rgb) { const gl = new THREE.Mesh(new THREE.PlaneGeometry(D - 0.1, H - 0.1), M(0x9fc8ff, { op: 0.08, r: 0.05, m: 0.1 })); gl.position.set(0, H / 2, W / 2 - 0.01); g.add(gl); }
+  }
+  const mb = B.mb;
+  const L = MBL[mb ? mb.ff : 'ATX'];
+  const x0 = -D / 2 + 0.25, y1 = H - 0.35, zMb = -W / 2 + T + 0.08;
+  const at = (dx, dy) => new THREE.Vector3(x0 + dx, y1 - dy, zMb);
+  if (mb) {
+    const g = grp('mb');
+    const pcb = mb.rgb || mb.pr > 800 ? 0x1c1e23 : 0x223a2b;
+    box(L.w, L.h, 0.05, M(pcb, { r: 0.7 }), x0 + L.w / 2, y1 - L.h / 2, zMb, g);
+    const hs = M(mb.rgb ? 0x55595f : 0x3a3d42, { m: 0.7, r: 0.35 });
+    box(0.35, 0.95, 0.22, hs, x0 + 0.25, y1 - 0.65, zMb + 0.12, g); // I/O + VRM
+    box(0.9, 0.22, 0.18, hs, x0 + L.sock[0], y1 - 0.18, zMb + 0.1, g);
+    const so = at(...L.sock); box(0.55, 0.55, 0.04, M(0xc9ccd1, { m: 0.8, r: 0.3 }), so.x, so.y, zMb + 0.045, g);
+    L.ram.forEach(x => box(0.07, 1.4, 0.06, M(0x15161a), x0 + x, y1 - L.ramY, zMb + 0.05, g));
+    box(L.w * 0.75, 0.08, 0.08, M(0x15161a), x0 + L.w * 0.42, y1 - L.pcie, zMb + 0.06, g);
+    if (L.h > 2) box(L.w * 0.75, 0.08, 0.08, M(0x15161a), x0 + L.w * 0.42, y1 - L.pcie - 0.6, zMb + 0.06, g);
+    box(0.5, 0.5, 0.12, hs, x0 + L.w - 0.55, y1 - L.h + 0.45, zMb + 0.08, g); // chipset
+    box(0.12, 0.65, 0.12, M(0x15161a), x0 + L.w - 0.1, y1 - 1.0, zMb + 0.07, g); // conector 24 pini
+    if (mb.rgb) { const s = box(0.06, 0.9, 0.04, rgbMat(), x0 + 0.44, y1 - 0.65, zMb + 0.24, g); s.castShadow = false; }
+  }
+  const cpu = B.cpu;
+  if (cpu && mb) {
+    const g = grp('cpu'); const so = at(...L.sock);
+    box(0.42, 0.42, 0.05, M(0xd4d8dd, { m: 0.9, r: 0.25 }), so.x, so.y, zMb + 0.09, g);
+    const lt = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.2), new THREE.MeshBasicMaterial({ map: labelTex([cpu.br], '#d4d8dd', '#333', 128, 64) }));
+    lt.position.set(so.x, so.y, zMb + 0.116); g.add(lt);
+  }
+  const ram = B.ram;
+  if (ram && mb) {
+    const g = grp('ram');
+    const slots = L.ram.length === 4 ? (ram.st === 1 ? [1] : [1, 3]) : (ram.st === 1 ? [0] : [0, 1]);
+    for (const si of slots) {
+      const x = x0 + L.ram[si], y = y1 - L.ramY;
+      box(0.04, 1.33, 0.32, M(0x1d4d2a), x, y, zMb + 0.24, g);
+      box(0.09, 1.3, 0.3, M(ram.mem === 'DDR5' ? 0x2b2d33 : 0x6a7079, { m: 0.6, r: 0.35 }), x, y, zMb + 0.26, g);
+      if (ram.rgb) { const s = box(0.08, 1.26, 0.07, rgbMat(), x, y, zMb + 0.44, g); s.castShadow = false; }
+    }
+  }
+  const cool = B.cool;
+  if (cool && cpu && mb) {
+    const g = grp('cool'); const so = at(...L.sock);
+    if (cool.t === 'stock') {
+      box(0.85, 0.85, 0.18, M(0x9aa0a8, { m: 0.7, r: 0.4 }), so.x, so.y, zMb + 0.21, g);
+      const f = fan(0.8, M(0x16171a), false); f.position.set(so.x, so.y, zMb + 0.39); g.add(f);
+    } else if (cool.t === 'tower') {
+      const fm = M(0xc6ccd3, { m: 0.85, r: 0.3 });
+      for (let i = 0; i < 16; i++) box(0.95, 0.03, 1.15, fm, so.x, so.y - 0.6 + i * 0.08, zMb + 0.75, g);
+      for (const dx of [-0.25, 0, 0.25]) { const p = cyl(0.04, 0.04, 1.4, M(0xc77b3a, { m: 0.9, r: 0.3 })); p.position.set(so.x + dx, so.y, zMb + 0.5); g.add(p); }
+      box(0.95, 0.06, 1.15, cool.rgb ? rgbMat(0xffffff) : M(0x1d1e22, { r: 0.4 }), so.x, so.y + 0.66, zMb + 0.75, g);
+      const f = fan(1.15, M(0x16171a), cool.rgb); f.rotation.y = Math.PI / 2; f.position.set(so.x + 0.58, so.y, zMb + 0.75); g.add(f);
+    } else {
+      const blk = cyl(0.34, 0.34, 0.3, M(0x1d1e22, { r: 0.35, m: 0.4 })); blk.rotation.x = Math.PI / 2; blk.position.set(so.x, so.y, zMb + 0.25); g.add(blk);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.04, 8, 28), rgbMat()); ring.position.set(so.x, so.y, zMb + 0.41); g.add(ring);
+      const rx = -D / 2 + 0.35 + cool.len / 2 + 0.1, ry = H - T - 0.17, rz = 0.05;
+      box(cool.len, 0.24, 1.15, M(0x26282d, { m: 0.5, r: 0.5 }), rx, ry, rz, g);
+      const nf = Math.round(cool.len / 1.2);
+      for (let i = 0; i < nf; i++) { const f = fan(1.1, M(0x16171a), true); f.rotation.x = Math.PI / 2; f.position.set(rx - cool.len / 2 + 0.6 + i * 1.2, ry - 0.22, rz); g.add(f); }
+      const tm = M(0x111214, { r: 0.6 });
+      for (const dz of [-0.12, 0.12]) {
+        const c = new THREE.CatmullRomCurve3([new THREE.Vector3(so.x + 0.3, so.y + 0.1, zMb + 0.3 + dz), new THREE.Vector3(so.x + 0.8, so.y + 0.5, zMb + 0.6 + dz), new THREE.Vector3(rx + cool.len / 2 - 0.15, ry - 0.5, rz + 0.3 + dz), new THREE.Vector3(rx + cool.len / 2 - 0.15, ry - 0.1, rz + 0.3 + dz)]);
+        const tb = new THREE.Mesh(new THREE.TubeGeometry(c, 24, 0.06, 8), tm); tb.castShadow = true; g.add(tb);
+      }
+    }
+  }
+  const gpu = B.gpu;
+  if (gpu && mb) {
+    const g = grp('gpu');
+    const len = GPUL[gpu.sz], y = y1 - L.pcie - 0.27, xs = -D / 2 + T + 0.03;
+    const zc = zMb + 0.1 + 0.6;
+    box(len, 0.42, 1.2, M(0x2b2e34, { m: 0.5, r: 0.45 }), xs + len / 2, y, zc, g);
+    box(len, 0.03, 1.2, M(0x1a1b1f, { m: 0.7, r: 0.35 }), xs + len / 2, y + 0.225, zc, g);
+    box(len * 0.9, 0.12, 0.03, M(gpu.br === 'NVIDIA' ? 0x6fb52c : 0xd23a32, { r: 0.4 }), xs + len / 2, y + 0.05, zc + 0.61, g);
+    const nm = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(len * 0.6, 1.6), 0.26), new THREE.MeshBasicMaterial({ map: labelTex([gpu.br === 'NVIDIA' ? 'GEFORCE' : 'RADEON'], '#2b2e34', gpu.br === 'NVIDIA' ? '#9be05a' : '#ff6a5a', 256, 48) }));
+    nm.position.set(xs + len / 2, y + 0.236, zc + 0.1); nm.rotation.x = -Math.PI / 2; g.add(nm);
+    if (gpu.rgb) { const s = box(len * 0.8, 0.05, 0.03, rgbMat(), xs + len / 2, y - 0.1, zc + 0.615, g); s.castShadow = false; }
+    const nf = { S: 1, M: 2, L: 3 }[gpu.sz];
+    for (let i = 0; i < nf; i++) { const f = fan(0.88, M(0x1b1c20), false); f.rotation.x = Math.PI / 2; f.position.set(xs + len / nf * (i + 0.5), y - 0.3, zc); g.add(f); }
+    box(0.03, 0.55, 1.2, M(0xbfc5cc, { m: 0.9, r: 0.3 }), xs - 0.02, y, zc, g);
+  }
+  const sto = B.sto;
+  if (sto && (sto.t !== 'nvme' || mb)) {
+    const g = grp('sto');
+    if (sto.t === 'nvme') {
+      const p = at(...L.m2);
+      box(0.9, 0.24, 0.03, M(0x1b3a25), p.x, p.y, zMb + 0.05, g);
+      box(0.82, 0.2, 0.05, M(0x2e3036, { m: 0.6, r: 0.35 }), p.x, p.y, zMb + 0.09, g);
+      const lt = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.16), new THREE.MeshBasicMaterial({ map: labelTex([sto.tb + ' TB'], '#2e3036', '#fff', 128, 32) }));
+      lt.position.set(p.x, p.y, zMb + 0.116); g.add(lt);
+    } else if (sto.t === 'hdd') {
+      box(1.0, 0.26, 1.45, M(0x9aa1a9, { m: 0.8, r: 0.35 }), D / 2 - 0.75, T + 0.14, 0, g);
+      const lt = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.1), new THREE.MeshBasicMaterial({ map: labelTex(['HDD', '1 TB'], '#e8e8e8', '#333', 128, 160) }));
+      lt.rotation.x = -Math.PI / 2; lt.position.set(D / 2 - 0.75, T + 0.275, 0); g.add(lt);
+    } else {
+      box(0.7, 0.08, 1.0, M(0x22252b, { r: 0.45 }), D / 2 - 0.65, T + 0.05, 0, g);
+      const lt = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshBasicMaterial({ map: labelTex(['SSD', '500 GB'], '#22252b', '#7fc0ff', 128, 160) }));
+      lt.rotation.x = -Math.PI / 2; lt.position.set(D / 2 - 0.65, T + 0.095, 0); g.add(lt);
+    }
+  }
+  const psu = B.psu;
+  if (psu && cs) {
+    const g = grp('psu');
+    const px = -D / 2 + T + 0.78, py = T + 0.44, pw = Math.min(1.4, W - 0.3);
+    box(1.5, 0.86, pw, M(0x1c1d21, { m: 0.4, r: 0.5 }), px, py, 0, g);
+    const lt = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.5), new THREE.MeshBasicMaterial({ map: labelTex([psu.w + ' W', 'POWER'], '#1c1d21', '#ffd34a', 220, 100) }));
+    lt.position.set(px, py, pw / 2 + 0.002); g.add(lt);
+    if (mb) {
+      const c = new THREE.CatmullRomCurve3([new THREE.Vector3(px + 0.5, py + 0.43, 0.1), new THREE.Vector3(px + 1.6, py + 0.9, 0.3), new THREE.Vector3(x0 + L.w + 0.15, y1 - 1.6, zMb + 0.3), new THREE.Vector3(x0 + L.w - 0.1, y1 - 1.0, zMb + 0.15)]);
+      const tb = new THREE.Mesh(new THREE.TubeGeometry(c, 30, 0.07, 8), M(0x111214, { r: 0.7 })); tb.castShadow = true; g.add(tb);
+    }
+  }
+  if (added && parts[added]) { const g = parts[added]; const x0 = rr(-1, 1); g.position.set(x0, 4.5, 4); fly.push({ g, t: 0, x0 }); }
+}
+
+// ---- ecranul monitorului ----
+function drawScreen(state, r) {
+  const g = scrC.getContext('2d'), w = scrC.width, h = scrC.height;
+  g.fillStyle = state === 'off' ? '#060708' : state === 'err' ? '#14070a' : '#0a1426'; g.fillRect(0, 0, w, h);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (state === 'off') { g.fillStyle = '#1e232b'; g.font = '900 44px system-ui'; g.fillText('PC BUILDER', w / 2, h / 2); }
+  else if (state === 'err') {
+    g.fillStyle = '#ff5a4a'; g.font = '900 46px system-ui'; g.fillText('✖ NU PORNEȘTE', w / 2, 70);
+    g.fillStyle = '#ffb0a6'; g.font = '600 24px system-ui'; g.textAlign = 'left';
+    (r.e || []).slice(0, 5).forEach((t, i) => g.fillText('• ' + t, 30, 140 + i * 42));
+  } else {
+    g.fillStyle = '#6dff86'; g.font = '900 42px system-ui'; g.fillText('✔ POST OK · Windows pornit', w / 2, 56);
+    const o = S.order;
+    const rows = [['🎮 Gaming', r.pf.gaming, '#7fc0ff'], ['🎬 Video', r.pf.video, '#ffb36a'], ['💻 Programare', r.pf.prog, '#c79bff']];
+    rows.forEach(([n, v, c], i) => {
+      const y = 125 + i * 72;
+      g.textAlign = 'left'; g.fillStyle = '#dfe6ef'; g.font = '700 28px system-ui'; g.fillText(n, 30, y);
+      g.fillStyle = '#1f2a3d'; g.fillRect(250, y - 16, 300, 32);
+      g.fillStyle = c; g.fillRect(250, y - 16, 300 * v / 100, 32);
+      if (o && USES[o.use].n === n.split(' ')[1]) { const m = USES[o.use].tiers[o.tier].min; g.fillStyle = '#fff'; g.fillRect(250 + 300 * m / 100 - 2, y - 22, 4, 44); }
+      g.textAlign = 'right'; g.fillStyle = '#fff'; g.font = '800 28px system-ui'; g.fillText(v, w - 20, y);
+    });
+    if (r.hot) { g.textAlign = 'center'; g.fillStyle = '#ffd34a'; g.font = '700 22px system-ui'; g.fillText('⚠ Procesorul e la 100°C', w / 2, h - 22); }
+  }
+  scrT.needsUpdate = true;
+}
+
+// ================= UI =================
+let toastT = 0;
+function toast(t, cls = '', dur = 2.6) { const el = $('toast'); el.textContent = t; el.className = 'chip show ' + cls; toastT = dur; }
+function hud() {
+  $('money').textContent = '💰 ' + lei(S.money);
+  $('rep').textContent = '★'.repeat(S.rep) + '☆'.repeat(5 - S.rep);
+  $('day').textContent = `📅 Ziua ${S.day} · 🧾 ${Math.min(S.idx + 1, S.perDay)}/${S.perDay}`;
+}
+function locked(k) {
+  const B = S.B;
+  if (k === 'case') return '';
+  if (!B.case) return 'Alege întâi carcasa.';
+  if (['cpu', 'ram', 'gpu'].includes(k) && !B.mb) return 'Montează întâi placa de bază.';
+  if (k === 'cool' && !B.cpu) return 'Montează întâi procesorul.';
+  return '';
+}
+function renderShop() {
+  const B = S.B;
+  $('tabs').innerHTML = CATS.map(c => {
+    const bad = B[c.k] && compat(c.k, B[c.k], B).length;
+    return `<button data-t="${c.k}" class="${S.tab === c.k ? 'on' : ''} ${bad ? 'bad' : B[c.k] ? 'has' : ''}" ${locked(c.k) ? 'disabled' : ''} title="${c.n}"><span class="e">${c.i}</span>${c.s}</button>`;
+  }).join('');
+  const cat = CATS.find(c => c.k === S.tab);
+  const lk = locked(S.tab);
+  $('cathead').innerHTML = `<b>${cat.i} ${cat.n}</b>${B[S.tab] ? ' · apasă pe piesa montată ca s-o scoți' : ' · apasă ca s-o montezi'}`;
+  if (lk) { $('list').innerHTML = `<div class="lockmsg">🔒 ${lk}</div>`; return; }
+  let html = '';
+  if (S.tab === 'gpu') {
+    const ig = B.cpu && B.cpu.ig;
+    html += `<div class="it ${!B.gpu ? 'inst' : ''}" data-none="1"><div class="tx"><b>Fără placă video</b><small>folosește grafica integrată a procesorului${B.cpu ? (ig ? ` (putere ${B.cpu.ig})` : '') : ''}</small>${B.cpu && !ig ? '<small class="wa">⚠ procesorul n-are grafică integrată</small>' : ''}</div><div class="pr">0 lei</div></div>`;
+  }
+  P[S.tab].forEach(it => {
+    const on = B[S.tab] && B[S.tab].id === it.id;
+    const w = compat(S.tab, it, B);
+    const sw = S.tab === 'case' ? `<span class="sw" style="background:#${it.hex.toString(16).padStart(6, '0')}"></span>` : '';
+    html += `<div class="it ${on ? 'inst' : ''}" data-id="${it.id}">${sw}<div class="tx"><b>${it.n}</b><small>${spec(S.tab, it)}</small>${w.length ? `<small class="wa">⚠ ${w.join(' · ')}</small>` : ''}</div><div class="pr">${lei(it.pr)}${on ? '<small>✓ montat</small>' : ''}</div></div>`;
+  });
+  $('list').innerHTML = html;
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled) return; audio(); S.tab = b.dataset.t; renderShop(); $('list').scrollTop = 0; });
+$('list').addEventListener('click', e => {
+  const r = e.target.closest('.it'); if (!r || S.mode !== 'build') return; audio();
+  if (r.dataset.none) { if (S.B.gpu) removePart('gpu'); return; }
+  const it = P[S.tab].find(x => x.id === r.dataset.id);
+  if (S.B[S.tab] && S.B[S.tab].id === it.id) removePart(S.tab); else install(S.tab, it);
+});
+const NEXT = { case: 'mb', mb: 'cpu', cpu: 'cool', cool: 'ram', ram: 'gpu', gpu: 'sto', sto: 'psu', psu: 'psu' };
+function changed() { S.on = false; S.tested = false; S.errs = null; drawScreen('off'); }
+function install(k, it) {
+  const first = !S.B[k];
+  S.B[k] = it; changed();
+  rebuild(k); SFX.click();
+  // trece singur la următoarea categorie goală
+  if (first) { let n = NEXT[k], guard = 0; while (S.B[n] && guard++ < 8 && n !== 'psu') n = NEXT[n]; if (!S.B[n] && !locked(n)) S.tab = n; }
+  renderShop(); renderOrder();
+}
+function removePart(k) {
+  const B = S.B;
+  const dep = { case: ['case', 'mb', 'cpu', 'cool', 'ram', 'gpu', 'sto', 'psu'], mb: ['mb', 'cpu', 'cool', 'ram', 'gpu'], cpu: ['cpu', 'cool'] }[k] || [k];
+  if (k === 'mb' && B.sto && B.sto.t === 'nvme') dep.push('sto');
+  dep.forEach(d => delete B[d]);
+  changed(); rebuild(); SFX.out(); renderShop(); renderOrder();
+}
+function renderOrder() {
+  const o = S.order; if (!o) { $('order').innerHTML = ''; return; }
+  const r = evalBuild(S.B);
+  const rs = meets(o, S.B, r);
+  const over = r.cost > o.budget;
+  const reqs = rs.map(x => `<span class="${x.ok ? 'ok' : 'no'}">${x.ok ? '✓' : '✗'} ${x.l}${x.v ? ` <i>${x.v}</i>` : ''}</span>`).join('') +
+    `<span class="${over ? 'no' : 'ok'}">${over ? '✗' : '✓'} 💰 ≤ ${lei(o.budget)}</span>`;
+  const pct = Math.min(100, r.cost / o.budget * 100);
+  let msg = '';
+  if (S.errs) msg = `<ul class="errs">${S.errs.e.map(t => `<li>✖ ${t}</li>`).join('')}</ul>`;
+  else if (S.tested) msg = `<div class="okmsg">✔ Pornește! Verifică cerințele și livrează.</div>${r.w.map(t => `<ul class="errs"><li class="w">⚠ ${t}</li></ul>`).join('')}`;
+  $('order').innerHTML = `
+    <div class="who"><span class="av">${o.av}</span><div><b>${o.name}</b><small>Comanda ${S.idx + 1} din ${S.perDay} · ${USES[o.use].i} ${USES[o.use].n}</small></div><button class="tog" id="oTog">${S.open ? '▴' : '▾'}</button></div>
+    <div class="say">„${o.say}”</div>
+    <div class="reqs">${reqs}</div>
+    <div class="cost"><span>Piese: <b class="${over ? 'over' : ''}">${lei(r.cost)}</b> / ${lei(o.budget)}</span><span>Profit: <b class="${o.budget - r.cost >= 0 ? 'pos' : 'over'}">${lei(o.budget - r.cost)}</b></span></div>
+    <div class="bar"><i class="${over ? 'over' : ''}" style="width:${pct}%"></i></div>
+    <div class="acts"><button id="bOn">🔌 Pornește</button><button id="bGo" ${S.tested ? '' : 'disabled'} title="${S.tested ? '' : 'Pornește întâi PC-ul'}">📦 Livrează</button></div>
+    ${msg}`;
+  $('order').classList.toggle('open', S.open);
+}
+$('order').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; audio();
+  if (b.id === 'oTog') { S.open = !S.open; renderOrder(); }
+  else if (b.id === 'bOn') powerOn();
+  else if (b.id === 'bGo') deliver();
+});
+function powerOn() {
+  if (S.mode !== 'build') return;
+  const r = evalBuild(S.B);
+  if (r.e.length) {
+    S.on = false; S.tested = false; S.errs = r; drawScreen('err', r); SFX.err();
+    toast('✖ Nu pornește: ' + r.e[0], 'bad', 3.2);
+    const bad = CATS.find(c => r.e.some(t => t.toLowerCase().includes(c.n.toLowerCase().split(' ')[0])));
+    if (bad && !locked(bad.k)) S.tab = bad.k;
+  } else {
+    S.on = true; S.tested = true; S.errs = null; drawScreen('ok', r); SFX.post(); SFX.fan();
+    toast(r.hot ? '⚠ Pornește, dar procesorul se încinge!' : '✔ PC-ul pornește!', r.hot ? '' : 'good');
+  }
+  renderShop(); renderOrder();
+}
+function deliver() {
+  if (!S.tested || S.mode !== 'build') return;
+  const o = S.order, r = evalBuild(S.B), rs = meets(o, S.B, r);
+  const fails = rs.filter(x => !x.ok), over = r.cost > o.budget;
+  let pay = o.budget * Math.max(0, 1 - 0.25 * fails.length);
+  const perfect = !fails.length && !over;
+  const use = rs[0], tip = perfect && r.pf[o.use] >= USES[o.use].tiers[o.tier].min + 12 ? Math.round(o.budget * 0.04 / 10) * 10 : 0;
+  pay += tip;
+  const profit = pay - r.cost;
+  const dRep = perfect ? 1 : -(fails.length + (over ? 1 : 0));
+  S.rep = clamp(S.rep + dRep, 0, 5);
+  S.money += profit; S.dayProfit += profit; if (perfect) S.dayPerfect++;
+  S.idx++; S.mode = 'result';
+  save(); hud();
+  if (profit > 0) SFX.cash(); else SFX.bad();
+  const quote = perfect ? (tip ? '😍 „E și mai bun decât voiam! Ia și un bacșiș.”' : '😊 „E exact ce am cerut, mulțumesc!”')
+    : over && !fails.length ? '😠 „Ai depășit bugetul! Îți dau doar cât am zis.”'
+    : fails.length >= 2 ? '😡 „Nu seamănă deloc cu ce am comandat!”' : '😐 „Nu e chiar ce am cerut…”';
+  const li = rs.map(x => `<li class="${x.ok ? 'g' : 'r'}">${x.ok ? '✓' : '✗'} ${x.l}${x.v ? ' (' + x.v + ')' : ''}${x.ok ? '' : '<b>−25%</b>'}</li>`).join('') +
+    `<li class="${over ? 'r' : 'g'}">${over ? '✗' : '✓'} Buget ${lei(o.budget)} · piese ${lei(r.cost)}${over ? '<b>plătește doar bugetul</b>' : ''}</li>` +
+    (tip ? `<li class="y">⭐ Performanță peste așteptări<b>+${lei(tip)} bacșiș</b></li>` : '') +
+    (r.hot ? `<li class="y">⚠ Procesorul se încinge (merge mai încet)</li>` : '');
+  const last = S.idx >= S.perDay;
+  showPanel(`<h2>📦 Livrat lui ${o.name}</h2><div class="quote">${quote}</div><ul class="res">${li}</ul>
+    <div class="stats"><div>Plătit de client<b>${lei(pay)}</b></div><div>Cost piese<b>${lei(r.cost)}</b></div><div>Profit<b style="color:${profit >= 0 ? '#1f8a3a' : '#c0301e'}">${profit >= 0 ? '+' : ''}${lei(profit)}</b></div><div>Reputație<b>${'★'.repeat(S.rep)}${'☆'.repeat(5 - S.rep)} <small style="font-size:14px">${dRep > 0 ? '+1' : dRep}</small></b></div></div>
+    <p style="font-size:13px;opacity:.75;text-align:center">Cel mai ieftin PC care bifa tot costa ${lei(o.cheap)}.</p>
+    <button class="go" id="pNext">${S.rep <= 0 ? 'Mai departe' : last ? 'Închide ziua' : 'Următorul client →'}</button>`);
+  $('pNext').onclick = () => { audio(); if (S.rep <= 0) gameOver(); else if (last) daySummary(); else nextOrder(); };
+}
+function showPanel(html) { $('panel').innerHTML = html; $('overlay').classList.add('show'); }
+function hidePanel() { $('overlay').classList.remove('show'); }
+function nextOrder() {
+  hidePanel();
+  S.order = genOrder(S.day); S.B = {}; S.tab = 'case'; S.open = false; changed();
+  S.mode = 'build'; rebuild(); renderShop(); renderOrder(); hud();
+  SFX.ding(); toast(`${S.order.av} Comandă nouă de la ${S.order.name}`, 'good');
+}
+function daySummary() {
+  S.mode = 'summary';
+  const html = `<h2>🌙 Sfârșitul zilei ${S.day}</h2>
+    <div class="stats"><div>Profit azi<b style="color:${S.dayProfit >= 0 ? '#1f8a3a' : '#c0301e'}">${lei(S.dayProfit)}</b></div><div>PC-uri perfecte<b>${S.dayPerfect} / ${S.perDay}</b></div><div>Bani în cont<b>${lei(S.money)}</b></div><div>Reputație<b>${'★'.repeat(S.rep)}${'☆'.repeat(5 - S.rep)}</b></div></div>
+    <p style="text-align:center">${S.day === 1 ? 'Mâine vin clienți cu cerințe mai multe.' : S.day === 2 ? 'De mâine vin și comenzile grele: 4K, 8K, AI.' : 'Bugetele devin tot mai strânse.'}</p>
+    <button class="go" id="pNext">Ziua ${S.day + 1} →</button>`;
+  S.day++; S.idx = 0; S.dayProfit = 0; S.dayPerfect = 0; save();
+  showPanel(html);
+  $('pNext').onclick = () => { audio(); nextOrder(); };
+}
+function gameOver() {
+  S.mode = 'over';
+  showPanel(`<h2>💔 Atelierul s-a închis</h2><p style="text-align:center">Clienții nemulțumiți au lăsat recenzii proaste și nu mai vine nimeni.</p>
+    <div class="stats"><div>Ai rezistat<b>${S.day} ${S.day === 1 ? 'zi' : 'zile'}</b></div><div>Bani strânși<b>${lei(S.money)}</b></div></div>
+    <button class="go" id="pNext">Deschide alt atelier</button>`);
+  try { localStorage.removeItem(SAVE); } catch (e) {}
+  $('pNext').onclick = () => { audio(); Object.assign(S, { day: 1, idx: 0, money: 0, rep: 3, dayProfit: 0, dayPerfect: 0 }); save(); nextOrder(); };
+}
+function help(first) {
+  const prev = S.mode; if (!first) S.mode = 'help';
+  showPanel(`<h1>🖥️ PC Builder</h1>
+    <p>Ai un atelier de calculatoare. Clienții comandă PC-uri online și îți spun <b>pentru ce</b> îl vor (gaming, video, programare), <b>ce piese</b> vor neapărat, <b>ce culoare</b> și <b>ce buget</b> au.</p>
+    <ul>
+      <li>Alege piesele din catalog: carcasă, placă de bază, procesor, cooler, RAM, placă video, SSD și sursă. Le vezi cum se montează în carcasă.</li>
+      <li>Ai grijă la compatibilitate: <b>socket-ul</b> procesorului, <b>DDR4/DDR5</b>, mărimea plăcii (ATX, mATX, mini-ITX), sursa destul de puternică.</li>
+      <li>Apasă <b>🔌 Pornește</b>. Dacă PC-ul pornește, pe monitor vezi cât de puternic e la jocuri, video și programare.</li>
+      <li>Apasă <b>📦 Livrează</b>. Clientul îți dă bugetul lui, tu plătești piesele. <b>Profitul e ce rămâne.</b></li>
+      <li>Fiecare cerință ratată: −25% din plată și −1 ★. Peste buget: clientul plătește doar bugetul și −1 ★. PC perfect: +1 ★.</li>
+    </ul>
+    <p>Rotești camera trăgând cu mouse-ul sau cu degetul, apropii cu rotița sau cu două degete. <kbd>M</kbd> sunet, <kbd>Esc</kbd> ajutor.</p>
+    ${S.money || S.day > 1 ? `<p style="text-align:center;font-size:14px;opacity:.75">Joc salvat: ziua ${S.day}, ${lei(S.money)} în cont.${S.best ? ` Record: ${lei(S.best)}.` : ''}</p>` : ''}
+    <button class="go" id="pGo">${first ? 'Deschide atelierul' : 'Înapoi la lucru'}</button>
+    ${first && (S.money || S.day > 1) ? '<button class="go2" id="pNew">Joc nou</button>' : ''}`);
+  $('pGo').onclick = () => { audio(); if (first) nextOrder(); else { hidePanel(); S.mode = prev; } };
+  const n = $('pNew'); if (n) n.onclick = () => { audio(); Object.assign(S, { day: 1, idx: 0, money: 0, rep: 3, dayProfit: 0, dayPerfect: 0 }); save(); nextOrder(); };
+}
+function toggleSound() {
+  S.sound = !S.sound; $('bSound').textContent = S.sound ? '🔊' : '🔇';
+  if (master) master.gain.value = S.sound ? 0.4 : 0;
+  try { localStorage.setItem(SAVE + '.snd', S.sound ? '1' : '0'); } catch (e) {}
+}
+$('bSound').onclick = () => { audio(); toggleSound(); };
+$('bHelp').onclick = () => { audio(); if (S.mode === 'build') help(false); };
+addEventListener('keydown', e => {
+  if (e.repeat) return; audio();
+  const k = e.key.toLowerCase();
+  if (k === 'm') toggleSound();
+  else if (k === 'escape') { if (S.mode === 'build') help(false); else if (S.mode === 'help') $('pGo').click(); }
+});
+
+// ================= cameră =================
+const cam = { th: 0.5, ph: 0.32, zoom: 1, target: new THREE.Vector3(0, 2.2, 0), r: 12 };
+const ptrs = new Map(); let drag = null, pinch = 0, moved = 0;
+cv.addEventListener('pointerdown', e => { audio(); cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); drag = { x: e.clientX, y: e.clientY }; moved = 0; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); } });
+cv.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch) cam.zoom = clamp(cam.zoom * pinch / d, 0.5, 1.8); pinch = d; moved = 99; return; }
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y; moved += Math.abs(dx) + Math.abs(dy);
+  cam.th -= dx * 0.008; cam.ph = clamp(cam.ph + dy * 0.006, -0.1, 1.25);
+  drag = { x: e.clientX, y: e.clientY };
+});
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function endPtr(e) {
+  ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0;
+  if (!ptrs.size) {
+    if (moved < 6 && S.mode === 'build') {
+      ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const h = ray.intersectObject(pc, true)[0];
+      if (h) { let o = h.object; while (o && !o.userData.cat) o = o.parent; if (o && o.userData.cat !== S.tab && !locked(o.userData.cat)) { S.tab = o.userData.cat; renderShop(); SFX.click(); } }
+    }
+    drag = null;
+  }
+}
+cv.addEventListener('pointerup', endPtr);
+cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; pinch = 0; });
+cv.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = clamp(cam.zoom * (1 + clamp(e.deltaY, -100, 100) * 0.0012), 0.5, 1.8); }, { passive: false });
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+
+// zona liberă de ecran (fără panouri) în care centrăm PC-ul
+function freeArea() {
+  const W = innerWidth, H = innerHeight;
+  const gb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gb')) || 0;
+  const sh = $('shop').getBoundingClientRect(), od = $('order').getBoundingClientRect();
+  if (W <= 900) return { x0: 0, x1: W, y0: od.bottom + 4, y1: sh.top - 4 };
+  const top = gb + 60;
+  const A = { x0: od.right + 10, x1: sh.left - 10, y0: top, y1: H };
+  const B = { x0: 0, x1: sh.left - 10, y0: top, y1: od.top - 10 };
+  const sc = a => Math.min(a.x1 - a.x0, (a.y1 - a.y0) * 1.1);
+  return sc(A) >= sc(B) ? A : B;
+}
+function placeCamera() {
+  const W = innerWidth, H = innerHeight, a = freeArea();
+  const fw = Math.max(120, a.x1 - a.x0), fh = Math.max(120, a.y1 - a.y0);
+  const tf = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const cs = S.B.case ? CASED[S.B.case.ff] : CASED.ATX;
+  const need = Math.max(cs.H * 1.35 * H / (0.9 * fh * tf), cs.D * 1.45 * H / (0.9 * fw * tf), 7);
+  const r = Math.min(40, need * cam.zoom);
+  cam.target.y = cs.H * 0.47;
+  cam.r += (r - cam.r) * 0.15;
+  camera.position.set(cam.target.x + cam.r * Math.cos(cam.ph) * Math.sin(cam.th), cam.target.y + cam.r * Math.sin(cam.ph), cam.target.z + cam.r * Math.cos(cam.ph) * Math.cos(cam.th));
+  camera.lookAt(cam.target);
+  const cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2;
+  camera.setViewOffset(W, H, W / 2 - cx, H / 2 - cy, W, H);
+}
+
+// ================= bucla =================
+const clock = new THREE.Clock();
+const ease = t => 1 - Math.pow(1 - t, 3);
+let tAll = 0;
+function update(dt) {
+  tAll += dt;
+  for (let i = fly.length - 1; i >= 0; i--) {
+    const f = fly[i]; f.t = Math.min(1, f.t + dt / 0.5);
+    const s = 1 - ease(f.t); f.g.position.set(f.x0 * s, 4.5 * s, 4 * s);
+    if (f.t >= 1) { f.g.position.set(0, 0, 0); fly.splice(i, 1); }
+  }
+  const spin = S.on ? 18 : 0;
+  for (const f of fans) f.rotation.z += spin * dt;
+  rgbMats.forEach((m, i) => {
+    if (S.on) { m.emissive.setHSL((tAll * 0.18 + i * 0.07) % 1, 1, 0.5); m.emissiveIntensity = 1.6; }
+    else { m.emissive.setHex(0x444444); m.emissiveIntensity = 0.15; }
+  });
+  if (ledMat) ledMat.emissive.setHex(S.on ? 0x33ff66 : 0x000000);
+  glow.intensity = S.on && rgbMats.length ? 3 : 0;
+  if (S.on && rgbMats.length) glow.color.setHSL((tAll * 0.18) % 1, 1, 0.6);
+  if (S.mode === 'menu') cam.th += dt * 0.15;
+}
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  update(dt);
+  placeCamera();
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').classList.remove('show'); }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+// ================= start =================
+loadSave();
+$('bSound').textContent = S.sound ? '🔊' : '🔇';
+// un PC de decor în meniu
+S.B = { case: P.case[2], mb: P.mb[3], cpu: P.cpu[10], cool: P.cool[3], ram: P.ram[7], gpu: P.gpu[4], sto: P.sto[3], psu: P.psu[2] };
+rebuild(); S.on = true;
+drawScreen('ok', evalBuild(S.B));
+hud(); renderShop();
+help(true);
+frame();
+
+// pentru teste
+window.__game = { S, P, CATS, evalBuild, meets, solve, genOrder, install, removePart, powerOn, deliver, nextOrder, update, cam,
+  step(n = 60, dt = 1 / 60) { for (let i = 0; i < n; i++) update(dt); },
+  buildCheapest() { const B = S.order.cheapB; S.B = {}; for (const c of CATS) if (B[c.k]) S.B[c.k] = B[c.k]; changed(); rebuild(); renderShop(); renderOrder(); } };
+</script>
+</body>
+</html>
