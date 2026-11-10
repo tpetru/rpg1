@@ -234,6 +234,9 @@ const CARS = [
 
 const G = 9.81;
 const ARENA = 190;           // jumătate din latura arenei
+let MAP = 'arena';           // harta: 'arena' (cea clasică) sau 'iasi' (oraș); ?harta=iasi sau comutatorul din meniu
+try { const q = new URLSearchParams(location.search).get('harta'); MAP = (q || localStorage.getItem('drift-map')) === 'iasi' ? 'iasi' : 'arena'; if (q) localStorage.setItem('drift-map', MAP); } catch (e) {}
+const CITY = { rects: [], tram: null };
 const PILLARS = [
   {x: 70, z: 70, r: 3.2}, {x:-70, z: 70, r: 3.2},
   {x: 70, z:-70, r: 3.2}, {x:-70, z:-70, r: 3.2},
@@ -2403,6 +2406,7 @@ function parkStep(dt) {
 // ------------------------------------------------------------------
 // Palatul Culturii din Iași (Palas): neogotic, cu turnul cu ceas în mijlocul fațadei
 // ------------------------------------------------------------------
+const PRE_CHILDREN = scene.children.slice(), PRE_OBST = OBSTACLES.length;   // tot ce e înainte de Palat aparține arenei (se ascunde pe harta Iași)
 const PALACE = { x: -60, z: 128, w: 64, d: 30 };              // z = fațada (spre sud), clădirea se întinde spre +z
 {
   const pg = new THREE.Group(), X = PALACE.x, Z = PALACE.z;
@@ -2567,6 +2571,116 @@ const PALACE = { x: -60, z: 128, w: 64, d: 30 };              // z = fațada (sp
   scene.add(mergeStatic(placeShadow(pg)));
 }
 // ------------------------------------------------------------------
+// Harta „Iași": un oraș cu străzi, blocuri, tramvai și repere (Palas, Mitropolia, Trei Ierarhi, Ștefan cel Mare, Copou).
+// Se alege din meniul ☰ din dreapta sau cu ?harta=iasi. Reutilizează Palatul Culturii și parcul din fața lui.
+// ------------------------------------------------------------------
+if (MAP === 'iasi') {
+  for (const ch of PRE_CHILDREN) if (!ch.isLight && !ch.isCamera && ch !== ground && ch !== trailerMesh && !carMeshes.includes(ch)) ch.visible = false;   // decorul arenei dispare
+  OBSTACLES.splice(0, PRE_OBST);
+  let sd = 1892; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const cityG = new THREE.Group(), PITCH = 76, BLK = 60;
+  const mkFacade = (base, win, frame) => canvasTex(64, 64, (g, W, H) => {
+    g.fillStyle = base; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(0,0,0,.07)'; g.fillRect(0, H - 6, W, 6);
+    g.fillStyle = frame; g.fillRect(14, 10, 36, 40); g.fillStyle = win; g.fillRect(17, 13, 30, 34);
+    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(17, 13, 30, 8); g.fillStyle = frame; g.fillRect(31, 13, 2, 34);
+  }, [1, 1]);
+  const FAC = [['#d9d0bd', '#35475a', '#f1ecdf'], ['#c9b48e', '#2f3f52', '#e8dcc0'], ['#b7bcc2', '#2b3a4c', '#dfe3e6'], ['#a8725c', '#2d3b4a', '#d9c3b6'], ['#9fb2c6', '#1f2d3d', '#cfd8e2'], ['#e4d4a0', '#3a4a5c', '#fff4cf']]
+    .map(([b, w, f]) => { const t = mkFacade(b, w, f); t.wrapS = t.wrapT = THREE.RepeatWrapping; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }); });
+  const flat = (c, m = 0.1, r = 0.8) => new THREE.MeshStandardMaterial({ color: c, metalness: m, roughness: r });
+  const building = (x, z, w, d, h, mi) => {
+    const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv;
+    for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) { const i = f * 4 + k, u = uv.getX(i), v = uv.getY(i);
+      if (f < 2) uv.setXY(i, u * d / 3.6, v * h / 3.2); else if (f < 4) uv.setXY(i, 0.02, 0.02); else uv.setXY(i, u * w / 3.6, v * h / 3.2); }
+    const m = new THREE.Mesh(g, FAC[mi % FAC.length]); m.position.set(x, h / 2, z); m.castShadow = true; m.receiveShadow = true; cityG.add(m);
+    for (let t = 0; t < 4; t++) { const len = t % 2 ? d : w, n = Math.ceil(len / 3.2);   // obstacole pe contur
+      for (let i = 0; i <= n; i++) { const a = -len / 2 + len * i / n; OBSTACLES.push(t % 2 ? { x: x + (t === 1 ? w / 2 : -w / 2), z: z + a, r: 1.7, h } : { x: x + a, z: z + (t === 0 ? d / 2 : -d / 2), r: 1.7, h }); } }
+    return m;
+  };
+  const box = (g, w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+  const ring = (x, z, r, h) => { const n = Math.ceil(2 * PI * r / 3); for (let i = 0; i < n; i++) OBSTACLES.push({ x: x + Math.cos(i / n * 2 * PI) * r, z: z + Math.sin(i / n * 2 * PI) * r, r: 1.7, h }); };
+  const xs = [-114, -38, 38, 114], sidewalk = flat(0x9b9a94, 0, 0.95), cream = flat(0xdcd2b4, 0.05, 0.85), roofM = flat(0x55645f, 0.2, 0.7), gold = flat(0xc9a24a, 0.7, 0.35), stone = flat(0xcfc6b0, 0.05, 0.9);
+  const SKIP = new Set(['-114,114', '-38,114']);                  // aici sunt Palatul Culturii și parcul din fața lui
+  const pyramid = (g, r, h, m, x, y, z) => { const c = new THREE.Mesh(new THREE.ConeGeometry(r, h, 4), m); c.rotation.y = PI / 4; c.position.set(x, y + h / 2, z); c.castShadow = true; g.add(c); };
+  const church = (cx, cz, kind) => {
+    const g = new THREE.Group();
+    if (kind === 'mitropolia') {
+      box(g, 22, 14, 34, cream, cx, 7, cz);                                    // nava
+      box(g, 34, 12, 12, cream, cx, 6, cz + 2);                                // transeptul
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(11.5, 11.5, 34, 3), roofM); roof.rotation.set(PI / 2, 0, PI / 2); roof.scale.set(1, 1, 0.36); roof.position.set(cx, 14.5, cz); g.add(roof);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(6, 24, 12, 0, PI * 2, 0, PI / 2), gold); dome.position.set(cx, 14, cz + 2); g.add(dome);
+      for (const sx of [-1, 1]) { box(g, 7, 30, 7, cream, cx + sx * 8.5, 15, cz - 14); pyramid(g, 5.5, 18, roofM, cx + sx * 8.5, 30, cz - 14); box(g, 1, 1, 1, gold, cx + sx * 8.5, 48.8, cz - 14); }
+      ring(cx, cz, 14, 40); OBSTACLES.push({ x: cx, z: cz - 14, r: 6, h: 48 }, { x: cx, z: cz + 12, r: 6, h: 14 }, { x: cx - 8.5, z: cz - 14, r: 4.5, h: 48 }, { x: cx + 8.5, z: cz - 14, r: 4.5, h: 48 });
+    } else {
+      box(g, 16, 11, 24, stone, cx, 5.5, cz); box(g, 6, 20, 6, stone, cx, 10, cz - 13); pyramid(g, 4.6, 14, roofM, cx, 20, cz - 13);
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(8.4, 8.4, 24, 3), roofM); roof.rotation.set(PI / 2, 0, PI / 2); roof.scale.set(1, 1, 0.3); roof.position.set(cx, 11.6, cz); g.add(roof);
+      for (const dz of [-6, 2, 9]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2, 6, 12), gold); t.position.set(cx, 14, cz + dz); g.add(t); const c = new THREE.Mesh(new THREE.ConeGeometry(2, 4, 12), roofM); c.position.set(cx, 19, cz + dz); g.add(c); }
+      for (const sx of [-1, 1]) for (let i = 0; i < 6; i++) box(g, 0.25, 6, 1.6, gold, cx + sx * 8.1, 5, cz - 9 + i * 3.6);   // decor sculptat auriu
+      ring(cx, cz, 9, 22); OBSTACLES.push({ x: cx, z: cz - 13, r: 4, h: 30 });
+    }
+    cityG.add(g);
+  };
+  for (const bx of xs) for (const bz of xs) {
+    const key = bx + ',' + bz, rect = { x0: bx - BLK / 2, x1: bx + BLK / 2, z0: bz - BLK / 2, z1: bz + BLK / 2, c: '#777a7c' };
+    if (SKIP.has(key)) { rect.c = '#4b8a45'; CITY.rects.push(rect); continue; }
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(BLK, 0.1, BLK), key === '114,-114' ? flat(0x4f8a3a, 0, 1) : sidewalk); slab.position.set(bx, 0.05, bz); slab.receiveShadow = true; cityG.add(slab);
+    if (key === '38,114') { church(bx, bz, 'mitropolia'); rect.c = '#c9bd9a'; CITY.rects.push(rect); continue; }
+    if (key === '-114,38') { church(bx, bz, 'treiierarhi'); rect.c = '#c9a24a'; CITY.rects.push(rect); continue; }
+    if (key === '114,-114') {                                        // parcul Copou: gazon, alei, tei și obeliscul
+      rect.c = '#3f8f3a'; CITY.rects.push(rect);
+      for (const [w, d] of [[3, BLK - 4], [BLK - 4, 3]]) { const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, d), flat(0xc8bfa4, 0, 1)); p.position.set(bx, 0.12, bz); cityG.add(p); }
+      for (let i = 0; i < 46; i++) { const tx = bx + (rnd() - 0.5) * 54, tz = bz + (rnd() - 0.5) * 54; if (Math.abs(tx - bx) < 4 || Math.abs(tz - bz) < 4) continue;
+        const h = 4 + rnd() * 3, tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, h, 8), flat(0x5a3f28, 0, 1)); tr.position.set(tx, h / 2, tz); cityG.add(tr);
+        const cr = new THREE.Mesh(new THREE.SphereGeometry(2.6 + rnd() * 1.6, 10, 8), flat(0x2f7d2e + ((rnd() * 24) | 0) * 0x000100, 0, 1)); cr.position.set(tx, h + 1.6, tz); cr.castShadow = true; cityG.add(cr); OBSTACLES.push({ x: tx, z: tz, r: 0.55 }); }
+      box(cityG, 2.6, 1.6, 2.6, stone, bx, 0.9, bz); pyramid(cityG, 1.3, 14, stone, bx, 1.7, bz); OBSTACLES.push({ x: bx, z: bz, r: 1.6, h: 16 });
+      continue;
+    }
+    CITY.rects.push(rect);
+    const mi = (rnd() * FAC.length) | 0, tall = 12 + rnd() * 24;
+    for (const [ox, oz] of [[-15, -15], [15, -15], [-15, 15], [15, 15]]) {
+      if (rnd() < 0.12) continue;                                    // loc viran: alee sau parcare între blocuri
+      const w = 19 + rnd() * 6, d = 19 + rnd() * 6, h = rnd() < 0.3 ? 8 + rnd() * 8 : tall * (0.6 + rnd() * 0.8);
+      building(bx + ox, bz + oz, w, d, h, rnd() < 0.7 ? mi : (rnd() * FAC.length) | 0);
+    }
+  }
+  // străzile: linie întreruptă pe mijloc, bordură de pământ în jurul orașului
+  const dash = canvasTex(8, 32, (g, W, H) => { g.fillStyle = 'rgba(255,255,255,0)'; g.clearRect(0, 0, W, H); g.fillStyle = 'rgba(245,240,225,.85)'; g.fillRect(2, 2, 4, 14); }, [1, 1]);
+  dash.wrapS = dash.wrapT = THREE.RepeatWrapping; dash.repeat.set(1, 2 * ARENA / 6);
+  const dashM = new THREE.MeshBasicMaterial({ map: dash, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  for (const c of [-152, -76, 0, 76, 152]) for (const rot of [0, 1]) {
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 2 * ARENA), dashM); p.rotation.x = -PI / 2; if (rot) p.rotation.z = PI / 2; p.position.set(rot ? 0 : c, 0.02, rot ? c : 0); cityG.add(p);
+  }
+  // felinare pe străzi
+  const poleM = flat(0x2b2f33, 0.6, 0.5), lampM = new THREE.MeshStandardMaterial({ color: 0xfff1c0, emissive: 0xffe39a, emissiveIntensity: 0.5 });
+  for (const c of [-76, 0, 76]) for (let t = -170; t <= 170; t += 34) for (const side of [-1, 1]) for (const rot of [0, 1]) {
+    const px = rot ? t : c + side * 7.4, pz = rot ? c + side * 7.4 : t;
+    if (Math.abs(px - c) < 9.5 && Math.abs(pz - c) < 9.5 && false) continue;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 7, 6), poleM); pole.position.set(px, 3.5, pz); cityG.add(pole);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), lampM); head.position.set(px, 7.1, pz); cityG.add(head); OBSTACLES.push({ x: px, z: pz, r: 0.18 });
+  }
+  scene.add(mergeStatic(cityG));
+  // Piața Ștefan cel Mare: sens giratoriu cu statuia ecvestră
+  { const g = new THREE.Group(), R0 = 9, bronze = flat(0x7a5a2e, 0.8, 0.4), 
+      isl = new THREE.Mesh(new THREE.CylinderGeometry(R0, R0, 0.4, 32), flat(0x4f8a3a, 0, 1)); isl.position.set(76, 0.2, 0); g.add(isl);
+    box(g, 3.2, 3.4, 5.4, stone, 76, 2.1, 0);
+    const hz = 0; box(g, 1.1, 1.1, 3.0, bronze, 76, 5.1, hz); box(g, 0.5, 1.0, 0.7, bronze, 76, 5.9, hz + 1.7);   // calul: trup, gât
+    for (const [dx, dz] of [[-0.35, -1.1], [0.35, -1.1], [-0.35, 1.1], [0.35, 1.1]]) box(g, 0.25, 1.3, 0.25, bronze, 76 + dx, 4.2, hz + dz);
+    box(g, 0.7, 1.4, 0.5, bronze, 76, 6.2, hz - 0.2); const hd = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), bronze); hd.position.set(76, 7.15, hz - 0.2); g.add(hd);
+    g.children.forEach(o => { o.castShadow = true; }); scene.add(g); ring(76, 0, 9.5, 12); OBSTACLES.push({ x: 76, z: 0, r: 3.4, h: 8 }); }
+  // tramvaiul de pe strada z = -76: șine și o garnitură care merge dus-întors
+  { const rails = new THREE.Group(); for (const dz of [-0.75, 0.75]) box(rails, 2 * ARENA - 4, 0.08, 0.12, flat(0x555a5e, 0.9, 0.4), 0, 0.08, -76 + dz); scene.add(rails);
+    const tram = new THREE.Group(), blue = flat(0x1e55a8, 0.4, 0.4), yel = flat(0xf2c230, 0.3, 0.5), glassM = flat(0x15202c, 0.8, 0.15);
+    box(tram, 2.5, 1.7, 15, blue, 0, 1.55, 0); box(tram, 2.52, 0.6, 15.02, yel, 0, 0.9, 0); box(tram, 2.54, 0.8, 14.2, glassM, 0, 2.15, 0); box(tram, 2.2, 0.3, 14, flat(0xdddddd, 0.3, 0.5), 0, 2.55, 0);
+    box(tram, 0.1, 0.1, 1.6, flat(0x222222, 0.5, 0.5), 0, 3.2, -3); box(tram, 1.6, 0.06, 0.1, flat(0x222222, 0.5, 0.5), 0, 3.4, -3);
+    for (const z of [-5, 5]) for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 12), flat(0x222222, 0.5, 0.6)); w.rotation.z = PI / 2; w.position.set(sx * 1.0, 0.45, z); tram.add(w); }
+    tram.children.forEach(o => { o.castShadow = true; }); scene.add(tram);
+    const T = { x: -140, dir: 1, circ: [0, 1, 2, 3, 4].map(() => ({ x: 0, z: -76, r: 1.9, h: 4 })) }; OBSTACLES.push(...T.circ);
+    CITY.tram = dt => { T.x += T.dir * 9 * dt; if (T.x > 150) T.dir = -1; if (T.x < -150) T.dir = 1;
+      tram.position.set(T.x, 0, -76); tram.rotation.y = T.dir > 0 ? PI / 2 : -PI / 2; T.circ.forEach((c, i) => { c.x = T.x + (i - 2) * 3.4; }); }; }
+  // zidul de margine al orașului
+  for (const [w, d, x, z] of [[2 * ARENA + 4, 1.5, 0, ARENA + 0.7], [2 * ARENA + 4, 1.5, 0, -ARENA - 0.7], [1.5, 2 * ARENA + 4, ARENA + 0.7, 0], [1.5, 2 * ARENA + 4, -ARENA - 0.7, 0]]) box(scene, w, 2.2, d, flat(0x8d8a82, 0, 1), x, 1.1, z);
+}
+// ------------------------------------------------------------------
 // Pisica curcubeu: umblă prin arenă și fuge din calea mașinilor, lăsând o dâră de curcubeu
 // ------------------------------------------------------------------
 const newCatState = (x, z, yaw) => ({ x, z, yaw, sp: 0, y: 0, vy: 0, t: Math.random() * 10, wanderT: 0, wanderYaw: yaw, hit: 0, gait: 0, sit: 0, trail: [], tn: 0 });
@@ -2605,7 +2719,7 @@ const CAT_TRAIL = 64, buildCatTrail = CAT => {
   for (let i = 0; i < CAT_TRAIL; i++) { m.setColorAt(i, new THREE.Color().setHSL(i / 12 % 1, 0.95, 0.55)); CAT.trail.push([CAT.x, CAT.z, 0]); }
   scene.add(m); return m;
 };
-const CATS = [[40, 30, 0.5], [-55, -45, 2.2], [70, -70, 4.0]].map(([x, z, yaw]) => { const C = newCatState(x, z, yaw); return { C, mesh: buildCatMesh(), trailMesh: buildCatTrail(C) }; });
+const CATS = (MAP === 'iasi' ? [[0, 40, 0.5], [76, 40, 2.2], [-76, -40, 4.0]] : [[40, 30, 0.5], [-55, -45, 2.2], [70, -70, 4.0]]).map(([x, z, yaw]) => { const C = newCatState(x, z, yaw); return { C, mesh: buildCatMesh(), trailMesh: buildCatTrail(C) }; });
 const _cm = new THREE.Matrix4(), _cq = new THREE.Quaternion(), _cv3 = new THREE.Vector3(), _cs3 = new THREE.Vector3();
 function catStep(CT, dt) {
   const C = CT.C, catMesh = CT.mesh, catTrailMesh = CT.trailMesh; C.t += dt;
@@ -2662,6 +2776,7 @@ const RAMPS = [
   { x: -48, z: 32, dir: PI, L: 9, W: 7, H: 1.6 },
   { x: 132, z: -78, dir: 0, L: 8, W: 7, H: 1.3 },        // aterizare pe ud
 ];
+if (MAP === 'iasi') { for (const Z of [WET, FIELD, PARK, PARK2]) { Z.x0 = Z.x1 = 1e5; Z.z0 = Z.z1 = 1e5; } LAKE.x = LAKE.z = 1e5; RAMPS.length = 0; }   // fără zone speciale în oraș
 // înălțimea solului și panta (gradient global) într-un punct
 function groundAt(x, z) {
   let h = 0, gx = 0, gz = 0;
@@ -3054,7 +3169,7 @@ function updateCones(dt) {
 // ------------------------------------------------------------------
 // Mingea de fotbal uriașă: fizică proprie, se lovește cu mașina
 // ------------------------------------------------------------------
-const BALL_R = 1.8, BALL_M = 45, BALL_SPAWN = [-22, -98];
+const BALL_R = 1.8, BALL_M = 45, BALL_SPAWN = MAP === 'iasi' ? [0, -40] : [-22, -98];
 const ball = { x: BALL_SPAWN[0], y: BALL_R, z: BALL_SPAWN[1], vx: 0, vy: 0, vz: 0, hitT: 0 };
 const ballMesh = (() => {
   // minge clasică: 12 pete negre (pentagoane) pe vârfurile unui icosaedru, restul alb
@@ -3095,7 +3210,7 @@ const GOAL_W = 7, GOAL_H = 4.6, GOAL_D = 3.2, goalScore = [0, 0];
   const netTex = canvasTex(128, 128, (g, W, H) => { g.clearRect(0, 0, W, H); g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 3; for (let i = 0; i <= W; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, H); g.moveTo(0, i); g.lineTo(W, i); g.stroke(); } }, true);
   netTex.repeat.set(6, 3); netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
   const netMat = new THREE.MeshBasicMaterial({ map: netTex, transparent: true, side: THREE.DoubleSide, depthWrite: false });
-  for (const G of GOALS) {
+  if (MAP !== 'iasi') for (const G of GOALS) {
     const gr = new THREE.Group(), pm = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.4 });
     const post = (zz) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, GOAL_H, 12), pm); m.position.set(0, GOAL_H / 2, zz); gr.add(m); };
     post(-GOAL_W); post(GOAL_W);
@@ -3112,6 +3227,7 @@ const GOAL_W = 7, GOAL_H = 4.6, GOAL_D = 3.2, goalScore = [0, 0];
 }
 let goalCool = 0;
 function goalCheck(dt) {
+  if (MAP === 'iasi') return;
   goalCool = Math.max(0, goalCool - dt); if (goalCool > 0) return;
   GOALS.forEach((G, i) => {
     const inside = G.sd > 0 ? ball.x < G.x - 0.3 : ball.x > G.x + 0.3;
@@ -3470,6 +3586,7 @@ try { wingsOn = localStorage.getItem('drift-wings') === '1'; } catch (e) {}
 // meniu hamburger din dreapta: zi/noapte, reset locație, aripi, cameră, sunet
 { const panel = $('optPanel'), btn = $('optBtn');
   const items = [
+    ['map', () => MAP === 'iasi' ? '🗺 Harta: Iași → Arenă' : '🗺 Harta: Arenă → Iași', () => { try { localStorage.setItem('drift-map', MAP === 'iasi' ? 'arena' : 'iasi'); } catch (e) {} location.href = location.pathname; }],
     ['night', () => night ? '☀ Zi' : '🌙 Noapte', () => setNight(!night)],
     ['reset', () => '↺ Reset locație', () => { resetCar(false); resetBall(); }],
     ['wings', () => (wingsOn ? '☑' : '☐') + ' Aripi (zbor cu Space)', () => { setWings(!wingsOn); pop(car.spec.wings ? (wingsOn ? 'Aripi activate · Space = zbor' : 'Aripi dezactivate') : 'Vehiculul ăsta nu poate avea aripi'); }],
@@ -3738,7 +3855,7 @@ function frame(now) {
   while (acc >= STEP) { physicsStep(STEP); ballStep(STEP); ballVsTrailer(ball); goalCheck(STEP); acc -= STEP; }
   updateBallMesh(dt);
   if (WET.water) { WET.water.normalMap.offset.x += dt * 0.012; WET.water.normalMap.offset.y += dt * 0.007; }
-  parkStep(dt); palaceStep(); for (const ct of CATS) catStep(ct, dt);
+  parkStep(dt); palaceStep(); for (const ct of CATS) catStep(ct, dt); if (CITY.tram) CITY.tram(dt);
   updateDrift(dt);
   updateCones(dt);
   updateSmoke(dt);
@@ -3764,6 +3881,7 @@ function mmBuild() {
   g.fillStyle = '#3a6b3a'; g.fillRect(0, 0, mmSize, mmSize);
   const [ax0, az0] = mmPos(ARENA, ARENA); g.fillStyle = '#4b4e53'; g.fillRect(ax0, az0, 2 * ARENA * k, 2 * ARENA * k);
   g.strokeStyle = '#e8e8e8'; g.lineWidth = Math.max(1, k * 1.5); g.strokeRect(ax0, az0, 2 * ARENA * k, 2 * ARENA * k);
+  for (const r of CITY.rects) { const [x0, z0] = mmPos(r.x1, r.z1); g.fillStyle = r.c; g.fillRect(x0, z0, (r.x1 - r.x0) * k, (r.z1 - r.z0) * k); }
   { const [x0, z0] = mmPos(FIELD.x1, FIELD.z1); g.fillStyle = 'rgba(122,86,56,.9)'; g.fillRect(x0, z0, (FIELD.x1 - FIELD.x0) * k, (FIELD.z1 - FIELD.z0) * k); }
   { const [x0, z0] = mmPos(WET.x1, WET.z1); g.fillStyle = 'rgba(40,130,240,.85)'; g.fillRect(x0, z0, (WET.x1 - WET.x0) * k, (WET.z1 - WET.z0) * k); }
   for (const r of RAMPS) {
