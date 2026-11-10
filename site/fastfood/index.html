@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Fastfood Owner 3D</title>
+<meta name="description" content="Ai o rulotă cu fastfood în oraș. Clienții vin la geam, tu gătești ce comandă.">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #9fd0f0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; }
+  .chip { background: rgba(28, 22, 16, .62); border-radius: 12px; padding: 7px 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  #hud { position: fixed; left: 12px; top: calc(12px + var(--gb, 0px)); display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; z-index: 5; max-width: calc(100vw - 120px); }
+  #hud .chip { font-weight: 800; font-size: 17px; }
+  #stars { color: #ffcf3a; letter-spacing: 1px; }
+  #clock.closing { background: rgba(190, 70, 30, .85); }
+  #btns { position: fixed; right: 12px; top: calc(12px + var(--gb, 0px)); display: flex; gap: 6px; z-index: 5; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; }
+  .ib { width: 40px; height: 40px; font-size: 19px; background: rgba(28, 22, 16, .62); color: #fff; }
+  .ib:hover { background: rgba(28, 22, 16, .85); }
+  #trash { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 9px 16px; background: rgba(28, 22, 16, .7); color: #fff; font-weight: 700; font-size: 15px; z-index: 5; display: none; }
+  #trash:hover { background: rgba(160, 40, 30, .9); }
+  body.playing #trash { display: block; }
+  #layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; }
+  .lbl { position: absolute; transform: translate(-50%, 0); font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 8px; background: rgba(28, 22, 16, .62); white-space: nowrap; }
+  .lbl kbd { font: inherit; background: rgba(255,255,255,.22); padding: 0 5px; border-radius: 4px; margin-right: 3px; }
+  .lbl.lock { background: rgba(60, 60, 60, .75); color: #ccc; }
+  body.touch .lbl kbd { display: none; }
+  .bar { position: absolute; width: 38px; height: 7px; margin-left: -19px; border-radius: 4px; background: rgba(0,0,0,.55); overflow: hidden; display: none; }
+  .bar i { display: block; height: 100%; width: 0; background: #ffa53a; }
+  .bar.ready i { background: #3fcf4f; }
+  .bar.warn i { background: #e8392a; }
+  .tag { position: absolute; transform: translate(-50%, -100%); font-size: 18px; display: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  .bub { position: absolute; transform: translate(-50%, -100%); background: #fffdf6; color: #2a2118; border-radius: 14px; padding: 6px 9px 7px; box-shadow: 0 4px 14px rgba(0,0,0,.35); pointer-events: auto; cursor: pointer; text-align: center; min-width: 64px; }
+  .bub::after { content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #fffdf6; }
+  .bub:hover { box-shadow: 0 0 0 3px #ffcf3a, 0 4px 14px rgba(0,0,0,.35); }
+  .bub .it { font-size: 24px; line-height: 1.1; white-space: nowrap; }
+  .bub .it span { display: inline-block; position: relative; margin: 0 1px; }
+  .bub .it span.got { opacity: .35; }
+  .bub .it span.got::after { content: "✓"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #1d9a2c; font-size: 22px; font-weight: 900; opacity: 1; }
+  .bub .pt { height: 6px; border-radius: 3px; background: #e6dccb; overflow: hidden; margin-top: 4px; }
+  .bub .pt i { display: block; height: 100%; background: #3fbf4f; }
+  .bub .k { position: absolute; left: -8px; top: -8px; width: 20px; height: 20px; border-radius: 50%; background: #2a2118; color: #fff; font-size: 11px; font-weight: 800; line-height: 20px; }
+  body.touch .bub .k { display: none; }
+  .bub.mood { min-width: 0; padding: 4px 8px; font-size: 26px; pointer-events: none; }
+  .float { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ffe14d; text-shadow: 0 2px 4px rgba(0,0,0,.7); transition: transform 1.2s ease-out, opacity 1.2s; white-space: nowrap; }
+  .float.bad { color: #ff6a5a; }
+  #toast { position: fixed; left: 50%; top: calc(64px + var(--gb, 0px)); transform: translateX(-50%); font-size: 18px; font-weight: 800; text-align: center; pointer-events: none; opacity: 0; transition: opacity .25s; max-width: calc(100vw - 32px); z-index: 6; }
+  #toast.show { opacity: 1; }
+  #toast.good { background: rgba(40, 130, 50, .9); }
+  #toast.bad { background: rgba(190, 40, 30, .9); }
+  #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: calc(16px + var(--gb, 0px)) 16px 16px; background: rgba(20, 14, 8, .45); z-index: 20; }
+  #overlay.show { display: flex; }
+  .panel { background: #fff8ea; color: #33291c; border-radius: 22px; padding: 22px 24px; width: min(600px, 100%); max-height: calc(100vh - 32px - var(--gb, 0px)); overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .panel h1 { margin: 0 0 6px; font-size: 32px; color: #d4421e; text-align: center; }
+  .panel h2 { margin: 0 0 8px; font-size: 26px; color: #2f6b2c; text-align: center; }
+  .panel p { margin: 8px 0; line-height: 1.45; }
+  .panel ul { margin: 6px 0 10px; padding-left: 20px; line-height: 1.55; }
+  .panel kbd { background: #eadfca; border-radius: 5px; padding: 1px 6px; font: inherit; font-weight: 700; font-size: 13px; }
+  .menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 10px 0; }
+  .menu div { background: #f3e7cf; border-radius: 10px; padding: 6px 10px; font-weight: 700; }
+  .menu div.off { opacity: .45; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
+  .stats div { background: #f3e7cf; border-radius: 10px; padding: 8px 10px; }
+  .stats b { display: block; font-size: 22px; }
+  .shop { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .shop button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 12px; background: #f3e7cf; color: #33291c; }
+  .shop button:hover:not(:disabled) { background: #ffe2a6; }
+  .shop button:disabled { opacity: .5; cursor: default; }
+  .shop button .ic { font-size: 26px; }
+  .shop button .tx { flex: 1; }
+  .shop button .tx small { display: block; font-weight: 400; opacity: .8; }
+  .shop button .pr { font-weight: 800; white-space: nowrap; }
+  .go { display: block; margin: 14px auto 2px; padding: 12px 30px; font-size: 20px; font-weight: 800; background: #d4421e; color: #fff; box-shadow: 0 4px 0 #8c2a10; }
+  .go:active { transform: translateY(3px); box-shadow: 0 1px 0 #8c2a10; }
+  @media (max-width: 520px) { .panel { padding: 16px; } .panel h1 { font-size: 26px; } #hud .chip { font-size: 14px; padding: 5px 9px; } .bub .it { font-size: 19px; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+<script src="/games/topbar.js"></script>
+<div id="hud">
+  <div class="chip" id="money">💰 0 lei</div>
+  <div class="chip" id="stars">★★★★★</div>
+  <div class="chip" id="clock">📅 Ziua 1 · 2:30</div>
+</div>
+<div id="btns">
+  <button class="ib" id="bSound" title="Sunet (M)">🔊</button>
+  <button class="ib" id="bPause" title="Pauză (Esc)">⏸</button>
+</div>
+<div id="layer"></div>
+<button id="trash" title="Aruncă tot de pe tavă (X)">🗑 Golește tava</button>
+<div id="toast" class="chip"></div>
+<div id="overlay" class="show"><div class="panel" id="panel"><h1>🍔 Fastfood Owner</h1><p style="text-align:center">Se încarcă orașul…</p></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
+const isTouch = matchMedia('(pointer: coarse)').matches;
+if (isTouch) document.body.classList.add('touch');
+const rr = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const SAVE = 'fastfood3d';
+
+// ---------------- meniu ----------------
+// cook = secunde până e gata, burn = secunde până se arde (Infinity = nu se arde)
+const FOOD = {
+  drink:   { name: 'Suc',      icon: '🥤', price: 5,  st: 'drink',   cook: 2.2, burn: Infinity, day: 1, waste: 1 },
+  fries:   { name: 'Cartofi',  icon: '🍟', price: 8,  st: 'fryer',   cook: 5,   burn: 13,       day: 1, waste: 2 },
+  burger:  { name: 'Burger',   icon: '🍔', price: 15, st: 'grill',   cook: 6,   burn: 14,       day: 1, waste: 4 },
+  hotdog:  { name: 'Hot dog',  icon: '🌭', price: 10, st: 'hotdog',  cook: 4.5, burn: 12,       day: 2, waste: 3 },
+  shaorma: { name: 'Shaorma',  icon: '🌯', price: 20, st: 'shaorma', cook: 5.5, burn: Infinity, day: 3, waste: 0 },
+};
+const ORDER = ['drink', 'fries', 'burger', 'hotdog', 'shaorma'];
+const UPG = [
+  { id: 'grill4',  ic: '🔥', name: 'Al 4-lea loc pe grătar',     desc: 'Poți face 4 burgeri deodată.', price: 60 },
+  { id: 'fryer2',  ic: '🍟', name: 'Al doilea coș la friteuză',  desc: 'Prăjești două porții de cartofi deodată.', price: 50 },
+  { id: 'fastsoda', ic: '🥤', name: 'Automat de suc rapid',       desc: 'Paharul se umple de două ori mai repede.', price: 40 },
+  { id: 'tray8',   ic: '🍽️', name: 'Tavă mai mare',              desc: '8 locuri pe tavă în loc de 6.', price: 45 },
+  { id: 'music',   ic: '🎵', name: 'Boxă cu muzică',             desc: 'Clienții așteaptă cu 25% mai mult.', price: 80 },
+  { id: 'neon',    ic: '💡', name: 'Firmă cu neon',              desc: 'Bacșișuri cu 50% mai mari.', price: 90 },
+];
+
+// ---------------- stare ----------------
+const S = {
+  mode: 'menu', // menu | intro | open | closing | summary | over
+  paused: false, day: 1, money: 0, rep: 5, t: 0, dayLen: 150,
+  up: {}, tray: [], spawnT: 2,
+  dayStats: null, total: { served: 0, angry: 0, earned: 0 },
+  sound: true,
+};
+let best = 0;
+try { best = +(localStorage.getItem(SAVE + '.best') || 0); S.sound = localStorage.getItem(SAVE + '.snd') !== '0'; } catch (e) {}
+const trayCap = () => S.up.tray8 ? 8 : 6;
+const unlocked = k => S.day >= FOOD[k].day;
+
+// ---------------- scenă ----------------
+const renderer = new THREE.WebGLRenderer({ antialias: !isTouch });
+renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const SKY = 0x9fd0f0;
+scene.background = new THREE.Color(SKY);
+scene.fog = new THREE.Fog(SKY, 40, 120);
+const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, 0.05, 300);
+scene.add(new THREE.HemisphereLight(0xe8f4ff, 0x8a7a60, 1.6));
+const sun = new THREE.DirectionalLight(0xfff0d6, 2.4);
+sun.position.set(14, 26, 12); sun.target.position.set(0, 0, -4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 22, bottom: -22, near: 1, far: 90 });
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+
+const matCache = {};
+function M(c, o) {
+  const key = c + (o ? JSON.stringify(o) : '');
+  return matCache[key] || (matCache[key] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.8 }, o)));
+}
+function mesh(geo, mat, x = 0, y = 0, z = 0, parent = scene, shadow = true) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  if (shadow) { m.castShadow = true; m.receiveShadow = true; }
+  parent.add(m);
+  return m;
+}
+const box = (w, h, d, mat, x, y, z, p, sh) => mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, p, sh);
+const cyl = (rt, rb, h, mat, x, y, z, p, seg = 16, sh) => mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat, x, y, z, p, sh);
+function canvasTex(w, h, draw, rep) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep[0], rep[1]);
+  t.anisotropy = 4;
+  return t;
+}
+
+// ---------------- orașul ----------------
+// rulota stă pe o piațetă; în fața ei trotuarul (z -5..4), apoi strada (z -5..-12), trotuarul de vizavi și blocurile.
+const texTiles = canvasTex(128, 128, (g, w, h) => {
+  g.fillStyle = '#c9c3b8'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#a9a398'; g.lineWidth = 3;
+  for (let i = 0; i <= 2; i++) { g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, h); g.stroke(); g.beginPath(); g.moveTo(0, i * 64); g.lineTo(w, i * 64); g.stroke(); }
+  for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.05})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+}, [40, 6]);
+const texRoad = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#45474b'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.06})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+}, [20, 2]);
+const ground = mesh(new THREE.PlaneGeometry(220, 160), M(0x7c9a52), 0, -0.02, 0, scene); ground.rotation.x = -Math.PI / 2; ground.castShadow = false;
+const side1 = mesh(new THREE.PlaneGeometry(120, 10), new THREE.MeshStandardMaterial({ map: texTiles, roughness: 0.9 }), 0, 0.005, -0.5); side1.rotation.x = -Math.PI / 2; side1.castShadow = false;
+const road = mesh(new THREE.PlaneGeometry(120, 7), new THREE.MeshStandardMaterial({ map: texRoad, roughness: 0.95 }), 0, 0.0, -8.5); road.rotation.x = -Math.PI / 2; road.castShadow = false;
+const texTiles2 = texTiles.clone(); texTiles2.repeat.set(40, 2); texTiles2.needsUpdate = true;
+const side2 = mesh(new THREE.PlaneGeometry(120, 4), new THREE.MeshStandardMaterial({ map: texTiles2, roughness: 0.9 }), 0, 0.005, -14); side2.rotation.x = -Math.PI / 2; side2.castShadow = false;
+box(120, 0.14, 0.25, M(0xb8b2a6), 0, 0.07, -5.1);
+box(120, 0.14, 0.25, M(0xb8b2a6), 0, 0.07, -11.9);
+for (let x = -58; x < 60; x += 4) { const d = box(2, 0.01, 0.16, M(0xf2efe6), x, 0.012, -8.5, scene, false); d.receiveShadow = true; }
+// trecere de pietoni
+for (let i = 0; i < 7; i++) box(0.5, 0.01, 6.4, M(0xf2efe6), -12 + i * 0.9, 0.013, -8.5, scene, false);
+
+// blocuri
+function facadeTex(base, win) {
+  return canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, h - 6, w, 6);
+    for (let i = 0; i < 2; i++) {
+      const x = 14 + i * 64;
+      g.fillStyle = '#f4f1ea'; g.fillRect(x - 4, 26, 44, 64);
+      g.fillStyle = win; g.fillRect(x, 30, 36, 56);
+      g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(x, 30, 12, 56);
+      g.fillStyle = '#f4f1ea'; g.fillRect(x + 16, 30, 4, 56);
+    }
+  });
+}
+const FACADES = ['#e9b47a', '#d98b78', '#f1d9a8', '#a9c7c9', '#c7b3d6', '#e7e1d2', '#b8c99a', '#f0c3a0'];
+const SHOPS = [['PIZZA', '#c0392b'], ['FARMACIE', '#1e8f4e'], ['FLORĂRIE', '#d35b9a'], ['BRUTĂRIE', '#a8642a'], ['CAFENEA', '#5b3a29'], ['ALIMENTARA', '#2d6db5'], ['FRIZERIE', '#7a4fb0'], ['BANCA', '#24506e']];
+function shopSign(txt, col) {
+  return canvasTex(256, 48, (g, w, h) => {
+    g.fillStyle = col; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#fff'; g.font = 'bold 30px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, w / 2, h / 2 + 2);
+  });
+}
+let bx = -52, bi = 0;
+while (bx < 52) {
+  const w = rr(7, 11), hgt = [9, 12, 15, 18, 21][Math.floor(Math.random() * 5)], d = 9;
+  const t = facadeTex(FACADES[bi % FACADES.length], '#5d7a91');
+  t.repeat.set(Math.round(w / 3.6), Math.round(hgt / 3));
+  const b = box(w - 0.3, hgt, d, new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }), bx + w / 2, hgt / 2, -16 - d / 2);
+  b.castShadow = false;
+  box(w - 0.1, 0.4, d + 0.2, M(0x8d8577), bx + w / 2, hgt + 0.2, -16 - d / 2);
+  // parter cu magazin
+  const sh = SHOPS[bi % SHOPS.length];
+  box(w - 0.4, 3, 0.1, M(0x2e3a44, { roughness: 0.3, metalness: 0.4 }), bx + w / 2, 1.5, -15.98, scene, false);
+  const sg = box(w - 0.6, 0.7, 0.12, new THREE.MeshStandardMaterial({ map: shopSign(sh[0], sh[1]) }), bx + w / 2, 3.4, -15.9, scene, false);
+  const aw = box(w - 0.6, 0.08, 1.2, M(sh[1]), bx + w / 2, 2.9, -15.4); aw.rotation.x = -0.25;
+  bx += w; bi++;
+}
+// copaci și stâlpi
+function tree(x, z, s = 1) {
+  cyl(0.12 * s, 0.16 * s, 2.2 * s, M(0x6b4a2e), x, 1.1 * s, z, scene, 8);
+  const c = mesh(new THREE.SphereGeometry(1.3 * s, 10, 8), M(pick([0x4f8a3a, 0x5b9a40, 0x467d34])), x, 3 * s, z); c.scale.y = 1.15;
+}
+for (let x = -50; x <= 50; x += 11) tree(x + rr(-1, 1), -13.2, rr(0.9, 1.15));
+for (const x of [-16, -9, 9, 16, 24, -24]) tree(x, 3.5 + rr(-0.5, 1), rr(0.9, 1.2));
+for (let i = 0; i < 14; i++) tree(rr(-40, 40), rr(8, 30), rr(0.9, 1.4));
+function lamp(x, z) {
+  cyl(0.06, 0.08, 4.6, M(0x2f3438, { metalness: 0.5, roughness: 0.4 }), x, 2.3, z, scene, 8);
+  box(0.9, 0.08, 0.1, M(0x2f3438), x, 4.55, z - 0.4).rotation.y = Math.PI / 2;
+  box(0.3, 0.12, 0.45, M(0xfff3c8, { emissive: 0x554422 }), x, 4.48, z - 0.8);
+}
+for (const x of [-20, -8, 8, 20]) lamp(x, -4.8);
+// bănci și coș de gunoi lângă rulotă
+function bench(x, z, ry) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
+  box(1.6, 0.06, 0.45, M(0x9a6a3c), 0, 0.45, 0, g); box(1.6, 0.4, 0.06, M(0x9a6a3c), 0, 0.72, 0.22, g);
+  box(0.06, 0.45, 0.4, M(0x333333), -0.7, 0.22, 0, g); box(0.06, 0.45, 0.4, M(0x333333), 0.7, 0.22, 0, g);
+}
+bench(-6.5, -1.2, 0.3); bench(6.8, 0.2, -0.4);
+cyl(0.25, 0.22, 0.8, M(0x3c6e3a), -4.6, 0.4, -0.6, scene, 12);
+
+// ---------------- mașini ----------------
+const CARS = [];
+const CAR_COL = [0xd23a2a, 0x2f6fd8, 0xf2f2f2, 0x222428, 0xf0b81c, 0x3c9a52, 0x8a8f96];
+function makeCar() {
+  const g = new THREE.Group(); scene.add(g);
+  const col = pick(CAR_COL);
+  box(3.8, 0.7, 1.7, M(col, { roughness: 0.4, metalness: 0.3 }), 0, 0.65, 0, g);
+  box(2.1, 0.6, 1.5, M(col, { roughness: 0.4, metalness: 0.3 }), -0.2, 1.28, 0, g);
+  box(2.15, 0.45, 1.52, M(0x22303a, { roughness: 0.2, metalness: 0.5 }), -0.2, 1.3, 0, g, false);
+  for (const [wx, wz] of [[1.2, 0.8], [-1.2, 0.8], [1.2, -0.8], [-1.2, -0.8]]) {
+    const w = cyl(0.33, 0.33, 0.25, M(0x1a1a1a), wx, 0.33, wz, g, 12); w.rotation.x = Math.PI / 2;
+  }
+  box(0.05, 0.16, 0.4, M(0xfffbe0, { emissive: 0x888866 }), 1.9, 0.75, 0.55, g, false);
+  box(0.05, 0.16, 0.4, M(0xfffbe0, { emissive: 0x888866 }), 1.9, 0.75, -0.55, g, false);
+  return g;
+}
+for (let i = 0; i < 6; i++) {
+  const lane = i % 2;
+  const c = { g: makeCar(), dir: lane ? -1 : 1, z: lane ? -10.2 : -6.8, x: rr(-50, 50), v: rr(6, 10) };
+  c.g.rotation.y = c.dir > 0 ? 0 : Math.PI;
+  CARS.push(c);
+}
+
+// ---------------- oameni ----------------
+const SKIN = [0xf1c7a5, 0xe0ac86, 0xc98e66, 0x9c6a48, 0xf5d4bb];
+const HAIR = [0x2a1d14, 0x5a3a22, 0x8a5a2e, 0xd8b56a, 0x1a1a1a, 0x9a9a9a, 0xa0401e];
+const SHIRT = [0xd94b3d, 0x3d7fd9, 0x3fae5a, 0xf0c03a, 0x8a52c9, 0xf07a2a, 0x2bb3b0, 0xe85d9a, 0xf2f2f2, 0x3a3f4a];
+const PANTS = [0x2c3e66, 0x333333, 0x5b4a3a, 0x6b7280, 0x1f4a3a];
+const legGeo = new THREE.BoxGeometry(0.17, 0.86, 0.19); legGeo.translate(0, -0.43, 0);
+const armGeo = new THREE.BoxGeometry(0.12, 0.6, 0.14); armGeo.translate(0, -0.28, 0);
+function makePerson() {
+  const g = new THREE.Group(); scene.add(g);
+  const skin = M(pick(SKIN)), shirt = M(pick(SHIRT)), pants = M(pick(PANTS)), hair = M(pick(HAIR));
+  const legL = mesh(legGeo, pants, -0.1, 0.88, 0, g), legR = mesh(legGeo, pants, 0.1, 0.88, 0, g);
+  box(0.46, 0.64, 0.27, shirt, 0, 1.2, 0, g);
+  const armL = mesh(armGeo, shirt, -0.3, 1.5, 0, g), armR = mesh(armGeo, shirt, 0.3, 1.5, 0, g);
+  cyl(0.07, 0.08, 0.1, skin, 0, 1.56, 0, g, 8);
+  const head = mesh(new THREE.SphereGeometry(0.16, 16, 12), skin, 0, 1.73, 0, g);
+  const style = Math.random();
+  if (style < 0.2) { // șapcă
+    const cap = mesh(new THREE.SphereGeometry(0.168, 14, 8, 0, TAU, 0, Math.PI / 2), M(pick(SHIRT)), 0, 1.76, 0, g);
+    box(0.24, 0.02, 0.14, cap.material, 0, 1.77, 0.17, g);
+  } else if (style < 0.55) { // păr lung
+    const h = mesh(new THREE.SphereGeometry(0.172, 14, 10, 0, TAU, 0, Math.PI * 0.62), hair, 0, 1.74, -0.015, g);
+    box(0.32, 0.3, 0.1, hair, 0, 1.62, -0.11, g);
+    h.rotation.x = -0.25;
+  } else if (style < 0.92) {
+    const h = mesh(new THREE.SphereGeometry(0.168, 14, 10, 0, TAU, 0, Math.PI * 0.5), hair, 0, 1.75, -0.01, g); h.rotation.x = -0.3;
+  }
+  const eye = M(0x1a1a1a);
+  mesh(new THREE.SphereGeometry(0.022, 8, 6), eye, -0.06, 1.75, 0.145, g, false);
+  mesh(new THREE.SphereGeometry(0.022, 8, 6), eye, 0.06, 1.75, 0.145, g, false);
+  mesh(new THREE.SphereGeometry(0.025, 8, 6), skin, 0, 1.71, 0.16, g, false);
+  const mouth = box(0.07, 0.015, 0.01, M(0x7a2a22), 0, 1.65, 0.152, g, false);
+  const s = rr(0.92, 1.08); g.scale.setScalar(s);
+  return { g, legL, legR, armL, armR, head, mouth, ph: Math.random() * TAU };
+}
+function animPerson(p, dt, moving, speed) {
+  if (moving) {
+    p.ph += dt * speed * 4.2;
+    const a = Math.sin(p.ph) * 0.55;
+    p.legL.rotation.x = a; p.legR.rotation.x = -a; p.armL.rotation.x = -a * 0.8; p.armR.rotation.x = a * 0.8;
+  } else {
+    for (const k of ['legL', 'legR', 'armL', 'armR']) p[k].rotation.x *= Math.max(0, 1 - dt * 8);
+  }
+}
+// trecători pe trotuarul de vizavi (decor)
+const WALKERS = [];
+for (let i = 0; i < 7; i++) {
+  const p = makePerson(); const dir = Math.random() < 0.5 ? 1 : -1;
+  WALKERS.push({ p, dir, x: rr(-45, 45), z: -13 - rr(0, 1.6), v: rr(1.1, 1.6) });
+  p.g.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+}
+
+// ---------------- rulota ----------------
+// Rulota: lungă pe x (−3.4..3.4), geamul de servire în peretele z=0, interiorul spre +z. Podeaua la y=0.7.
+const truck = new THREE.Group(); scene.add(truck);
+const PAINT = M(0xf4b223, { roughness: 0.5 }), PAINT2 = M(0xd4421e, { roughness: 0.5 });
+const INNER = M(0xe8e4dc, { roughness: 0.7 }), STEEL = M(0xb9c0c6, { roughness: 0.3, metalness: 0.7 }), DARK = M(0x2b2d30, { roughness: 0.6 });
+const TX0 = -3.4, TX1 = 3.4, TD = 2.8, FLOOR = 0.7, CEIL = 3.55, WIN_Y0 = 1.6, WIN_Y1 = 3.15, WIN_X = 2.95;
+box(TX1 - TX0, 0.4, TD, PAINT2, 0, 0.5, TD / 2, truck); // șasiu
+box(TX1 - TX0, 0.1, TD, M(0x8b8f93, { roughness: 0.9 }), 0, FLOOR, TD / 2, truck); // podea
+box(TX1 - TX0 + 0.1, 0.14, TD + 0.1, PAINT, 0, CEIL + 0.07, TD / 2, truck); // acoperiș
+for (const x of [TX0, TX1]) { // pereți laterali
+  box(0.08, CEIL - 0.3, TD, PAINT, x + (x < 0 ? -0.02 : 0.02), (CEIL + 0.3) / 2, TD / 2, truck);
+  box(0.02, CEIL - FLOOR, TD, INNER, x + (x < 0 ? 0.03 : -0.03), (CEIL + FLOOR) / 2, TD / 2, truck, false);
+}
+// peretele cu geamul: piele exterioară galbenă, interioară deschisă
+function wallPiece(x0, x1, y0, y1) {
+  const w = x1 - x0, h = y1 - y0, x = (x0 + x1) / 2, y = (y0 + y1) / 2;
+  box(w, h, 0.05, PAINT, x, y, -0.04, truck);
+  box(w, h, 0.03, INNER, x, y, 0.02, truck, false);
+}
+wallPiece(TX0, TX1, 0.3, WIN_Y0);
+wallPiece(TX0, TX1, WIN_Y1, CEIL);
+wallPiece(TX0, -WIN_X, WIN_Y0, WIN_Y1);
+wallPiece(WIN_X, TX1, WIN_Y0, WIN_Y1);
+// dungă roșie pe exterior
+box(TX1 - TX0, 0.18, 0.02, PAINT2, 0, 1.25, -0.075, truck);
+box(TX1 - TX0, 0.06, 0.02, M(0xffffff), 0, 1.1, -0.075, truck);
+// roți
+for (const [x, z] of [[-2.2, -0.05], [2.2, -0.05], [-2.2, TD + 0.05], [2.2, TD + 0.05]]) {
+  const w = cyl(0.45, 0.45, 0.32, M(0x1b1b1b), x, 0.45, z, truck, 16); w.rotation.x = Math.PI / 2;
+  const j = cyl(0.22, 0.22, 0.34, STEEL, x, 0.45, z, truck, 12); j.rotation.x = Math.PI / 2;
+}
+// pervaz / tejghea de servire (ies în afară)
+box(WIN_X * 2 + 0.2, 0.07, 0.62, M(0xd8dde2, { roughness: 0.35, metalness: 0.5 }), 0, WIN_Y0 + 0.035, -0.06, truck);
+for (const x of [-WIN_X + 0.4, WIN_X - 0.4]) { const s = box(0.05, 0.36, 0.05, STEEL, x, WIN_Y0 - 0.16, -0.32, truck); s.rotation.x = -0.6; }
+// copertina în dungi
+const texAwn = canvasTex(128, 16, (g, w, h) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#d4421e'; g.fillRect(i * 16, 0, 16, h); } }, [6, 1]);
+const awn = mesh(new THREE.PlaneGeometry(WIN_X * 2 + 0.6, 1.25), new THREE.MeshStandardMaterial({ map: texAwn, side: THREE.DoubleSide, roughness: 0.8 }), 0, WIN_Y1 + 0.18, -0.55, truck);
+awn.rotation.x = -Math.PI / 2 + 0.42;
+const texFr = canvasTex(256, 32, (g, w, h) => {
+  g.fillStyle = '#d4421e'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff';
+  for (let i = 0; i < 16; i++) { g.beginPath(); g.arc(i * 16 + 8, 0, 8, 0, Math.PI); g.fill(); }
+}, [3, 1]);
+const fr = mesh(new THREE.PlaneGeometry(WIN_X * 2 + 0.6, 0.22), new THREE.MeshStandardMaterial({ map: texFr, side: THREE.DoubleSide }), 0, WIN_Y1 - 0.21, -1.12, truck, false);
+// firma de pe acoperiș
+const texSign = canvasTex(512, 128, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#2b1a12'); gr.addColorStop(1, '#4a2a1a');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#ffcf3a'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12);
+  g.fillStyle = '#ffcf3a'; g.font = '900 62px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('FASTFOOD', w / 2 + 34, h / 2 + 4);
+  g.font = '70px system-ui,sans-serif'; g.fillText('🍔', 80, h / 2 + 6);
+});
+const signMat = new THREE.MeshStandardMaterial({ map: texSign, emissive: 0xffffff, emissiveMap: texSign, emissiveIntensity: 0.25 });
+box(4.2, 1.05, 0.14, signMat, 0, CEIL + 0.75, 0.25, truck).rotation.y = Math.PI;
+box(0.08, 0.3, 0.08, DARK, -1.6, CEIL + 0.2, 0.3, truck); box(0.08, 0.3, 0.08, DARK, 1.6, CEIL + 0.2, 0.3, truck);
+// tablă cu meniul pe exterior, sub geam
+const menuTex = canvasTex(512, 128, () => {});
+const menuMat = new THREE.MeshStandardMaterial({ map: menuTex });
+box(3.4, 0.62, 0.03, menuMat, 0, 1.15, -0.09, truck, false).rotation.y = Math.PI;
+function drawMenuBoard() {
+  const c = menuTex.image, g = c.getContext('2d');
+  g.fillStyle = '#1f2a22'; g.fillRect(0, 0, c.width, c.height);
+  g.strokeStyle = '#c9a34a'; g.lineWidth = 5; g.strokeRect(4, 4, c.width - 8, c.height - 8);
+  g.textBaseline = 'middle'; g.textAlign = 'center';
+  const ks = ORDER.filter(unlocked); const w = (c.width - 20) / ks.length;
+  ks.forEach((k, i) => {
+    const x = 10 + w * i + w / 2;
+    g.font = '40px system-ui,sans-serif'; g.fillStyle = '#fff'; g.fillText(FOOD[k].icon, x, 46);
+    g.font = 'bold 22px system-ui,sans-serif'; g.fillStyle = '#ffe9a8'; g.fillText(FOOD[k].price + ' lei', x, 96);
+  });
+  menuTex.needsUpdate = true;
+}
+// interior: lampă, rafturi
+const inLight = new THREE.PointLight(0xfff0d8, 9, 7, 1.6); inLight.position.set(0, CEIL - 0.25, 1.4); truck.add(inLight);
+box(1.4, 0.05, 0.25, M(0xfffaf0, { emissive: 0xfff2d0, emissiveIntensity: 1 }), 0, CEIL - 0.03, 1.4, truck, false);
+box(TX1 - TX0 - 0.2, 0.04, 0.35, INNER, 0, 3.1, TD - 0.2, truck);
+// tejgheaua de lucru (stațiile stau pe ea)
+const CT_Y = 1.4, CT_Z = 0.78;
+box(TX1 - TX0 - 0.12, CT_Y - FLOOR, 1.1, STEEL, 0, (CT_Y + FLOOR) / 2, CT_Z, truck);
+box(TX1 - TX0 - 0.1, 0.04, 1.14, M(0xdfe3e6, { roughness: 0.25, metalness: 0.6 }), 0, CT_Y - 0.02, CT_Z, truck);
+
+// ---------------- stații ----------------
+const PICK = []; // obiecte pe care se poate da click
+const ST = {};
+function station(key, x, slots) {
+  const g = new THREE.Group(); g.position.set(x, CT_Y, CT_Z); truck.add(g);
+  const st = { key, food: key === 'grill' ? 'burger' : key === 'fryer' ? 'fries' : key, g, slots: [], x };
+  for (let i = 0; i < slots; i++) st.slots.push({ i, state: 'empty', t: 0, on: true, pos: new THREE.Vector3() });
+  ST[key] = st;
+  g.traverse(o => o.userData.st = key);
+  return st;
+}
+function tagPick(st) { st.g.traverse(o => { if (o.isMesh) { o.userData.st = st.key; } }); PICK.push(st.g); }
+
+// automat de suc
+{
+  const st = station('drink', -2.62, 1), g = st.g;
+  box(0.62, 0.95, 0.42, M(0xc8231b, { roughness: 0.4 }), 0, 0.475, -0.12, g);
+  box(0.5, 0.32, 0.02, new THREE.MeshStandardMaterial({ map: canvasTex(128, 80, (c, w, h) => { c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.font = '54px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('🥤', w / 2, h / 2 + 2); }) }), 0, 0.72, 0.1, g, false);
+  box(0.62, 0.22, 0.2, M(0xc8231b, { roughness: 0.4 }), 0, 0.84, 0.18, g);
+  box(0.06, 0.08, 0.06, STEEL, 0, 0.7, 0.22, g);
+  box(0.3, 0.03, 0.2, DARK, 0, 0.015, 0.22, g);
+  const cup = new THREE.Group(); cup.position.set(0, 0.03, 0.22); g.add(cup);
+  const cupM = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, roughness: 0.2 });
+  cyl(0.075, 0.058, 0.22, cupM, 0, 0.11, 0, cup, 16, false);
+  const liq = cyl(0.068, 0.054, 0.2, M(0x5a2a12, { roughness: 0.3 }), 0, 0.105, 0, cup, 16, false);
+  const stream = cyl(0.012, 0.012, 0.42, M(0x5a2a12), 0, 0.45, 0, cup, 6, false);
+  st.slots[0].vis = { cup, liq, stream };
+  st.slots[0].pos.set(-2.62, CT_Y + 0.35, CT_Z + 0.22);
+  tagPick(st);
+}
+// friteuza
+{
+  const st = station('fryer', -1.5, 2), g = st.g;
+  box(0.86, 0.32, 0.7, STEEL, 0, 0.16, -0.05, g);
+  box(0.86, 0.3, 0.06, STEEL, 0, 0.45, -0.38, g);
+  for (const s of st.slots) {
+    const x = s.i ? 0.2 : -0.2;
+    box(0.34, 0.02, 0.5, M(0xc8961e, { roughness: 0.15, metalness: 0.2 }), x, 0.325, -0.05, g, false);
+    const bk = new THREE.Group(); bk.position.set(x, 0.42, -0.05); g.add(bk);
+    const wire = new THREE.MeshStandardMaterial({ color: 0x9aa3aa, metalness: 0.6, roughness: 0.4, wireframe: true });
+    box(0.28, 0.13, 0.42, wire, 0, 0, 0, bk, false);
+    box(0.02, 0.02, 0.24, DARK, 0, 0.08, 0.3, bk, false);
+    const fries = new THREE.Group(); bk.add(fries);
+    const fm = new THREE.MeshStandardMaterial({ color: 0xf6e7a0, roughness: 0.7 });
+    for (let k = 0; k < 18; k++) { const f = box(0.022, 0.022, 0.16, fm, rr(-0.11, 0.11), rr(-0.04, 0.03), rr(-0.15, 0.15), fries, false); f.rotation.y = rr(-0.6, 0.6); }
+    s.vis = { bk, fries, fm };
+    s.pos.set(-1.5 + x, CT_Y + 0.55, CT_Z - 0.05);
+  }
+  // capac pentru coșul blocat
+  st.lid = box(0.34, 0.03, 0.5, STEEL, 0.2, 0.34, -0.05, g);
+  tagPick(st);
+}
+// grătarul de burgeri
+const RAW = new THREE.Color(0xd77b7b), DONE = new THREE.Color(0x6e3b1c), BURNT = new THREE.Color(0x191210);
+{
+  const st = station('grill', -0.12, 4), g = st.g;
+  box(1.6, 0.14, 0.72, DARK, 0, 0.07, -0.05, g);
+  const tg = canvasTex(64, 64, (c, w, h) => { c.fillStyle = '#18191a'; c.fillRect(0, 0, w, h); c.fillStyle = '#3a3c3e'; for (let i = 0; i < 8; i++) c.fillRect(0, i * 8 + 2, w, 3); }, [4, 2]);
+  box(1.5, 0.02, 0.62, new THREE.MeshStandardMaterial({ map: tg, roughness: 0.5, metalness: 0.4 }), 0, 0.15, -0.05, g, false);
+  box(1.6, 0.18, 0.04, DARK, 0, 0.2, -0.42, g);
+  const glow = box(1.45, 0.01, 0.58, M(0xff5a1a, { emissive: 0xff3300, emissiveIntensity: 0.5 }), 0, 0.135, -0.05, g, false);
+  const xs = [-0.56, -0.19, 0.19, 0.56];
+  for (const s of st.slots) {
+    const pm = new THREE.MeshStandardMaterial({ color: RAW.clone(), roughness: 0.8 });
+    const p = cyl(0.14, 0.15, 0.055, pm, xs[s.i], 0.19, -0.05, g, 18);
+    s.vis = { p, pm };
+    s.pos.set(-0.12 + xs[s.i], CT_Y + 0.25, CT_Z - 0.05);
+  }
+  st.glow = glow;
+  tagPick(st);
+}
+// hot dog pe role
+const SRAW = new THREE.Color(0xe79a8a), SDONE = new THREE.Color(0xa8422a);
+{
+  const st = station('hotdog', 1.32, 3), g = st.g;
+  box(0.78, 0.12, 0.6, STEEL, 0, 0.06, -0.05, g);
+  st.rollers = [];
+  for (let i = 0; i < 7; i++) { const r = cyl(0.025, 0.025, 0.66, M(0xc8cdd2, { metalness: 0.8, roughness: 0.25 }), 0, 0.14, -0.29 + i * 0.08, g, 8, false); r.rotation.z = Math.PI / 2; st.rollers.push(r); }
+  for (const s of st.slots) {
+    const x = -0.22 + s.i * 0.22;
+    const sm = new THREE.MeshStandardMaterial({ color: SRAW.clone(), roughness: 0.5 });
+    const p = mesh(new THREE.CapsuleGeometry(0.032, 0.3, 4, 10), sm, x, 0.19, -0.05, g); p.rotation.x = Math.PI / 2;
+    s.vis = { p, sm };
+    s.pos.set(1.32 + x, CT_Y + 0.28, CT_Z - 0.05);
+  }
+  tagPick(st);
+}
+// shaorma
+{
+  const st = station('shaorma', 2.5, 1), g = st.g;
+  box(0.72, 0.04, 0.62, STEEL, 0, 0.02, -0.05, g);
+  cyl(0.012, 0.012, 0.85, STEEL, -0.12, 0.44, -0.18, g, 6);
+  const tm = canvasTex(64, 64, (c, w, h) => { for (let y = 0; y < h; y += 4) { c.fillStyle = y % 8 ? '#7a3f1d' : '#9a5a2a'; c.fillRect(0, y, w, 4); } for (let i = 0; i < 80; i++) { c.fillStyle = '#4a2410'; c.fillRect(Math.random() * w, Math.random() * h, 3, 2); } });
+  const meat = cyl(0.11, 0.16, 0.5, new THREE.MeshStandardMaterial({ map: tm, roughness: 0.75 }), -0.12, 0.36, -0.18, g, 14);
+  box(0.36, 0.62, 0.05, M(0x444444), -0.12, 0.38, -0.42, g);
+  box(0.3, 0.52, 0.01, M(0xff5a1a, { emissive: 0xff4400, emissiveIntensity: 0.9 }), -0.12, 0.38, -0.39, g, false);
+  box(0.36, 0.025, 0.26, M(0xb48a58), 0.16, 0.055, 0.12, g);
+  const tort = cyl(0.13, 0.13, 0.012, M(0xeed6a2), 0.16, 0.075, 0.12, g, 18, false);
+  const wrap = new THREE.Group(); wrap.position.set(0.16, 0.11, 0.12); wrap.rotation.z = Math.PI / 2; g.add(wrap);
+  cyl(0.048, 0.048, 0.16, M(0xc8cdd2, { metalness: 0.7, roughness: 0.3 }), 0, -0.03, 0, wrap, 12, false);
+  cyl(0.046, 0.046, 0.08, M(0xeed6a2), 0, 0.08, 0, wrap, 12, false);
+  st.meat = meat;
+  st.slots[0].vis = { tort, wrap };
+  st.slots[0].pos.set(2.66, CT_Y + 0.3, CT_Z + 0.12);
+  tagPick(st);
+}
+
+// ---------------- tava și mâncarea ----------------
+const TRAY_Y = WIN_Y0 + 0.08;
+box(1.7, 0.035, 0.5, M(0xc0392b, { roughness: 0.5 }), 0, TRAY_Y - 0.018, -0.06, truck);
+function trayPos(i, cap) {
+  const cols = cap / 2, c = i % cols, r = Math.floor(i / cols);
+  const w = 1.5 / cols;
+  return new THREE.Vector3(-0.75 + w / 2 + c * w, TRAY_Y, -0.17 + r * 0.22);
+}
+const halfSphere = r => new THREE.SphereGeometry(r, 16, 8, 0, TAU, 0, Math.PI / 2);
+function foodModel(k) {
+  const g = new THREE.Group();
+  const bun = M(0xd9993f, { roughness: 0.6 });
+  if (k === 'burger') {
+    cyl(0.085, 0.08, 0.035, bun, 0, 0.018, 0, g, 16, false);
+    cyl(0.09, 0.09, 0.03, M(0x5a2f16), 0, 0.05, 0, g, 16, false);
+    const ch = box(0.16, 0.008, 0.16, M(0xf4c430), 0, 0.068, 0, g, false); ch.rotation.y = 0.4;
+    cyl(0.095, 0.095, 0.01, M(0x5aa83a), 0, 0.075, 0, g, 16, false);
+    const top = mesh(halfSphere(0.087), bun, 0, 0.078, 0, g, false); top.scale.y = 0.6;
+  } else if (k === 'fries') {
+    const b = box(0.11, 0.1, 0.07, M(0xd4241c), 0, 0.05, 0, g, false);
+    for (let i = 0; i < 9; i++) { const f = box(0.015, 0.1, 0.015, M(0xf3c84a), rr(-0.04, 0.04), 0.11 + rr(-0.01, 0.02), rr(-0.02, 0.02), g, false); f.rotation.z = rr(-0.3, 0.3); }
+  } else if (k === 'drink') {
+    cyl(0.055, 0.042, 0.16, M(0xffffff), 0, 0.08, 0, g, 14, false);
+    cyl(0.056, 0.05, 0.04, M(0xd4241c), 0, 0.1, 0, g, 14, false);
+    cyl(0.058, 0.058, 0.012, M(0xdddddd), 0, 0.165, 0, g, 14, false);
+    const s = cyl(0.007, 0.007, 0.12, M(0xff4f6a), 0.015, 0.22, 0, g, 6, false); s.rotation.z = 0.2;
+  } else if (k === 'hotdog') {
+    const b = mesh(new THREE.CapsuleGeometry(0.035, 0.15, 4, 10), bun, 0, 0.035, 0, g, false); b.rotation.z = Math.PI / 2; b.scale.set(1, 1, 1.4);
+    const s = mesh(new THREE.CapsuleGeometry(0.024, 0.19, 4, 10), M(0xa8422a), 0, 0.062, 0, g, false); s.rotation.z = Math.PI / 2;
+    box(0.17, 0.008, 0.012, M(0xf2d02a), 0, 0.088, 0, g, false);
+  } else if (k === 'shaorma') {
+    const w = new THREE.Group(); w.rotation.z = 0.25; g.add(w);
+    cyl(0.045, 0.045, 0.13, M(0xc8cdd2, { metalness: 0.7, roughness: 0.3 }), 0, 0.065, 0, w, 12, false);
+    cyl(0.043, 0.043, 0.07, M(0xeed6a2), 0, 0.165, 0, w, 12, false);
+    cyl(0.044, 0.044, 0.01, M(0x7a3f1d), 0, 0.2, 0, w, 12, false);
+  }
+  return g;
+}
+const trayG = new THREE.Group(); truck.add(trayG);
+const FLY = []; // animații: mâncare care zboară
+function flyTo(obj, from, to, dur, done, arc = 0.35) {
+  FLY.push({ obj, from: from.clone(), to: to.clone(), t: 0, dur, done, arc });
+}
+function layoutTray() {
+  S.tray.forEach((it, i) => { if (!it.flying) it.m.position.copy(trayPos(i, trayCap())); });
+}
+function addTray(k, from) {
+  const m = foodModel(k); trayG.add(m);
+  m.traverse(o => { if (o.isMesh) o.userData.tray = true; });
+  const it = { k, m, flying: true };
+  S.tray.push(it);
+  const to = trayPos(S.tray.length - 1, trayCap());
+  m.position.copy(from);
+  flyTo(m, from, to, 0.35, () => { it.flying = false; layoutTray(); });
+}
+
+// ---------------- HTML deasupra scenei ----------------
+const layer = $('layer');
+const v3 = new THREE.Vector3();
+function toScreen(p) { v3.copy(p).project(camera); return { x: (v3.x * 0.5 + 0.5) * innerWidth, y: (-v3.y * 0.5 + 0.5) * innerHeight, ok: v3.z < 1 }; }
+function el(cls, html, parent = layer) { const d = document.createElement('div'); d.className = cls; if (html) d.innerHTML = html; parent.appendChild(d); return d; }
+const KEYS = { drink: '1', fries: '2', burger: '3', hotdog: '4', shaorma: '5' };
+for (const k of ['drink', 'fryer', 'grill', 'hotdog', 'shaorma']) {
+  const st = ST[k];
+  st.lbl = el('lbl');
+  st.lblPos = new THREE.Vector3(st.x, CT_Y - 0.06, CT_Z + 0.56);
+  for (const s of st.slots) { s.bar = el('bar', '<i></i>'); s.tag = el('tag'); }
+}
+function updateLabels() {
+  for (const k in ST) {
+    const st = ST[k], f = FOOD[st.food];
+    const lock = !unlocked(st.food);
+    st.lbl.className = 'lbl' + (lock ? ' lock' : '');
+    st.lbl.innerHTML = lock ? `🔒 ${f.name} · ziua ${f.day}` : `<kbd>${KEYS[st.food]}</kbd>${f.icon} ${f.name}`;
+  }
+  ST.grill.slots[3].on = !!S.up.grill4;
+  ST.fryer.slots[1].on = !!S.up.fryer2;
+  ST.fryer.lid.visible = !S.up.fryer2;
+  drawMenuBoard();
+}
+
+// ---------------- sunet ----------------
+let AC = null, sizzle = null;
+function audio() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const len = AC.sampleRate * 2, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < 0.03 ? 1 : 0.35);
+    const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+    const f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500;
+    const gn = AC.createGain(); gn.gain.value = 0;
+    src.connect(f); f.connect(gn); gn.connect(AC.destination); src.start();
+    sizzle = gn;
+  } catch (e) { AC = null; }
+}
+function tone(freq, dur, type = 'sine', vol = 0.15, slide = 0, delay = 0) {
+  if (!AC || !S.sound) return;
+  const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+const SFX = {
+  click: () => tone(520, 0.06, 'square', 0.05),
+  start: () => tone(300, 0.12, 'triangle', 0.08, -120),
+  ready: () => tone(1320, 0.12, 'sine', 0.08),
+  pick: () => { tone(700, 0.06, 'triangle', 0.08); tone(980, 0.08, 'triangle', 0.08, 0, 0.05); },
+  give: () => tone(880, 0.08, 'sine', 0.1),
+  cash: () => { tone(1500, 0.08, 'square', 0.06); tone(2000, 0.25, 'square', 0.06, 0, 0.08); tone(2600, 0.3, 'sine', 0.07, 0, 0.1); },
+  angry: () => tone(220, 0.45, 'sawtooth', 0.08, -110),
+  burnt: () => tone(160, 0.3, 'sawtooth', 0.06, -60),
+  no: () => { tone(260, 0.1, 'square', 0.06); tone(200, 0.15, 'square', 0.06, 0, 0.1); },
+  bell: () => { tone(1760, 0.6, 'sine', 0.1); tone(2217, 0.6, 'sine', 0.06, 0, 0.02); },
+};
+
+// ---------------- mesaje ----------------
+let toastT = 0;
+function toast(msg, cls = '') { const t = $('toast'); t.textContent = msg; t.className = 'chip show ' + cls; toastT = 1.8; }
+function floatText(txt, pos, bad) {
+  const p = toScreen(pos), d = el('float' + (bad ? ' bad' : ''), txt);
+  d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
+  requestAnimationFrame(() => requestAnimationFrame(() => { d.style.transform = 'translate(-50%, -160%)'; d.style.opacity = '0'; }));
+  setTimeout(() => d.remove(), 1300);
+}
+
+// ---------------- stațiile: logică ----------------
+function cookTime(st) { const f = FOOD[st.food]; return st.key === 'drink' && S.up.fastsoda ? f.cook / 2 : f.cook; }
+function useStation(key) {
+  const st = ST[key]; if (!st || !(S.mode === 'open' || S.mode === 'closing') || S.paused) return;
+  const f = FOOD[st.food];
+  if (!unlocked(st.food)) { toast(`🔒 ${f.name} se deblochează în ziua ${f.day}`); SFX.no(); return; }
+  let s = st.slots.find(s => s.on && s.state === 'ready');
+  if (s) {
+    if (S.tray.length >= trayCap()) { toast('Tava e plină! Servește clienții sau golește tava.', 'bad'); SFX.no(); return; }
+    s.state = 'empty'; s.t = 0;
+    addTray(st.food, truck.worldToLocal(s.pos.clone()));
+    SFX.pick();
+    return;
+  }
+  s = st.slots.find(s => s.on && s.state === 'burnt');
+  if (s) {
+    s.state = 'empty'; s.t = 0;
+    S.money = Math.max(0, S.money - f.waste); S.dayStats.waste += f.waste;
+    floatText(`🗑 −${f.waste} lei`, s.pos, true); SFX.burnt();
+    return;
+  }
+  s = st.slots.find(s => s.on && s.state === 'empty');
+  if (s) { s.state = 'cook'; s.t = 0; SFX.start(); return; }
+  const cooking = st.slots.find(s => s.on && s.state === 'cook');
+  toast(cooking ? `${f.icon} Încă nu e gata, mai așteaptă puțin` : 'Toate locurile sunt ocupate');
+  SFX.no();
+}
+function updateStations(dt) {
+  let sizz = 0;
+  for (const key in ST) {
+    const st = ST[key], f = FOOD[st.food], ct = cookTime(st), lock = !unlocked(st.food);
+    for (const s of st.slots) {
+      if (s.on && !lock && s.state !== 'empty' && s.state !== 'burnt') {
+        s.t += dt;
+        if (s.state === 'cook' && s.t >= ct) { s.state = 'ready'; SFX.ready(); }
+        if (s.state === 'ready' && s.t >= f.burn) { s.state = 'burnt'; SFX.burnt(); }
+        if (key !== 'drink' && key !== 'shaorma') sizz += 1;
+      }
+      slotVisual(st, s, ct, f);
+    }
+  }
+  if (sizzle) sizzle.gain.value = S.sound && (S.mode === 'open' || S.mode === 'closing') && !S.paused ? Math.min(0.05, sizz * 0.012) : 0;
+}
+function slotVisual(st, s, ct, f) {
+  const k = st.key, v = s.vis, busy = s.on && s.state !== 'empty';
+  const u = s.state === 'cook' ? s.t / ct : 1;
+  if (k === 'grill') {
+    v.p.visible = busy;
+    if (busy) {
+      const c = v.pm.color;
+      if (s.state === 'burnt') c.copy(BURNT);
+      else if (s.t < ct) c.copy(RAW).lerp(DONE, s.t / ct);
+      else c.copy(DONE).lerp(BURNT, clamp((s.t - ct) / (f.burn - ct), 0, 1) ** 2);
+    }
+  } else if (k === 'hotdog') {
+    v.p.visible = busy;
+    if (busy) {
+      const c = v.sm.color;
+      if (s.state === 'burnt') c.copy(BURNT);
+      else if (s.t < ct) c.copy(SRAW).lerp(SDONE, s.t / ct);
+      else c.copy(SDONE).lerp(BURNT, clamp((s.t - ct) / (f.burn - ct), 0, 1) ** 2);
+      v.p.rotation.y += 0.05;
+    }
+  } else if (k === 'fryer') {
+    v.bk.visible = s.on;
+    v.fries.visible = busy;
+    v.bk.position.y = s.state === 'cook' ? 0.3 : 0.42;
+    if (busy) {
+      const c = v.fm.color;
+      if (s.state === 'burnt') c.setHex(0x2a1a0e);
+      else if (s.t < ct) c.setHex(0xf6e7a0).lerp(new THREE.Color(0xe8b53a), s.t / ct);
+      else c.setHex(0xe8b53a).lerp(new THREE.Color(0x3a2210), clamp((s.t - ct) / (f.burn - ct), 0, 1) ** 2);
+    }
+  } else if (k === 'drink') {
+    v.cup.visible = busy;
+    v.liq.scale.y = Math.max(0.02, Math.min(1, u)); v.liq.position.y = 0.01 + 0.1 * v.liq.scale.y;
+    v.stream.visible = s.state === 'cook';
+  } else if (k === 'shaorma') {
+    v.tort.visible = s.state === 'cook';
+    v.wrap.visible = s.state === 'ready';
+    v.tort.scale.setScalar(0.4 + 0.6 * Math.min(1, u)); v.tort.scale.y = 1;
+  }
+  // bară de progres
+  const bar = s.bar, tag = s.tag;
+  if (!busy || !st.visibleOnScreen) { bar.style.display = 'none'; tag.style.display = 'none'; return; }
+  const p = toScreen(s.pos);
+  bar.style.display = 'block'; bar.style.left = p.x + 'px'; bar.style.top = (p.y - 4) + 'px';
+  tag.style.left = p.x + 'px'; tag.style.top = (p.y - 6) + 'px';
+  let w = 0, cls = 'bar', tg = '';
+  if (s.state === 'cook') { w = s.t / ct; }
+  else if (s.state === 'ready') {
+    if (f.burn < Infinity) { const r = (s.t - ct) / (f.burn - ct); w = 1 - r; cls += r > 0.55 ? ' warn' : ' ready'; tg = r > 0.55 ? '⚠️' : '✅'; }
+    else { w = 1; cls += ' ready'; tg = '✅'; }
+  } else if (s.state === 'burnt') { bar.style.display = 'none'; tg = '🔥'; }
+  bar.className = cls; bar.firstChild.style.width = (w * 100).toFixed(1) + '%';
+  tag.style.display = tg ? 'block' : 'none'; tag.textContent = tg;
+}
+// fum de la ce se arde
+const SMOKE = [];
+const smokeGeo = new THREE.SphereGeometry(0.06, 8, 6);
+function puff(pos) {
+  const m = new THREE.Mesh(smokeGeo, new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.5, depthWrite: false }));
+  m.position.copy(pos); scene.add(m); SMOKE.push({ m, t: 0 });
+}
+let smokeT = 0;
+function updateSmoke(dt) {
+  smokeT += dt;
+  if (smokeT > 0.12) {
+    smokeT = 0;
+    for (const k in ST) for (const s of ST[k].slots) if (s.on && (s.state === 'burnt' || (s.state === 'ready' && FOOD[ST[k].food].burn < Infinity && s.t > (cookTime(ST[k]) + FOOD[ST[k].food].burn) / 2 + 2))) puff(s.pos.clone().add(new THREE.Vector3(rr(-0.05, 0.05), -0.05, 0)));
+  }
+  for (let i = SMOKE.length - 1; i >= 0; i--) {
+    const p = SMOKE[i]; p.t += dt;
+    p.m.position.y += dt * 0.5; p.m.scale.setScalar(1 + p.t * 2.5); p.m.material.opacity = 0.45 * (1 - p.t / 1.4);
+    if (p.t > 1.4) { scene.remove(p.m); p.m.material.dispose(); SMOKE.splice(i, 1); }
+  }
+}
+
+// ---------------- clienți ----------------
+const SLOT_X = [-1.75, 0, 1.75], SLOT_Z = -1.0;
+const QUEUE = (i) => new THREE.Vector3(4.3 + i * 0.95, 0, -1.6 - i * 0.12);
+const WINDOW = [null, null, null];
+const LINE = [];
+const CUST = [];
+const SIDE_Z = -3.4;
+const QKEYS = ['Q', 'W', 'E'];
+function makeOrder() {
+  const menu = ORDER.filter(unlocked);
+  const max = Math.min(4, 1 + Math.ceil(S.day / 1.5));
+  let n = 1 + Math.floor(Math.random() * max);
+  if (S.day === 1) n = Math.min(n, 2);
+  const o = [];
+  for (let i = 0; i < n; i++) {
+    // ce e nou se comandă mai des
+    const fresh = menu.filter(k => FOOD[k].day === S.day && S.day > 1);
+    o.push(fresh.length && Math.random() < 0.35 ? pick(fresh) : pick(menu));
+  }
+  o.sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+  return o;
+}
+function spawnCustomer() {
+  const p = makePerson();
+  const fromLeft = Math.random() < 0.5;
+  const x0 = fromLeft ? -30 : 30;
+  p.g.position.set(x0, 0, SIDE_Z + rr(-0.5, 0.5));
+  const order = makeOrder();
+  const pat = (24 + 9 * order.length) * Math.max(0.72, 1 - 0.04 * (S.day - 1)) * (S.up.music ? 1.25 : 1);
+  const c = { p, order, got: order.map(() => false), pat, patMax: pat, state: 'walk', slot: -1, path: [], speed: rr(1.5, 1.9), bub: null, mood: null, leaveT: 0 };
+  CUST.push(c);
+  p.g.traverse(o => { if (o.isMesh) o.userData.cust = c; });
+  PICK.push(p.g);
+  assign(c);
+  return c;
+}
+function assign(c) {
+  const free = WINDOW.indexOf(null);
+  if (free >= 0) { WINDOW[free] = c; c.slot = free; goWindow(c); }
+  else { LINE.push(c); c.slot = -1; goQueue(c); }
+}
+function goWindow(c) {
+  const x = SLOT_X[c.slot];
+  const cur = c.p.g.position;
+  c.path = [];
+  if (cur.z < -2.2) c.path.push(new THREE.Vector3(x, 0, SIDE_Z));
+  c.path.push(new THREE.Vector3(x, 0, SLOT_Z));
+  c.state = 'walk';
+}
+function goQueue(c) {
+  const i = LINE.indexOf(c), q = QUEUE(i), cur = c.p.g.position;
+  c.path = [];
+  if (cur.z < -2.2 && Math.abs(cur.x - q.x) > 1) c.path.push(new THREE.Vector3(q.x, 0, SIDE_Z));
+  c.path.push(q);
+  c.state = 'walk';
+}
+function freeSlot(c) {
+  if (c.slot >= 0) {
+    WINDOW[c.slot] = null;
+    const nx = LINE.shift();
+    if (nx) { WINDOW[c.slot] = nx; nx.slot = c.slot; goWindow(nx); LINE.forEach(goQueue); }
+  } else {
+    const i = LINE.indexOf(c); if (i >= 0) { LINE.splice(i, 1); LINE.forEach(goQueue); }
+  }
+  c.slot = -1;
+}
+function leave(c, happy) {
+  freeSlot(c);
+  c.state = 'leave';
+  const dir = c.p.g.position.x < 0 ? -1 : 1;
+  c.path = [new THREE.Vector3(c.p.g.position.x + dir * 0.6, 0, SIDE_Z - 0.4), new THREE.Vector3(dir * 34, 0, SIDE_Z - 0.4)];
+  if (c.bub) { c.bub.remove(); c.bub = null; }
+  c.mood = el('bub mood', happy ? pick(['😋', '😀', '👍', '🤤']) : pick(['😡', '🤬', '😤']));
+  c.leaveT = 0;
+  c.p.mouth.scale.set(happy ? 1.4 : 0.8, happy ? 2.5 : 1, 1);
+}
+function serve(c) {
+  if (!(S.mode === 'open' || S.mode === 'closing') || S.paused) return;
+  if (c.state !== 'wait') { if (c.state === 'walk' && c.slot >= 0) toast('Clientul încă vine la geam'); return; }
+  let gave = 0;
+  c.order.forEach((k, i) => {
+    if (c.got[i]) return;
+    const ti = S.tray.findIndex(it => it.k === k && !it.flying);
+    if (ti < 0) return;
+    const it = S.tray.splice(ti, 1)[0];
+    c.got[i] = true; gave++;
+    const target = truck.worldToLocal(c.p.g.position.clone().add(new THREE.Vector3(0, 1.45, 0.25)));
+    it.flying = true;
+    flyTo(it.m, it.m.position, target, 0.3, () => { trayG.remove(it.m); }, 0.2);
+  });
+  layoutTray();
+  if (!gave) {
+    const miss = c.order.filter((k, i) => !c.got[i]).map(k => FOOD[k].icon).join(' ');
+    toast(`Nu ai pe tavă ce vrea: ${miss}`, 'bad'); SFX.no();
+    return;
+  }
+  SFX.give();
+  if (c.got.every(Boolean)) {
+    const sum = c.order.reduce((a, k) => a + FOOD[k].price, 0);
+    const frac = c.pat / c.patMax;
+    const tip = Math.round(sum * 0.35 * frac * (S.up.neon ? 1.5 : 1));
+    S.money += sum + tip; S.dayStats.earned += sum + tip; S.dayStats.tips += tip; S.dayStats.served++;
+    if (frac > 0.6) S.rep = Math.min(5, S.rep + 0.25);
+    floatText(`+${sum + tip} lei${tip ? ' 💰' : ''}`, c.p.g.position.clone().add(new THREE.Vector3(0, 2.2, 0)));
+    SFX.cash();
+    leave(c, true);
+  } else updateBubble(c);
+}
+function makeBubble(c) {
+  c.bub = el('bub');
+  c.bub.addEventListener('pointerdown', e => { e.stopPropagation(); audio(); serve(c); });
+  updateBubble(c);
+}
+function updateBubble(c) {
+  if (!c.bub) return;
+  c.bub.innerHTML = `<span class="k">${QKEYS[c.slot] || ''}</span><div class="it">${c.order.map((k, i) => `<span class="${c.got[i] ? 'got' : ''}">${FOOD[k].icon}</span>`).join('')}</div><div class="pt"><i></i></div>`;
+  c.ptBar = c.bub.querySelector('.pt i');
+}
+const tmpV = new THREE.Vector3();
+function updateCustomers(dt) {
+  for (let i = CUST.length - 1; i >= 0; i--) {
+    const c = CUST[i], g = c.p.g;
+    let moving = false;
+    if (c.path.length) {
+      const tgt = c.path[0];
+      tmpV.set(tgt.x - g.position.x, 0, tgt.z - g.position.z);
+      const d = tmpV.length();
+      const sp = c.speed * (c.state === 'leave' ? 1.2 : 1);
+      if (d < 0.05) { c.path.shift(); }
+      else {
+        tmpV.multiplyScalar(Math.min(d, sp * dt) / d);
+        g.position.add(tmpV); moving = true;
+        const ry = Math.atan2(tmpV.x, tmpV.z);
+        let dr = ry - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr));
+        g.rotation.y += dr * Math.min(1, dt * 10);
+      }
+      if (!c.path.length && c.state === 'walk') {
+        c.state = c.slot >= 0 ? 'wait' : 'queue';
+        if (c.state === 'wait' && !c.bub) makeBubble(c);
+      }
+    } else if (c.state === 'wait' || c.state === 'queue') {
+      // se uită spre rulotă
+      let dr = 0 - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr));
+      g.rotation.y += dr * Math.min(1, dt * 6);
+    }
+    animPerson(c.p, dt, moving, c.speed);
+    // răbdare
+    if (c.state === 'wait' || c.state === 'queue' || (c.state === 'walk' && c.slot >= 0)) {
+      c.pat -= dt * (c.state === 'queue' ? 0.4 : c.state === 'walk' ? 0.3 : 1);
+      if (c.pat <= 0) {
+        S.rep = Math.max(0, S.rep - 1); S.dayStats.angry++;
+        floatText('😡 −1 ⭐', g.position.clone().add(new THREE.Vector3(0, 2.2, 0)), true);
+        SFX.angry(); toast('Un client a plecat supărat!', 'bad');
+        leave(c, false);
+      }
+    }
+    // balon
+    const head = g.position.clone().add(new THREE.Vector3(0, 2.0 * g.scale.y, 0));
+    if (c.bub) {
+      const p = toScreen(head);
+      c.bub.style.left = p.x + 'px'; c.bub.style.top = p.y + 'px';
+      const fr = clamp(c.pat / c.patMax, 0, 1);
+      c.ptBar.style.width = (fr * 100) + '%';
+      c.ptBar.style.background = fr > 0.5 ? '#3fbf4f' : fr > 0.25 ? '#f0b323' : '#e8392a';
+      c.p.mouth.scale.set(1, fr > 0.25 ? 1 : 0.5, 1);
+    }
+    if (c.mood) {
+      c.leaveT += dt;
+      const p = toScreen(head);
+      c.mood.style.left = p.x + 'px'; c.mood.style.top = p.y + 'px';
+      c.mood.style.opacity = String(clamp(2.5 - c.leaveT, 0, 1));
+      if (c.leaveT > 2.5) { c.mood.remove(); c.mood = null; }
+    }
+    if (c.state === 'leave' && !c.path.length) {
+      scene.remove(g); CUST.splice(i, 1);
+      const pi = PICK.indexOf(g); if (pi >= 0) PICK.splice(pi, 1);
+      if (c.mood) c.mood.remove();
+    }
+  }
+}
+
+// ---------------- camera ----------------
+const CAM_IN = { pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 52 };
+let panX = 0, panMax = 0;
+function camInside() {
+  const a = innerWidth / innerHeight;
+  // camera stă în spatele tejghelei, puțin în afara rulotei (peretele din spate lipsește).
+  // Pe ecrane înguste (telefon ținut vertical) nu încape toată tejgheaua: atunci se trage stânga-dreapta.
+  const fov = a < 1 ? 62 : 54;
+  const t = Math.tan(THREE.MathUtils.degToRad(fov / 2)) * a; // tan(jumătate din unghiul orizontal)
+  const need = 3.35, minD = 3.3, maxD = 3.9; // distanța de la tejghea
+  const d = clamp(need / t, minD, maxD);
+  panMax = Math.max(0, need - d * t);
+  panX = clamp(panX, -panMax, panMax);
+  CAM_IN.fov = fov;
+  CAM_IN.pos.set(panX, 3.32, CT_Z + d);
+  CAM_IN.look.set(panX, 1.45, -0.7);
+  document.body.classList.toggle('narrow', panMax > 0.05);
+}
+const CAM_OUT = { pos: new THREE.Vector3(7.5, 3.6, -11.5), look: new THREE.Vector3(0, 2.1, 0), fov: 50 };
+let camT = 0;
+function placeCamera(dt) {
+  if (S.mode === 'menu') {
+    const a = performance.now() / 9000;
+    camera.position.set(Math.sin(a) * 4 + 4, 3.4, -11.5);
+    camera.lookAt(0, 2.1, 0); camera.fov = 50;
+  } else if (S.mode === 'intro') {
+    camT = Math.min(1, camT + dt / 2.2);
+    const e = camT < 0.5 ? 2 * camT * camT : 1 - (-2 * camT + 2) ** 2 / 2;
+    camera.position.lerpVectors(CAM_OUT.pos, CAM_IN.pos, e);
+    // trece pe deasupra rulotei ca să nu treacă prin pereți
+    camera.position.y += Math.sin(e * Math.PI) * 2.4;
+    const lk = new THREE.Vector3().lerpVectors(CAM_OUT.look, CAM_IN.look, e);
+    camera.lookAt(lk); camera.fov = lerp(CAM_OUT.fov, CAM_IN.fov, e);
+    if (camT >= 1) openDay();
+  } else {
+    camera.position.copy(CAM_IN.pos); camera.lookAt(CAM_IN.look); camera.fov = CAM_IN.fov;
+  }
+  camera.updateProjectionMatrix();
+}
+
+// ---------------- zile ----------------
+function newDayStats() { return { served: 0, angry: 0, earned: 0, tips: 0, waste: 0 }; }
+function openDay() {
+  S.mode = 'open'; S.t = S.dayLen; S.spawnT = 1.5;
+  document.body.classList.add('playing');
+  const nw = ORDER.filter(k => FOOD[k].day === S.day && S.day > 1);
+  toast(nw.length ? `Ziua ${S.day} · Nou în meniu: ${nw.map(k => FOOD[k].icon + ' ' + FOOD[k].name).join(', ')}!` : `Ziua ${S.day} · Am deschis! 🔔`, 'good');
+  SFX.bell();
+}
+function spawnEvery() { return Math.max(3.4, 8.5 - S.day * 0.9) * rr(0.8, 1.2); }
+function updateDay(dt) {
+  if (S.mode === 'open') {
+    S.t -= dt;
+    S.spawnT -= dt;
+    if (S.spawnT <= 0) {
+      S.spawnT = spawnEvery();
+      if (CUST.filter(c => c.state !== 'leave').length < 7) spawnCustomer();
+    }
+    if (S.t <= 0) { S.t = 0; S.mode = 'closing'; toast('Închidem! Servește clienții care au rămas.', 'good'); SFX.bell(); }
+  } else if (S.mode === 'closing') {
+    if (!CUST.some(c => c.state !== 'leave')) endDay();
+  }
+  if (S.rep <= 0 && (S.mode === 'open' || S.mode === 'closing')) gameOver();
+}
+function clearDay() {
+  for (const c of CUST) { scene.remove(c.p.g); if (c.bub) c.bub.remove(); if (c.mood) c.mood.remove(); }
+  CUST.length = 0; LINE.length = 0; WINDOW.fill(null);
+  for (let i = PICK.length - 1; i >= 0; i--) if (!PICK[i].userData.st && PICK[i].children.length && !Object.values(ST).some(s => s.g === PICK[i])) PICK.splice(i, 1);
+  for (const it of S.tray) trayG.remove(it.m);
+  S.tray.length = 0;
+  for (const k in ST) for (const s of ST[k].slots) { s.state = 'empty'; s.t = 0; }
+}
+function endDay() {
+  S.mode = 'summary';
+  document.body.classList.remove('playing');
+  const d = S.dayStats;
+  S.total.served += d.served; S.total.angry += d.angry; S.total.earned += d.earned;
+  if (S.total.earned > best) { best = S.total.earned; try { localStorage.setItem(SAVE + '.best', best); } catch (e) {} }
+  clearDay();
+  showSummary();
+}
+function gameOver() {
+  S.mode = 'over';
+  document.body.classList.remove('playing');
+  const d = S.dayStats;
+  S.total.served += d.served; S.total.angry += d.angry; S.total.earned += d.earned;
+  if (S.total.earned > best) { best = S.total.earned; try { localStorage.setItem(SAVE + '.best', best); } catch (e) {} }
+  clearDay();
+  panel(`<h1>😢 Rulota s-a închis</h1>
+    <p style="text-align:center">Prea mulți clienți au plecat supărați și nu mai vine nimeni la tine.</p>
+    <div class="stats"><div>Ai rezistat<b>${S.day} ${S.day === 1 ? 'zi' : 'zile'}</b></div><div>Clienți serviți<b>${S.total.served}</b></div>
+    <div>Ai câștigat în total<b>${S.total.earned} lei</b></div><div>Recordul tău<b>${best} lei</b></div></div>
+    <button class="go" id="again">Încearcă din nou</button>`);
+  $('again').onclick = () => { reset(); startDay(true); };
+}
+function stars(r) { const f = Math.round(r); return '★'.repeat(f) + '☆'.repeat(5 - f); }
+function showSummary() {
+  const d = S.dayStats;
+  let h = `<h2>🌇 Sfârșitul zilei ${S.day}</h2>
+    <div class="stats"><div>Clienți serviți<b>${d.served}</b></div><div>Plecați supărați<b>${d.angry}</b></div>
+    <div>Încasări (cu bacșiș)<b>${d.earned} lei</b></div><div>Bacșiș<b>${d.tips} lei</b></div>
+    ${d.waste ? `<div>Mâncare arsă<b>−${d.waste} lei</b></div>` : ''}<div>Reputație<b style="color:#e0a400">${stars(S.rep)}</b></div></div>
+    <p style="text-align:center;font-weight:800;font-size:18px">Ai în cont: ${S.money} lei</p>
+    <p><b>Cumpără îmbunătățiri pentru rulotă:</b></p><div class="shop">`;
+  for (const u of UPG) {
+    const own = S.up[u.id];
+    h += `<button data-u="${u.id}" ${own || S.money < u.price ? 'disabled' : ''}><span class="ic">${u.ic}</span><span class="tx">${u.name}<small>${u.desc}</small></span><span class="pr">${own ? '✓ Ai' : u.price + ' lei'}</span></button>`;
+  }
+  const nx = ORDER.filter(k => FOOD[k].day === S.day + 1);
+  h += `</div>${nx.length ? `<p style="text-align:center">Mâine apare în meniu: <b>${nx.map(k => FOOD[k].icon + ' ' + FOOD[k].name).join(', ')}</b>, la stația care acum e încuiată.</p>` : ''}
+    <button class="go" id="next">Ziua ${S.day + 1} ▶</button>`;
+  panel(h);
+  document.querySelectorAll('.shop button').forEach(b => b.onclick = () => {
+    const u = UPG.find(x => x.id === b.dataset.u);
+    if (S.money < u.price || S.up[u.id]) return;
+    S.money -= u.price; S.up[u.id] = true; SFX.cash(); updateLabels(); hud(); showSummary();
+  });
+  $('next').onclick = () => { S.day++; startDay(false); };
+}
+function startDay(intro) {
+  audio();
+  hidePanel();
+  S.dayStats = newDayStats();
+  S.dayLen = 150;
+  updateLabels();
+  camInside();
+  if (intro) { S.mode = 'intro'; camT = 0; } else openDay();
+}
+function reset() {
+  S.day = 1; S.money = 0; S.rep = 5; S.up = {}; S.total = { served: 0, angry: 0, earned: 0 };
+  clearDay(); updateLabels();
+}
+
+// ---------------- panouri ----------------
+function panel(h) { $('panel').innerHTML = h; $('overlay').classList.add('show'); }
+function hidePanel() { $('overlay').classList.remove('show'); }
+function showStart() {
+  const keys = isTouch
+    ? '<p>📱 Atinge o stație ca să gătești, atinge-o din nou când e gata ca să pui mâncarea pe tavă, apoi atinge balonul clientului ca să-i dai comanda.</p>'
+    : '<p>🖱️ Click pe o stație ca să gătești, încă un click când e gata ca s-o pui pe tavă, apoi click pe client (sau pe balonul lui) ca să-i dai comanda.<br>⌨️ <kbd>1</kbd>–<kbd>5</kbd> stațiile · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> servești clientul 1, 2, 3 · <kbd>X</kbd> golești tava · <kbd>Esc</kbd> pauză</p>';
+  panel(`<h1>🍔 Fastfood Owner</h1>
+    <p style="text-align:center">Ai o rulotă cu mâncare într-o piațetă din oraș. Oamenii vin la geam și comandă, iar tu gătești.</p>
+    <ul>
+      <li>Deasupra fiecărui client vezi <b>ce a comandat</b> și cât mai are <b>răbdare</b>.</li>
+      <li>Burgerii, cartofii și hot dog-ii <b>se ard</b> dacă îi lași prea mult (bara se face roșie ⚠️). Ce e ars aruncă-l cu încă un click.</li>
+      <li>Servește repede: primești <b>bacșiș</b> și crește reputația ⭐. Un client care pleacă supărat îți ia o stea. La 0 stele închizi rulota.</li>
+      <li>O zi durează 2 minute și jumătate. Seara cumperi îmbunătățiri, iar în zilele următoare apar mâncăruri noi.</li>
+    </ul>
+    <div class="menu">${ORDER.map(k => `<div>${FOOD[k].icon} ${FOOD[k].name} · ${FOOD[k].price} lei${FOOD[k].day > 1 ? ` <small>(ziua ${FOOD[k].day})</small>` : ''}</div>`).join('')}</div>
+    ${keys}
+    ${best ? `<p style="text-align:center">Recordul tău: <b>${best} lei</b></p>` : ''}
+    <button class="go" id="play">Deschide rulota ▶</button>`);
+  $('play').onclick = () => startDay(true);
+}
+
+// ---------------- HUD ----------------
+function hud() {
+  $('money').textContent = `💰 ${S.money} lei`;
+  $('stars').textContent = stars(S.rep);
+  const t = Math.ceil(S.t), cl = $('clock');
+  cl.textContent = S.mode === 'closing' ? `📅 Ziua ${S.day} · Închidem…` : `📅 Ziua ${S.day} · ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  cl.className = 'chip' + (S.mode === 'closing' ? ' closing' : '');
+}
+
+// ---------------- input ----------------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function hit(e) {
+  ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hs = ray.intersectObjects(PICK.concat(trayG), true);
+  for (const h of hs) {
+    let o = h.object;
+    while (o && !o.userData.st && !o.userData.cust && !o.userData.tray) o = o.parent;
+    if (o) return o.userData;
+  }
+  return null;
+}
+// pe ecrane înguste tragi pe orizontală ca să vezi toate stațiile
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', e => {
+  audio();
+  if (!(S.mode === 'open' || S.mode === 'closing') || S.paused) return;
+  const u = hit(e);
+  if (!u) { drag = { x: e.clientX, pan: panX, moved: false }; return; }
+  if (u.st) useStation(u.st);
+  else if (u.cust) serve(u.cust);
+  else if (u.tray) toast('Dă click pe un client ca să-i dai mâncarea de pe tavă');
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (drag && panMax > 0) {
+    const d = CAM_IN.pos.z - CT_Z, vis = 2 * d * Math.tan(THREE.MathUtils.degToRad(CAM_IN.fov / 2)) * (innerWidth / innerHeight);
+    const dx = e.clientX - drag.x;
+    if (Math.abs(dx) > 4) drag.moved = true;
+    panX = drag.pan - dx / innerWidth * vis; camInside();
+    return;
+  }
+  if (isTouch) return;
+  const u = (S.mode === 'open' || S.mode === 'closing') ? hit(e) : null;
+  renderer.domElement.style.cursor = u && (u.st || u.cust) ? 'pointer' : 'default';
+});
+function trashTray() {
+  if (!S.tray.length) return;
+  const lost = S.tray.reduce((a, it) => a + FOOD[it.k].waste, 0);
+  for (const it of S.tray) trayG.remove(it.m);
+  S.tray.length = 0;
+  S.money = Math.max(0, S.money - lost); S.dayStats.waste += lost;
+  toast(`🗑 Ai aruncat tot de pe tavă (−${lost} lei)`, 'bad'); SFX.burnt();
+}
+$('trash').addEventListener('pointerdown', e => { e.stopPropagation(); trashTray(); });
+function togglePause() {
+  if (!(S.mode === 'open' || S.mode === 'closing')) return;
+  S.paused = !S.paused;
+  $('bPause').textContent = S.paused ? '▶' : '⏸';
+  if (S.paused) { panel(`<h2>⏸ Pauză</h2><p style="text-align:center">Clienții te așteaptă.</p><button class="go" id="resume">Continuă ▶</button>`); $('resume').onclick = togglePause; }
+  else hidePanel();
+}
+$('bPause').onclick = togglePause;
+function setSound(v) { S.sound = v; $('bSound').textContent = v ? '🔊' : '🔇'; try { localStorage.setItem(SAVE + '.snd', v ? '1' : '0'); } catch (e) {} }
+$('bSound').onclick = () => { audio(); setSound(!S.sound); };
+setSound(S.sound);
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const k = e.key.toLowerCase();
+  if (k === 'escape' || k === 'p') { togglePause(); return; }
+  if (k === 'm') { setSound(!S.sound); return; }
+  if (k === 'enter' && $('overlay').classList.contains('show')) { const b = document.querySelector('#panel .go'); if (b) b.click(); return; }
+  if (!(S.mode === 'open' || S.mode === 'closing') || S.paused) return;
+  audio();
+  const sk = { '1': 'drink', '2': 'fryer', '3': 'grill', '4': 'hotdog', '5': 'shaorma' }[k];
+  if (sk) { useStation(sk); return; }
+  const qi = ['q', 'w', 'e'].indexOf(k);
+  if (qi >= 0) { if (WINDOW[qi]) serve(WINDOW[qi]); return; }
+  if (k === 'x' || k === 'delete' || k === 'backspace') trashTray();
+});
+addEventListener('pointerup', () => { drag = null; });
+addEventListener('pointercancel', () => { drag = null; });
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camInside();
+});
+
+// ---------------- buclă ----------------
+const clock = new THREE.Clock();
+function update(dt) {
+  for (const c of CARS) {
+    c.x += c.dir * c.v * dt;
+    if (c.x > 55) c.x = -55; if (c.x < -55) c.x = 55;
+    c.g.position.set(c.x, 0, c.z);
+  }
+  for (const w of WALKERS) {
+    w.x += w.dir * w.v * dt;
+    if (w.x > 50) w.x = -50; if (w.x < -50) w.x = 50;
+    w.p.g.position.set(w.x, 0, w.z);
+    animPerson(w.p, dt, true, w.v);
+  }
+  ST.shaorma.meat.rotation.y += dt * 0.8;
+  for (const r of ST.hotdog.rollers) r.rotation.x += dt * 3;
+  ST.grill.glow.material.emissiveIntensity = 0.4 + Math.sin(performance.now() / 300) * 0.1;
+  const playing = (S.mode === 'open' || S.mode === 'closing') && !S.paused;
+  if (playing) {
+    updateDay(dt);
+    updateCustomers(dt);
+  }
+  for (let i = FLY.length - 1; i >= 0; i--) {
+    const f = FLY[i]; f.t += dt / f.dur;
+    const u = Math.min(1, f.t);
+    f.obj.position.lerpVectors(f.from, f.to, u); f.obj.position.y += Math.sin(u * Math.PI) * f.arc;
+    if (u >= 1) { FLY.splice(i, 1); f.done && f.done(); }
+  }
+  updateSmoke(dt);
+}
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  if (!S.paused) update(dt);
+  placeCamera(dt);
+  // etichetele stațiilor
+  const showLbl = S.mode === 'open' || S.mode === 'closing';
+  for (const k in ST) {
+    const st = ST[k];
+    const p = toScreen(st.lblPos.clone().applyMatrix4(truck.matrixWorld));
+    st.visibleOnScreen = showLbl;
+    st.lbl.style.display = showLbl ? 'block' : 'none';
+    st.lbl.style.left = p.x + 'px'; st.lbl.style.top = Math.min(p.y, innerHeight - 64) + 'px';
+  }
+  if (!S.paused && (S.mode === 'open' || S.mode === 'closing' || S.mode === 'intro')) updateStations(S.mode === 'intro' ? 0 : dt);
+  else if (sizzle) sizzle.gain.value = 0;
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').classList.remove('show'); }
+  hud();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+camInside();
+updateLabels();
+showStart();
+frame();
+
+// pentru teste
+window.__ff = { S, ST, CUST, WINDOW, LINE, FOOD, useStation, serve, spawnCustomer, trashTray, endDay, update, startDay,
+  skip() { camT = 0.999; },
+  step(n = 60, dt = 1 / 60) { for (let i = 0; i < n; i++) { update(dt); updateStations(dt); } } };
+</script>
+</body>
+</html>

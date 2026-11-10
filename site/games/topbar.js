@@ -10,6 +10,7 @@
     { href: '/padurar/', icon: '🪓', name: 'Pădurarul', short: 'Pădurar', desc: 'Taie copaci bolnavi, vinde lemnul la gater și fugi de urși și de reporteri.', color: '#4f9a4a' },
     { href: '/drift/', icon: '🏎️', name: 'Drift', short: 'Drift', desc: 'Drift 3D cu BMW, Audi, Porsche, Passat, Dacia de poliție, TIR, kart și moto.', color: '#f0a020' },
     { href: '/tom-and-jerry/', icon: '🐭', name: 'Pisica și șoarecii', short: 'Șoareci', desc: 'Ești o pisică într-un sat românesc. Vezi lumea dintre urechi și prinzi 15 șoareci prin curți.', color: '#e0823a' },
+    { href: '/fastfood/', icon: '🍔', name: 'Fastfood Owner', short: 'Fastfood', desc: 'Ai o rulotă cu fastfood în oraș. Clienții vin la geam, tu gătești ce comandă.', color: '#d4421e' },
     { href: 'https://city.no-santos.com/', icon: '🏙️', name: 'City', short: 'City', desc: 'Orașul No-Santos: case, magazine, drumuri și locuitori care trăiesc și circulă prin el.', color: '#7aa95c' }
   ];
   window.NS_GAMES = GAMES;
