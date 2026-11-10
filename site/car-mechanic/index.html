@@ -45,6 +45,7 @@
   .tools button:hover:not(:disabled) { background: #48505c; }
   .tools button.on { background: #2f5d8a; }
   .tools button:disabled { opacity: .35; cursor: default; }
+  body.touch .k { display: none; }
   .tools button.done { background: #2e7d3f; }
   .tools button.done:hover:not(:disabled) { background: #379a4b; }
   #bought { font-size: 12px; opacity: .8; margin-top: 6px; }
@@ -147,6 +148,7 @@ const $ = id => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
 const lerp = THREE.MathUtils.lerp;
 const isTouch = matchMedia('(pointer: coarse)').matches;
+if (isTouch) document.body.classList.add('touch');
 const rr = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rr(a, b + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -692,7 +694,8 @@ function float(text, world, cls = '') {
 function hud() {
   $('money').textContent = '💰 ' + S.money + ' lei';
   const r = Math.round(S.rep * 2) / 2;
-  let st = ''; for (let i = 1; i <= 5; i++) st += r >= i ? '★' : r >= i - 0.5 ? '⯪' : '☆';
+  let st = ''; for (let i = 1; i <= 5; i++) st += r >= i ? '★' : '☆';
+  if (r % 1) st = st.replace('☆', '½');
   $('rep').textContent = st;
   $('day').textContent = '📅 Ziua ' + S.day + ' · 🚗 ' + Math.min(S.carIdx + 1, S.carsToday) + '/' + S.carsToday;
 }
@@ -781,10 +784,10 @@ function renderJob() {
     j.says.map(t => `<div class="say">„${t}”</div>`).join('') +
     `<div class="tipT" id="tipT"></div>` +
     `<div class="tools">` +
-    `<button id="tHood" class="${S.hoodOpen ? 'on' : ''}"><span class="e">${S.hoodOpen ? '🔓' : '🔒'}</span>Capota (H)</button>` +
-    `<button id="tLift" class="${S.liftUp ? 'on' : ''}"><span class="e">${S.liftUp ? '⬇️' : '⬆️'}</span>${S.liftUp ? 'Coboară' : 'Ridică'} (L)</button>` +
-    `<button id="tScan" ${S.up.scanner ? '' : 'disabled title="Cumpără Tester OBD la sfârșitul zilei"'}><span class="e">💻</span>Tester (T)</button>` +
-    `<button id="tDone" class="done"><span class="e">✅</span>Predă (Enter)</button></div>` +
+    `<button id="tHood" class="${S.hoodOpen ? 'on' : ''}"><span class="e">${S.hoodOpen ? '🔓' : '🔒'}</span>Capota <span class="k">(H)</span></button>` +
+    `<button id="tLift" class="${S.liftUp ? 'on' : ''}"><span class="e">${S.liftUp ? '⬇️' : '⬆️'}</span>${S.liftUp ? 'Coboară' : 'Ridică'} <span class="k">(L)</span></button>` +
+    `<button id="tScan" ${S.up.scanner ? '' : 'disabled title="Cumpără Tester OBD la sfârșitul zilei"'}><span class="e">💻</span>Tester <span class="k">(T)</span></button>` +
+    `<button id="tDone" class="done"><span class="e">✅</span>Predă <span class="k">(Enter)</span></button></div>` +
     `<div id="bought">${j.bought.length ? '🧾 Piese puse: ' + j.bought.map(b => PARTS[b.type].ic).join(' ') + ` · ${spent} lei` : '🧾 Încă n-ai schimbat nimic.'}</div>`;
   $('tHood').onclick = () => { audio(); toggleHood(); };
   $('tLift').onclick = () => { audio(); toggleLift(); };
@@ -803,15 +806,18 @@ function updTip() {
 
 // ---------------- acțiuni ----------------
 function toggleHood() {
-  if (S.mode !== 'work' || S.busy) return;
+  if (S.mode !== 'work') return;
+  if (S.busy) { toast('Termină întâi ce lucrezi acum.'); return; }
   S.hoodOpen = !S.hoodOpen; SFX.clank(); renderJob(); renderZP();
 }
 function toggleLift() {
-  if (S.mode !== 'work' || S.busy) return;
+  if (S.mode !== 'work') return;
+  if (S.busy) { toast('Termină întâi ce lucrezi acum.'); return; }
   S.liftUp = !S.liftUp; SFX.hiss(); renderJob(); renderZP();
 }
 function scan() {
-  if (S.mode !== 'work' || S.busy) return;
+  if (S.mode !== 'work') return;
+  if (S.busy) { toast('Termină întâi ce lucrezi acum.'); return; }
   if (!S.up.scanner) { toast('Nu ai tester. Îl poți cumpăra seara, după ultima mașină.', 'bad'); return; }
   S.busy = { kind: 'scan', t: 0, dur: 2.5, label: '💻 Citesc calculatorul mașinii…' };
   SFX.beep(); renderJob(); renderZP();
@@ -917,7 +923,8 @@ function nextCar() {
   hideOverlay(); renderJob(); renderZP(); hud();
 }
 function handOver() {
-  if (S.mode !== 'work' || S.busy) return;
+  if (S.mode !== 'work') return;
+  if (S.busy) { toast('Termină întâi ce lucrezi acum.'); return; }
   if (!S.job.bought.length && !confirmEmpty) { confirmEmpty = true; toast('N-ai schimbat nimic. Apasă încă o dată ca să predai așa.', 'bad'); return; }
   confirmEmpty = false;
   S.sel = null; S.hoodOpen = false; S.liftUp = false; S.mode = 'closing';
@@ -941,6 +948,8 @@ function evaluate() {
     } else if (s.req) {
       missed++;
       lines.push(['r', `❌ ${P.ic} ${P.n}${where} a rămas defect (${Math.round(s.cond)}%).`, '']);
+    } else if (s.extra) {
+      lines.push(['y', `🔎 Nu ai observat: ${P.ic} ${P.n}${where} era și ea stricată (${Math.round(s.cond)}%). Puteai câștiga în plus.`, '']);
     }
   }
   const allFixed = missed === 0 && fixedReq === j.req.size;
@@ -1028,6 +1037,7 @@ function showStart() {
 function togglePause() {
   if (S.mode === 'menu' || S.mode === 'summary' || S.mode === 'over' || S.mode === 'result') return;
   S.paused = !S.paused;
+  if (master) master.gain.value = S.sound && !S.paused ? 0.5 : 0;
   if (S.paused) {
     showPanel(`<h2>⏸ Pauză</h2>${helpHTML()}<button class="go" id="goRes">▶ Înapoi la lucru</button>`);
     $('goRes').onclick = () => togglePause();
@@ -1042,7 +1052,8 @@ function placeCamera(dt) {
   const k = 1 - Math.exp(-dt * 4);
   cam.tgt.y = lerp(cam.tgt.y, ty, k);
   cam.tgt.z = lerp(cam.tgt.z, S.mode === 'arrive' && C ? clamp(C.z * 0.4, -4, 0) : 0, k);
-  cam.ph = clamp(cam.ph, 0.25, lifted ? 2.35 : 1.45);
+  const phMax = lifted ? 2.35 : 1.45;
+  cam.ph = cam.ph > phMax ? lerp(cam.ph, phMax, 1 - Math.exp(-dt * 5)) : Math.max(cam.ph, 0.25);
   cam.r = clamp(cam.r, 2.4, 8.4);
   const port = camera.aspect < 1;
   const fov = port ? 72 : 50;
@@ -1078,6 +1089,7 @@ function endPtr(e) {
   if (drag && drag.moved < 7 && ptrs.size === 1) clickPick(e);
   ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0;
   if (!ptrs.size) drag = null;
+  else if (ptrs.size === 1) { const q = [...ptrs.values()][0]; drag = { x: q.x, y: q.y, moved: 99 }; } // după zoom cu 2 degete se poate roti iar
 }
 cv.addEventListener('pointerup', endPtr);
 cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; pinch = 0; });
@@ -1097,6 +1109,7 @@ function hover(e) {
   if (isTouch || performance.now() - hoverT < 60) return; hoverT = performance.now();
   cv.style.cursor = pickAt(e) ? 'pointer' : 'grab';
 }
+addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b && !b.closest('#overlay')) b.blur(); }, true);
 addEventListener('keydown', e => {
   if (e.repeat) return;
   audio();
