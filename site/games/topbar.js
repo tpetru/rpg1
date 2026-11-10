@@ -17,6 +17,11 @@
   var H = 34;
   var path = location.pathname.replace(/index\.html$/, '');
   if (path.slice(-1) !== '/') path += '/';
+  // Pe alt subdomeniu (ex. city.no-santos.com) linkurile relative ar rămâne acolo, așa că le facem absolute.
+  var host = location.hostname;
+  var BASE = (host === 'no-santos.com' || host === 'www.no-santos.com' || host === 'games.no-santos.com' || host.indexOf('.') < 0) ? '' : 'https://games.no-santos.com';
+  function url(h) { return /^https?:/.test(h) ? h : BASE + h; }
+  function isOn(h) { return /^https?:/.test(h) ? location.href.indexOf(h) === 0 : (!BASE && path.indexOf(h) === 0); }
 
   var css = document.createElement('style');
   css.textContent =
@@ -38,10 +43,10 @@
   var bar = document.createElement('nav');
   bar.id = 'ns-gbar';
   bar.setAttribute('aria-label', 'Jocuri');
-  var html = '<a class="hub' + (path === '/games/' || path === '/' ? ' on' : '') + '" href="/games/">🎮 <span class="l">Jocuri</span></a><span class="sep"></span>';
+  var html = '<a class="hub' + (!BASE && (path === '/games/' || path === '/') ? ' on' : '') + '" href="' + url('/games/') + '">🎮 <span class="l">Jocuri</span></a><span class="sep"></span>';
   GAMES.forEach(function (g) {
-    var on = path.indexOf(g.href) === 0;
-    html += '<a href="' + g.href + '"' + (on ? ' class="on" aria-current="page"' : '') + '>' + g.icon +
+    var on = isOn(g.href);
+    html += '<a href="' + url(g.href) + '"' + (on ? ' class="on" aria-current="page"' : '') + '>' + g.icon +
       ' <span class="l">' + g.name + '</span><span class="s">' + g.short + '</span></a>';
   });
   bar.innerHTML = html;

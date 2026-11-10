@@ -39,7 +39,7 @@ $cityMode = ($cityMode ?? 'view') === 'admin' ? 'admin' : 'view';
   }
 
   /* ---------- Top-left: town + stats ---------- */
-  #statsPanel { top: 12px; left: 12px; padding: 10px 14px 12px; min-width: 210px; }
+  #statsPanel { top: calc(12px + var(--gb, 0px)); left: 12px; padding: 10px 14px 12px; min-width: 210px; }
   #townName {
     width: 100%;
     border: none; background: transparent;
@@ -58,14 +58,14 @@ $cityMode = ($cityMode ?? 'view') === 'admin' ? 'admin' : 'view';
   #barCom { background: #5f97c9; }
 
   /* ---------- Top-right: time + controls ---------- */
-  #timePanel { top: 12px; right: 12px; padding: 8px 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 24px); }
+  #timePanel { top: calc(12px + var(--gb, 0px)); right: 12px; padding: 8px 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 24px); }
   #clock { font-weight: 800; font-size: 0.95rem; padding: 0 6px; white-space: nowrap; }
   #weather { font-size: 1.15rem; padding-right: 4px; }
   /* prieteni: butonul de langa vreme, cu steluta pentru cereri noi, si panoul de sub el */
   .fr-toggle { position: relative; font-size: 1.05rem; }
   .fr-star { position: absolute; top: -6px; right: -6px; width: 17px; height: 17px; border-radius: 50%; background: #f2b632; color: #fff; font-size: 0.7rem; line-height: 17px; text-align: center; box-shadow: 0 1px 3px rgba(60, 40, 10, 0.35); animation: frPulse 1.6s ease-in-out infinite; }
   @keyframes frPulse { 50% { transform: scale(1.18); } }
-  #friendsPanel { top: 62px; right: 12px; width: min(320px, calc(100vw - 24px)); padding: 10px; font-family: 'Fredoka', 'Nunito', system-ui, sans-serif; z-index: 30; }
+  #friendsPanel { top: calc(62px + var(--gb, 0px)); right: 12px; width: min(320px, calc(100vw - 24px)); padding: 10px; font-family: 'Fredoka', 'Nunito', system-ui, sans-serif; z-index: 30; }
   .fr-head { display: flex; gap: 6px; align-items: center; }
   .fr-tabs { flex: 1; display: flex; background: #eadfca; border-radius: 10px; padding: 3px; gap: 3px; }
   .fr-tab { flex: 1; padding: 6px 8px; border: none; border-radius: 8px; background: transparent; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
@@ -156,7 +156,7 @@ $cityMode = ($cityMode ?? 'view') === 'admin' ? 'admin' : 'view';
     box-shadow: var(--shadow);
   }
   #toast {
-    position: fixed; z-index: 30; left: 50%; top: 18px; transform: translateX(-50%);
+    position: fixed; z-index: 30; left: 50%; top: calc(18px + var(--gb, 0px)); transform: translateX(-50%);
     padding: 8px 16px;
     background: rgba(74, 63, 50, 0.94); color: #fffaf0;
     border-radius: 99px;
@@ -211,7 +211,7 @@ $cityMode = ($cityMode ?? 'view') === 'admin' ? 'admin' : 'view';
 
   /* ---------- People panel (search + join) ---------- */
   #peoplePanel {
-    top: 12px; left: 50%; transform: translateX(-50%);
+    top: calc(12px + var(--gb, 0px)); left: 50%; transform: translateX(-50%);
     width: min(400px, calc(100vw - 24px - 2 * 240px));
     min-width: 260px;
     padding: 8px;
@@ -428,6 +428,7 @@ $cityMode = ($cityMode ?? 'view') === 'admin' ? 'admin' : 'view';
 </style>
 </head>
 <body class="mode-<?= $cityMode ?>">
+<script src="https://games.no-santos.com/games/topbar.js"></script>
 <canvas id="game"></canvas>
 
 <div class="panel" id="statsPanel">
