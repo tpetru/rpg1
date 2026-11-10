@@ -53,6 +53,7 @@
     <a href="https://aris.no-santos.com/">Spre Aris →</a>
     <a href="https://docs.no-santos.com/">Spre Docs →</a>
     <a href="https://city.no-santos.com/">Spre City →</a>
+    <a href="https://games.no-santos.com/">Spre Games →</a>
   </div>
 </body>
 </html>
