@@ -106,7 +106,7 @@
 <div id="polaroid"><canvas id="pc" width="320" height="240"></canvas><div>RecorderZ · „Ce faceți aici?”</div></div>
 <div id="joy"><i></i></div>
 <button id="bAxe" title="Taie (Space)">🪓</button>
-<button id="bTruck">🚚 Urcă în camion</button>
+<button id="bTruck">🚜 Urcă în tractor</button>
 <div id="bearIcon">🐻</div>
 <div id="hint"><kbd>WASD</kbd> mers · <kbd>Shift</kbd> fugi · <kbd>Space</kbd> taie · trage cu mouse-ul ca să rotești camera</div>
 <div id="overlay" class="show"><div class="panel" id="panel"></div></div>
@@ -397,26 +397,51 @@ function fallingLeaves(dt, cx, cy, cz) {
   fallIM.instanceMatrix.needsUpdate = true;
 }
 
-// ---------------- camionul ----------------
+// ---------------- tractorul cu remorcă ----------------
 const truck = new THREE.Group();
 truck.position.set(TRUCK.x, 0, TRUCK.z);
-truck.add(part(BOX, MAT.truck, 2.3, 2.0, 2.4, 4.2, 1.7, 0));
-truck.add(part(BOX, MAT.truckDark, 0.1, 0.8, 2.0, 5.36, 2.1, 0));
-truck.add(part(BOX, MAT.truckDark, 2.0, 0.8, 0.1, 4.4, 2.15, 1.21));
-truck.add(part(BOX, MAT.truckDark, 2.0, 0.8, 0.1, 4.4, 2.15, -1.21));
-truck.add(part(BOX, MAT.truckDark, 8.4, 0.35, 2.3, 0.6, 0.85, 0));
-truck.add(part(BOX, MAT.log, 5.6, 0.2, 2.4, -0.7, 1.12, 0));
-for (const x of [-3.4, 2.0]) for (const z of [-1.21, 1.21]) truck.add(part(BOX, MAT.truckDark, 0.12, 1.5, 0.12, x, 1.9, z));
-for (const x of [-2.6, -1.0, 4.0]) for (const z of [-1.1, 1.1]) truck.add(part(geo.log, MAT.tire, 0.5, 0.36, 0.5, x, 0.5, z, Math.PI / 2));
+{
+  const red = M(0xc8231b), redD = M(0x9a1a14), white = M(0xeeeeea), glass = new THREE.MeshLambertMaterial({ color: 0x9fc4d8, transparent: true, opacity: 0.45 });
+  const metal = M(0x3a3a3a), rim = M(0xd8d0c0);
+  const T = new THREE.Group(); T.position.x = 3.2; truck.add(T);
+  T.add(part(BOX, red, 2.0, 0.85, 1.0, 1.4, 1.35, 0));          // capota
+  T.add(part(BOX, metal, 0.12, 0.6, 0.85, 2.42, 1.3, 0));         // grila
+  T.add(part(BOX, red, 1.6, 0.35, 0.8, 1.2, 0.85, 0));            // șasiu față
+  T.add(part(BOX, metal, 1.6, 0.4, 1.0, -0.2, 0.95, 0));           // transmisie
+  for (const z of [-0.9, 0.9]) T.add(part(BOX, red, 1.4, 0.12, 0.62, -0.35, 1.85, z)); // aripi spate
+  // cabina
+  for (const [x, z] of [[0.4, 0.62], [0.4, -0.62], [-0.95, 0.62], [-0.95, -0.62]]) T.add(part(BOX, red, 0.1, 1.45, 0.1, x, 2.55, z));
+  T.add(part(BOX, white, 1.65, 0.12, 1.45, -0.27, 3.3, 0));
+  T.add(part(BOX, glass, 0.04, 1.2, 1.15, 0.42, 2.6, 0, 0, 0, 0, false));
+  T.add(part(BOX, glass, 0.04, 1.2, 1.15, -0.97, 2.6, 0, 0, 0, 0, false));
+  T.add(part(BOX, metal, 0.5, 0.15, 0.5, -0.35, 1.95, 0));          // scaun
+  T.add(part(geo.log, metal, 0.07, 1.0, 0.07, 1.9, 2.15, 0.35));    // eșapament
+  T.add(part(geo.log, metal, 0.03, 0.5, 0.03, 0.25, 2.25, -0.2, 0.6, 0, -0.5)); // volan
+  for (const z of [-0.95, 0.95]) {
+    T.add(part(geo.log, MAT.tire, 0.82, 0.48, 0.82, -0.35, 0.82, z, Math.PI / 2));
+    T.add(part(geo.log, rim, 0.45, 0.5, 0.45, -0.35, 0.82, z, Math.PI / 2));
+    T.add(part(geo.log, MAT.tire, 0.45, 0.28, 0.45, 1.85, 0.45, z * 0.75, Math.PI / 2));
+    T.add(part(geo.log, rim, 0.24, 0.3, 0.24, 1.85, 0.45, z * 0.75, Math.PI / 2));
+  }
+  for (const z of [-0.3, 0.3]) T.add(part(BOX, M(0xfff3c0, { emissive: 0x554422 }), 0.06, 0.12, 0.16, 2.47, 1.55, z, 0, 0, 0, false));
+  // remorca
+  truck.add(part(BOX, metal, 1.6, 0.1, 0.1, 1.6, 0.75, 0));         // proțap
+  truck.add(part(BOX, redD, 5.4, 0.18, 2.3, -1.6, 1.0, 0));
+  truck.add(part(BOX, MAT.log, 5.3, 0.06, 2.2, -1.6, 1.12, 0));
+  for (const z of [-1.12, 1.12]) truck.add(part(BOX, red, 5.4, 0.45, 0.08, -1.6, 1.3, z));
+  for (const x of [-4.3, 1.1]) truck.add(part(BOX, red, 0.08, 0.45, 2.3, x, 1.3, 0));
+  for (const x of [-3.9, 0.7]) for (const z of [-1.12, 1.12]) truck.add(part(BOX, metal, 0.1, 1.5, 0.1, x, 1.9, z));
+  for (const z of [-1.1, 1.1]) { truck.add(part(geo.log, MAT.tire, 0.5, 0.32, 0.5, -1.6, 0.5, z, Math.PI / 2)); truck.add(part(geo.log, rim, 0.25, 0.34, 0.25, -1.6, 0.5, z, Math.PI / 2)); }
+}
 const truckLogs = new THREE.InstancedMesh(geo.log, MAT.log, 30);
 truckLogs.count = 0; truckLogs.castShadow = true; truck.add(truckLogs);
 scene.add(truck);
-const TRUCK_COLL = [[-3, 1.6], [-0.4, 1.6], [2.2, 1.6], [4.3, 1.6]];
+const TRUCK_COLL = [[-3.4, 1.5], [-1.0, 1.5], [1.4, 1.2], [3.2, 1.4], [4.8, 1.2]];
 function setTruckLogs(n) {
   n = Math.min(30, n); const d = new THREE.Object3D();
   for (let i = 0; i < n; i++) {
     const row = Math.floor(i / 6), k = i % 6;
-    d.position.set(-0.7, 1.45 + row * 0.42, -1.0 + k * 0.4 + (row % 2) * 0.2); d.rotation.set(0, 0, Math.PI / 2); d.scale.set(0.2, 5.2, 0.2);
+    d.position.set(-1.6, 1.35 + row * 0.38, -0.95 + k * 0.38 + (row % 2) * 0.18); d.rotation.set(0, 0, Math.PI / 2); d.scale.set(0.18, 5.0, 0.18);
     d.updateMatrix(); truckLogs.setMatrixAt(i, d.matrix);
   }
   truckLogs.count = n; truckLogs.instanceMatrix.needsUpdate = true;
@@ -695,7 +720,7 @@ const fmt = n => n.toLocaleString('ro-RO');
 const loadSum = () => S.load.reduce((a, b) => a + b, 0);
 function hud() {
   $('money').textContent = `💰 ${fmt(S.money)} lei`;
-  const L = $('load'); L.textContent = `🪵 Lemne: ${S.load.length}/${CAP}` + (S.load.length ? ` · ${fmt(loadSum())} lei` : '') + (S.load.length >= CAP ? ' · la camion!' : '');
+  const L = $('load'); L.textContent = `🪵 Lemne: ${S.load.length}/${CAP}` + (S.load.length ? ` · ${fmt(loadSum())} lei` : '') + (S.load.length >= CAP ? ' · la tractor!' : '');
   L.classList.toggle('full', S.load.length >= CAP);
   const min = 480 + Math.floor(S.time / DAY * 600);
   $('clock').textContent = `⏱ ${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
@@ -761,18 +786,20 @@ function fell(t) {
   t.stump = part(geo.stump, [MAT.bark, MAT.stumpTop, MAT.stumpTop], t.trunkR * 1.08, 0.55, t.trunkR * 1.08, t.x, t.y, t.z);
   if (t.type === 'mesteacan') t.stump.material = [MAT.birch, MAT.stumpTop, MAT.stumpTop];
   scene.add(t.stump);
-  S.load.push(t.value);
+  S.load.push(t.value); if (t.healthy) S.loadIll = (S.loadIll || 0) + 1;
   if (t.healthy) S.cutBad++; else S.cutOk++;
   sfx.crack();
   toast(`🌲 Cade! +${fmt(t.value)} lei în lemne` + (t.healthy ? ' (ilegal)' : ''), '', 1.6);
   hud();
 }
 function caught(t, A) {
-  const lost = loadSum() + t.value;
-  S.strikes++; S.lost += lost; S.load = []; P.swing = -1; S.freeze = 1.8;
-  t.state = 'sealed';
-  t.tape = part(geo.tape, MAT.tape, t.trunkR * 1.15, 0.22, t.trunkR * 1.15, 0, 1.3, 0, 0, 0, 0, false);
-  t.pivot.add(t.tape);
+  const lost = loadSum() + (t ? t.value : 0);
+  S.strikes++; S.lost += lost; S.load = []; S.loadIll = 0; P.swing = -1; S.freeze = 1.8;
+  if (t) {
+    t.state = 'sealed';
+    t.tape = part(geo.tape, MAT.tape, t.trunkR * 1.15, 0.22, t.trunkR * 1.15, 0, 1.3, 0, 0, 0, 0, false);
+    t.pivot.add(t.tape);
+  }
   A.state = 'photo'; A.timer = 0; A.said = false;
   sfx.bad();
   toast(`📷 Prins! Alex Nedea ți-a confiscat lemnele (−${fmt(lost)} lei)`, 'bad', 3.5);
@@ -781,8 +808,8 @@ function caught(t, A) {
 }
 function sell() {
   const sum = loadSum(); if (!sum) return;
-  S.money += sum; S.sold += S.load.length; S.load = []; sfx.cash();
-  toast(`🚚 Vândut! +${fmt(sum)} lei`, 'good'); setTruckLogs(S.sold * 2); hud();
+  S.money += sum; S.sold += S.load.length; S.load = []; S.loadIll = 0; sfx.cash();
+  toast(`🚜 Vândut! +${fmt(sum)} lei`, 'good'); setTruckLogs(S.sold * 2); hud();
 }
 
 // Alex
@@ -810,6 +837,11 @@ function alexUpdate(A, dt) {
   }
   A.life -= dt;
   if (A.life <= 0 && (A.state === 'walk' || A.state === 'look' || A.state === 'turn')) alexLeave(A);
+  if (A.checkCd > 0) A.checkCd -= dt;
+  if ((A.state === 'walk' || A.state === 'look' || A.state === 'turn') && !(A.checkCd > 0) && S.load.length && !S.inTruck && S.freeze <= 0 && S.endAt <= 0 && alexDist(A) < 4) {
+    A.state = 'check'; A.timer = 2.2; S.freeze = 2.3; P.swing = -1;
+    bubble(A, 'Bună ziua! Ia să vedem ce lemne aveți acolo…', 2.2);
+  }
   let speed = 0, turn = 2.2;
   if (A.state === 'walk' || A.state === 'leave') {
     const dx = A.wp.x - A.x, dz = A.wp.z - A.z, d = Math.hypot(dx, dz);
@@ -825,6 +857,12 @@ function alexUpdate(A, dt) {
   } else if (A.state === 'turn') {
     A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 1.6; A.timer -= dt;
     if (A.timer <= 0) { A.state = 'look'; A.timer = rand(1.5, 3); }
+  } else if (A.state === 'check') {
+    A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 6; A.timer -= dt;
+    if (A.timer <= 0) {
+      if (S.loadIll > 0) caught(null, A);
+      else { A.state = 'look'; A.timer = 1.5; A.checkCd = 40; bubble(A, 'E în regulă, sunt lemne bolnave. Spor la treabă!', 2.5); toast('✓ Alex Nedea ți-a verificat lemnele: totul legal', 'good', 2); }
+    }
   } else if (A.state === 'photo') {
     A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 8; A.timer += dt;
     if (A.timer > 0.3 && A.aCam.parent !== A.g) camAtFace(A);
@@ -909,7 +947,7 @@ function bearUpdate(B, dt) {
     }
     if (bearSees(B) && !S.inTruck) {
       B.state = 'notice'; B.timer = 1.1; sfx.growl();
-      toast('🐻 Te-a văzut ursul! FUGI la camion! (Shift)', 'bad', 2.5);
+      toast('🐻 Te-a văzut ursul! FUGI la tractor! (Shift)', 'bad', 2.5);
     }
   } else if (B.state === 'notice') {
     B.tYaw = toP; turn = 6; B.timer -= dt;
@@ -981,7 +1019,7 @@ function update(dt) {
   if (P.swing < 0 && want && !moving && S.freeze <= 0 && !S.inTruck) {
     if (!T) { if (S.msgCd <= 0) { toast('Apropie-te de un copac 🌲', '', 1.2); S.msgCd = 1.5; } }
     else if (T.state === 'sealed') { if (S.msgCd <= 0) { sfx.nope(); toast('Copacul e sigilat, e probă în reportaj!', 'bad', 1.6); S.msgCd = 2; } }
-    else if (S.load.length >= CAP) { if (S.msgCd <= 0) { sfx.nope(); toast('Ai mâinile pline! Du lemnele la camion 🚚', '', 1.8); S.msgCd = 2; } }
+    else if (S.load.length >= CAP) { if (S.msgCd <= 0) { sfx.nope(); toast('Ai mâinile pline! Du lemnele la tractor 🚜', '', 1.8); S.msgCd = 2; } }
     else { P.swing = 0; P.swingT = 0; P.hitDone = false; P.swingTree = T; }
   }
   if (P.swing >= 0) {
@@ -1007,10 +1045,10 @@ function update(dt) {
     P.axeTilt += (-2.3 - P.axeTilt) * Math.min(1, dt * 8);
   }
   axe.rotation.x = P.axeTilt;
-  if (S.inTruck) { P.x = TRUCK.x + 4.2; P.z = TRUCK.z; }
+  if (S.inTruck) { P.x = TRUCK.x + 2.85; P.z = TRUCK.z; }
   P.y = walkH(P.x, P.z); P.g.position.set(P.x, P.y, P.z); P.g.rotation.y = P.yaw; P.g.visible = !S.inTruck;
   $('bTruck').classList.toggle('show', S.inTruck || (Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 9 && S.freeze <= 0));
-  $('bTruck').textContent = S.inTruck ? '⬇ Coboară din camion' : '🚚 Urcă în camion';
+  $('bTruck').textContent = S.inTruck ? '⬇ Coboară din tractor' : '🚜 Urcă în tractor';
 
   // camion
   if (S.load.length && Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 6.5) sell();
@@ -1078,7 +1116,7 @@ function drawMinimap() {
     mctx.fillStyle = t.state === 'sealed' ? '#ffd34d' : !solid(t) ? '#6b5a44' : t.healthy ? '#5fcf5a' : '#c9893a';
     mctx.beginPath(); mctx.arc(x, y, solid(t) ? 5 : 3, 0, TAU); mctx.fill();
   }
-  { const [x, y] = map(TRUCK.x, TRUCK.z); mctx.font = '26px sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('🚚', x, y); }
+  { const [x, y] = map(TRUCK.x, TRUCK.z); mctx.font = '26px sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('🚜', x, y); }
   for (const B of BEARS) {
     if (!(B.state === 'notice' || B.state === 'chase' || B.state === 'eat')) continue;
     const [x, y] = map(B.x, B.z), j = Math.sin(S.clock * 40) * 2;
@@ -1106,7 +1144,7 @@ function hud3d() {
   const nAct = ALEXES.filter(a => a.active && a.state !== 'leave').length;
   const bearOn = S.running && BEARS.some(b => b.state === 'notice' || b.state === 'chase' || b.state === 'eat');
   $('bearIcon').classList.toggle('show', bearOn && !BEARS.some(b => b.state === 'eat'));
-  if (bearOn) { al.classList.add('show', 'seen'); $('alTxt').textContent = '🐻 URSUL TE FUGĂREȘTE! Fugi la camion!'; }
+  if (bearOn) { al.classList.add('show', 'seen'); $('alTxt').textContent = '🐻 URSUL TE FUGĂREȘTE! Fugi la tractor!'; }
   else if (nAct && S.running) {
     al.classList.add('show'); const seen = !!alexSees();
     al.classList.toggle('seen', seen);
@@ -1149,9 +1187,9 @@ function startPanel(resume) {
     <div class="lg-ok">🍁 <b>Sănătos</b>: coroană plină, în culori vii de toamnă (brazii: ace verzi), scoarță maro. Bani mulți (150–390 lei), dar <b>ilegal</b>. Inel <span style="color:#d0301f">roșu</span>.</div>
     <div class="lg-bad">🍂 <b>Bolnav / uscat</b>: coroană rară, frunze maro-cenușii sau deloc, crengi goale, scoarță gri, ciuperci, brazi ruginii. Puțini bani (25–90 lei), <b>legal</b>. Inel <span style="color:#2f8d2c">verde</span>.</div>
   </div>
-  <p>📷 Prin pădure umblă <b>doi Alex Nedea de la RecorderZ</b> și nu apar pe hartă, așa că fii atent în jur. Conul roșu de pe jos e ce vede fiecare. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
-  <p>🐻 În pădure sunt și <b>doi urși</b>. Dacă te văd (sau te miros de aproape), mârâie, apare un <b style="color:#d0201a">!</b> deasupra lor și apoi aleargă după tine. Fugi (<b>Shift</b> sau joystick-ul tras la maxim) la camion și urcă în el (butonul 🚚 sau <kbd>T</kbd>): acolo ursul renunță și pleacă. Dacă te prinde, te mănâncă.</p>
-  <p>🚚 Încap ${CAP} copaci pe tine. Du-i la camion ca să-i vinzi.</p>
+  <p>📷 Prin pădure umblă <b>doi Alex Nedea de la RecorderZ</b> și nu apar pe hartă, așa că fii atent în jur. Conul roșu de pe jos e ce vede fiecare. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Dacă ajungi lângă el cu lemne în spate, te oprește și ți le verifică: dacă ai și lemn din copaci sănătoși, îți face poză și reportaj. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
+  <p>🐻 În pădure sunt și <b>doi urși</b>. Dacă te văd (sau te miros de aproape), mârâie, apare un <b style="color:#d0201a">!</b> deasupra lor și apoi aleargă după tine. Fugi (<b>Shift</b> sau joystick-ul tras la maxim) la tractor și urcă în el (butonul 🚜 sau <kbd>T</kbd>): acolo ursul renunță și pleacă. Dacă te prinde, te mănâncă.</p>
+  <p>🚜 Încap ${CAP} copaci pe tine. Pune-i în remorca tractorului ca să-i vinzi.</p>
   <ul>${isTouch ? '<li>Joystick: trage cu degetul în stânga ecranului</li><li>Camera: trage în dreapta ecranului</li><li>🪓 ține apăsat ca să tai</li>'
     : '<li><kbd>W A S D</kbd> / săgeți: mers · <kbd>Shift</kbd>: fugi</li><li><kbd>Space</kbd> sau <kbd>F</kbd> (ține apăsat): taie</li><li>Trage cu mouse-ul (sau <kbd>Q</kbd>/<kbd>E</kbd>): rotești camera · rotița: zoom</li><li><kbd>Esc</kbd>: pauză · <kbd>M</kbd>: sunet</li>'}</ul>
   <button class="big" id="go">${resume ? 'Continuă' : 'Începe ziua'}</button>
@@ -1160,7 +1198,7 @@ function startPanel(resume) {
 }
 function newGame() {
   buildForest(1 + Math.floor(Math.random() * 1e6));
-  Object.assign(S, { running: true, paused: false, time: 0, money: 0, load: [], strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0, photos: [], freeze: 0, endAt: 0, shake: 0 });
+  Object.assign(S, { running: true, paused: false, time: 0, money: 0, load: [], loadIll: 0, strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0, photos: [], freeze: 0, endAt: 0, shake: 0 });
   Object.assign(P, { x: 0, z: 5, yaw: Math.PI, swing: -1 }); camYaw = Math.PI;
   S.endWhy = ''; S.inTruck = false; P.g.visible = true; BEARS.forEach((B, i) => { B.body.rotation.x = 0; B.head.rotation.x = 0; bearSpawn(B, i); });
   ALEXES.forEach((A, i) => { Object.assign(A, { active: false, state: 'off', spawnIn: i ? rand(35, 50) : rand(12, 20) }); A.g.visible = false; });
@@ -1172,7 +1210,7 @@ function endGame(why) {
   const rec = S.money > S.best; if (rec) { S.best = S.money; try { localStorage.setItem(SAVE + '-best', S.money); } catch (e) {} }
   const photos = S.photos.length ? `<p style="text-align:center"><b>Pozele lui Alex Nedea:</b></p><div class="photos">${S.photos.map(s => `<img src="${s}" alt="poză">`).join('')}</div>` : '';
   showOverlay(`<h2>${why === 'time' ? '🌇 S-a terminat ziua de muncă' : why === 'bear' ? '🐻 Te-a mâncat ursul!' : '📺 Reportajul a apărut pe RecorderZ!'}</h2>
-  <p style="text-align:center">${why === 'bear' ? 'Urșii din pădurile românești nu glumesc. Data viitoare fugi la camion mai repede!' : why === 'time' ? (S.strikes ? 'Ai scăpat, dar nu chiar curat.' : S.cutBad ? 'Nimeni nu te-a prins… de data asta.' : 'Pădurar model, totul legal! 👏') : '„Tăieri ilegale în pădure” — 3 reportaje, gata cu meseria.'}</p>
+  <p style="text-align:center">${why === 'bear' ? 'Urșii din pădurile românești nu glumesc. Data viitoare fugi la tractor mai repede!' : why === 'time' ? (S.strikes ? 'Ai scăpat, dar nu chiar curat.' : S.cutBad ? 'Nimeni nu te-a prins… de data asta.' : 'Pădurar model, totul legal! 👏') : '„Tăieri ilegale în pădure” — 3 reportaje, gata cu meseria.'}</p>
   <div class="stats"><span>💰 Bani câștigați</span><b>${fmt(S.money)} lei</b><span>🍂 Copaci bolnavi tăiați</span><b>${S.cutOk}</b><span>🌲 Copaci sănătoși tăiați</span><b>${S.cutBad}</b><span>🚫 Lemne confiscate</span><b>${fmt(S.lost)} lei</b><span>📷 Reportaje</span><b>${S.strikes}/${MAX_STRIKES}</b></div>
   ${photos}
   <div class="best">${rec ? '🏆 Record nou!' : 'Record: ' + fmt(S.best) + ' lei'}</div>
@@ -1194,8 +1232,8 @@ $('bSound').onclick = () => { audio(); toggleMute(); };
 $('bPause').onclick = () => { audio(); togglePause(); };
 
 function toggleTruck() {
-  if (S.inTruck) { S.inTruck = false; P.x = TRUCK.x + 4.2; P.z = TRUCK.z + 2.9; P.yaw = 0; toast('⬇ Ai coborât din camion', '', 1.4); }
-  else if (Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 9 && S.freeze <= 0) { S.inTruck = true; P.swing = -1; toast('🚚 Ești în camion. Aici urșii nu te pot prinde.', 'good', 2); }
+  if (S.inTruck) { S.inTruck = false; P.x = TRUCK.x + 2.85; P.z = TRUCK.z + 2.6; P.yaw = 0; toast('⬇ Ai coborât din tractor', '', 1.4); }
+  else if (Math.hypot(P.x - TRUCK.x, P.z - TRUCK.z) < 9 && S.freeze <= 0) { S.inTruck = true; P.swing = -1; toast('🚜 Ești în tractor. Aici urșii nu te pot prinde.', 'good', 2); }
 }
 $('bTruck').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); if (S.running && !S.paused) toggleTruck(); });
 
