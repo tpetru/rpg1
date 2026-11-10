@@ -24,8 +24,6 @@
   .nm { font-size:22px; font-weight:800; }
   .ds { color:var(--ink2); font-size:14px; line-height:1.4; flex:1; }
   .pl { align-self:flex-start; margin-top:4px; padding:7px 14px; border-radius:999px; background:var(--c); color:#111; font-weight:800; font-size:14px; }
-  footer { margin-top:34px; color:var(--ink2); font-size:13px; }
-  footer a { color:inherit; }
 </style>
 </head>
 <body>
@@ -34,7 +32,6 @@
   <h1>🎮 Jocuri</h1>
   <p class="sub">Toate jocurile de pe no-santos.com. Merg în browser, pe calculator și pe telefon.</p>
   <div class="grid" id="grid"></div>
-  <footer><a href="https://no-santos.com/">← no-santos.com</a></footer>
 </main>
 <script>
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
