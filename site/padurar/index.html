@@ -106,10 +106,10 @@
 <div id="flash"></div>
 <div id="polaroid"><canvas id="pc" width="320" height="240"></canvas><div>RecorderZ · „Ce faceți aici?”</div></div>
 <div id="joy"><i></i></div>
-<button id="bAxe" title="Taie (Space)">🪓</button>
+<button id="bAxe" title="Taie (ține apăsat)">🪓</button>
 <button id="bTruck">🚜 Urcă în tractor</button>
 <div id="bearIcon">🐻</div>
-<div id="hint"><kbd>WASD</kbd> mers · <kbd>Shift</kbd> fugi · <kbd>Space</kbd> taie · trage cu mouse-ul ca să rotești camera</div>
+<div id="hint"><kbd>WASD</kbd> mers · <kbd>Shift</kbd> fugi · <b>click</b> taie · <kbd>F</kbd> tractor · trage cu mouse-ul ca să rotești camera</div>
 <div id="overlay" class="show"><div class="panel" id="panel"></div></div>
 
 <script type="module">
@@ -572,6 +572,47 @@ function makeTreeMesh(t) {
 function clearForest() {
   for (const t of trees) { scene.remove(t.pivot); if (t.stump) scene.remove(t.stump); }
   trees = [];
+  for (const L of LOGS) scene.remove(L.g);
+  LOGS = [];
+}
+// copaci căzuți (doborâți de vânt): trunchi culcat pe pământ, cu rădăcinile smulse; sunt obstacole
+let LOGS = [];
+const logMoss = M(0x5f6e2c), logRoot = M(0x4a3522), logDead = M(0x8a7a66), UP = new THREE.Vector3(0, 1, 0);
+function segDist(px, pz, L) {
+  const t = clamp((px - L.ax) * L.dx + (pz - L.az) * L.dz, 0, L.len), qx = L.ax + L.dx * t, qz = L.az + L.dz * t;
+  return { d: Math.hypot(px - qx, pz - qz), qx, qz };
+}
+function buildLogs(n) {
+  for (let tries = 0; tries < 900 && LOGS.length < n; tries++) {
+    const a = srand() * TAU, r = 20 + srand() * (FOREST_R - 28), ax = Math.cos(a) * r, az = Math.sin(a) * r;
+    const yaw = srand() * TAU, dx = Math.cos(yaw), dz = Math.sin(yaw), len = 5 + srand() * 6, rad = 0.22 + srand() * 0.16;
+    const L = { ax, az, dx, dz, len, r: rad, bx: ax + dx * len, bz: az + dz * len };
+    let ok = Math.hypot(L.bx, L.bz) < FOREST_R - 6;
+    for (let k = 0; k <= 4 && ok; k++) {
+      const x = ax + dx * len * k / 4, z = az + dz * len * k / 4;
+      if (roadDist(x, z) < 4.5 || creekDist(x, z) < 4 || Math.hypot(x - TRUCK.x, z - TRUCK.z) < 16 || Math.hypot(x - GATER.x, z - GATER.z) < 14) ok = false;
+    }
+    if (!ok || trees.some(t => segDist(t.x, t.z, L).d < t.trunkR + rad + 0.9) || LOGS.some(o => Math.hypot(o.ax + o.dx * o.len / 2 - (ax + dx * len / 2), o.az + o.dz * o.len / 2 - (az + dz * len / 2)) < 9)) continue;
+    const g = new THREE.Group(); L.g = g;
+    const birch = srand() < 0.25, bark = birch ? MAT.birch : srand() < 0.5 ? MAT.bark : MAT.barkDead;
+    const hA = heightAt(ax, az) + rad * 0.8, hB = heightAt(L.bx, L.bz) + rad * 0.7;
+    const A = new THREE.Vector3(ax, hA, az), B = new THREE.Vector3(L.bx, hB, L.bz), dir = B.clone().sub(A), ln = dir.length(); dir.normalize();
+    const trunk = new THREE.Mesh(geo.log, bark); trunk.scale.set(rad, ln, rad); trunk.position.copy(A).addScaledVector(dir, ln / 2);
+    trunk.quaternion.setFromUnitVectors(UP, dir); trunk.castShadow = trunk.receiveShadow = true; g.add(trunk);
+    if (!birch) { const moss = new THREE.Mesh(geo.log, logMoss); moss.scale.set(rad * 0.75, ln * 0.6, rad * 0.75); moss.position.copy(trunk.position).add(new THREE.Vector3(0, rad * 0.4, 0)); moss.quaternion.copy(trunk.quaternion); g.add(moss); }
+    // rădăcinile smulse (un disc de pământ ridicat) la capătul gros
+    const root = new THREE.Mesh(geo.log, logRoot); root.scale.set(rad * 3.6, 0.35, rad * 3.6); root.position.copy(A).addScaledVector(dir, -0.15).add(new THREE.Vector3(0, rad * 1.4, 0));
+    root.quaternion.setFromUnitVectors(UP, dir); root.castShadow = true; g.add(root);
+    for (let k = 0; k < 5; k++) { const rr = part(BOX, logRoot, 0.09, rad * 2.6, 0.09); rr.position.copy(root.position).add(new THREE.Vector3(rand(-0.6, 0.6), rand(-0.5, 0.7), rand(-0.6, 0.6))); rr.rotation.set(rand(-1, 1), rand(0, 3), rand(-1, 1)); g.add(rr); }
+    // câteva crengi uscate
+    for (let k = 0; k < 4; k++) {
+      const t = 0.45 + k * 0.13, bp = A.clone().addScaledVector(dir, ln * t), side = k & 1 ? 1 : -1;
+      const br = new THREE.Mesh(geo.log, logDead); br.scale.set(0.05, 1.1 + srand() * 0.8, 0.05);
+      const bd = new THREE.Vector3(dir.x * 0.6 - dir.z * side, 0.5 + srand() * 0.4, dir.z * 0.6 + dir.x * side).normalize();
+      br.position.copy(bp).addScaledVector(bd, br.scale.y / 2); br.quaternion.setFromUnitVectors(UP, bd); g.add(br);
+    }
+    scene.add(g); LOGS.push(L);
+  }
 }
 function buildForest(sd) {
   clearForest(); seed = sd;
@@ -595,6 +636,7 @@ function buildForest(sd) {
     t.pivot = new THREE.Group(); t.pivot.position.set(p.x, t.y, p.z); t.pivot.add(t.mesh); scene.add(t.pivot);
     trees.push(t);
   }
+  buildLogs(22);
 }
 
 // ---------------- personaje ----------------
@@ -823,7 +865,7 @@ const S = { running: false, paused: false, time: 0, money: 0, load: [], trailer:
 try { S.best = +localStorage.getItem(SAVE + '-best') || 0; } catch (e) {}
 const keys = {};
 let camYaw = Math.PI, camPitch = 0.38, camDistBase = innerWidth < innerHeight ? 10.5 : 7.5;
-let joy = null, drag = null, axeBtn = false;
+let joy = null, drag = null, axeBtn = false, mouseChop = false, mouseChopT = 0, clickChop = false;
 
 // ---------------- HUD ----------------
 let toastT = 0;
@@ -853,6 +895,10 @@ function pushOut(o, rad) {
   for (const [cx, cr, tr] of [...TRUCK_COLL, ...TRL_COLL.map(([a, b]) => [a, b, 1])]) {
     const [tx, tz] = tr ? trlPt(cx, 0) : truckPt(cx, 0), dx = o.x - tx, dz = o.z - tz, d = Math.hypot(dx, dz), m = cr + rad;
     if (d < m && d > 1e-4) { o.x = tx + dx / d * m; o.z = tz + dz / d * m; }
+  }
+  for (const L of LOGS) {
+    const q = segDist(o.x, o.z, L), m = L.r + rad;
+    if (q.d < m) { const nx = q.d > 1e-4 ? (o.x - q.qx) / q.d : -L.dz, nz = q.d > 1e-4 ? (o.z - q.qz) / q.d : L.dx; o.x = q.qx + nx * m; o.z = q.qz + nz * m; }
   }
   const b = brLocal(o.x, o.z), e = Math.abs(b.ac) - BRIDGE.w / 2;
   if (Math.abs(b.al) < BRIDGE.len / 2 - 0.2 && Math.abs(e) < rad) {
@@ -1159,12 +1205,14 @@ function update(dt) {
 
   // tăiat
   const T = findTarget(); S.target = T;
-  const want = keys.Space || keys.KeyF || axeBtn;
+  // mouse: ținut apăsat taie continuu (după o mică pauză, ca să nu taie când rotești camera); un click scurt dă o lovitură
+  const want = axeBtn || clickChop || (mouseChop && performance.now() - mouseChopT > 160);
   if (P.swing < 0 && want && !moving && S.freeze <= 0 && !S.inTruck) {
     if (!T) { if (S.msgCd <= 0) { toast('Apropie-te de un copac 🌲', '', 1.2); S.msgCd = 1.5; } }
     else if (T.state === 'sealed') { if (S.msgCd <= 0) { sfx.nope(); toast('Copacul e sigilat, e probă în reportaj!', 'bad', 1.6); S.msgCd = 2; } }
     else if (S.load.length >= CAP) { if (S.msgCd <= 0) { sfx.nope(); toast('Ai mâinile pline! Pune lemnele în remorca tractorului 🚜', '', 1.8); S.msgCd = 2; } }
     else { P.swing = 0; P.swingT = 0; P.hitDone = false; P.swingTree = T; }
+    clickChop = false;
   }
   if (P.swing >= 0) {
     const t = P.swingTree; P.swingT += dt;
@@ -1264,7 +1312,13 @@ function drawMinimap() {
     mctx.fillStyle = t.state === 'sealed' ? '#ffd34d' : !solid(t) ? '#6b5a44' : t.healthy ? '#5fcf5a' : '#c9893a';
     mctx.beginPath(); mctx.arc(x, y, solid(t) ? 5 : 3, 0, TAU); mctx.fill();
   }
-  { const [x, y] = map(TRUCK.x, TRUCK.z); mctx.font = '26px sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('🚜', x, y); }
+  for (const L of LOGS) { mctx.strokeStyle = '#c49a64'; mctx.lineWidth = Math.max(5, L.r * 2 * k); mctx.beginPath(); const [u1, v1] = map(L.ax, L.az), [u2, v2] = map(L.bx, L.bz); mctx.moveTo(u1, v1); mctx.lineTo(u2, v2); mctx.stroke(); }
+  {
+    const [tx, ty] = map(TRL.x, TRL.z), [x, y] = map(TRUCK.x + Math.cos(TRUCK.yaw) * 3.2, TRUCK.z - Math.sin(TRUCK.yaw) * 3.2);
+    mctx.strokeStyle = '#e0261c'; mctx.lineWidth = 2.3 * k + 3; mctx.beginPath(); mctx.moveTo(tx, ty); mctx.lineTo(x, y); mctx.stroke();
+    mctx.fillStyle = '#e0261c'; mctx.strokeStyle = '#fff'; mctx.lineWidth = 3; mctx.beginPath(); mctx.arc(x, y, 17, 0, TAU); mctx.fill(); mctx.stroke();
+    mctx.font = '22px sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('🚜', x, y + 1);
+  }
   { const [x, y] = map(GATER.x, GATER.z); mctx.font = '26px sans-serif'; mctx.fillText('🪚', x, y); }
   for (const B of BEARS) {
     if (!(B.state === 'notice' || B.state === 'chase' || B.state === 'eat')) continue;
@@ -1338,9 +1392,9 @@ function startPanel(resume) {
   </div>
   <p>📷 Prin pădure umblă <b>doi Alex Nedea de la RecorderZ</b> și nu apar pe hartă, așa că fii atent în jur. Conul roșu de pe jos e ce vede fiecare. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Dacă ajungi lângă el cu lemne în spate, te oprește și ți le verifică: dacă ai și lemn din copaci sănătoși, îți face poză și reportaj. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
   <p>🐻 În pădure sunt și <b>${BEARS.length} urși</b> (${BEARS.filter(B => !B.black).length} bruni și ${BEARS.filter(B => B.black).length} negri), ascunși oriunde. Dacă te văd (sau te miros de aproape), mârâie, apare un <b style="color:#d0201a">!</b> deasupra lor și apoi aleargă după tine. Când vine un urs, iconița 🐻 de sus tremură și ursul apare pe hartă. Fugi (<b>Shift</b> sau joystick-ul tras la maxim) la tractor și urcă în el (butonul 🚜 sau <kbd>T</kbd>): acolo ursul renunță și pleacă. Dacă te prinde, te mănâncă. Dacă dai peste un urs cu tractorul în viteză, îl lași lat, iar în pădure apare altul.</p>
-  <p>🚜 Tractorul îl poți conduce: <b>W/S</b> accelerezi și frânezi, <b>A/D</b> virezi (pe telefon, cu joystick-ul). Remorca vine după el pe cârlig. Încap ${CAP} copaci pe tine. Pune-i în <b>remorcă</b> (încap ${TRL_CAP}), apoi du tractorul pe drumul forestier până la <b>gater 🪚</b>, unde se vând. Pe drum, Alex Nedea îți poate opri tractorul să verifice remorca. Pârâul îl treci cu tractorul doar pe <b>pod</b>; pe jos poți să-l treci prin apă. <kbd>R</kbd> / 🔄 te duce înapoi la poiană.</p>
+  <p>🚜 Tractorul îl poți conduce: <b>W/S</b> accelerezi și frânezi, <b>A/D</b> virezi (pe telefon, cu joystick-ul). Remorca vine după el pe cârlig. Încap ${CAP} copaci pe tine. Pune-i în <b>remorcă</b> (încap ${TRL_CAP}), apoi du tractorul pe drumul forestier până la <b>gater 🪚</b>, unde se vând. Pe drum, Alex Nedea îți poate opri tractorul să verifice remorca. Ocolește <b>copacii căzuți</b>, nu treci peste ei. Pârâul îl treci cu tractorul doar pe <b>pod</b>; pe jos poți să-l treci prin apă. <kbd>R</kbd> / 🔄 te duce înapoi la poiană.</p>
   <ul>${isTouch ? '<li>Joystick: trage cu degetul în stânga ecranului</li><li>Camera: trage în dreapta ecranului</li><li>🪓 ține apăsat ca să tai</li>'
-    : '<li><kbd>W A S D</kbd> / săgeți: mers · <kbd>Shift</kbd>: fugi · <kbd>T</kbd>: urci/cobori din tractor</li><li><kbd>Space</kbd> sau <kbd>F</kbd> (ține apăsat): taie</li><li>Trage cu mouse-ul (sau <kbd>Q</kbd>/<kbd>E</kbd>): rotești camera · rotița: zoom</li><li><kbd>Esc</kbd>: pauză · <kbd>M</kbd>: sunet</li>'}</ul>
+    : '<li><kbd>W A S D</kbd> / săgeți: mers · <kbd>Shift</kbd>: fugi · <kbd>F</kbd> sau <kbd>T</kbd>: urci/cobori din tractor</li><li><b>Click</b> cu mouse-ul sau butonul 🪓 (ține apăsat): taie</li><li>Trage cu mouse-ul (sau <kbd>Q</kbd>/<kbd>E</kbd>): rotești camera · rotița: zoom</li><li><kbd>Esc</kbd>: pauză · <kbd>M</kbd>: sunet</li>'}</ul>
   <button class="big" id="go">${resume ? 'Continuă' : 'Începe ziua'}</button>
   <div class="best">Record: ${fmt(S.best)} lei</div>`);
   $('go').onclick = () => { audio(); if (resume) { S.paused = false; hideOverlay(); } else newGame(); };
@@ -1443,6 +1497,7 @@ function driveTractor(dt, f, s) {
     if (Math.abs(b.al) < BRIDGE.len / 2 && Math.abs(Math.abs(b.ac) - BRIDGE.w / 2) < cr * 0.85) hit = true;
     else if (creekDist(x, z) < 2.6 && !onDeck(x, z)) { hit = true; if (!S.wetMsg || S.time - S.wetMsg > 4) { S.wetMsg = S.time; toast('🌊 Tractorul nu trece prin pârâu. Treci pe pod!', '', 1.6); } }
     for (const t of trees) if (solid(t) && Math.hypot(x - t.x, z - t.z) < cr + t.trunkR) { hit = true; break; }
+    for (const L of LOGS) if (segDist(x, z, L).d < cr + L.r) { hit = true; break; }
     if (hit) break;
   }
   if (hit) {
@@ -1469,6 +1524,8 @@ addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   audio();
   if (e.metaKey || e.ctrlKey || e.altKey) { releaseInput(); return; }
+  // F: urci/cobori din tractor când ești lângă el (sau în el); altfel taie
+  if (e.code === 'KeyF') { if (!e.repeat && S.running && !S.paused) toggleTruck(); return; }
   keys[e.code] = true;
   if (e.code === 'Escape') togglePause();
   else if (e.code === 'KeyM') toggleMute();
@@ -1479,7 +1536,7 @@ addEventListener('keydown', e => {
 // eliberează toate tastele și joystick-ul (altfel, dacă se pierde un keyup/pointerup, pădurarul fuge singur)
 function releaseInput() {
   for (const k in keys) keys[k] = false;
-  axeBtn = false; $('bAxe').classList.remove('on');
+  axeBtn = false; mouseChop = false; clickChop = false; $('bAxe').classList.remove('on');
   if (joy) { joy = null; $('joy').style.display = 'none'; }
   drag = null;
 }
@@ -1490,7 +1547,7 @@ addEventListener('keyup', e => {
 });
 addEventListener('blur', releaseInput);
 document.addEventListener('visibilitychange', () => { if (document.hidden) releaseInput(); });
-addEventListener('contextmenu', releaseInput);
+addEventListener('contextmenu', e => { if (e.target === cv) e.preventDefault(); releaseInput(); });
 addEventListener('touchend', e => { if (!e.touches.length) releaseInput(); }, { passive: true });
 addEventListener('touchcancel', e => { if (!e.touches.length) releaseInput(); }, { passive: true });
 const cv = renderer.domElement;
@@ -1499,7 +1556,11 @@ cv.addEventListener('pointerdown', e => {
   if (e.pointerType === 'touch' && e.clientX < innerWidth * 0.45 && !joy) {
     joy = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: 0, y: 0 };
     const j = $('joy'); j.style.display = 'block'; j.style.left = e.clientX + 'px'; j.style.top = e.clientY + 'px'; j.firstElementChild.style.transform = '';
-  } else if (!drag) drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  } else if (!drag) {
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY };
+    // click stânga cu mouse-ul = taie (cât ții apăsat); dacă tragi, rotești camera
+    if (e.pointerType === 'mouse' && e.button === 0) { mouseChop = true; mouseChopT = performance.now(); }
+  }
   cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointermove', e => {
@@ -1507,13 +1568,14 @@ cv.addEventListener('pointermove', e => {
     let dx = e.clientX - joy.x0, dy = e.clientY - joy.y0; const d = Math.hypot(dx, dy); if (d > 50) { dx *= 50 / d; dy *= 50 / d; }
     joy.x = dx / 50; joy.y = dy / 50; $('joy').firstElementChild.style.transform = `translate(${dx}px,${dy}px)`;
   } else if (drag && e.pointerId === drag.id) {
+    if (mouseChop && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 8) mouseChop = false;
     camYaw -= (e.clientX - drag.x) * 0.006; camPitch = clamp(camPitch + (e.clientY - drag.y) * 0.004, 0.1, 1.15);
     drag.x = e.clientX; drag.y = e.clientY;
   }
 });
 const endPtr = e => {
   if (joy && e.pointerId === joy.id) { joy = null; $('joy').style.display = 'none'; }
-  if (drag && e.pointerId === drag.id) drag = null;
+  if (drag && e.pointerId === drag.id) { if (mouseChop && performance.now() - mouseChopT < 160) clickChop = true; drag = null; mouseChop = false; }
 };
 cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr); cv.addEventListener('lostpointercapture', endPtr);
 cv.addEventListener('wheel', e => { e.preventDefault(); camDistBase = clamp(camDistBase * (1 + Math.sign(e.deltaY) * 0.1), 4, 14); }, { passive: false });
@@ -1545,7 +1607,7 @@ $('loading').remove();
 frame();
 
 // pentru teste
-window.__pd = { releaseInput, get joy() { return joy; }, keys, waterAt, truck, brLocal, deckH, camera, BRIDGE, ROADS, CREEK, heightAt, walkH, TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
+window.__pd = { get LOGS() { return LOGS; }, nearCab, releaseInput, get joy() { return joy; }, keys, waterAt, truck, brLocal, deckH, camera, BRIDGE, ROADS, CREEK, heightAt, walkH, TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
   setCam(y) { camYaw = y; }, place(o, x, z, yaw) { o.x = x; o.z = z; if (yaw !== undefined) o.yaw = o.tYaw = yaw; } };
 </script>
 </body>
