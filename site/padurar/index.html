@@ -78,6 +78,11 @@
   .photos img:nth-child(2) { transform: rotate(3deg); }
   kbd { background: #e7dcc6; border-radius: 5px; padding: 1px 6px; font-size: 13px; }
   @media (max-width: 520px) { .legend { grid-template-columns: 1fr; } .panel { padding: 16px; } .panel h1 { font-size: 26px; } }
+  /* bara cu jocuri de sus (/games/topbar.js) */
+  #hud, #btns, #alert { top: calc(12px + var(--gb, 0px)); }
+  #bearIcon { top: calc(58px + var(--gb, 0px)); }
+  body.touch #mm { top: calc(60px + var(--gb, 0px)); }
+  #overlay { top: var(--gb, 0px); }
 </style>
 <script type="importmap">
 { "imports": {
@@ -86,6 +91,7 @@
 </script>
 </head>
 <body>
+<script src="/games/topbar.js"></script>
 <div id="loading">Se încarcă pădurea… 🌲</div>
 <div id="hud">
   <div class="chip" id="money">💰 0 lei</div>
