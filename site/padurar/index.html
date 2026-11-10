@@ -719,15 +719,56 @@ ring.rotation.x = -Math.PI / 2; ring.renderOrder = 5; ring.position.y = 0.06; ri
 
 // așchii / frunze
 const parts = [];
-for (let i = 0; i < 70; i++) {
+for (let i = 0; i < 120; i++) {
   const m = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0xc89a5a })); m.visible = false; scene.add(m);
   parts.push({ m, vx: 0, vy: 0, vz: 0, life: 0 });
 }
 let partI = 0;
-function spawnPart(x, y, z, vx, vy, vz, color, size, life) {
+function spawnPart(x, y, z, vx, vy, vz, color, size, life, wy) {
   const p = parts[partI++ % parts.length];
   p.m.position.set(x, y, z); p.m.scale.setScalar(size); p.m.material.color.setHex(color); p.m.visible = true;
-  Object.assign(p, { vx, vy, vz, life });
+  Object.assign(p, { vx, vy, vz, life, wy });
+}
+// pârâul: nivelul apei în dreptul unui punct (null dacă nu ești în apă)
+function waterAt(x, z) {
+  const si = segInfo(x, z, CREEK, 30);
+  if (si.d > 1.75 || onDeck(x, z)) return null;
+  const k = Math.round(si.i), [cx, cz] = CREEK.pts[Math.min(k, CREEK.pts.length - 1)];
+  const wy = heightAt(cx, cz) + 0.5;
+  return wy > heightAt(x, z) + 0.05 ? wy : null;
+}
+// cercuri pe apă
+const ripples = [];
+for (let i = 0; i < 10; i++) {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 28), new THREE.MeshBasicMaterial({ color: 0xe6f4fa, transparent: true, opacity: 0, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.visible = false; m.renderOrder = 2; scene.add(m); ripples.push({ m, t: 0, life: 0, s: 1 });
+}
+let ripI = 0;
+function ripple(x, y, z, s) { const r = ripples[ripI++ % ripples.length]; r.m.position.set(x, y + 0.02, z); r.m.visible = true; Object.assign(r, { t: 0, life: 0.9, s }); }
+function updRipples(dt) {
+  for (const r of ripples) {
+    if (!r.m.visible) continue; r.t += dt;
+    const k = r.t / r.life; if (k >= 1) { r.m.visible = false; continue; }
+    r.m.scale.setScalar(r.s * (0.3 + k * 1.2)); r.m.material.opacity = 0.75 * (1 - k);
+  }
+}
+// plescăit + stropi când cineva merge prin apă
+function splash(o, moving, dt, big, vol) {
+  const wy = waterAt(o.x, o.z), was = o.inWater;
+  o.inWater = wy !== null;
+  if (!o.inWater) return;
+  o.splT = (o.splT || 0) - dt;
+  const enter = !was;
+  if (!enter && (!moving || o.splT > 0)) return;
+  o.splT = big ? 0.42 : 0.3;
+  const n = enter ? 22 : 12, sp = enter ? 1.5 : 1;
+  ripple(o.x, wy, o.z, (big ? 1.5 : 1) * (enter ? 1.3 : 0.9));
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU, r = rand(0.1, 0.45) * (big ? 1.6 : 1);
+    spawnPart(o.x + Math.cos(a) * r, wy + 0.03, o.z + Math.sin(a) * r, Math.cos(a) * rand(0.6, 1.8) * sp, rand(2.2, 4) * sp, Math.sin(a) * rand(0.6, 1.8) * sp,
+      Math.random() < 0.6 ? 0xe4f3fa : 0xa6d0e2, rand(0.08, 0.16) * (big ? 1.4 : 1), 0.9, wy);
+  }
+  if (vol > 0) sfx.splash(vol * (enter ? 1.4 : 1));
 }
 
 // ---------------- sunet ----------------
@@ -763,6 +804,7 @@ const sfx = {
   bad() { sTone(220, 0.25, 'sawtooth', 0.15); sTone(165, 0.4, 'sawtooth', 0.15, 0.22); },
   bird() { const f = rand(2600, 3800), n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) sTone(f, 0.09, 'sine', 0.05, i * 0.13, f * rand(1.15, 1.4)); },
   nope() { sTone(300, 0.1, 'square', 0.06); },
+  splash(v = 1) { const r = rand(0.85, 1.2); sNoise(0.28, 'bandpass', 1500 * r, 0.45 * v, 0, 420); sNoise(0.14, 'highpass', 2600 * r, 0.22 * v, 0.02); sTone(520 * r, 0.09, 'sine', 0.1 * v, 0.01, 190); },
   growl() { sTone(70, 1.1, 'sawtooth', 0.22, 0, 45); sNoise(1.1, 'lowpass', 260, 0.6, 0, 120); sTone(95, 0.9, 'square', 0.06, 0.1, 60); },
 };
 function say(text) {
@@ -1066,6 +1108,7 @@ function bearUpdate(B, dt) {
   } else if (B.state !== 'eat') { for (const l of B.legs) l.rotation.x *= 0.85; B.body.rotation.x *= 0.85; }
   if (B.state === 'notice') B.body.rotation.x = -0.35;
   B.y = walkH(B.x, B.z); B.g.position.set(B.x, B.y, B.z); B.g.rotation.y = B.yaw;
+  if (B.g.visible) { const dP = Math.hypot(B.x - P.x, B.z - P.z); splash(B, speed > 0.3, dt, true, dP < 22 ? 0.8 * (1 - dP / 22) : 0); }
   B.excl.visible = B.state === 'notice' || B.state === 'chase';
   if (B.excl.visible) B.excl.scale.setScalar(0.8 + Math.sin(S.clock * 12) * 0.1);
 }
@@ -1134,6 +1177,7 @@ function update(dt) {
   axe.rotation.x = P.axeTilt;
   if (S.inTruck) { driveTractor(dt, f, s); [P.x, P.z] = truckPt(2.85, 0); P.yaw = Math.atan2(Math.cos(TRUCK.yaw), -Math.sin(TRUCK.yaw)); }
   P.y = walkH(P.x, P.z); P.g.position.set(P.x, P.y, P.z); P.g.rotation.y = P.yaw; P.g.visible = !S.inTruck;
+  if (!S.inTruck) splash(P, moving, dt, false, 1);
   $('bTruck').classList.toggle('show', S.inTruck || (nearCab() && S.freeze <= 0));
   $('bTruck').textContent = S.inTruck ? '⬇ Coboară din tractor' : '🚜 Urcă în tractor';
 
@@ -1163,13 +1207,15 @@ function update(dt) {
   for (const B of BEARS) bearUpdate(B, dt);
 
   // particule
+  updRipples(dt);
   for (const p of parts) {
     if (p.life <= 0) continue;
     p.life -= dt; p.vy -= 9.8 * dt;
     p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
     p.m.rotation.x += dt * 8; p.m.rotation.y += dt * 6;
     const gy = heightAt(p.m.position.x, p.m.position.z) + 0.03;
-    if (p.m.position.y < gy) { p.m.position.y = gy; p.vx *= 0.5; p.vz *= 0.5; p.vy = 0; }
+    if (p.wy != null && p.vy < 0 && p.m.position.y < p.wy) p.life = 0;
+    else if (p.m.position.y < gy) { p.m.position.y = gy; p.vx *= 0.5; p.vz *= 0.5; p.vy = 0; }
     if (p.life <= 0) p.m.visible = false;
   }
   hud();
@@ -1447,7 +1493,7 @@ $('loading').remove();
 frame();
 
 // pentru teste
-window.__pd = { truck, brLocal, deckH, camera, BRIDGE, ROADS, CREEK, heightAt, walkH, TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
+window.__pd = { waterAt, truck, brLocal, deckH, camera, BRIDGE, ROADS, CREEK, heightAt, walkH, TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
   setCam(y) { camYaw = y; }, place(o, x, z, yaw) { o.x = x; o.z = z; if (yaw !== undefined) o.yaw = o.tYaw = yaw; } };
 </script>
 </body>
