@@ -126,7 +126,7 @@ if (isTouch) document.body.classList.add('touch');
 // ---------------- reguli ----------------
 const FOREST_R = 104, WALL_R = 106, CLEAR_R = 14;
 const TRUCK = { x: 0, z: -9, yaw: 0, v: 0 };
-const TRL = { x: -1.6, z: -9, yaw: 0 }, TRL_L = 3.8;
+const TRL = { x: -1.6, z: -9, yaw: 0 }, TRL_L = 3.8, RA = 2.85, HITCH = 2.2; // RA: puntea din spate a tractorului, HITCH: cârligul
 const trlPt = (lx, lz) => { const c = Math.cos(TRL.yaw), n = Math.sin(TRL.yaw); return [TRL.x + lx * c + lz * n, TRL.z - lx * n + lz * c]; };
 const truckPt = (lx, lz) => { const c = Math.cos(TRUCK.yaw), n = Math.sin(TRUCK.yaw); return [TRUCK.x + lx * c + lz * n, TRUCK.z - lx * n + lz * c]; };
 const SEE = 22, SEE_ANG = 0.9, HEAR = 28;
@@ -1062,8 +1062,22 @@ function bearsHear() {
     B.state = 'listen'; B.timer = 2.5;
   }
 }
+function bearKnock(B) {
+  B.state = 'down'; B.timer = 0; B.excl.visible = false; B.rollDir = Math.random() < 0.5 ? -1 : 1;
+  sfx.thud(); sfx.growl(); S.shake = Math.max(S.shake, 0.45);
+  toast('🚜💥 Ai lovit ursul cu tractorul! A rămas lat.', 'good', 2);
+}
 function bearUpdate(B, dt) {
   if (B.state === 'off') return;
+  if (B.state === 'down') {
+    B.timer += dt;
+    B.body.rotation.z += (B.rollDir * Math.PI / 2 - B.body.rotation.z) * Math.min(1, dt * 7);
+    B.body.position.y += ((B.timer < 0.3 ? 0.6 : 0) - B.body.position.y) * Math.min(1, dt * 8);
+    for (const l of B.legs) l.rotation.x *= 0.9;
+    if (B.timer > 4) { B.body.rotation.z = 0; B.body.position.y = 0; B.body.rotation.x = 0; B.head.rotation.x = 0; B.state = 'off'; B.g.visible = false; bearSpawn(B, BEARS.indexOf(B)); }
+    B.y = walkH(B.x, B.z); B.g.position.set(B.x, B.y, B.z);
+    return;
+  }
   const dx = P.x - B.x, dz = P.z - B.z, dist = Math.hypot(dx, dz), toP = Math.atan2(dx, dz);
   if (B.cool > 0) B.cool -= dt;
   let speed = 0, turn = 2;
@@ -1323,24 +1337,26 @@ function startPanel(resume) {
     <div class="lg-bad">🍂 <b>Bolnav / uscat</b>: coroană rară, frunze maro-cenușii sau deloc, crengi goale, scoarță gri, ciuperci, brazi ruginii. Puțini bani (25–90 lei), <b>legal</b>. Inel <span style="color:#2f8d2c">verde</span>.</div>
   </div>
   <p>📷 Prin pădure umblă <b>doi Alex Nedea de la RecorderZ</b> și nu apar pe hartă, așa că fii atent în jur. Conul roșu de pe jos e ce vede fiecare. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Dacă ajungi lângă el cu lemne în spate, te oprește și ți le verifică: dacă ai și lemn din copaci sănătoși, îți face poză și reportaj. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
-  <p>🐻 În pădure sunt și <b>șapte urși</b>, ascunși oriunde. Dacă te văd (sau te miros de aproape), mârâie, apare un <b style="color:#d0201a">!</b> deasupra lor și apoi aleargă după tine. Fugi (<b>Shift</b> sau joystick-ul tras la maxim) la tractor și urcă în el (butonul 🚜 sau <kbd>T</kbd>): acolo ursul renunță și pleacă. Tractorul îl poți și conduce: <b>W/S</b> accelerezi și frânezi, <b>A/D</b> virezi (pe telefon, cu joystick-ul). Dacă te prinde, te mănâncă.</p>
-  <p>🚜 Încap ${CAP} copaci pe tine. Pune-i în <b>remorca tractorului</b> (încap ${TRL_CAP}), apoi du tractorul pe drumul forestier până la <b>gater 🪚</b>, unde se vând. Pe drum, Alex Nedea îți poate opri tractorul să verifice remorca. <kbd>R</kbd> / 🔄 te duce înapoi la poiană.</p>
+  <p>🐻 În pădure sunt și <b>${BEARS.length} urși</b> (${BEARS.filter(B => !B.black).length} bruni și ${BEARS.filter(B => B.black).length} negri), ascunși oriunde. Dacă te văd (sau te miros de aproape), mârâie, apare un <b style="color:#d0201a">!</b> deasupra lor și apoi aleargă după tine. Când vine un urs, iconița 🐻 de sus tremură și ursul apare pe hartă. Fugi (<b>Shift</b> sau joystick-ul tras la maxim) la tractor și urcă în el (butonul 🚜 sau <kbd>T</kbd>): acolo ursul renunță și pleacă. Dacă te prinde, te mănâncă. Dacă dai peste un urs cu tractorul în viteză, îl lași lat, iar în pădure apare altul.</p>
+  <p>🚜 Tractorul îl poți conduce: <b>W/S</b> accelerezi și frânezi, <b>A/D</b> virezi (pe telefon, cu joystick-ul). Remorca vine după el pe cârlig. Încap ${CAP} copaci pe tine. Pune-i în <b>remorcă</b> (încap ${TRL_CAP}), apoi du tractorul pe drumul forestier până la <b>gater 🪚</b>, unde se vând. Pe drum, Alex Nedea îți poate opri tractorul să verifice remorca. Pârâul îl treci cu tractorul doar pe <b>pod</b>; pe jos poți să-l treci prin apă. <kbd>R</kbd> / 🔄 te duce înapoi la poiană.</p>
   <ul>${isTouch ? '<li>Joystick: trage cu degetul în stânga ecranului</li><li>Camera: trage în dreapta ecranului</li><li>🪓 ține apăsat ca să tai</li>'
-    : '<li><kbd>W A S D</kbd> / săgeți: mers · <kbd>Shift</kbd>: fugi</li><li><kbd>Space</kbd> sau <kbd>F</kbd> (ține apăsat): taie</li><li>Trage cu mouse-ul (sau <kbd>Q</kbd>/<kbd>E</kbd>): rotești camera · rotița: zoom</li><li><kbd>Esc</kbd>: pauză · <kbd>M</kbd>: sunet</li>'}</ul>
+    : '<li><kbd>W A S D</kbd> / săgeți: mers · <kbd>Shift</kbd>: fugi · <kbd>T</kbd>: urci/cobori din tractor</li><li><kbd>Space</kbd> sau <kbd>F</kbd> (ține apăsat): taie</li><li>Trage cu mouse-ul (sau <kbd>Q</kbd>/<kbd>E</kbd>): rotești camera · rotița: zoom</li><li><kbd>Esc</kbd>: pauză · <kbd>M</kbd>: sunet</li>'}</ul>
   <button class="big" id="go">${resume ? 'Continuă' : 'Începe ziua'}</button>
   <div class="best">Record: ${fmt(S.best)} lei</div>`);
   $('go').onclick = () => { audio(); if (resume) { S.paused = false; hideOverlay(); } else newGame(); };
 }
 function newGame() {
+  releaseInput();
   buildForest(1 + Math.floor(Math.random() * 1e6));
   Object.assign(S, { running: true, paused: false, time: 0, money: 0, load: [], loadIll: 0, trailer: [], trailerIll: 0, strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0, photos: [], freeze: 0, endAt: 0, shake: 0 });
   Object.assign(P, { x: 0, z: 5, yaw: Math.PI, swing: -1 }); camYaw = Math.PI; resetVehicles();
-  S.endWhy = ''; S.inTruck = false; P.g.visible = true; BEARS.forEach(B => B.state = 'off'); BEARS.forEach((B, i) => { B.body.rotation.x = 0; B.head.rotation.x = 0; bearSpawn(B, i); });
+  S.endWhy = ''; S.inTruck = false; P.g.visible = true; BEARS.forEach(B => B.state = 'off'); BEARS.forEach((B, i) => { B.body.rotation.x = 0; B.body.rotation.z = 0; B.body.position.y = 0; B.head.rotation.x = 0; bearSpawn(B, i); });
   ALEXES.forEach((A, i) => { Object.assign(A, { active: false, state: 'off', spawnIn: i ? rand(35, 50) : rand(12, 20) }); A.g.visible = false; });
   setTruckLogs(0); hideOverlay(); hud();
   toast('Bună dimineața! Taie copacii bolnavi 🍂', '', 2.5);
 }
 function endGame(why) {
+  releaseInput();
   S.running = false; ring.visible = false; $('bubble').style.display = 'none'; bubbleT = 0;
   const rec = S.money > S.best; if (rec) { S.best = S.money; try { localStorage.setItem(SAVE + '-best', S.money); } catch (e) {} }
   const photos = S.photos.length ? `<p style="text-align:center"><b>Pozele lui Alex Nedea:</b></p><div class="photos">${S.photos.map(s => `<img src="${s}" alt="poză">`).join('')}</div>` : '';
@@ -1353,6 +1369,7 @@ function endGame(why) {
   $('again').onclick = () => { audio(); newGame(); };
 }
 function togglePause() {
+  releaseInput();
   if (!S.running) return;
   if (S.paused) { S.paused = false; hideOverlay(); } else { S.paused = true; startPanel(true); }
 }
@@ -1384,16 +1401,21 @@ function placeTruck() {
   trailer.rotation.set(0, TRL.yaw, Math.atan2(hA - hC, 5.2));
 }
 function followTrailer() {
-  const [hx, hz] = truckPt(2.2, 0);
+  const [hx, hz] = truckPt(HITCH, 0);
+  // roțile remorcii merg doar înainte/înapoi pe direcția ei: puntea se mută de-a lungul remorcii până ajunge iar la TRL_L de cârlig
+  const ux = Math.cos(TRL.yaw), uz = -Math.sin(TRL.yaw), dx = hx - TRL.x, dz = hz - TRL.z;
+  const du = dx * ux + dz * uz, disc = du * du - (dx * dx + dz * dz - TRL_L * TRL_L);
+  if (disc >= 0) { const sm = du - Math.sign(du || 1) * Math.sqrt(disc); TRL.x += ux * sm; TRL.z += uz * sm; }
   let yaw = Math.atan2(-(hz - TRL.z), hx - TRL.x);
-  const rel = angDiff(TRUCK.yaw, yaw); if (Math.abs(rel) > 1.3) yaw = TRUCK.yaw + Math.sign(rel) * 1.3;
+  const rel = angDiff(TRUCK.yaw, yaw); if (Math.abs(rel) > 1.4) yaw = TRUCK.yaw + Math.sign(rel) * 1.4;
   TRL.yaw = yaw; TRL.x = hx - Math.cos(yaw) * TRL_L; TRL.z = hz + Math.sin(yaw) * TRL_L;
 }
 function resetVehicles() {
   Object.assign(TRUCK, { x: 0, z: -9, yaw: 0, v: 0 }); Object.assign(TRL, { yaw: 0 });
-  [TRL.x, TRL.z] = truckPt(2.2 - TRL_L, 0); placeTruck();
+  [TRL.x, TRL.z] = truckPt(HITCH - TRL_L, 0); placeTruck();
 }
 function respawn() {
+  releaseInput();
   if (!S.running || S.endAt > 0) return;
   S.inTruck = false; resetVehicles();
   Object.assign(P, { x: 0, z: 5, yaw: Math.PI, swing: -1 }); P.g.visible = true; camYaw = Math.PI;
@@ -1407,8 +1429,11 @@ function driveTractor(dt, f, s) {
   TRUCK.v += clamp(tgt - TRUCK.v, -a * dt, a * dt);
   if (Math.abs(TRUCK.v) < 0.02) return;
   const oy = TRUCK.yaw, ox = TRUCK.x, oz = TRUCK.z, otr = { ...TRL };
-  TRUCK.yaw -= s * clamp(TRUCK.v, -3.5, 5) * 0.16 * dt;
-  TRUCK.x += Math.cos(TRUCK.yaw) * TRUCK.v * dt; TRUCK.z -= Math.sin(TRUCK.yaw) * TRUCK.v * dt;
+  // virează în jurul punții din spate (ca un tractor adevărat), nu în jurul unui punct din spatele lui
+  const [rx, rz] = truckPt(RA, 0);
+  TRUCK.yaw -= s * clamp(TRUCK.v, -3.5, 5) * 0.2 * dt;
+  const nrx = rx + Math.cos(TRUCK.yaw) * TRUCK.v * dt, nrz = rz - Math.sin(TRUCK.yaw) * TRUCK.v * dt;
+  TRUCK.x = nrx - Math.cos(TRUCK.yaw) * RA; TRUCK.z = nrz + Math.sin(TRUCK.yaw) * RA;
   followTrailer();
   let hit = false;
   for (const [cx, cr, tr] of [...TRUCK_COLL, ...TRL_COLL.map(([a, b]) => [a, b, 1])]) {
@@ -1425,6 +1450,16 @@ function driveTractor(dt, f, s) {
     if (Math.abs(TRUCK.v) > 2.5) { sfx.thud(); S.shake = Math.max(S.shake, 0.25); toast('💥 Bum! Ai lovit ceva', '', 1); }
     TRUCK.v = -TRUCK.v * 0.2;
   }
+  // urșii loviți de tractor sau de remorcă
+  for (const B of BEARS) {
+    if (B.state === 'off' || B.state === 'down') continue;
+    for (const [cx, cr, tr] of [...TRUCK_COLL, ...TRL_COLL.map(([a, b]) => [a, b, 1])]) {
+      const [x, z] = tr ? trlPt(cx, 0) : truckPt(cx, 0), dx = B.x - x, dz = B.z - z, d = Math.hypot(dx, dz), m = cr + 0.9;
+      if (d >= m) continue;
+      if (Math.abs(TRUCK.v) > 2 && !tr) { bearKnock(B); break; }
+      B.x = x + dx / (d || 1) * m; B.z = z + dz / (d || 1) * m;
+    }
+  }
   placeTruck();
   if (TRUCK.v > 0.8) { const fw = Math.atan2(Math.cos(TRUCK.yaw), -Math.sin(TRUCK.yaw)); camYaw += angDiff(camYaw, fw) * Math.min(1, dt * 1.8); }
 }
@@ -1432,15 +1467,32 @@ function driveTractor(dt, f, s) {
 // ---------------- input ----------------
 addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-  audio(); keys[e.code] = true;
+  audio();
+  if (e.metaKey || e.ctrlKey || e.altKey) { releaseInput(); return; }
+  keys[e.code] = true;
   if (e.code === 'Escape') togglePause();
   else if (e.code === 'KeyM') toggleMute();
   else if (e.code === 'KeyT' && S.running && !S.paused) toggleTruck();
   else if (e.code === 'KeyR' && S.running && !S.paused) respawn();
   else if (e.code === 'Enter' && $('overlay').classList.contains('show')) { const b = $('go') || $('again'); if (b) b.click(); }
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; axeBtn = false; });
+// eliberează toate tastele și joystick-ul (altfel, dacă se pierde un keyup/pointerup, pădurarul fuge singur)
+function releaseInput() {
+  for (const k in keys) keys[k] = false;
+  axeBtn = false; $('bAxe').classList.remove('on');
+  if (joy) { joy = null; $('joy').style.display = 'none'; }
+  drag = null;
+}
+addEventListener('keyup', e => {
+  keys[e.code] = false;
+  // pe Mac, cu Cmd apăsat browserul nu trimite keyup pentru celelalte taste; Ctrl/Alt + tastă pot deschide meniuri care „înghit” keyup-ul
+  if (['MetaLeft', 'MetaRight', 'AltLeft', 'AltRight', 'ControlLeft', 'ControlRight'].includes(e.code)) releaseInput();
+});
+addEventListener('blur', releaseInput);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseInput(); });
+addEventListener('contextmenu', releaseInput);
+addEventListener('touchend', e => { if (!e.touches.length) releaseInput(); }, { passive: true });
+addEventListener('touchcancel', e => { if (!e.touches.length) releaseInput(); }, { passive: true });
 const cv = renderer.domElement;
 cv.addEventListener('pointerdown', e => {
   audio();
@@ -1463,7 +1515,7 @@ const endPtr = e => {
   if (joy && e.pointerId === joy.id) { joy = null; $('joy').style.display = 'none'; }
   if (drag && e.pointerId === drag.id) drag = null;
 };
-cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr); cv.addEventListener('lostpointercapture', endPtr);
 cv.addEventListener('wheel', e => { e.preventDefault(); camDistBase = clamp(camDistBase * (1 + Math.sign(e.deltaY) * 0.1), 4, 14); }, { passive: false });
 {
   const b = $('bAxe');
@@ -1493,7 +1545,7 @@ $('loading').remove();
 frame();
 
 // pentru teste
-window.__pd = { waterAt, truck, brLocal, deckH, camera, BRIDGE, ROADS, CREEK, heightAt, walkH, TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
+window.__pd = { releaseInput, get joy() { return joy; }, keys, waterAt, truck, brLocal, deckH, camera, BRIDGE, ROADS, CREEK, heightAt, walkH, TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
   setCam(y) { camYaw = y; }, place(o, x, z, yaw) { o.x = x; o.z = z; if (yaw !== undefined) o.yaw = o.tYaw = yaw; } };
 </script>
 </body>
