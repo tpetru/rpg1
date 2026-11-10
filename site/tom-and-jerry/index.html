@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pisica și șoarecii 3D</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #bcd9ee; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 22px; background: #3b5a2c; z-index: 50; }
+  .chip { background: rgba(30, 24, 16, .58); border-radius: 12px; padding: 7px 12px; backdrop-filter: blur(4px); }
+  #hud { position: fixed; left: 12px; top: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; align-items: flex-start; }
+  #score { font-size: 22px; font-weight: 800; }
+  #clock { font-size: 15px; font-weight: 700; }
+  #clock.low { background: rgba(190, 40, 30, .85); }
+  #sniff { font-size: 13px; font-weight: 600; display: none; }
+  #sniff.show { display: block; }
+  #btns { position: fixed; right: 12px; top: 12px; display: flex; gap: 6px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; }
+  .ib { width: 40px; height: 40px; font-size: 19px; background: rgba(30, 24, 16, .58); color: #fff; }
+  .ib:hover { background: rgba(30, 24, 16, .85); }
+  #mm { position: fixed; left: 12px; bottom: 12px; width: 150px; height: 150px; border-radius: 50%; border: 2px solid rgba(255,255,255,.75); box-shadow: 0 3px 12px rgba(0,0,0,.35); pointer-events: none; }
+  #toast { position: fixed; left: 50%; top: 32%; transform: translateX(-50%); font-size: 20px; font-weight: 800; text-align: center; pointer-events: none; opacity: 0; transition: opacity .3s; max-width: calc(100vw - 32px); }
+  #toast.show { opacity: 1; }
+  #toast.good { background: rgba(40, 130, 50, .88); }
+  #toast.bad { background: rgba(190, 40, 30, .88); }
+  #bubble { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); background: #fff; color: #222; font-weight: 700; font-size: 15px; padding: 8px 12px; border-radius: 14px; max-width: 240px; text-align: center; pointer-events: none; display: none; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  #bubble::after { content: ""; position: absolute; left: 50%; bottom: -9px; margin-left: -9px; border: 9px solid transparent; border-bottom: 0; border-top-color: #fff; }
+  #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s; background: radial-gradient(ellipse at center, transparent 40%, rgba(200, 20, 10, .7) 100%); }
+  #joy { position: fixed; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); display: none; pointer-events: none; }
+  #joy i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255,255,255,.45); }
+  .tb { position: fixed; bottom: 22px; width: 78px; height: 78px; border-radius: 50%; font-size: 34px; color: #fff; display: none; }
+  body.touch .tb { display: block; }
+  #bCatch { right: 16px; background: rgba(200, 110, 30, .8); box-shadow: 0 4px 0 rgba(110, 55, 10, .9); }
+  #bJump { right: 108px; bottom: 34px; width: 64px; height: 64px; font-size: 26px; background: rgba(50, 110, 170, .8); box-shadow: 0 4px 0 rgba(20, 50, 90, .9); }
+  .tb:active { transform: translateY(3px); }
+  #hint { position: fixed; right: 12px; bottom: 14px; font-size: 13px; opacity: .9; pointer-events: none; text-align: right; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  body.touch #hint { display: none; }
+  body.touch #mm { left: auto; right: 12px; bottom: auto; top: 60px; width: 110px; height: 110px; }
+  #overlay { position: fixed; inset: 0; display: none; place-items: center; background: rgba(30, 25, 10, .45); z-index: 20; padding: 16px; }
+  #overlay.show { display: grid; }
+  .panel { background: #fbf6ea; color: #33291c; border-radius: 22px; padding: 22px 24px; width: min(580px, 100%); max-height: calc(100vh - 32px - var(--gb, 0px)); overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .panel h1 { margin: 0 0 6px; font-size: 32px; color: #b4561c; text-align: center; }
+  .panel h2 { margin: 0 0 8px; font-size: 26px; color: #2f6b2c; text-align: center; }
+  .panel p { margin: 8px 0; line-height: 1.45; }
+  .panel ul { margin: 6px 0 10px; padding-left: 20px; line-height: 1.55; }
+  .big { display: block; margin: 14px auto 4px; background: #d0702a; color: #fff; font-size: 20px; font-weight: 800; padding: 13px 34px; box-shadow: 0 4px 0 #8a4512; }
+  .big:hover { background: #e07c30; }
+  .best { text-align: center; font-size: 13px; opacity: .75; }
+  .stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; margin: 10px auto; max-width: 320px; font-size: 16px; }
+  .stats b { text-align: right; }
+  kbd { background: #e7dcc6; border-radius: 5px; padding: 1px 6px; font-size: 13px; }
+  @media (max-width: 520px) { .panel { padding: 16px; } .panel h1 { font-size: 26px; } }
+  /* bara cu jocuri de sus (/games/topbar.js) */
+  #hud, #btns { top: calc(12px + var(--gb, 0px)); }
+  body.touch #mm { top: calc(60px + var(--gb, 0px)); }
+  #overlay { top: var(--gb, 0px); }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+<script src="/games/topbar.js"></script>
+<div id="loading">Se încarcă satul… 🐾</div>
+<div id="hud">
+  <div class="chip" id="score">🐭 0/15</div>
+  <div class="chip" id="clock">⏱ 4:00</div>
+  <div class="chip" id="sniff">👃 Miroși un șoarece… uită-te pe hartă</div>
+</div>
+<div id="btns">
+  <button class="ib" id="bSound" title="Sunet (M)">🔊</button>
+  <button class="ib" id="bRespawn" title="Înapoi în piața satului (R)">🔄</button>
+  <button class="ib" id="bPause" title="Pauză (Esc)">⏸</button>
+</div>
+<canvas id="mm" width="300" height="300"></canvas>
+<div id="toast" class="chip"></div>
+<div id="bubble"></div>
+<div id="hurt"></div>
+<div id="joy"><i></i></div>
+<button class="tb" id="bJump" title="Sari">⤴</button>
+<button class="tb" id="bCatch" title="Prinde">🐾</button>
+<div id="hint"><kbd>⬆</kbd><kbd>⬇</kbd> mergi · <kbd>⬅</kbd><kbd>➡</kbd> te întorci · <kbd>Shift</kbd> fugi · <kbd>Space</kbd> sari · <kbd>Enter</kbd> prinzi<br>trage cu mouse-ul ca să te uiți în jur</div>
+<div id="overlay" class="show"><div class="panel" id="panel"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+const clamp = THREE.MathUtils.clamp;
+const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+const isTouch = matchMedia('(pointer: coarse)').matches;
+if (isTouch) document.body.classList.add('touch');
+function rng(seed) { return () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = rng(20261110);
+const rr = (a, b) => a + R() * (b - a);
+const pick = a => a[Math.floor(R() * a.length)];
+
+// ---------------- reguli ----------------
+const N_MICE = 15, TIME = 240;
+const EYE = 0.3, CAT_R = 0.18, CAT_H = 0.36, STEP = 0.32, G = 14, JUMP_V = 6.4;
+const WALK = 4.2, RUN = 6.8, TURN = 2.5;
+const BX = 42, BZ = 94;
+const SAVE = 'pisica3d';
+const START = { x: 0, z: 6, yaw: 0 };
+
+// ---------------- scenă ----------------
+const renderer = new THREE.WebGLRenderer({ antialias: !isTouch });
+renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const SKY = 0xbcd9ee;
+scene.background = new THREE.Color(SKY);
+scene.fog = new THREE.Fog(SKY, 35, 190);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.02, 600);
+camera.rotation.order = 'YXZ';
+scene.add(camera);
+scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x6c7a3e, 1.5));
+const sun = new THREE.DirectionalLight(0xfff0d6, 2.3);
+sun.castShadow = true;
+sun.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 140 });
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+
+function canvasTex(w, h, draw, rep) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep[0], rep[1]);
+  t.anisotropy = 8;
+  return t;
+}
+const MC = {};
+const mat = (c, o) => { const { key, ...rest } = o || {}; const k = c + '|' + (key || '') + '|' + Object.keys(rest).join(); return MC[k] || (MC[k] = new THREE.MeshLambertMaterial({ color: c, ...rest })); };
+const BOXG = new THREE.BoxGeometry(1, 1, 1);
+const SPH = new THREE.SphereGeometry(1, 14, 10);
+const GC = {};
+const cylG = (rt, rb, h, seg = 12) => { const k = [rt, rb, h, seg].join(); return GC[k] || (GC[k] = new THREE.CylinderGeometry(rt, rb, h, seg)); };
+function add(mesh, p, x, y, z, cast = true) { mesh.position.set(x, y, z); mesh.castShadow = cast; mesh.receiveShadow = true; (p || scene).add(mesh); return mesh; }
+const box = (w, h, d, m, x, y, z, p, cast) => { const me = add(new THREE.Mesh(BOXG, m), p, x, y, z, cast); me.scale.set(w, h, d); return me; };
+const cyl = (rt, rb, h, seg, m, x, y, z, p, cast) => add(new THREE.Mesh(cylG(rt, rb, h, seg), m), p, x, y, z, cast);
+const ball = (sx, sy, sz, m, x, y, z, p, cast) => { const me = add(new THREE.Mesh(SPH, m), p, x, y, z, cast); me.scale.set(sx, sy, sz); return me; };
+function prism(w, h, l, m, x, y, z, p) { // acoperiș în două ape, coama de-a lungul lui z
+  const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(0, h); s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth: l, bevelEnabled: false }); g.translate(0, 0, -l / 2);
+  return add(new THREE.Mesh(g, m), p, x, y, z);
+}
+
+// ---------------- coliziuni ----------------
+// cutii aliniate pe axe: b = jos, t = sus. fence: gardurile, pe sub care se strecoară șoarecii.
+const COL = [];
+function addCol(x0, x1, z0, z1, t, b = 0, fence = false) { const c = { x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), t, b, fence }; COL.push(c); return c; }
+const hits = (c, x, z, r) => x + r > c.x0 && x - r < c.x1 && z + r > c.z0 && z - r < c.z1;
+function blockedAt(x, z, y, r, h, mouse) {
+  for (const c of COL) if ((!mouse || !c.fence) && hits(c, x, z, r) && c.t > y + STEP && c.b < y + h) return true;
+  return false;
+}
+function groundAt(x, z, y, r) { let g = 0; for (const c of COL) if (c.t <= y + STEP + 1e-3 && c.t > g && hits(c, x, z, r)) g = c.t; return g; }
+function ceilAt(x, z, y0, y1, r) { let m = Infinity; for (const c of COL) if (c.b >= y0 - 0.02 && c.b <= y1 && c.b < m && hits(c, x, z, r)) m = c.b; return m; }
+
+// ---------------- texturi ----------------
+const grassTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#5f9a3c'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2600; i++) { g.fillStyle = `hsla(${85 + Math.random() * 30},${40 + Math.random() * 25}%,${25 + Math.random() * 25}%,.55)`; g.fillRect(Math.random() * w, Math.random() * h, 1.5, 3 + Math.random() * 4); }
+  for (let i = 0; i < 40; i++) { g.fillStyle = Math.random() < .5 ? '#f4f0d8' : '#f2d23a'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+}, [120, 120]);
+const roadTex = canvasTex(128, 256, (g, w, h) => {
+  g.fillStyle = '#a28a63'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1500; i++) { g.fillStyle = `rgba(${90 + Math.random() * 60},${70 + Math.random() * 50},${40 + Math.random() * 30},.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  g.fillStyle = 'rgba(80,60,35,.35)'; g.fillRect(28, 0, 10, h); g.fillRect(90, 0, 10, h);
+  g.fillStyle = 'rgba(90,140,60,.35)'; g.fillRect(56, 0, 16, h);
+}, [1, 20]);
+const tileTex = canvasTex(64, 64, (g, w, h) => {
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,.22)';
+  for (let y = 0; y < h; y += 8) g.fillRect(0, y, w, 2);
+  for (let y = 0; y < h; y += 8) for (let x = (y / 8 % 2) * 6; x < w; x += 12) g.fillRect(x, y, 1.5, 8);
+}, [1, 1]);
+
+// ---------------- teren ----------------
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshLambertMaterial({ map: grassTex }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const roadMat = new THREE.MeshLambertMaterial({ map: roadTex });
+const road1 = new THREE.Mesh(new THREE.PlaneGeometry(7, 260), roadMat); road1.rotation.x = -Math.PI / 2; road1.position.y = 0.01; road1.receiveShadow = true; scene.add(road1);
+const rt2 = roadTex.clone(); rt2.repeat.set(1, 8); rt2.needsUpdate = true;
+const road2 = new THREE.Mesh(new THREE.PlaneGeometry(7, 80), new THREE.MeshLambertMaterial({ map: rt2 })); road2.rotation.x = -Math.PI / 2; road2.rotation.z = Math.PI / 2; road2.position.set(7, 0.012, 0); road2.receiveShadow = true; scene.add(road2);
+// dealuri în depărtare
+for (let i = 0; i < 26; i++) {
+  const a = i / 26 * TAU, d = rr(170, 210);
+  ball(rr(40, 70), rr(14, 30), rr(40, 70), mat(pick([0x6f9a48, 0x7fa653, 0x5f8a42, 0x8aa85a])), Math.sin(a) * d, -4, Math.cos(a) * d, scene, false);
+}
+
+// ---------------- obiecte din sat ----------------
+const PICK = []; // ulucile gardurilor (instanțe)
+const WOOD = [0x8b6a45, 0x7d5f3e, 0x97754d, 0x6f5236];
+function fence(x0, z0, x1, z1, gaps = [], color = 0x8b6a45) {
+  const alongZ = x0 === x1, a0 = alongZ ? z0 : x0, a1 = alongZ ? z1 : x1, f = alongZ ? x0 : z0;
+  const P = (a, y) => alongZ ? [f, y, a] : [a, y, f];
+  const inGap = a => gaps.some(([g0, g1]) => a > g0 && a < g1);
+  for (let a = a0 + 0.1; a < a1; a += 0.17) if (!inGap(a)) PICK.push({ p: P(a, 0.5 + rr(-0.03, 0.03)), s: alongZ ? [0.03, 1 + rr(-0.06, 0.04), 0.11] : [0.11, 1 + rr(-0.06, 0.04), 0.03], c: color });
+  // segmentele dintre porți: șipci, stâlpi, coliziune
+  const cuts = [a0, ...gaps.flat(), a1];
+  for (let i = 0; i < cuts.length; i += 2) {
+    const s0 = cuts[i], s1 = cuts[i + 1], len = s1 - s0, mid = (s0 + s1) / 2;
+    for (const y of [0.3, 0.8]) { const [x, , z] = P(mid, 0); box(alongZ ? 0.05 : len, 0.08, alongZ ? len : 0.05, mat(0x6a4e30), x + (alongZ ? 0.04 : 0), y, z + (alongZ ? 0 : 0.04)); }
+    for (let a = s0; a <= s1 + 0.01; a += Math.max(2.2, len / Math.ceil(len / 2.4))) { const [x, , z] = P(Math.min(a, s1), 0); box(0.12, 1.15, 0.12, mat(0x5e442a), x, 0.575, z); }
+    const [cx0, , cz0] = P(s0, 0), [cx1, , cz1] = P(s1, 0);
+    addCol(cx0 - 0.07, cx1 + 0.07, cz0 - 0.07, cz1 + 0.07, 1.05, 0, true);
+  }
+}
+
+function tree(x, z, big = 1, colorSet) {
+  const h = rr(1.6, 2.4) * big;
+  cyl(0.12 * big, 0.18 * big, h, 7, mat(0x5b4129), x, h / 2, z);
+  const leaf = colorSet || [0x4f8a32, 0x5c9a3a, 0x467d2d];
+  for (let i = 0; i < 4; i++) ball(rr(1, 1.5) * big, rr(0.9, 1.2) * big, rr(1, 1.5) * big, mat(pick(leaf)), x + rr(-0.6, 0.6) * big, h + rr(0.3, 1.2) * big, z + rr(-0.6, 0.6) * big);
+  if (R() < 0.5 && !colorSet) for (let i = 0; i < 8; i++) ball(0.07, 0.07, 0.07, mat(pick([0xd8352a, 0xe8b32a])), x + rr(-1.3, 1.3) * big, h + rr(0, 1.4) * big, z + rr(-1.3, 1.3) * big, scene, false);
+  addCol(x - 0.18 * big, x + 0.18 * big, z - 0.18 * big, z + 0.18 * big, 20);
+}
+function poplar(x, z) {
+  const h = rr(1.5, 2.5);
+  cyl(0.15, 0.22, h, 7, mat(0x6a5a46), x, h / 2, z);
+  ball(1.3, 6.5, 1.3, mat(pick([0x3f7a2e, 0x4a8636])), x, h + 5, z);
+  addCol(x - 0.22, x + 0.22, z - 0.22, z + 0.22, 20);
+}
+function haystack(x, z) {
+  const m = mat(0xcfaa52);
+  cyl(1.35, 1.45, 1.3, 14, m, x, 0.65, z);
+  cyl(0.05, 1.4, 2.1, 14, m, x, 2.35, z);
+  cyl(0.05, 0.05, 1.2, 5, mat(0x6a4e30), x, 3.6, z);
+  addCol(x - 1.25, x + 1.25, z - 1.25, z + 1.25, 3.4);
+}
+function well(x, z) {
+  cyl(0.65, 0.7, 0.8, 14, mat(0x9a948a), x, 0.4, z);
+  cyl(0.5, 0.5, 0.02, 14, mat(0x22303a), x, 0.79, z, scene, false);
+  for (const s of [-1, 1]) box(0.12, 1.9, 0.12, mat(0x6a4e30), x + s * 0.62, 0.95, z);
+  prism(1.7, 0.6, 1.3, mat(0x7a5532), x, 1.9, z).rotation.y = Math.PI / 2;
+  cyl(0.06, 0.06, 1.2, 8, mat(0x5b4129), x, 1.6, z).rotation.z = Math.PI / 2;
+  cyl(0.16, 0.13, 0.25, 10, mat(0x8a8f96), x + 0.2, 0.98, z);
+  addCol(x - 0.68, x + 0.68, z - 0.68, z + 0.68, 0.8);
+}
+function cumpana(x, z) { // fântână cu cumpănă
+  cyl(0.75, 0.8, 0.85, 16, mat(0xb8b2a6), x, 0.425, z);
+  cyl(0.6, 0.6, 0.02, 16, mat(0x22303a), x, 0.84, z, scene, false);
+  box(0.25, 3.6, 0.25, mat(0x5b4129), x + 2.2, 1.8, z);
+  const beam = box(0.13, 0.13, 7.5, mat(0x6a4e30), x + 2.2, 3.5, z - 0.3); beam.rotation.x = -0.32;
+  box(0.03, 2.2, 0.03, mat(0x3a2a1a), x + 2.2, 2.4, z - 3.8);
+  cyl(0.18, 0.14, 0.3, 10, mat(0x7a5532), x + 2.2, 1.2, z - 3.8);
+  box(0.4, 0.4, 0.5, mat(0x8a8a84), x + 2.2, 4.3, z + 3.0).rotation.x = -0.32;
+  addCol(x - 0.78, x + 0.78, z - 0.78, z + 0.78, 0.85);
+  addCol(x + 2.05, x + 2.35, z - 0.15, z + 0.15, 20);
+}
+function woodpile(x, z, len) { // stivă de lemne, aliniată pe z
+  box(1.0, 1.0, len, mat(0x8a6a44), x, 0.5, z);
+  for (let i = 0; i < len * 3; i++) cyl(0.09, 0.09, 1.02, 6, mat(pick([0xc9a172, 0xb88f60, 0xd8b182])), x, rr(0.1, 0.92), z + rr(-len / 2 + 0.1, len / 2 - 0.1), scene, false).rotation.z = Math.PI / 2;
+  prism(1.6, 0.4, len + 0.4, mat(0x7a5532), x, 1.25, z);
+  for (const s of [-1, 1]) for (const e of [-1, 1]) box(0.1, 1.3, 0.1, mat(0x5b4129), x + s * 0.65, 0.65, z + e * (len / 2 + 0.1));
+  addCol(x - 0.5, x + 0.5, z - len / 2, z + len / 2, 1.0);
+}
+function bench(x, z, alongX = true) {
+  const w = alongX ? 2.2 : 0.45, d = alongX ? 0.45 : 2.2;
+  box(w, 0.08, d, mat(0x8a6038), x, 0.48, z);
+  for (const s of [-1, 1]) box(alongX ? 0.08 : 0.4, 0.48, alongX ? 0.4 : 0.08, mat(0x5b4129), x + (alongX ? s * 0.95 : 0), 0.24, z + (alongX ? 0 : s * 0.95));
+  box(alongX ? 2.2 : 0.06, 0.4, alongX ? 0.06 : 2.2, mat(0x8a6038), x + (alongX ? 0 : 0.22), 0.78, z + (alongX ? 0.22 : 0));
+  addCol(x - w / 2, x + w / 2, z - d / 2, z + d / 2, 0.52, 0.42);
+}
+
+// căruță (oiștea spre -z local); ang: 0, ±PI/2, PI
+function rotPt(lx, lz, a) { const c = Math.cos(a), s = Math.sin(a); return [lx * c + lz * s, -lx * s + lz * c]; }
+function colRect(x, z, a, lx0, lx1, lz0, lz1, t, b) {
+  const p = [rotPt(lx0, lz0, a), rotPt(lx1, lz1, a)];
+  addCol(x + p[0][0], x + p[1][0], z + p[0][1], z + p[1][1], t, b);
+}
+const ANIM = []; // cozi de cai etc.
+function cart(x, z, a, horse, hay) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = a; scene.add(g);
+  const wood = mat(0x8a6038), dark = mat(0x4f3620);
+  box(1.2, 0.08, 2.6, wood, 0, 0.8, 0, g);
+  for (const sx of [-0.62, 0.62]) {
+    box(0.06, 0.06, 2.9, dark, sx, 1.28, 0, g); box(0.06, 0.06, 2.6, dark, sx, 0.86, 0, g);
+    for (let k = -1.2; k <= 1.21; k += 0.3) box(0.04, 0.42, 0.04, wood, sx, 1.07, k, g);
+  }
+  for (const wx of [-0.74, 0.74]) for (const [wz, r] of [[-0.9, 0.4], [0.95, 0.5]]) {
+    const w = cyl(r, r, 0.07, 16, dark, wx, r, wz, g); w.rotation.z = Math.PI / 2;
+    const hub = cyl(0.08, 0.08, 0.16, 8, mat(0x2b2b2b), wx, r, wz, g); hub.rotation.z = Math.PI / 2;
+    for (let k = 0; k < 4; k++) { const sp = box(0.04, r * 1.9, 0.04, wood, wx, r, wz, g); sp.rotation.x = k * Math.PI / 4; }
+  }
+  box(0.06, 0.06, 1.8, dark, 0, 0.62, 1.1, g);
+  for (const sx of [-0.35, 0.35]) { const s = box(0.07, 0.07, 2.4, dark, sx, 0.75, -2.45, g); s.rotation.x = -0.08; }
+  if (hay) { ball(0.6, 0.35, 1.3, mat(0xd2b25a), 0, 1.15, 0, g); }
+  colRect(x, z, a, -0.66, 0.66, -1.35, 1.35, hay ? 1.3 : 0.86, 0.55);
+  if (horse) {
+    const h = horseMesh(); h.position.set(0, 0, -3.3); g.add(h);
+    colRect(x, z, a, -0.3, 0.3, -4.35, -2.55, 1.75, 0.85);
+  }
+}
+function horseMesh() {
+  const h = new THREE.Group(), c = mat(pick([0x6b4226, 0x4e3220, 0x8a5a36, 0xd9d2c4])), blk = mat(0x261a12);
+  box(0.55, 0.65, 1.55, c, 0, 1.3, 0, h);
+  for (const lx of [-0.18, 0.18]) for (const lz of [-0.6, 0.6]) { box(0.14, 0.98, 0.14, c, lx, 0.49, lz, h); box(0.16, 0.1, 0.18, blk, lx, 0.05, lz, h); }
+  const nk = box(0.3, 0.8, 0.38, c, 0, 1.78, -0.82, h); nk.rotation.x = 0.55;
+  box(0.28, 0.3, 0.62, c, 0, 2.12, -1.12, h);
+  const mn = box(0.07, 0.75, 0.42, blk, 0, 1.86, -0.72, h); mn.rotation.x = 0.55;
+  for (const s of [-1, 1]) box(0.06, 0.15, 0.06, c, s * 0.09, 2.33, -0.92, h);
+  for (const s of [-1, 1]) box(0.02, 0.05, 0.05, blk, s * 0.145, 2.18, -1.2, h, false);
+  const tp = new THREE.Group(); tp.position.set(0, 1.55, 0.78); h.add(tp);
+  const tail = box(0.1, 0.7, 0.12, blk, 0, -0.33, 0.05, tp); tail.rotation.x = -0.2;
+  const harness = box(0.6, 0.12, 0.2, mat(0x7a2a1a), 0, 1.5, -0.5, h);
+  ANIM.push(t => { tp.rotation.z = Math.sin(t * 1.7 + h.id) * 0.35; });
+  return h;
+}
+function kennel(x, z, face) { // face: semnul direcției spre drum (pe x)
+  box(1.0, 0.75, 1.1, mat(0x8a6038), x, 0.375, z);
+  prism(1.3, 0.45, 1.25, mat(0x9c3b26), x, 0.75, z).rotation.y = Math.PI / 2;
+  box(0.02, 0.45, 0.45, mat(0x1a120c), x - face * 0.51, 0.27, z, scene, false);
+  addCol(x - 0.5, x + 0.5, z - 0.55, z + 0.55, 0.95);
+}
+
+// ---------------- casele și curțile ----------------
+const LOTS = [], MAPRECT = [], MAPCIRC = [];
+const DOG_LOTS = new Set([1, 4, 8]);
+let lotIdx = 0;
+function lot(s, zc) {
+  const i = lotIdx++;
+  const g = new THREE.Group(); g.position.set(s * 5, 0, zc); g.scale.x = s; scene.add(g);
+  const W = (u, v) => [s * (5 + u), zc + v];
+  const lc = (u0, u1, v0, v1, t, b = 0) => addCol(s * (5 + u0), s * (5 + u1), zc + v0, zc + v1, t, b);
+  const wall = pick([0xf4f1e8, 0xeef3f6, 0xf3e7c4, 0xdfeaf4, 0xf6efe2]);
+  const roof = pick([0xb2452c, 0x9c3b26, 0x7a4a32, 0x8a8f96, 0xa8482e]);
+  const trim = pick([0x2f6fb5, 0x3a8fb0, 0x2f5f9e, 0x6b4a2a, 0x2e7d5b]);
+  const H = 2.8, u0 = 13, u1 = 19, v0 = -8, v1 = 2, cu = 16, cv = -3, Wd = 6, L = 10;
+  // casa
+  box(Wd + 0.08, 0.5, L + 0.08, mat(trim), cu, 0.25, cv, g);
+  box(Wd, H, L, mat(wall), cu, H / 2, cv, g);
+  box(Wd + 0.04, 0.14, L + 0.04, mat(trim), cu, H - 0.35, cv, g);
+  prism(8.6, 2.5, L + 0.9, mat(0xffffff, { map: tileTex, color: roof, key: roof }), 15.4, H, cv, g);
+  box(0.5, 1.5, 0.5, mat(0xd8d2c4), 17.2, H + 1.7, cv - 2.5, g);
+  // prispa cu stâlpi
+  box(1.7, 0.3, L, mat(0xa8865a), 12.15, 0.15, cv, g);
+  for (let k = 0; k < 5; k++) { const v = v0 + 0.25 + k * (L - 0.5) / 4; box(0.16, H - 0.3, 0.16, mat(0x8a5a32), 11.5, 0.3 + (H - 0.3) / 2, v, g); lc(11.42, 11.58, v - 0.08, v + 0.08, 20); }
+  box(0.06, 0.07, L, mat(0x8a5a32), 11.5, 0.95, cv, g);
+  for (let v = v0 + 0.5; v < v1 - 0.3; v += 0.35) if (Math.abs(v - (-3)) > 0.8) box(0.04, 0.6, 0.04, mat(0x8a5a32), 11.5, 0.62, v, g);
+  // ușa și ferestre
+  box(0.06, 2.0, 1.0, mat(0x6b3f1f), 12.98, 1.3, -3, g);
+  const win = (u, v, alongZ) => {
+    box(alongZ ? 0.06 : 1.05, 1.2, alongZ ? 1.05 : 0.06, mat(trim), u, 1.65, v, g);
+    box(alongZ ? 0.07 : 0.8, 0.95, alongZ ? 0.8 : 0.07, mat(0x2a3d55), u, 1.65, v, g, false);
+    box(alongZ ? 0.08 : 0.06, 0.95, alongZ ? 0.06 : 0.06, mat(0xffffff), u, 1.65, v, g, false);
+    box(alongZ ? 0.08 : 0.8, 0.06, alongZ ? 0.8 : 0.08, mat(0xffffff), u, 1.65, v, g, false);
+    box(alongZ ? 0.04 : 1.1, 0.18, alongZ ? 1.1 : 0.04, mat(0xd04030), u + (alongZ ? -0.03 : 0), 2.36, v + (alongZ ? 0 : 0), g, false);
+  };
+  win(12.97, -6.3, true); win(12.97, 0.3, true);
+  win(cu, v0 - 0.01, false); win(cu, v1 + 0.01, false); win(19.02, -3, true);
+  lc(u0, u1, v0, v1, 6); lc(11.3, 13, v0, v1, 0.3);
+  MAPRECT.push({ x0: s * (5 + 11.3), x1: s * (5 + 19.6), z0: zc + v0 - 0.4, z1: zc + v1 + 0.4, c: '#b04a32' });
+  // gard, poartă
+  const gz0 = zc + 4.6, gz1 = zc + 7.4, fc = pick(WOOD);
+  fence(s * 5, zc - 11, s * 5, zc + 11, [[gz0, gz1]], fc);
+  fence(Math.min(s * 5, s * 27), zc - 11, Math.max(s * 5, s * 27), zc - 11, [], fc);
+  fence(Math.min(s * 5, s * 27), zc + 11, Math.max(s * 5, s * 27), zc + 11, [], fc);
+  fence(s * 27, zc - 11, s * 27, zc + 11, [], fc);
+  for (const v of [4.45, 7.55]) { box(0.22, 2.7, 0.22, mat(0x6a4a2a), 0, 1.35, v, g); lc(-0.11, 0.11, v - 0.11, v + 0.11, 20); }
+  box(0.6, 0.12, 3.6, mat(0x6a4a2a), 0, 2.7, 6, g);
+  prism(1.1, 0.5, 3.9, mat(0xffffff, { map: tileTex, color: roof, key: roof }), 0, 2.76, 6, g);
+  // curtea
+  haystack(...W(19, 7.5)); MAPCIRC.push({ x: W(19, 7.5)[0], z: W(19, 7.5)[1], r: 1.4, c: '#c9a64a' });
+  if (i % 3 !== 2) { well(...W(6, -7)); MAPCIRC.push({ x: W(6, -7)[0], z: W(6, -7)[1], r: 0.7, c: '#8a8f96' }); }
+  else tree(...W(6, -7), 1.2);
+  tree(...W(3.5, 9.3), rr(0.9, 1.3));
+  if (i % 2 === 0) tree(...W(21, 2), rr(0.8, 1.1));
+  woodpile(...W(21, -4.5), 5);
+  if (i % 3 === 0) cart(...W(7.5, -1.5), s > 0 ? 0 : 0, false, R() < 0.6);
+  const dog = DOG_LOTS.has(i) ? W(9.5, 7.5) : null;
+  if (dog) kennel(dog[0], dog[1], s);
+  LOTS.push({ s, zc, W, dog });
+}
+for (const s of [-1, 1]) for (const zc of [-72, -46, -20, 20, 46, 72]) lot(s, zc);
+
+// piața satului, biserica, drumuri
+cumpana(-9, -6.5); MAPCIRC.push({ x: -9, z: -6.5, r: 0.8, c: '#8a8f96' });
+bench(8, -6.5, true);
+tree(9, 6.5, 1.5);
+(function church() {
+  const wall = mat(0xf6f3ea), roof = mat(0x5c6a74);
+  box(10, 6, 8, wall, -38, 3, 0);
+  const r = prism(9, 3.5, 11, roof, -38, 6, 0); r.rotation.y = Math.PI / 2;
+  box(3.2, 12, 3.2, wall, -32.4, 6, 0);
+  const tr = cyl(0, 2.5, 4.5, 4, roof, -32.4, 14.25, 0); tr.rotation.y = Math.PI / 4;
+  box(0.12, 1.6, 0.12, mat(0xe0b030), -32.4, 17.3, 0); box(0.12, 0.12, 0.9, mat(0xe0b030), -32.4, 17.6, 0);
+  box(0.06, 2.6, 1.6, mat(0x6b3f1f), -30.78, 1.3, 0);
+  for (const z of [-4.02, 4.02]) for (const x of [-41, -38, -35]) { box(0.9, 1.8, 0.06, mat(0x3a5a8a), x, 3.6, z, scene, false); box(0.9, 0.2, 0.06, mat(0xd04030), x, 4.6, z, scene, false); }
+  addCol(-43, -33, -4, 4, 20); addCol(-34, -30.8, -1.6, 1.6, 20);
+  MAPRECT.push({ x0: -43, x1: -30.8, z0: -4, z1: 4, c: '#e8e4da' });
+})();
+cart(2.75, 34, 0, true, true);
+cart(-2.75, -58, Math.PI, true, false);
+cart(30, -2.3, Math.PI / 2, true, true);
+haystack(36, 8); haystack(38, -9); haystack(31, 13);
+for (const z of [-90, -82, -6, 6, 82, 90]) { poplar(-4.6, z); poplar(4.6, z); }
+for (let x = -28; x <= 40; x += 9) if (Math.abs(x) > 6) { poplar(x, -4.4); poplar(x + 4.5, 4.4); }
+// pădurea de margine
+for (let i = 0; i < 90; i++) {
+  const side = i % 4; let x, z;
+  if (side === 0) { x = rr(-70, 70); z = rr(-112, -100); } else if (side === 1) { x = rr(-70, 70); z = rr(100, 112); }
+  else if (side === 2) { x = rr(-62, -48); z = rr(-100, 100); } else { x = rr(48, 62); z = rr(-100, 100); }
+  if (Math.abs(x) < 6) continue;
+  tree(x, z, rr(1.3, 2), [0x3f7a2e, 0x467d2d, 0x386e28, 0x4f8a32]);
+}
+// livezi în spatele curților
+const STACKS = [[36, 8], [38, -9], [31, 13]];
+for (const s of [-1, 1]) for (let z = -88; z <= 88; z += 7) { const x = s * rr(31, 34), zz = z + rr(-2, 2); if (Math.abs(zz) > 7 && !STACKS.some(([a, b]) => Math.hypot(a - x, b - zz) < 4.5)) tree(x, zz, rr(0.8, 1.1)); }
+
+// ulucile ca instanțe
+(function () {
+  const im = new THREE.InstancedMesh(BOXG, new THREE.MeshLambertMaterial(), PICK.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color();
+  PICK.forEach((p, k) => { m4.compose(new THREE.Vector3(...p.p), q, new THREE.Vector3(...p.s)); im.setMatrixAt(k, m4); im.setColorAt(k, col.setHex(p.c).offsetHSL(0, 0, rr(-0.06, 0.05))); });
+  im.castShadow = true; im.receiveShadow = true; scene.add(im);
+})();
+
+// ---------------- oameni ----------------
+const SKIN = mat(0xe2b48c);
+function personMesh(kind) {
+  const g = new THREE.Group(), o = { g, kind };
+  const woman = kind === 'baba';
+  const hipY = woman ? 0.42 : 0.86;
+  const leg = woman ? mat(0x3a2e2a) : mat(0x2b2b30);
+  o.legs = [-1, 1].map(sx => { const p = new THREE.Group(); p.position.set(sx * 0.1, hipY, 0); g.add(p); box(0.13, hipY, 0.15, leg, 0, -hipY / 2, 0, p); box(0.15, 0.08, 0.26, mat(0x5a3a22), 0, -hipY + 0.04, -0.04, p); return p; });
+  if (woman) { cyl(0.2, 0.33, 0.85, 12, mat(pick([0x2a2a3a, 0x6a1e1e, 0x2f3f2a])), 0, 0.72, 0, g); box(0.42, 0.6, 0.26, mat(0xf5f2ea), 0, 1.38, 0, g); box(0.44, 0.12, 0.28, mat(0xb02a22), 0, 1.12, 0, g); }
+  else { box(0.44, 0.62, 0.26, mat(0xf5f2ea), 0, 1.17, 0, g); box(0.46, 0.46, 0.28, mat(0x1e1e22), 0, 1.25, 0, g); box(0.46, 0.12, 0.28, mat(0xb02a22), 0, 0.9, 0, g); }
+  const shY = woman ? 1.62 : 1.44;
+  o.arms = [-1, 1].map(sx => { const p = new THREE.Group(); p.position.set(sx * 0.28, shY, 0); g.add(p); box(0.11, 0.58, 0.12, mat(0xf5f2ea), 0, -0.29, 0, p); ball(0.06, 0.06, 0.06, SKIN, 0, -0.6, 0, p); return p; });
+  const hy = shY + 0.2;
+  ball(0.13, 0.15, 0.13, SKIN, 0, hy, 0, g);
+  if (woman) { ball(0.15, 0.16, 0.15, mat(pick([0x1a1a1a, 0x8a1a1a, 0x2a3a6a])), 0, hy + 0.03, 0.02, g); box(0.24, 0.2, 0.06, mat(0x1a1a1a), 0, hy - 0.08, 0.13, g); }
+  else {
+    cyl(0.24, 0.24, 0.03, 16, mat(0x1a1a1a), 0, hy + 0.12, 0, g); cyl(0.12, 0.13, 0.16, 12, mat(0x1a1a1a), 0, hy + 0.21, 0, g);
+    box(0.14, 0.03, 0.03, mat(0xdcdcdc), 0, hy - 0.05, -0.13, g, false);
+  }
+  for (const s of [-1, 1]) ball(0.018, 0.018, 0.018, mat(0x111111), s * 0.05, hy + 0.02, -0.125, g, false);
+  return o;
+}
+const PEOPLE = [];
+const LINES = ['Pis-pis-pis!', 'Ia uite, mâța!', 'Prinde șoarecii, Miți!', 'Hâș de-aici!', 'Ce pisică frumoasă!', 'Am șoareci în șură, du-te!', 'Pisu, vino la mama!', 'Nu călca pe răsaduri!'];
+function walker(kind, ax, az, bx, bz) {
+  const o = personMesh(kind); scene.add(o.g);
+  const t = R();
+  Object.assign(o, { ax, az, bx, bz, t, dir: 1, wait: 0, x: ax + (bx - ax) * t, z: az + (bz - az) * t, speed: rr(0.9, 1.3), phase: R() * 6, talk: 0 });
+  PEOPLE.push(o); return o;
+}
+walker('baba', -1.6, -86, -1.4, 86); walker('mos', 1.6, 80, 1.4, -80); walker('baba', 1.2, -40, 1.2, 60);
+walker('mos', -26, 1.4, 38, 1.2); walker('baba', -1.2, 30, -1.4, -70);
+for (const [x, kind] of [[7.6, 'mos'], [8.6, 'baba']]) {
+  const o = personMesh(kind); scene.add(o.g); o.g.position.set(x, -0.38 + (kind === 'baba' ? 0.44 : 0), -6.45); o.g.rotation.y = Math.PI;
+  if (kind === 'mos') o.legs.forEach(l => l.rotation.x = Math.PI / 2); else o.legs.forEach(l => l.rotation.x = Math.PI / 2.3);
+  if (kind === 'baba') o.g.position.y = 0.1;
+  Object.assign(o, { sit: true, x, z: -6.45, talk: 0 }); PEOPLE.push(o);
+}
+
+// ---------------- câini ----------------
+const DOGS = [];
+function dogMesh() {
+  const g = new THREE.Group(), c = mat(pick([0x6b4a2a, 0x2a2420, 0xb08850])), dk = mat(0x1a1410);
+  box(0.32, 0.32, 0.75, c, 0, 0.52, 0, g);
+  const legs = [];
+  for (const lx of [-0.11, 0.11]) for (const lz of [-0.28, 0.28]) { const p = new THREE.Group(); p.position.set(lx, 0.38, lz); g.add(p); box(0.09, 0.38, 0.09, c, 0, -0.19, 0, p); legs.push(p); }
+  box(0.28, 0.27, 0.3, c, 0, 0.76, -0.48, g); box(0.16, 0.13, 0.2, c, 0, 0.7, -0.7, g); box(0.07, 0.05, 0.05, dk, 0, 0.75, -0.8, g, false);
+  for (const s of [-1, 1]) { const e = box(0.06, 0.14, 0.09, dk, s * 0.12, 0.88, -0.44, g); e.rotation.z = s * 0.4; }
+  const tail = box(0.06, 0.06, 0.38, c, 0, 0.66, 0.5, g); tail.rotation.x = -0.6;
+  return { g, legs, tail };
+}
+for (const L of LOTS) if (L.dog) {
+  const d = dogMesh(); scene.add(d.g);
+  const ax = L.dog[0] - L.s * 0.9, az = L.dog[1];
+  Object.assign(d, { ax, az, x: ax, z: az, yaw: L.s > 0 ? -Math.PI / 2 : Math.PI / 2, st: 'rest', bark: 0, phase: 0 });
+  d.chain = new THREE.Mesh(BOXG, mat(0x777777)); d.chain.castShadow = false; scene.add(d.chain);
+  DOGS.push(d);
+}
+const CHAIN = 3.2;
+
+// ---------------- șoareci ----------------
+const MICE = [];
+const tailCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.05, 0.1), new THREE.Vector3(0, 0.03, 0.2), new THREE.Vector3(0.05, 0.02, 0.28), new THREE.Vector3(0.02, 0.03, 0.36)]);
+const TAILG = new THREE.TubeGeometry(tailCurve, 10, 0.007, 5, false);
+const EARG = new THREE.CylinderGeometry(0.03, 0.03, 0.006, 12);
+function mouseMesh() {
+  const g = new THREE.Group(), fur = mat(pick([0x8a8580, 0x7b6f63, 0x9a948c, 0x6d655c])), pink = mat(0xf0a0a8);
+  ball(0.065, 0.055, 0.11, fur, 0, 0.055, 0, g);
+  ball(0.045, 0.042, 0.065, fur, 0, 0.07, -0.1, g);
+  ball(0.012, 0.012, 0.012, pink, 0, 0.068, -0.162, g, false);
+  for (const s of [-1, 1]) { const e = add(new THREE.Mesh(EARG, pink), g, s * 0.032, 0.115, -0.085, false); e.rotation.x = Math.PI / 2; e.rotation.z = s * 0.3; ball(0.009, 0.009, 0.009, mat(0x0a0a0a), s * 0.022, 0.085, -0.14, g, false); }
+  const tail = add(new THREE.Mesh(TAILG, pink), g, 0, 0, 0, false);
+  g.scale.setScalar(1.25);
+  return { g, tail };
+}
+function freeSpot(x0, x1, z0, z1) {
+  for (let k = 0; k < 60; k++) { const x = rr(x0, x1), z = rr(z0, z1); if (!blockedAt(x, z, 0, 0.3, 0.3)) return [x, z]; }
+  return [(x0 + x1) / 2, (z0 + z1) / 2];
+}
+function spawnMice() {
+  for (const m of MICE) scene.remove(m.g);
+  MICE.length = 0;
+  const spots = [];
+  for (const L of LOTS) { const a = L.W(2, -10), b = L.W(22, 10); spots.push(freeSpot(Math.min(a[0], b[0]), Math.max(a[0], b[0]), a[1], b[1])); }
+  spots.push(freeSpot(-30, -12, -3, 3), freeSpot(28, 40, -12, 12), freeSpot(-4, 4, -95, -80));
+  for (const [x, z] of spots.slice(0, N_MICE)) {
+    const o = mouseMesh(); scene.add(o.g);
+    Object.assign(o, { x, z, y: 0, hx: x, hz: z, yaw: R() * TAU, st: 'idle', t: rr(0.5, 3), tx: x, tz: z, sp: 0, stam: 1, alive: true, sq: rr(2, 8), seen: false });
+    MICE.push(o);
+  }
+}
+
+// ---------------- pisica: urechi și lăbuțe ----------------
+const furMat = new THREE.MeshLambertMaterial({ color: 0xd9822f, fog: false });
+const furDark = new THREE.MeshLambertMaterial({ color: 0xb5662a, fog: false });
+const furPale = new THREE.MeshLambertMaterial({ color: 0xf0c48a, fog: false });
+function earMesh() {
+  const g = new THREE.Group();
+  const s = new THREE.Shape(); s.moveTo(-0.5, 0); s.quadraticCurveTo(-0.32, 0.6, 0.02, 1); s.quadraticCurveTo(0.32, 0.55, 0.5, 0); s.closePath();
+  const geo = new THREE.ExtrudeGeometry(s, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2, curveSegments: 10 });
+  g.add(new THREE.Mesh(geo, furMat));
+  for (const k of [0.22, 0.42]) { const st = new THREE.Mesh(BOXG, furDark); st.scale.set(0.5 - k * 0.6, 0.035, 0.02); st.position.set(0, k, 0.18); g.add(st); }
+  const tuft = new THREE.Shape(); tuft.moveTo(-0.5, 0); tuft.quadraticCurveTo(-0.38, 0.45, -0.3, 0.55); tuft.lineTo(-0.36, 0); tuft.closePath();
+  const tm = new THREE.Mesh(new THREE.ShapeGeometry(tuft), furPale); tm.position.z = 0.175; g.add(tm);
+  return g;
+}
+const ears = [earMesh(), earMesh()];
+ears.forEach(e => camera.add(e));
+function pawMesh() {
+  const g = new THREE.Group();
+  const leg = new THREE.Mesh(cylG(0.5, 0.55, 2.4, 12), furMat); leg.rotation.x = -1.2; leg.position.set(0, -0.3, 1.0); g.add(leg);
+  const p = new THREE.Mesh(SPH, furMat); p.scale.set(0.62, 0.42, 0.7); g.add(p);
+  for (const k of [-0.3, 0, 0.3]) { const s = new THREE.Mesh(BOXG, furDark); s.scale.set(0.12, 0.05, 0.9); s.position.set(k, 0.38, 0.6); g.add(s); }
+  for (const k of [-0.35, -0.12, 0.12, 0.35]) { const c = new THREE.Mesh(cylG(0, 0.04, 0.22, 5), new THREE.MeshBasicMaterial({ color: 0xf2efe6, fog: false })); c.rotation.x = -Math.PI / 2; c.position.set(k, 0.05, -0.72); g.add(c); }
+  return g;
+}
+const paws = [pawMesh(), pawMesh()];
+paws.forEach(p => { p.visible = false; camera.add(p); });
+// creștetul capului, jos în imagine
+const head = new THREE.Group(); camera.add(head);
+const headBall = new THREE.Mesh(SPH, furMat); head.add(headBall);
+const headStripes = [-0.5, 0, 0.5].map(k => { const st = new THREE.Mesh(BOXG, furDark); st.userData.k = k; head.add(st); return st; });
+const EAR_Z = 0.12;
+let halfH = 0, halfW = 0;
+function layoutEars() {
+  halfH = EAR_Z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  halfW = halfH * camera.aspect;
+  const h = Math.min(halfH * 0.95, halfW * 0.85), ex = halfW - h * 0.28;
+  ears.forEach((e, k) => { const s = k ? 1 : -1; e.scale.set(h * 0.78 * (k ? -1 : 1), h, h * 0.3); e.position.set(s * ex, halfH * 0.3, -EAR_Z); e.rotation.set(-0.15, 0, -s * 0.32); });
+  headBall.scale.set(halfW * 1.1, halfH * 0.2, 0.02); head.position.set(0, -halfH * 1.1, -EAR_Z - 0.02);
+  headStripes.forEach(st => { st.scale.set(halfW * 0.025, halfH * 0.16, 0.004); st.position.set(st.userData.k * halfW * 0.35, halfH * 0.12, 0.021); st.rotation.z = -st.userData.k * 0.35; });
+  paws.forEach((p, k) => { const s = k ? 1 : -1; p.scale.setScalar(halfH * 0.32); p.userData.x = s * halfH * 0.42; });
+}
+
+// ---------------- sunet ----------------
+let AC = null, master = null, muted = false;
+try { muted = localStorage.getItem(SAVE + '-mute') === '1'; } catch (e) {}
+function audio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = muted ? 0 : 0.6; master.connect(AC.destination); } catch (e) { return null; } }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(f0, f1, dur, { type = 'sine', vol = 0.3, pan = 0, at = 0, filter = 0 } = {}) {
+  if (!AC || muted) return;
+  const t = AC.currentTime + at, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.02, dur / 4)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  let n = o; o.connect(g); n = g;
+  if (filter) { const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filter; n.connect(f); n = f; }
+  if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); n.connect(p); n = p; }
+  n.connect(master); o.start(t); o.stop(t + dur + 0.05);
+}
+const sfx = {
+  squeak(vol, pan) { const n = 2 + Math.floor(Math.random() * 3); for (let k = 0; k < n; k++) tone(3000 + Math.random() * 900, 4200 + Math.random() * 800, 0.06, { vol: vol * 0.25, pan, at: k * 0.09, type: 'triangle' }); },
+  meow() { tone(520, 820, 0.25, { type: 'sawtooth', vol: 0.12, filter: 1600 }); tone(820, 430, 0.45, { type: 'sawtooth', vol: 0.12, at: 0.22, filter: 1400 }); },
+  hiss() { tone(900, 300, 0.4, { type: 'sawtooth', vol: 0.06, filter: 3000 }); },
+  bark(vol, pan) { for (let k = 0; k < 2; k++) tone(300, 140, 0.13, { type: 'square', vol: 0.18 * vol, pan, at: k * 0.18, filter: 900 }); },
+  jump() { tone(260, 420, 0.12, { vol: 0.08 }); },
+  land() { tone(140, 70, 0.08, { vol: 0.08, filter: 500 }); },
+  swipe() { tone(1400, 500, 0.12, { type: 'triangle', vol: 0.06 }); },
+  catch() { tone(660, 990, 0.12, { vol: 0.18, type: 'triangle' }); tone(990, 1320, 0.16, { vol: 0.15, type: 'triangle', at: 0.1 }); },
+};
+
+// ---------------- stare ----------------
+const S = { mode: 'menu', caught: 0, time: TIME, lastCatch: 0, best: 0, bites: 0, played: 0 };
+try { S.best = JSON.parse(localStorage.getItem(SAVE + '-best') || 'null'); } catch (e) {}
+const cat = { x: START.x, z: START.z, y: 0, vx: 0, vz: 0, vy: 0, yaw: START.yaw, pitch: 0, onGround: true, pc: 0, pcd: 0, bob: 0, hurt: 0, knock: 0 };
+const keys = {};
+const joy = { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0 };
+let look = null;
+
+function respawn() { Object.assign(cat, { x: START.x, z: START.z, y: 0, vx: 0, vz: 0, vy: 0, yaw: START.yaw, pitch: 0 }); }
+function start() {
+  audio();
+  S.mode = 'play'; S.caught = 0; S.time = TIME; S.lastCatch = 0; S.bites = 0;
+  spawnMice(); respawn();
+  for (const d of DOGS) { d.x = d.ax; d.z = d.az; d.st = 'rest'; }
+  $('overlay').classList.remove('show');
+  sfx.meow();
+  updHud();
+}
+function pause() { if (S.mode !== 'play') return; S.mode = 'pause'; releaseInput(); showPanel('pause'); }
+function resume() { if (S.mode !== 'pause') return; S.mode = 'play'; $('overlay').classList.remove('show'); }
+function releaseInput() { for (const k in keys) keys[k] = false; joy.on = false; $('joy').style.display = 'none'; look = null; }
+function jump() { if (S.mode !== 'play' || !cat.onGround) return; cat.vy = JUMP_V; cat.onGround = false; sfx.jump(); }
+function pounce() {
+  if (S.mode !== 'play' || cat.pcd > 0) return;
+  cat.pc = 0.32; cat.pcd = 0.6; if (cat.onGround) { cat.vy = 2.4; cat.onGround = false; }
+  sfx.swipe(); tryCatch(1.15);
+}
+const fwdVec = () => [-Math.sin(cat.yaw), -Math.cos(cat.yaw)];
+function tryCatch(range) {
+  const [fx, fz] = fwdVec();
+  for (const m of MICE) {
+    if (!m.alive) continue;
+    const dx = m.x - cat.x, dz = m.z - cat.z, d = Math.hypot(dx, dz);
+    if (d > range + 0.15 || Math.abs(m.y - cat.y) > 0.7) continue;
+    const dot = (dx * fx + dz * fz) / (d || 1);
+    if (d < 0.4 || dot > 0.72) { catchMouse(m); return true; }
+  }
+  return false;
+}
+function catchMouse(m) {
+  m.alive = false; scene.remove(m.g);
+  S.caught++; S.lastCatch = TIME - S.time;
+  sfx.catch(); setTimeout(() => sfx.meow(), 200);
+  toast(S.caught === N_MICE ? 'Toți șoarecii prinși! 🎉' : pick(['Prins! 🐭', 'Hap! 🐭', 'Bravo, pisi! 🐭', 'Încă unul! 🐭']) + `  ${S.caught}/${N_MICE}`, 'good');
+  updHud();
+  if (S.caught >= N_MICE) setTimeout(() => endGame(true), 900);
+}
+let toastT = 0;
+function toast(t, cls = '') { const el = $('toast'); el.textContent = t; el.className = 'chip show ' + cls; toastT = 1.8; }
+function updHud() {
+  $('score').textContent = `🐭 ${S.caught}/${N_MICE}`;
+  const t = Math.max(0, Math.ceil(S.time));
+  $('clock').textContent = `⏱ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  $('clock').classList.toggle('low', t <= 30);
+}
+const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+function endGame(win) {
+  S.mode = 'over'; releaseInput(); S.played++;
+  const used = TIME - Math.max(0, S.time);
+  const res = { n: S.caught, t: win ? used : TIME };
+  const better = !S.best || res.n > S.best.n || (res.n === S.best.n && res.t < S.best.t);
+  if (better) { S.best = res; try { localStorage.setItem(SAVE + '-best', JSON.stringify(res)); } catch (e) {} }
+  showPanel(win ? 'win' : 'lose', better);
+}
+function bestLine() { return S.best ? `Recordul tău: ${S.best.n}/${N_MICE} șoareci${S.best.n === N_MICE ? ' în ' + fmt(S.best.t) : ''}` : ''; }
+function showPanel(kind, rec) {
+  const p = $('panel'); let h = '';
+  if (kind === 'menu') h = `<h1>🐱 Pisica și șoarecii</h1>
+    <p>Ești o pisică roșcată într-un sat românesc și vezi totul dintre urechile tale. Prin curți, pe lângă case, garduri, căruțe și căpițe se ascund <b>${N_MICE} șoareci</b>. Prinde-i pe toți în <b>${TIME / 60} minute</b>.</p>
+    <ul>
+      <li><kbd>⬆</kbd> <kbd>⬇</kbd> mergi înainte și înapoi, <kbd>⬅</kbd> <kbd>➡</kbd> te întorci, <kbd>Shift</kbd> fugi</li>
+      <li><kbd>Space</kbd> sari: pe garduri, pe căruțe, pe fântână, pe prispă sau pe lemne</li>
+      <li><kbd>Enter</kbd> te arunci cu lăbuțele și prinzi șoarecele din fața ta</li>
+      <li>Trage cu mouse-ul ca să te uiți în sus și în jur. Pe telefon ai joystick în stânga și butoane în dreapta.</li>
+    </ul>
+    <p><b>Sfaturi:</b> Șoarecii te aud când alergi, așa că apropie-te încet. Ascultă chițăitul: vine din stânga sau din dreapta. Șoarecii se strecoară pe sub garduri, dar tu poți sări peste ele. Pe hartă apar doar cei de lângă tine. Câinii din curți sunt legați în lanț, iar sus pe gard nu te ajung.</p>
+    <button class="big" id="go">Joacă ▶</button><div class="best">${bestLine()}</div>`;
+  else if (kind === 'pause') h = `<h2>⏸ Pauză</h2><div class="stats"><span>Șoareci prinși</span><b>${S.caught}/${N_MICE}</b><span>Timp rămas</span><b>${fmt(Math.max(0, S.time))}</b></div><button class="big" id="go">Continuă ▶</button><button class="big" id="restart" style="background:#7a6a50;box-shadow:0 4px 0 #4a3e2c;font-size:16px;padding:10px 22px">Joc nou</button>`;
+  else h = `<h2>${kind === 'win' ? '🎉 Ai prins toți șoarecii!' : '⏱ S-a terminat timpul'}</h2>
+    <p style="text-align:center">${kind === 'win' ? 'Gospodarii din sat îți dau un bol cu lapte. 🥛' : S.caught ? 'Pisica s-a întins la soare pe prispă. Mai încearcă!' : 'Șoarecii au rămas liberi prin sat. Mai încearcă!'}</p>
+    <div class="stats"><span>Șoareci prinși</span><b>${S.caught}/${N_MICE}</b><span>Timp</span><b>${fmt(TIME - Math.max(0, S.time))}</b><span>Mușcături de câine</span><b>${S.bites}</b></div>
+    ${rec ? '<p style="text-align:center;font-weight:800;color:#2f6b2c">🏆 Record nou!</p>' : ''}
+    <button class="big" id="go">Mai joacă ▶</button><div class="best">${bestLine()}</div>`;
+  p.innerHTML = h; $('overlay').classList.add('show');
+  $('go').onclick = () => { $('go').blur(); kind === 'pause' ? resume() : start(); };
+  if ($('restart')) $('restart').onclick = () => start();
+}
+
+// ---------------- control ----------------
+const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter', 'NumpadEnter'];
+addEventListener('keydown', e => {
+  const k = e.code;
+  if (GAME_KEYS.includes(k)) e.preventDefault();
+  if (e.repeat && (k === 'Space' || k === 'Enter' || k === 'NumpadEnter')) return;
+  keys[k] = true;
+  if (S.mode === 'menu' || S.mode === 'over') { if (k === 'Enter' || k === 'Space' || k === 'NumpadEnter') start(); return; }
+  if (S.mode === 'pause') { if (k === 'Escape' || k === 'KeyP' || k === 'Enter') resume(); return; }
+  if (k === 'Space') jump();
+  if (k === 'Enter' || k === 'NumpadEnter') pounce();
+  if (k === 'Escape' || k === 'KeyP') pause();
+  if (k === 'KeyM') toggleSound();
+  if (k === 'KeyR') respawn();
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { releaseInput(); if (S.mode === 'play') pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && S.mode === 'play') pause(); });
+const cv = renderer.domElement;
+cv.addEventListener('pointerdown', e => {
+  if (S.mode !== 'play') return;
+  audio();
+  if (e.pointerType === 'touch' && e.clientX < innerWidth * 0.45 && !joy.on) {
+    Object.assign(joy, { on: true, id: e.pointerId, ox: e.clientX, oy: e.clientY, x: 0, y: 0 });
+    const j = $('joy'); j.style.display = 'block'; j.style.left = e.clientX + 'px'; j.style.top = e.clientY + 'px'; j.firstChild.style.transform = '';
+  } else if (!look) look = { id: e.pointerId, x: e.clientX, y: e.clientY };
+});
+addEventListener('pointermove', e => {
+  if (joy.on && e.pointerId === joy.id) {
+    let dx = (e.clientX - joy.ox) / 45, dy = (e.clientY - joy.oy) / 45; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+    joy.x = dx; joy.y = dy; $('joy').firstChild.style.transform = `translate(${dx * 32}px,${dy * 32}px)`;
+  } else if (look && e.pointerId === look.id) {
+    cat.yaw -= (e.clientX - look.x) * 0.006; cat.pitch = clamp(cat.pitch - (e.clientY - look.y) * 0.004, -0.8, 0.9);
+    look.x = e.clientX; look.y = e.clientY;
+  }
+});
+const endPtr = e => { if (joy.on && e.pointerId === joy.id) { joy.on = false; joy.x = joy.y = 0; $('joy').style.display = 'none'; } if (look && e.pointerId === look.id) look = null; };
+addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
+const tap = (id, fn) => { $(id).addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); fn(); }); };
+tap('bJump', jump); tap('bCatch', pounce);
+$('bPause').onclick = e => { e.currentTarget.blur(); S.mode === 'pause' ? resume() : pause(); };
+$('bRespawn').onclick = e => { e.currentTarget.blur(); respawn(); };
+function toggleSound() {
+  muted = !muted; if (master) master.gain.value = muted ? 0 : 0.6;
+  $('bSound').textContent = muted ? '🔇' : '🔊';
+  try { localStorage.setItem(SAVE + '-mute', muted ? '1' : '0'); } catch (e) {}
+}
+$('bSound').textContent = muted ? '🔇' : '🔊';
+$('bSound').onclick = e => { e.currentTarget.blur(); audio(); toggleSound(); };
+
+// ---------------- actualizare ----------------
+function moveBody(o, dx, dz, r, h, mouse) {
+  let moved = false;
+  if (!blockedAt(o.x + dx, o.z, o.y, r, h, mouse)) { o.x += dx; moved = true; }
+  if (!blockedAt(o.x, o.z + dz, o.y, r, h, mouse)) { o.z += dz; moved = true; }
+  return moved;
+}
+function updateCat(dt) {
+  let fwd = 0, turn = 0;
+  if (keys.ArrowUp || keys.KeyW) fwd += 1;
+  if (keys.ArrowDown || keys.KeyS) fwd -= 1;
+  if (keys.ArrowLeft || keys.KeyA) turn += 1;
+  if (keys.ArrowRight || keys.KeyD) turn -= 1;
+  if (joy.on) { fwd -= joy.y; turn -= joy.x * 0.9; }
+  fwd = clamp(fwd, -1, 1); turn = clamp(turn, -1, 1);
+  cat.yaw += turn * TURN * dt;
+  const running = keys.ShiftLeft || keys.ShiftRight || (joy.on && Math.hypot(joy.x, joy.y) > 0.9);
+  cat.running = running && fwd > 0.2;
+  const sp = fwd > 0 ? fwd * (running ? RUN : WALK) : fwd * WALK * 0.55;
+  const [fx, fz] = fwdVec();
+  let tvx = fx * sp, tvz = fz * sp;
+  if (cat.pc > 0) { cat.pc -= dt; tvx += fx * 6; tvz += fz * 6; tryCatch(0.65); }
+  cat.pcd = Math.max(0, cat.pcd - dt);
+  const k = Math.min(1, dt * (cat.onGround ? 12 : 2.5));
+  if (cat.knock > 0) { cat.knock -= dt; } else { cat.vx += (tvx - cat.vx) * k; cat.vz += (tvz - cat.vz) * k; }
+  moveBody(cat, cat.vx * dt, cat.vz * dt, CAT_R, CAT_H);
+  cat.x = clamp(cat.x, -BX, BX); cat.z = clamp(cat.z, -BZ, BZ);
+  // oamenii și câinii te împing
+  for (const p of PEOPLE) { const dx = cat.x - p.x, dz = cat.z - p.z, d = Math.hypot(dx, dz); if (d < 0.42 && cat.y < 1.6) { const f = (0.42 - d) / (d || 1); moveBody(cat, dx * f, dz * f, CAT_R, CAT_H); } }
+  // vertical
+  const y0 = cat.y;
+  cat.vy -= G * dt; cat.y += cat.vy * dt;
+  if (cat.vy > 0) { const c = ceilAt(cat.x, cat.z, y0 + CAT_H, cat.y + CAT_H, CAT_R * 0.9); if (c < Infinity) { cat.y = c - CAT_H; cat.vy = 0; } }
+  const gr = groundAt(cat.x, cat.z, Math.max(y0, cat.y), CAT_R * 0.7);
+  const was = cat.onGround;
+  if (cat.y <= gr) { if (!was && cat.vy < -4) sfx.land(); cat.y = gr; cat.vy = 0; cat.onGround = true; } else cat.onGround = false;
+  const spd = Math.hypot(cat.vx, cat.vz);
+  if (cat.onGround) cat.bob += dt * spd * 2.6;
+}
+function updateMice(dt, t) {
+  const loud = cat.running ? 7.5 : (Math.hypot(cat.vx, cat.vz) > 0.5 ? 3.6 : 2.2);
+  const [fx, fz] = fwdVec();
+  for (const m of MICE) {
+    if (!m.alive) continue;
+    const dx = m.x - cat.x, dz = m.z - cat.z, d = Math.hypot(dx, dz);
+    const hearR = cat.y > 0.7 ? loud * 0.6 : loud;
+    if (m.st !== 'flee' && d < hearR) { m.st = 'flee'; m.t = rr(2.5, 4); if (d < 12) sfx.squeak(0.9, panOf(m)); }
+    let speed = 0, dirx = 0, dirz = 0;
+    if (m.st === 'flee') {
+      m.t -= dt; m.stam = Math.max(0.35, m.stam - dt * 0.22);
+      const a = Math.atan2(dx, dz) + Math.sin(t * 3 + m.hx) * 0.5;
+      dirx = Math.sin(a); dirz = Math.cos(a); speed = 5.4 * m.stam;
+      if (m.t <= 0 && d > 6) { m.st = 'idle'; m.t = rr(1, 3); }
+    } else {
+      m.stam = Math.min(1, m.stam + dt * 0.12);
+      m.t -= dt;
+      if (m.st === 'idle') { if (m.t <= 0) { m.st = 'walk'; const a = R() * TAU, r = rr(1, 5); m.tx = m.hx + Math.sin(a) * r; m.tz = m.hz + Math.cos(a) * r; m.t = 6; } }
+      else { const ex = m.tx - m.x, ez = m.tz - m.z, e = Math.hypot(ex, ez); if (e < 0.2 || m.t <= 0) { m.st = 'idle'; m.t = rr(1, 4); } else { dirx = ex / e; dirz = ez / e; speed = 0.9; } }
+    }
+    if (speed > 0) {
+      let ok = moveBody(m, dirx * speed * dt, dirz * speed * dt, 0.08, 0.12, true);
+      if (!ok || Math.abs(m.x) > BX + 2 || Math.abs(m.z) > BZ + 2) {
+        for (const off of [1.2, -1.2, 2.2, -2.2]) { const a = Math.atan2(dirx, dirz) + off; if (moveBody(m, Math.sin(a) * speed * dt, Math.cos(a) * speed * dt, 0.08, 0.12, true)) { dirx = Math.sin(a); dirz = Math.cos(a); break; } }
+        if (m.st === 'walk') { m.st = 'idle'; m.t = 0.5; }
+      }
+      m.x = clamp(m.x, -BX - 2, BX + 2); m.z = clamp(m.z, -BZ - 2, BZ + 2);
+      m.yaw += angDiff(m.yaw, Math.atan2(-dirx, -dirz)) * Math.min(1, dt * 12);
+    }
+    m.y = groundAt(m.x, m.z, m.y, 0.05);
+    m.g.position.set(m.x, m.y + (speed > 2 ? Math.abs(Math.sin(t * 30 + m.hx)) * 0.02 : 0), m.z);
+    m.g.rotation.y = m.yaw;
+    m.tail.rotation.y = Math.sin(t * (speed > 2 ? 18 : 3) + m.hz) * 0.4;
+    // chițăit din când în când
+    m.sq -= dt;
+    if (m.sq <= 0) { m.sq = rr(3, 8); if (d < 20) { sfx.squeak(clamp(1 - d / 20, 0.05, 1), panOf(m)); twitch(panOf(m)); } }
+  }
+}
+function panOf(o) { const a = Math.atan2(-(o.x - cat.x), -(o.z - cat.z)); return clamp(-Math.sin(angDiff(cat.yaw, a)), -1, 1); }
+let earTw = 0, earSide = 0;
+function twitch(pan) { earTw = 0.5; earSide = pan; }
+function updatePeople(dt, t) {
+  for (const p of PEOPLE) {
+    if (p.sit) { p.arms[1].rotation.x = -0.4 + Math.sin(t * 1.3 + p.x) * 0.15; }
+    else {
+      if (p.wait > 0) { p.wait -= dt; p.legs.forEach(l => l.rotation.x *= 0.8); p.arms.forEach(a => a.rotation.x *= 0.8); }
+      else {
+        const tx = p.dir > 0 ? p.bx : p.ax, tz = p.dir > 0 ? p.bz : p.az;
+        const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+        if (d < 0.3) { p.dir *= -1; p.wait = rr(1.5, 4); }
+        else {
+          p.x += dx / d * p.speed * dt; p.z += dz / d * p.speed * dt;
+          p.g.rotation.y += angDiff(p.g.rotation.y, Math.atan2(-dx, -dz)) * Math.min(1, dt * 4);
+          p.phase += dt * p.speed * 4.5;
+          const sw = Math.sin(p.phase) * (p.kind === 'baba' ? 0.35 : 0.55);
+          p.legs[0].rotation.x = sw; p.legs[1].rotation.x = -sw; p.arms[0].rotation.x = -sw * 0.8; p.arms[1].rotation.x = sw * 0.8;
+        }
+      }
+      p.g.position.set(p.x, 0, p.z);
+    }
+  }
+}
+let bubbleP = null, bubbleT = 0, bubbleCd = 2;
+function updateBubble(dt) {
+  bubbleCd -= dt;
+  if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) { bubbleP = null; $('bubble').style.display = 'none'; } }
+  if (!bubbleP && bubbleCd <= 0) {
+    for (const p of PEOPLE) { if (Math.hypot(p.x - cat.x, p.z - cat.z) < 6) { bubbleP = p; bubbleT = 2.8; bubbleCd = rr(6, 10); $('bubble').textContent = pick(LINES); break; } }
+  }
+  if (bubbleP) {
+    const v = new THREE.Vector3(bubbleP.x, (bubbleP.sit ? 1.6 : 2.05), bubbleP.z).project(camera);
+    const el = $('bubble');
+    if (v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1) { el.style.display = 'block'; el.style.left = (v.x + 1) / 2 * innerWidth + 'px'; el.style.top = (1 - v.y) / 2 * innerHeight + 'px'; }
+    else el.style.display = 'none';
+  }
+}
+let biteCd = 0;
+function updateDogs(dt, t) {
+  biteCd = Math.max(0, biteCd - dt);
+  for (const d of DOGS) {
+    const cdx = cat.x - d.ax, cdz = cat.z - d.az, cd = Math.hypot(cdx, cdz);
+    let tx = d.ax, tz = d.az, speed = 0;
+    const chase = S.mode === 'play' && cat.y < 0.6 && cd < CHAIN + 4;
+    if (chase) {
+      d.st = 'chase';
+      tx = cat.x; tz = cat.z;
+      if (cd > CHAIN) { tx = d.ax + cdx / cd * CHAIN; tz = d.az + cdz / cd * CHAIN; }
+      speed = 5.5;
+      d.bark -= dt; if (d.bark <= 0) { d.bark = rr(0.5, 0.9); const dd = Math.hypot(cat.x - d.x, cat.z - d.z); sfx.bark(clamp(1.2 - dd / 15, 0.2, 1), panOf(d)); }
+    } else if (cd < CHAIN + 8 && S.mode === 'play') { d.st = 'watch'; d.bark -= dt; if (d.bark <= 0) { d.bark = rr(1.2, 2.2); sfx.bark(0.5, panOf(d)); } }
+    else d.st = 'rest';
+    const ex = tx - d.x, ez = tz - d.z, e = Math.hypot(ex, ez);
+    if (speed && e > 0.35) { const s = Math.min(speed * dt, e - 0.3); d.x += ex / e * s; d.z += ez / e * s; d.phase += dt * 14; }
+    else if (!chase && e > 0.1) { d.x += ex / e * Math.min(2 * dt, e); d.z += ez / e * Math.min(2 * dt, e); d.phase += dt * 6; }
+    const face = chase || d.st === 'watch' ? Math.atan2(-(cat.x - d.x), -(cat.z - d.z)) : d.yaw;
+    d.g.rotation.y += angDiff(d.g.rotation.y, face) * Math.min(1, dt * 8);
+    d.g.position.set(d.x, 0, d.z);
+    const moving = (speed && e > 0.35) || (!chase && e > 0.1);
+    d.legs.forEach((l, k) => l.rotation.x = moving ? Math.sin(d.phase + (k % 2 ? 0 : Math.PI) + (k > 1 ? Math.PI / 2 : 0)) * 0.6 : 0);
+    d.tail.rotation.y = Math.sin(t * (d.st === 'rest' ? 2 : 12)) * 0.5;
+    // lanțul
+    const lx = d.x - d.ax, lz = d.z - d.az, ll = Math.hypot(lx, lz);
+    d.chain.position.set((d.x + d.ax) / 2, 0.3, (d.z + d.az) / 2); d.chain.scale.set(0.03, 0.03, Math.max(0.05, ll)); d.chain.rotation.set(0, Math.atan2(lx, lz), 0);
+    // mușcătura
+    const bd = Math.hypot(cat.x - d.x, cat.z - d.z);
+    if (S.mode === 'play' && bd < 0.75 && cd < CHAIN + 0.3 && cat.y < 0.6 && biteCd <= 0) {
+      biteCd = 2; S.bites++; S.time -= 10;
+      const nx = (cat.x - d.x) / (bd || 1), nz = (cat.z - d.z) / (bd || 1);
+      cat.vx = nx * 7; cat.vz = nz * 7; cat.vy = 4; cat.onGround = false; cat.knock = 0.4;
+      sfx.hiss(); toast('Ham! Câinele te-a mușcat. −10 secunde', 'bad');
+      const h = $('hurt'); h.style.transition = 'none'; h.style.opacity = 1; requestAnimationFrame(() => { h.style.transition = 'opacity .8s'; h.style.opacity = 0; });
+      updHud();
+    }
+  }
+}
+
+// ---------------- minimapa ----------------
+const MPX = 4, MX0 = -50, MZ0 = -100;
+const mapC = document.createElement('canvas'); mapC.width = 100 * MPX; mapC.height = 200 * MPX;
+(function drawMap() {
+  const g = mapC.getContext('2d'), X = x => (x - MX0) * MPX, Z = z => (z - MZ0) * MPX;
+  g.fillStyle = '#5f9a3c'; g.fillRect(0, 0, mapC.width, mapC.height);
+  g.fillStyle = '#b39a70'; g.fillRect(X(-3.5), 0, 7 * MPX, mapC.height); g.fillRect(X(-31), Z(-3.5), 75 * MPX, 7 * MPX);
+  for (const L of LOTS) { const a = L.W(0, -11), b = L.W(22, 11); g.fillStyle = 'rgba(120,160,70,.9)'; g.fillRect(X(Math.min(a[0], b[0])), Z(a[1]), 22 * MPX, 22 * MPX); }
+  for (const r of MAPRECT) { g.fillStyle = r.c; g.fillRect(X(r.x0), Z(r.z0), (r.x1 - r.x0) * MPX, (r.z1 - r.z0) * MPX); }
+  for (const c of MAPCIRC) { g.fillStyle = c.c; g.beginPath(); g.arc(X(c.x), Z(c.z), c.r * MPX, 0, TAU); g.fill(); }
+  g.fillStyle = '#5a3d22';
+  for (const c of COL) if (c.fence) g.fillRect(X(c.x0), Z(c.z0), Math.max(2, (c.x1 - c.x0) * MPX), Math.max(2, (c.z1 - c.z0) * MPX));
+})();
+const mm = $('mm'), mg = mm.getContext('2d');
+function drawMini(t) {
+  const W = mm.width, C = W / 2;
+  mg.save(); mg.clearRect(0, 0, W, W);
+  mg.beginPath(); mg.arc(C, C, C, 0, TAU); mg.clip();
+  mg.fillStyle = '#5f9a3c'; mg.fillRect(0, 0, W, W);
+  mg.translate(C, C); mg.rotate(cat.yaw);
+  mg.drawImage(mapC, -(cat.x - MX0) * MPX, -(cat.z - MZ0) * MPX);
+  // câini
+  for (const d of DOGS) { mg.fillStyle = '#3a2a1a'; mg.beginPath(); mg.arc((d.x - cat.x) * MPX, (d.z - cat.z) * MPX, 7, 0, TAU); mg.fill(); }
+  // șoarecii din apropiere
+  let near = null, nd = 1e9;
+  for (const m of MICE) {
+    if (!m.alive) continue;
+    const d = Math.hypot(m.x - cat.x, m.z - cat.z);
+    if (d < nd) { nd = d; near = m; }
+    if (d < 11) { mg.fillStyle = '#ff3b2e'; mg.beginPath(); mg.arc((m.x - cat.x) * MPX, (m.z - cat.z) * MPX, 7, 0, TAU); mg.fill(); mg.strokeStyle = '#fff'; mg.lineWidth = 2; mg.stroke(); }
+  }
+  // după 25 s fără șoarece, pisica „miroase” cel mai apropiat
+  const sniff = S.mode === 'play' && near && nd >= 11 && (TIME - S.time) - S.lastCatch > 25;
+  $('sniff').classList.toggle('show', !!sniff);
+  if (sniff) {
+    let px = (near.x - cat.x) * MPX, pz = (near.z - cat.z) * MPX; const l = Math.hypot(px, pz), lim = C - 14;
+    if (l > lim) { px *= lim / l; pz *= lim / l; }
+    mg.fillStyle = `rgba(255,220,60,${0.6 + Math.sin(t * 6) * 0.35})`; mg.beginPath(); mg.arc(px, pz, 9, 0, TAU); mg.fill();
+  }
+  mg.restore();
+  mg.fillStyle = '#fff'; mg.strokeStyle = '#d9822f'; mg.lineWidth = 3;
+  mg.beginPath(); mg.moveTo(C, C - 14); mg.lineTo(C + 10, C + 10); mg.lineTo(C, C + 5); mg.lineTo(C - 10, C + 10); mg.closePath(); mg.fill(); mg.stroke();
+}
+
+// ---------------- bucla ----------------
+const clock = new THREE.Clock();
+let T = 0;
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.033);
+  T += dt;
+  if (S.mode === 'play') {
+    S.time -= dt;
+    if (Math.ceil(S.time) !== Math.ceil(S.time + dt)) updHud();
+    if (S.time <= 0) { S.time = 0; updHud(); endGame(false); }
+    updateCat(dt); updateMice(dt, T); updateDogs(dt, T);
+  } else if (S.mode === 'menu') {
+    cat.yaw += dt * 0.12; // rotire lentă în meniu
+  }
+  if (S.mode !== 'pause') { updatePeople(dt, T); ANIM.forEach(f => f(T)); }
+  updateBubble(dt);
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').classList.remove('show'); }
+  // camera = ochii pisicii
+  const moving = Math.hypot(cat.vx, cat.vz) > 0.3 && cat.onGround;
+  camera.position.set(cat.x, cat.y + EYE + (moving ? Math.abs(Math.sin(cat.bob)) * 0.018 : 0), cat.z);
+  camera.rotation.set(cat.pitch + (cat.pc > 0 ? -0.12 : 0), cat.yaw, moving ? Math.sin(cat.bob) * 0.012 : 0);
+  // urechile se mișcă
+  earTw = Math.max(0, earTw - dt);
+  ears.forEach((e, k) => {
+    const s = k ? 1 : -1, toward = earTw > 0 && Math.sign(earSide) === s ? 0.25 * Math.sin(earTw * 20) : 0;
+    e.rotation.z = -s * 0.32 + toward + Math.sin(T * 0.7 + k) * 0.02;
+    e.rotation.x = -0.15 + (cat.pc > 0 ? -0.35 : 0) + (cat.knock > 0 ? 0.6 : 0);
+  });
+  // lăbuțele la prindere
+  const pp = cat.pc > 0 ? Math.sin((1 - cat.pc / 0.32) * Math.PI) : 0;
+  paws.forEach((p, k) => {
+    p.visible = pp > 0.01;
+    p.position.set(p.userData.x * (1 - pp * 0.25), -halfH * (1.35 - pp * 0.85), -EAR_Z * (1 + pp * 0.5));
+    p.rotation.set(0.4 - pp * 0.3, 0, (k ? -1 : 1) * 0.15);
+  });
+  sun.position.set(cat.x + 30, 55, cat.z + 18); sun.target.position.set(cat.x, 0, cat.z);
+  renderer.render(scene, camera);
+  drawMini(T);
+}
+function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); layoutEars(); }
+addEventListener('resize', resize);
+resize();
+spawnMice();
+showPanel('menu');
+$('loading').remove();
+window.__game = { S, cat, MICE, DOGS, keys, start, tryCatch, catchMouse, step(n, dt = 1 / 30) { for (let k = 0; k < n; k++) { T += dt; updateCat(dt); updateMice(dt, T); updateDogs(dt, T); } } };
+frame();
+</script>
+</body>
+</html>

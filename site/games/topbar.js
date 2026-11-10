@@ -8,7 +8,8 @@
     { href: '/flappy-cat/', icon: '🐱', name: 'Flappy Cat', short: 'Pisici', desc: 'Lansează pisici cu praștia și dărâmă turnurile șobolanilor. 32 de niveluri, 3D.', color: '#4aa8ff' },
     { href: '/santa-claus/', icon: '🎅', name: 'Santa Claus', short: 'Moș', desc: 'Moș Crăciun prinde cadourile și împodobește bradul. Ferește-te de cărbuni.', color: '#e0463c' },
     { href: '/padurar/', icon: '🪓', name: 'Pădurarul', short: 'Pădurar', desc: 'Taie copaci bolnavi, vinde lemnul la gater și fugi de urși și de reporteri.', color: '#4f9a4a' },
-    { href: '/drift/', icon: '🏎️', name: 'Drift', short: 'Drift', desc: 'Drift 3D cu BMW, Audi, Porsche, Passat, Dacia de poliție, TIR, kart și moto.', color: '#f0a020' }
+    { href: '/drift/', icon: '🏎️', name: 'Drift', short: 'Drift', desc: 'Drift 3D cu BMW, Audi, Porsche, Passat, Dacia de poliție, TIR, kart și moto.', color: '#f0a020' },
+    { href: '/tom-and-jerry/', icon: '🐭', name: 'Pisica și șoarecii', short: 'Șoareci', desc: 'Ești o pisică într-un sat românesc. Vezi lumea dintre urechi și prinzi 15 șoareci prin curți.', color: '#e0823a' }
   ];
   window.NS_GAMES = GAMES;
 
