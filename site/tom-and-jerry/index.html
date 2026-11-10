@@ -566,11 +566,18 @@ const CAT_EARG = (() => {
   g.scale(0.85, 1, 0.42);
   return g;
 })();
+const innerEarMat = new THREE.MeshLambertMaterial({ color: 0xe9a07e, fog: false });
 function earMesh() {
   const g = new THREE.Group();
-  g.add(furry(CAT_EARG, furPlainMat, 3, [1.03, 1.02, 1.06]));
-  // câteva fire deschise la culoare ies din ureche, pe margine
-  for (const [x, y] of [[0.36, 0.42], [0.3, 0.55], [-0.36, 0.42]]) g.add(strand([[x, y, -0.06], [x * 1.12, y + 0.1, -0.08], [x * 1.22, y + 0.17, -0.07]], 0.005, hairMat));
+  // urechea ascuțită, cu colțuri rotunjite (ca a unei pisici în picioare)
+  const sh = new THREE.Shape();
+  sh.moveTo(-0.5, 0); sh.quadraticCurveTo(-0.48, 0.55, -0.03, 1.0); sh.quadraticCurveTo(0.44, 0.55, 0.5, 0); sh.quadraticCurveTo(0, -0.1, -0.5, 0);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.035, bevelSize: 0.035, bevelSegments: 3, curveSegments: 14 });
+  g.add(new THREE.Mesh(geo, furPlainMat));
+  // interiorul urechii, mai deschis la culoare, puțin în față
+  const si = new THREE.Shape();
+  si.moveTo(-0.31, 0.1); si.quadraticCurveTo(-0.27, 0.5, -0.02, 0.8); si.quadraticCurveTo(0.25, 0.48, 0.31, 0.1); si.quadraticCurveTo(0, 0.04, -0.31, 0.1);
+  const inner = new THREE.Mesh(new THREE.ShapeGeometry(si, 12), innerEarMat); inner.position.z = 0.12; g.add(inner);
   return g;
 }
 const ears = [earMesh(), earMesh()];
@@ -596,8 +603,6 @@ paws.forEach(p => { p.visible = false; camera.add(p); });
 const head = new THREE.Group(); camera.add(head);
 const headDome = furry(new THREE.SphereGeometry(1, 32, 16, 0, TAU, 0, Math.PI / 2), headMat, 2, [1.01, 1.03, 1.015]);
 head.add(headDome);
-// laturile capului urcă spre baza urechilor (capul e „în șa” între urechi)
-const sideHead = [-1, 1].map(s => { const m = furry(new THREE.SphereGeometry(1, 24, 16), headMat, 2, [1.02, 1.02, 1.02]); m.userData.s = s; camera.add(m); return m; });
 let whiskers = new THREE.Group(); camera.add(whiskers);
 const whiskerMat = new THREE.MeshBasicMaterial({ color: 0xfbf8f0, transparent: true, opacity: 0.6, fog: false });
 const EAR_Z = 0.12;
@@ -605,9 +610,8 @@ let halfH = 0, halfW = 0;
 function layoutEars() {
   halfH = EAR_Z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   halfW = halfH * camera.aspect;
-  const h = Math.min(halfH * 0.95, halfW * 0.6), ex = halfW - h * 0.32;
-  ears.forEach((e, k) => { const s = k ? 1 : -1; e.scale.set(h * (k ? -1 : 1), h, h); e.position.set(s * ex, -halfH * 0.12, -EAR_Z); e.userData.base = s; });
-  sideHead.forEach(m => { const s = m.userData.s; const sy = Math.min(halfH * 0.7, h * 1.3); m.scale.set(h * 0.5, sy, h * 0.3); m.position.set(s * (ex + h * 0.55), -h * 0.12 - sy * 0.95, -EAR_Z - h * 0.05); m.rotation.z = s * 0.2; });
+  const portrait = camera.aspect < 1, h = halfH * (portrait ? 0.34 : 0.5);
+  ears.forEach((e, k) => { const s = k ? 1 : -1; e.scale.set(h * 0.75, h, h * 0.6); e.position.set(s * Math.min(halfW * 0.62, halfH * 1.0), halfH * 0.42, -EAR_Z); e.userData.base = s; });
   headDome.scale.set(halfW * 1.05, halfH * 0.3, EAR_Z * 0.35); head.position.set(0, -halfH * 1.18, -EAR_Z - 0.01); head.rotation.x = -0.25;
   // mustățile: din bot (sub imagine) spre colțurile de jos
   camera.remove(whiskers); whiskers = new THREE.Group(); camera.add(whiskers);
@@ -1022,9 +1026,9 @@ function frame() {
   earTw = Math.max(0, earTw - dt);
   ears.forEach((e, k) => {
     const s = k ? 1 : -1, toward = earTw > 0 && Math.sign(earSide) === s ? 0.25 * Math.sin(earTw * 20) : 0;
-    e.rotation.z = -s * 0.26 + toward + Math.sin(T * 0.7 + k) * 0.02;
+    e.rotation.z = -s * 0.22 + toward + Math.sin(T * 0.7 + k) * 0.03;
     e.rotation.x = -0.12 + (cat.pc > 0 ? -0.35 : 0) + (cat.knock > 0 ? 0.6 : 0);
-    e.rotation.y = s * (0.25 + (earTw > 0 && Math.sign(earSide) === s ? 0.3 : 0));
+    e.rotation.y = s * 0.15;
   });
   whiskers.children.forEach(w => { w.rotation.z = w.userData.s * Math.sin(T * 2.3 + w.userData.k) * 0.015 + (cat.pc > 0 ? w.userData.s * 0.06 : 0); });
   // lăbuțele la prindere
