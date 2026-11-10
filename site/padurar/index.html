@@ -249,6 +249,28 @@ const ROAD_H = ROADS.map(P => {
   for (let i = 0; i < 4; i++) h[i] *= i / 4;
   return h;
 });
+// podul peste pârâu (unde drumul 2 taie pârâul): drept, de la un mal la altul, cu tablier ușor arcuit
+const BRIDGE = (() => {
+  const pts = ROADS[1].pts, H = ROAD_H[1], cd = (x, z) => segInfo(x, z, CREEK).d;
+  let best = 1e9, bi = 0;
+  pts.forEach(([x, z], i) => { const d = cd(x, z); if (d < best) { best = d; bi = i; } });
+  let ia = bi, ib = bi;
+  const far = i => Math.hypot(pts[i][0] - pts[bi][0], pts[i][1] - pts[bi][1]);
+  while (ia > 0 && far(ia) < 11) ia--;
+  while (ib < pts.length - 1 && far(ib) < 11) ib++;
+  const [ax, az] = pts[ia], [bx, bz] = pts[ib], len = Math.hypot(bx - ax, bz - az);
+  const ci = segInfo(pts[bi][0], pts[bi][1], CREEK).i, cp = CREEK.pts[Math.round(ci)];
+  const water = baseH(cp[0], cp[1], 0) + 0.5;
+  const B = { x: (ax + bx) / 2, z: (az + bz) / 2, dx: (bx - ax) / len, dz: (bz - az) / len, len, w: 6.2, hA: H[ia], hB: H[ib], water, ia, ib };
+  B.bump = Math.max(0, water + 1.7 - (B.hA + B.hB) / 2);
+  B.y = (B.hA + B.hB) / 2 + B.bump;
+  return B;
+})();
+function brLocal(x, z) { const rx = x - BRIDGE.x, rz = z - BRIDGE.z; return { al: rx * BRIDGE.dx + rz * BRIDGE.dz, ac: -rx * BRIDGE.dz + rz * BRIDGE.dx }; }
+function deckH(al) { const t = clamp(al / BRIDGE.len + 0.5, 0, 1); return BRIDGE.hA + (BRIDGE.hB - BRIDGE.hA) * t + BRIDGE.bump * Math.sin(Math.PI * t); }
+const onDeck = (x, z, m = 0) => { const b = brLocal(x, z); return Math.abs(b.al) < BRIDGE.len / 2 + 0.6 && Math.abs(b.ac) < BRIDGE.w / 2 - m; };
+// drumul urcă pe pod: între capete, înălțimea drumului e chiar tablierul (malurile devin rampe)
+for (let i = BRIDGE.ia; i <= BRIDGE.ib; i++) ROAD_H[1][i] = deckH(brLocal(...ROADS[1].pts[i]).al);
 function heightAt(x, z) {
   const dc = segInfo(x, z, CREEK, 30).d;
   let h = baseH(x, z, dc);
@@ -260,17 +282,9 @@ function heightAt(x, z) {
 }
 const roadDist = (x, z) => Math.min(...ROADS.map(P => segInfo(x, z, P).d));
 const creekDist = (x, z) => segInfo(x, z, CREEK, 30).d;
-// podul peste pârâu (unde drumul 2 taie pârâul)
-const BRIDGE = (() => {
-  let best = 1e9, bi = 0; const pts = ROADS[1].pts;
-  pts.forEach(([x, z], i) => { const d = creekDist(x, z); if (d < best) { best = d; bi = i; } });
-  const [x, z] = pts[bi], [ax, az] = pts[bi - 1], [bx, bz] = pts[bi + 1], L = Math.hypot(bx - ax, bz - az);
-  return { x, z, dx: (bx - ax) / L, dz: (bz - az) / L, y: ROAD_H[1][bi] + 0.15, len: 15 };
-})();
 function walkH(x, z) {
-  let h = heightAt(x, z);
-  const rx = x - BRIDGE.x, rz = z - BRIDGE.z, along = rx * BRIDGE.dx + rz * BRIDGE.dz, across = -rx * BRIDGE.dz + rz * BRIDGE.dx;
-  if (Math.abs(along) < BRIDGE.len / 2 && Math.abs(across) < 2.3) h = Math.max(h, BRIDGE.y + 0.12);
+  const h = heightAt(x, z), b = brLocal(x, z);
+  if (Math.abs(b.al) < BRIDGE.len / 2 && Math.abs(b.ac) < BRIDGE.w / 2 + 0.1) return Math.max(h, deckH(b.al) + 0.14);
   return h;
 }
 {
@@ -313,20 +327,49 @@ function walkH(x, z) {
     g.fillStyle = 'rgba(95,110,40,.5)'; g.fillRect(28, 0, 8, h);
   }, true);
   const roadMat = new THREE.MeshLambertMaterial({ map: roadTex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const nearBridge = (x, z) => Math.hypot(x - BRIDGE.x, z - BRIDGE.z) < BRIDGE.len / 2;
+  const nearBridge = (x, z) => { const b = brLocal(x, z); return Math.abs(b.al) < BRIDGE.len / 2 - 0.4 && Math.abs(b.ac) < BRIDGE.w; };
   for (const P of ROADS) ribbon(P.pts, 4.6, (x, z) => heightAt(x, z) + 0.06, roadMat, nearBridge);
   ribbon(CREEK.pts, 3.4, (x, z, i) => heightAt(...CREEK.pts[i]) + 0.5, new THREE.MeshLambertMaterial({ color: 0x4d7f94, transparent: true, opacity: 0.85, emissive: 0x10283a }));
 
-  // podul
-  const br = new THREE.Group(); br.position.set(BRIDGE.x, BRIDGE.y, BRIDGE.z); br.rotation.y = Math.atan2(BRIDGE.dx, BRIDGE.dz);
-  const plank = M(0x6e4c2c), beam = M(0x4a3420);
-  br.add(part(BOX, plank, 4.8, 0.25, BRIDGE.len));
-  for (const s of [-1, 1]) {
-    br.add(part(BOX, beam, 0.15, 0.15, BRIDGE.len, s * 2.3, 1.0, 0));
-    for (let k = -3; k <= 3; k++) br.add(part(BOX, beam, 0.15, 1.0, 0.15, s * 2.3, 0.5, k * BRIDGE.len / 7));
-    for (const k of [-0.3, 0.3]) br.add(part(BOX, beam, 0.3, 5, 0.3, s * 2.1, -2.5, k * BRIDGE.len));
+  // podul: tablier din scânduri pe două grinzi, parapet cu stâlpi, piloni din bușteni și culee de piatră
+  {
+    const br = new THREE.Group(); br.position.set(BRIDGE.x, 0, BRIDGE.z); br.rotation.y = Math.atan2(BRIDGE.dx, BRIDGE.dz);
+    const plankA = M(0x7a5532), plankB = M(0x6a4828), beam = M(0x4a3420), stone = M(0x8d877c), stoneD = M(0x6f6a61);
+    const L = BRIDGE.len, W = BRIDGE.w, N = Math.ceil(L / 1.1), seg = L / N;
+    for (let k = 0; k < N; k++) {
+      const a0 = -L / 2 + k * seg, a1 = a0 + seg, am = (a0 + a1) / 2, y0 = deckH(a0), y1 = deckH(a1), ym = (y0 + y1) / 2;
+      const ang = -Math.atan2(y1 - y0, seg), sl = Math.hypot(seg, y1 - y0) + 0.02;
+      br.add(part(BOX, k & 1 ? plankA : plankB, W, 0.22, sl, 0, ym - 0.04, am, ang));
+      for (const sx of [-1, 1]) {
+        br.add(part(BOX, beam, 0.45, 0.55, sl, sx * (W / 2 - 0.7), ym - 0.42, am, ang));
+        br.add(part(BOX, beam, 0.3, 0.22, sl, sx * (W / 2 - 0.15), ym + 0.15, am, ang));
+        br.add(part(BOX, beam, 0.14, 0.14, sl, sx * (W / 2 - 0.05), ym + 1.08, am, ang));
+        br.add(part(BOX, beam, 0.1, 0.1, sl, sx * (W / 2 - 0.05), ym + 0.6, am, ang, 0, 0, false));
+      }
+    }
+    for (let a = -L / 2; a <= L / 2 + 0.01; a += L / Math.round(L / 2.2))
+      for (const sx of [-1, 1]) br.add(part(BOX, beam, 0.2, 1.15, 0.2, sx * (W / 2 - 0.05), deckH(a) + 0.55, a));
+    // piloni: perechi de bușteni până în albia pârâului, cu traversă
+    const logG = new THREE.CylinderGeometry(0.22, 0.26, 1, 8);
+    for (const f of [-0.3, 0, 0.3]) {
+      const a = f * L, yd = deckH(a) - 0.65;
+      let gy = 1e9; for (const sx of [-1, 1]) gy = Math.min(gy, heightAt(BRIDGE.x + BRIDGE.dx * a - BRIDGE.dz * sx * (W / 2 - 0.7), BRIDGE.z + BRIDGE.dz * a + BRIDGE.dx * sx * (W / 2 - 0.7)));
+      if (yd - gy < 0.6) continue;
+      const hgt = yd - gy + 0.8;
+      for (const sx of [-1, 1]) br.add(part(logG, beam, 1, hgt, 1, sx * (W / 2 - 0.7), yd - hgt / 2, a));
+      br.add(part(BOX, beam, W - 0.6, 0.35, 0.4, 0, yd - 0.1, a));
+      if (hgt > 2.2) for (const sx of [-1, 1]) br.add(part(BOX, beam, 0.12, Math.hypot(W - 1.4, hgt * 0.7), 0.12, 0, yd - hgt * 0.38, a, 0, 0, sx * Math.atan2(W - 1.4, hgt * 0.7), false));
+    }
+    // culee de piatră la capete
+    for (const e of [-1, 1]) {
+      const a = e * (L / 2 - 0.5), yd = deckH(a);
+      const gy = Math.min(heightAt(BRIDGE.x + BRIDGE.dx * a, BRIDGE.z + BRIDGE.dz * a), yd - 0.5);
+      const hgt = yd - gy + 1.2;
+      br.add(part(BOX, stone, W + 0.8, hgt, 1.6, 0, yd - 0.3 - hgt / 2, a));
+      for (const sx of [-1, 1]) br.add(part(BOX, stoneD, 0.6, hgt * 0.9, 2.2, sx * (W / 2 + 0.3), yd - 0.3 - hgt * 0.45, a - e * 0.4));
+    }
+    scene.add(br);
   }
-  scene.add(br);
 
   const dummy = new THREE.Object3D(), cc = new THREE.Color();
   const scatter = (geom, mat, n, rMin, rMax, fn, shadow = false, colors, ok) => {
@@ -638,34 +681,36 @@ const ALEXES = [makeAlex(), makeAlex()];
 // urșii
 const BEAR_SEE = 16, BEAR_ANG = 1.2, BEAR_SMELL = 6, BEAR_RUN = 6.3;
 const bearFur = M(0x5a3a22), bearDark = M(0x3a2414), bearSnout = M(0x9a7550);
+const blackFur = M(0x1c1b1d), blackDark = M(0x0c0c0d), blackSnout = M(0x7a5c40);
 const exclTex = canvasTex(64, 64, (g, w, h) => {
   g.fillStyle = '#e8261b'; g.beginPath(); g.arc(32, 32, 28, 0, TAU); g.fill();
   g.fillStyle = '#fff'; g.font = 'bold 46px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('!', 32, 35);
 });
-function makeBear() {
+function makeBear(black) {
+  const bearFur_ = black ? blackFur : bearFur, bearDark_ = black ? blackDark : bearDark, bearSnout_ = black ? blackSnout : bearSnout;
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  body.add(part(BOX, bearFur, 1.05, 0.95, 1.9, 0, 1.05, 0));
-  body.add(part(BOX, bearFur, 0.95, 0.35, 0.7, 0, 1.6, 0.35));
+  body.add(part(BOX, bearFur_, 1.05, 0.95, 1.9, 0, 1.05, 0));
+  body.add(part(BOX, bearFur_, 0.95, 0.35, 0.7, 0, 1.6, 0.35));
   const head = new THREE.Group(); head.position.set(0, 1.25, 1.05); body.add(head);
-  head.add(part(BOX, bearFur, 0.62, 0.55, 0.55, 0, 0, 0.15));
-  head.add(part(BOX, bearSnout, 0.32, 0.26, 0.32, 0, -0.08, 0.52));
+  head.add(part(BOX, bearFur_, 0.62, 0.55, 0.55, 0, 0, 0.15));
+  head.add(part(BOX, bearSnout_, 0.32, 0.26, 0.32, 0, -0.08, 0.52));
   head.add(part(BOX, MAT.black, 0.12, 0.08, 0.05, 0, -0.02, 0.69, 0, 0, 0, false));
   for (const x of [-0.22, 0.22]) {
-    head.add(part(BOX, bearDark, 0.14, 0.14, 0.08, x, 0.33, 0.05));
+    head.add(part(BOX, bearDark_, 0.14, 0.14, 0.08, x, 0.33, 0.05));
     head.add(part(BOX, MAT.black, 0.06, 0.06, 0.02, x * 0.6, 0.1, 0.43, 0, 0, 0, false));
   }
   const legs = [];
   for (const [x, z] of [[-0.36, 0.7], [0.36, 0.7], [-0.36, -0.7], [0.36, -0.7]]) {
     const p = new THREE.Group(); p.position.set(x, 0.75, z);
-    p.add(part(BOX, bearFur, 0.3, 0.78, 0.36, 0, -0.38, 0)); p.add(part(BOX, bearDark, 0.32, 0.12, 0.42, 0, -0.74, 0.04));
+    p.add(part(BOX, bearFur_, 0.3, 0.78, 0.36, 0, -0.38, 0)); p.add(part(BOX, bearDark_, 0.32, 0.12, 0.42, 0, -0.74, 0.04));
     body.add(p); legs.push(p);
   }
   const excl = new THREE.Sprite(new THREE.SpriteMaterial({ map: exclTex, depthTest: false, transparent: true }));
   excl.scale.set(0.8, 0.8, 1); excl.position.set(0, 2.6, 0.4); excl.renderOrder = 11; excl.visible = false; g.add(excl);
   g.visible = false; scene.add(g);
-  return { g, body, head, legs, excl, x: 0, y: 0, z: 0, yaw: 0, tYaw: 0, state: 'off', timer: 0, chaseT: 0, cool: 0, wp: null, phase: 0 };
+  return { g, body, head, legs, excl, x: 0, y: 0, z: 0, yaw: 0, tYaw: 0, black: !!black, state: 'off', timer: 0, chaseT: 0, cool: 0, wp: null, phase: 0 };
 }
-const BEARS = Array.from({ length: 7 }, makeBear);
+const BEARS = [...Array.from({ length: 7 }, () => makeBear(false)), ...Array.from({ length: 3 }, () => makeBear(true))];
 ALEXES[1].spawnIn = 35;
 
 // inel pe copacul țintă
@@ -766,6 +811,11 @@ function pushOut(o, rad) {
   for (const [cx, cr, tr] of [...TRUCK_COLL, ...TRL_COLL.map(([a, b]) => [a, b, 1])]) {
     const [tx, tz] = tr ? trlPt(cx, 0) : truckPt(cx, 0), dx = o.x - tx, dz = o.z - tz, d = Math.hypot(dx, dz), m = cr + rad;
     if (d < m && d > 1e-4) { o.x = tx + dx / d * m; o.z = tz + dz / d * m; }
+  }
+  const b = brLocal(o.x, o.z), e = Math.abs(b.ac) - BRIDGE.w / 2;
+  if (Math.abs(b.al) < BRIDGE.len / 2 - 0.2 && Math.abs(e) < rad) {
+    const d = (Math.sign(b.ac) * (BRIDGE.w / 2 + (e < 0 ? -rad : rad))) - b.ac;
+    o.x += -BRIDGE.dz * d; o.z += BRIDGE.dx * d;
   }
   const r = Math.hypot(o.x, o.z); if (r > WALL_R) { o.x *= WALL_R / r; o.z *= WALL_R / r; }
 }
@@ -1279,11 +1329,11 @@ function toggleTruck() {
 $('bTruck').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); if (S.running && !S.paused) toggleTruck(); });
 
 function placeTruck() {
-  const [fx, fz] = truckPt(5.2, 0), [bx, bz] = truckPt(2.6, 0), hF = heightAt(fx, fz), hB = heightAt(bx, bz);
+  const [fx, fz] = truckPt(5.2, 0), [bx, bz] = truckPt(2.6, 0), hF = walkH(fx, fz), hB = walkH(bx, bz);
   const pitch = Math.atan2(hF - hB, 2.6);
   truck.position.set(TRUCK.x, hB - 0.05 - Math.sin(pitch) * 2.6, TRUCK.z);
   truck.rotation.set(0, TRUCK.yaw, pitch);
-  const [ax, az] = trlPt(2.6, 0), [cx, cz] = trlPt(-2.6, 0), hA = heightAt(ax, az), hC = heightAt(cx, cz);
+  const [ax, az] = trlPt(2.6, 0), [cx, cz] = trlPt(-2.6, 0), hA = walkH(ax, az), hC = walkH(cx, cz);
   trailer.position.set(TRL.x, (hA + hC) / 2 - 0.05, TRL.z);
   trailer.rotation.set(0, TRL.yaw, Math.atan2(hA - hC, 5.2));
 }
@@ -1318,6 +1368,9 @@ function driveTractor(dt, f, s) {
   for (const [cx, cr, tr] of [...TRUCK_COLL, ...TRL_COLL.map(([a, b]) => [a, b, 1])]) {
     const [x, z] = tr ? trlPt(cx, 0) : truckPt(cx, 0);
     if (Math.hypot(x, z) > WALL_R) hit = true;
+    const b = brLocal(x, z);
+    if (Math.abs(b.al) < BRIDGE.len / 2 && Math.abs(Math.abs(b.ac) - BRIDGE.w / 2) < cr * 0.85) hit = true;
+    else if (creekDist(x, z) < 2.6 && !onDeck(x, z)) { hit = true; if (!S.wetMsg || S.time - S.wetMsg > 4) { S.wetMsg = S.time; toast('🌊 Tractorul nu trece prin pârâu. Treci pe pod!', '', 1.6); } }
     for (const t of trees) if (solid(t) && Math.hypot(x - t.x, z - t.z) < cr + t.trunkR) { hit = true; break; }
     if (hit) break;
   }
@@ -1380,7 +1433,7 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (S.running && !S.paused) update(dt);
   else if (!S.running) { camYaw += dt * 0.08; }
-  placeCamera(dt);
+  if (!window.__camLock) placeCamera(dt);
   hud3d();
   if ((mmTick++ & 1) === 0) drawMinimap();
   if (S.wantPhoto) capturePhoto();
@@ -1394,7 +1447,7 @@ $('loading').remove();
 frame();
 
 // pentru teste
-window.__pd = { TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
+window.__pd = { truck, brLocal, deckH, camera, BRIDGE, ROADS, CREEK, heightAt, walkH, TRL, GATER, respawn, unload, TRUCK, toggleTruck, S, P, A: ALEXES[0], ALEXES, BEARS, bearSees, get trees() { return trees; }, update, newGame, alexSpawn, alexSees, hitTree, fell, sell,
   setCam(y) { camYaw = y; }, place(o, x, z, yaw) { o.x = x; o.z = z; if (yaw !== undefined) o.yaw = o.tYaw = yaw; } };
 </script>
 </body>
