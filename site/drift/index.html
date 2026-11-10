@@ -88,6 +88,17 @@
   #optPanel button.on { background:rgba(255,178,46,.3); border-color:var(--acc); }
   @media (max-width:720px) { #totals { top:auto; } #optBtn { top:8px; right:8px; } #optPanel { top:58px; right:8px; } }
   #loading { position:fixed; inset:0; display:grid; place-items:center; background:#11141a; color:var(--ink2); font-size:14px; z-index:5; }
+  /* bara cu jocuri de sus (/games/topbar.js) */
+  #cars, #score, #optBtn { top:calc(12px + var(--gb, 0px)); }
+  #cars { max-height:calc(100% - 222px - var(--gb, 0px)); }
+  #totals, #optPanel { top:calc(62px + var(--gb, 0px)); }
+  #pop { top:calc(110px + var(--gb, 0px)); }
+  @media (max-width:720px) {
+    #cars { top:auto; max-height:calc(100% - 150px - var(--gb, 0px)); }
+    #totals { top:auto; }
+    #minimap, #score, #optBtn { top:calc(8px + var(--gb, 0px)); }
+    #optPanel { top:calc(58px + var(--gb, 0px)); }
+  }
 </style>
 <script type="importmap">
 { "imports": {
@@ -97,6 +108,7 @@
 </script>
 </head>
 <body>
+<script src="/games/topbar.js"></script>
 <div id="loading">Se încarcă…</div>
 <canvas id="game"></canvas>
 
