@@ -761,18 +761,20 @@ function fell(t) {
   t.stump = part(geo.stump, [MAT.bark, MAT.stumpTop, MAT.stumpTop], t.trunkR * 1.08, 0.55, t.trunkR * 1.08, t.x, t.y, t.z);
   if (t.type === 'mesteacan') t.stump.material = [MAT.birch, MAT.stumpTop, MAT.stumpTop];
   scene.add(t.stump);
-  S.load.push(t.value);
+  S.load.push(t.value); if (t.healthy) S.loadIll = (S.loadIll || 0) + 1;
   if (t.healthy) S.cutBad++; else S.cutOk++;
   sfx.crack();
   toast(`🌲 Cade! +${fmt(t.value)} lei în lemne` + (t.healthy ? ' (ilegal)' : ''), '', 1.6);
   hud();
 }
 function caught(t, A) {
-  const lost = loadSum() + t.value;
-  S.strikes++; S.lost += lost; S.load = []; P.swing = -1; S.freeze = 1.8;
-  t.state = 'sealed';
-  t.tape = part(geo.tape, MAT.tape, t.trunkR * 1.15, 0.22, t.trunkR * 1.15, 0, 1.3, 0, 0, 0, 0, false);
-  t.pivot.add(t.tape);
+  const lost = loadSum() + (t ? t.value : 0);
+  S.strikes++; S.lost += lost; S.load = []; S.loadIll = 0; P.swing = -1; S.freeze = 1.8;
+  if (t) {
+    t.state = 'sealed';
+    t.tape = part(geo.tape, MAT.tape, t.trunkR * 1.15, 0.22, t.trunkR * 1.15, 0, 1.3, 0, 0, 0, 0, false);
+    t.pivot.add(t.tape);
+  }
   A.state = 'photo'; A.timer = 0; A.said = false;
   sfx.bad();
   toast(`📷 Prins! Alex Nedea ți-a confiscat lemnele (−${fmt(lost)} lei)`, 'bad', 3.5);
@@ -781,7 +783,7 @@ function caught(t, A) {
 }
 function sell() {
   const sum = loadSum(); if (!sum) return;
-  S.money += sum; S.sold += S.load.length; S.load = []; sfx.cash();
+  S.money += sum; S.sold += S.load.length; S.load = []; S.loadIll = 0; sfx.cash();
   toast(`🚚 Vândut! +${fmt(sum)} lei`, 'good'); setTruckLogs(S.sold * 2); hud();
 }
 
@@ -810,6 +812,11 @@ function alexUpdate(A, dt) {
   }
   A.life -= dt;
   if (A.life <= 0 && (A.state === 'walk' || A.state === 'look' || A.state === 'turn')) alexLeave(A);
+  if (A.checkCd > 0) A.checkCd -= dt;
+  if ((A.state === 'walk' || A.state === 'look' || A.state === 'turn') && !(A.checkCd > 0) && S.load.length && !S.inTruck && S.freeze <= 0 && S.endAt <= 0 && alexDist(A) < 4) {
+    A.state = 'check'; A.timer = 2.2; S.freeze = 2.3; P.swing = -1;
+    bubble(A, 'Bună ziua! Ia să vedem ce lemne aveți acolo…', 2.2);
+  }
   let speed = 0, turn = 2.2;
   if (A.state === 'walk' || A.state === 'leave') {
     const dx = A.wp.x - A.x, dz = A.wp.z - A.z, d = Math.hypot(dx, dz);
@@ -825,6 +832,12 @@ function alexUpdate(A, dt) {
   } else if (A.state === 'turn') {
     A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 1.6; A.timer -= dt;
     if (A.timer <= 0) { A.state = 'look'; A.timer = rand(1.5, 3); }
+  } else if (A.state === 'check') {
+    A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 6; A.timer -= dt;
+    if (A.timer <= 0) {
+      if (S.loadIll > 0) caught(null, A);
+      else { A.state = 'look'; A.timer = 1.5; A.checkCd = 40; bubble(A, 'E în regulă, sunt lemne bolnave. Spor la treabă!', 2.5); toast('✓ Alex Nedea ți-a verificat lemnele: totul legal', 'good', 2); }
+    }
   } else if (A.state === 'photo') {
     A.tYaw = Math.atan2(P.x - A.x, P.z - A.z); turn = 8; A.timer += dt;
     if (A.timer > 0.3 && A.aCam.parent !== A.g) camAtFace(A);
@@ -1149,7 +1162,7 @@ function startPanel(resume) {
     <div class="lg-ok">🍁 <b>Sănătos</b>: coroană plină, în culori vii de toamnă (brazii: ace verzi), scoarță maro. Bani mulți (150–390 lei), dar <b>ilegal</b>. Inel <span style="color:#d0301f">roșu</span>.</div>
     <div class="lg-bad">🍂 <b>Bolnav / uscat</b>: coroană rară, frunze maro-cenușii sau deloc, crengi goale, scoarță gri, ciuperci, brazi ruginii. Puțini bani (25–90 lei), <b>legal</b>. Inel <span style="color:#2f8d2c">verde</span>.</div>
   </div>
-  <p>📷 Prin pădure umblă <b>doi Alex Nedea de la RecorderZ</b> și nu apar pe hartă, așa că fii atent în jur. Conul roșu de pe jos e ce vede fiecare. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
+  <p>📷 Prin pădure umblă <b>doi Alex Nedea de la RecorderZ</b> și nu apar pe hartă, așa că fii atent în jur. Conul roșu de pe jos e ce vede fiecare. Dacă te prinde tăind un copac sănătos îți face poză și îți confiscă toate lemnele. Dacă ajungi lângă el cu lemne în spate, te oprește și ți le verifică: dacă ai și lemn din copaci sănătoși, îți face poză și reportaj. Când taie cineva lângă el, se mai întoarce să vadă ce se aude… La <b>3 reportaje</b> ai pierdut.</p>
   <p>🐻 În pădure sunt și <b>doi urși</b>. Dacă te văd (sau te miros de aproape), mârâie, apare un <b style="color:#d0201a">!</b> deasupra lor și apoi aleargă după tine. Fugi (<b>Shift</b> sau joystick-ul tras la maxim) la camion și urcă în el (butonul 🚚 sau <kbd>T</kbd>): acolo ursul renunță și pleacă. Dacă te prinde, te mănâncă.</p>
   <p>🚚 Încap ${CAP} copaci pe tine. Du-i la camion ca să-i vinzi.</p>
   <ul>${isTouch ? '<li>Joystick: trage cu degetul în stânga ecranului</li><li>Camera: trage în dreapta ecranului</li><li>🪓 ține apăsat ca să tai</li>'
@@ -1160,7 +1173,7 @@ function startPanel(resume) {
 }
 function newGame() {
   buildForest(1 + Math.floor(Math.random() * 1e6));
-  Object.assign(S, { running: true, paused: false, time: 0, money: 0, load: [], strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0, photos: [], freeze: 0, endAt: 0, shake: 0 });
+  Object.assign(S, { running: true, paused: false, time: 0, money: 0, load: [], loadIll: 0, strikes: 0, cutOk: 0, cutBad: 0, sold: 0, lost: 0, photos: [], freeze: 0, endAt: 0, shake: 0 });
   Object.assign(P, { x: 0, z: 5, yaw: Math.PI, swing: -1 }); camYaw = Math.PI;
   S.endWhy = ''; S.inTruck = false; P.g.visible = true; BEARS.forEach((B, i) => { B.body.rotation.x = 0; B.head.rotation.x = 0; bearSpawn(B, i); });
   ALEXES.forEach((A, i) => { Object.assign(A, { active: false, state: 'off', spawnIn: i ? rand(35, 50) : rand(12, 20) }); A.g.visible = false; });
