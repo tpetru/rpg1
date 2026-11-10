@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Car Mechanic 3D</title>
+<meta name="description" content="Ai un service auto. Clienții vin cu mașini stricate, tu cauți defectul, schimbi piesele și iei banii.">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2a2e34; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; }
+  .chip { background: rgba(18, 20, 26, .7); border-radius: 12px; padding: 7px 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  #hud { position: fixed; left: 12px; top: calc(12px + var(--gb, 0px)); display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; z-index: 5; max-width: calc(100vw - 120px); }
+  #hud .chip { font-weight: 800; font-size: 17px; }
+  #rep { color: #ffcf3a; letter-spacing: 1px; }
+  #btns { position: fixed; right: 12px; top: calc(12px + var(--gb, 0px)); display: flex; gap: 6px; z-index: 5; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; color: inherit; }
+  .ib { width: 40px; height: 40px; font-size: 19px; background: rgba(18, 20, 26, .7); color: #fff; }
+  .ib:hover { background: rgba(18, 20, 26, .9); }
+  #spots { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; }
+  .spot { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; display: none; align-items: center; gap: 4px; padding: 4px 9px 4px 6px; border-radius: 16px; background: rgba(18, 20, 26, .78); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; border: 2px solid rgba(255,255,255,.35); transition: opacity .2s; }
+  .spot .i { font-size: 17px; }
+  .spot:hover, .spot.sel { border-color: #ffcf3a; background: rgba(40, 34, 14, .9); }
+  .spot.bad { border-color: #ff5a4a; }
+  .spot.ok { border-color: #4fd36a; }
+  .spot.lock { opacity: .55; }
+  .spot.hid { opacity: .18; pointer-events: none; }
+  .spot .n { display: inline; }
+  body.compact .spot .n { display: none; }
+  body.compact .spot { padding: 4px 6px; }
+  .float { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 20px; color: #ffe14d; text-shadow: 0 2px 4px rgba(0,0,0,.8); transition: transform 1.3s ease-out, opacity 1.3s; white-space: nowrap; pointer-events: none; }
+  .float.bad { color: #ff6a5a; }
+  .float.good { color: #6dff86; }
+  #dock { position: fixed; left: 10px; right: 10px; bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; pointer-events: none; z-index: 6; }
+  .card { pointer-events: auto; background: rgba(18, 20, 26, .86); border-radius: 16px; padding: 12px 14px; width: 340px; max-width: 100%; box-shadow: 0 8px 30px rgba(0,0,0,.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #job { display: none; }
+  #job .who { font-size: 13px; opacity: .85; }
+  #job .say { font-size: 16px; font-weight: 700; margin: 6px 0; line-height: 1.3; color: #ffe9b0; }
+  #job .tipT { font-size: 13px; opacity: .85; }
+  #job .tipT b { color: #6dff86; }
+  #job .tipT.late b { color: #ff8a7a; }
+  .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  .tools button { background: #343a44; padding: 8px 2px 6px; font-size: 12px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .tools button .e { font-size: 20px; }
+  .tools button:hover:not(:disabled) { background: #48505c; }
+  .tools button.on { background: #2f5d8a; }
+  .tools button:disabled { opacity: .35; cursor: default; }
+  .tools button.done { background: #2e7d3f; }
+  .tools button.done:hover:not(:disabled) { background: #379a4b; }
+  #bought { font-size: 12px; opacity: .8; margin-top: 6px; }
+  #zp { display: none; }
+  #zp h3 { margin: 0 0 8px; font-size: 17px; display: flex; align-items: center; gap: 6px; }
+  #zp h3 .x { margin-left: auto; background: #343a44; width: 28px; height: 28px; font-size: 14px; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid rgba(255,255,255,.1); }
+  .row .ic { font-size: 22px; width: 28px; text-align: center; }
+  .row .tx { flex: 1; min-width: 0; }
+  .row .tx b { display: block; font-size: 14px; }
+  .row .tx small { font-size: 12px; opacity: .85; }
+  .row .tx small.g { color: #6dff86; opacity: 1; }
+  .row .tx small.y { color: #ffd34a; opacity: 1; }
+  .row .tx small.r { color: #ff7a6a; opacity: 1; }
+  .row .tx small.n { color: #8fd0ff; opacity: 1; }
+  .row button { background: #343a44; padding: 7px 9px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .row button:hover:not(:disabled) { background: #48505c; }
+  .row button.rep { background: #8a4a1a; }
+  .row button.rep:hover:not(:disabled) { background: #a85a20; }
+  .row button:disabled { opacity: .35; cursor: default; }
+  .lockmsg { font-size: 13px; color: #ffd34a; margin: 2px 0 6px; }
+  .pb { height: 6px; border-radius: 3px; background: rgba(255,255,255,.15); overflow: hidden; margin-top: 4px; }
+  .pb i { display: block; height: 100%; width: 0; background: #ffcf3a; }
+  #busy { position: fixed; left: 50%; top: calc(60px + var(--gb, 0px)); transform: translateX(-50%); display: none; z-index: 6; font-weight: 800; font-size: 15px; min-width: 220px; text-align: center; pointer-events: none; }
+  #toast { position: fixed; left: 50%; top: calc(108px + var(--gb, 0px)); transform: translateX(-50%); font-size: 17px; font-weight: 800; text-align: center; pointer-events: none; opacity: 0; transition: opacity .25s; max-width: calc(100vw - 32px); z-index: 7; }
+  #toast.show { opacity: 1; }
+  #toast.good { background: rgba(40, 130, 50, .92); }
+  #toast.bad { background: rgba(190, 40, 30, .92); }
+  #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: calc(16px + var(--gb, 0px)) 16px 16px; background: rgba(10, 12, 16, .5); z-index: 20; }
+  #overlay.show { display: flex; }
+  .panel { background: #f4f1ea; color: #2a2a2e; border-radius: 22px; padding: 22px 24px; width: min(620px, 100%); max-height: calc(100vh - 32px - var(--gb, 0px)); overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+  .panel h1 { margin: 0 0 6px; font-size: 32px; color: #c2410c; text-align: center; }
+  .panel h2 { margin: 0 0 8px; font-size: 25px; color: #1f5d8a; text-align: center; }
+  .panel p { margin: 8px 0; line-height: 1.45; }
+  .panel ul { margin: 6px 0 10px; padding-left: 20px; line-height: 1.55; }
+  .panel kbd { background: #e2ddd2; border-radius: 5px; padding: 1px 6px; font: inherit; font-weight: 700; font-size: 13px; }
+  .res { list-style: none; padding: 0 !important; }
+  .res li { padding: 6px 10px; border-radius: 10px; margin: 4px 0; background: #e9e4d8; }
+  .res li.g { background: #d6efd8; }
+  .res li.r { background: #f7d6d0; }
+  .res li.y { background: #f6ecc8; }
+  .res li b { float: right; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
+  .stats div { background: #e9e4d8; border-radius: 10px; padding: 8px 10px; }
+  .stats b { display: block; font-size: 22px; }
+  .shop { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .shop button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 12px; background: #e9e4d8; color: #2a2a2e; }
+  .shop button:hover:not(:disabled) { background: #ffe2a6; }
+  .shop button:disabled { opacity: .5; cursor: default; }
+  .shop button .ic { font-size: 26px; }
+  .shop button .tx { flex: 1; }
+  .shop button .tx small { display: block; font-weight: 400; opacity: .8; }
+  .shop button .pr { font-weight: 800; white-space: nowrap; }
+  .go { display: block; margin: 14px auto 2px; padding: 12px 30px; font-size: 20px; font-weight: 800; background: #c2410c; color: #fff; box-shadow: 0 4px 0 #7a2806; }
+  .go:active { transform: translateY(3px); box-shadow: 0 1px 0 #7a2806; }
+  .go2 { display: block; margin: 8px auto 0; padding: 8px 18px; font-size: 15px; font-weight: 700; background: #d8d2c4; color: #2a2a2e; }
+  @media (max-width: 760px) {
+    #dock { flex-direction: column-reverse; align-items: stretch; left: 6px; right: 6px; bottom: 6px; gap: 6px; }
+    .card { width: auto; padding: 9px 11px; }
+    #job .say { font-size: 14px; margin: 4px 0; }
+    .tools button { font-size: 11px; padding: 6px 2px 4px; }
+    .tools button .e { font-size: 18px; }
+    #zp .row { padding: 5px 0; }
+    #hud .chip { font-size: 14px; padding: 5px 9px; }
+    .panel { padding: 16px; } .panel h1 { font-size: 26px; }
+    #busy { top: calc(54px + var(--gb, 0px)); }
+    #toast { top: calc(96px + var(--gb, 0px)); font-size: 15px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+<script src="/games/topbar.js"></script>
+<div id="hud">
+  <div class="chip" id="money">💰 0 lei</div>
+  <div class="chip" id="rep">★★★☆☆</div>
+  <div class="chip" id="day">📅 Ziua 1 · 🚗 1/3</div>
+</div>
+<div id="btns">
+  <button class="ib" id="bSound" title="Sunet (M)">🔊</button>
+  <button class="ib" id="bHelp" title="Ajutor / pauză (Esc)">❔</button>
+</div>
+<div id="spots"></div>
+<div id="busy" class="chip"><span id="busyT"></span><div class="pb"><i id="busyB"></i></div></div>
+<div id="dock">
+  <div class="card" id="job"></div>
+  <div class="card" id="zp"></div>
+</div>
+<div id="toast" class="chip"></div>
+<div id="overlay" class="show"><div class="panel" id="panel"><h1>🔧 Car Mechanic</h1><p style="text-align:center">Se deschide atelierul…</p></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const SAVE = 'carmech3d';
+const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+// ---------------- piese ----------------
+// price = cât te costă piesa, lab = manopera, rt = secunde de lucru; need = unde trebuie să stea mașina ca s-o verifici (ni) / s-o schimbi (nr)
+const PARTS = {
+  battery:   { n: 'Baterie',            ic: '🔋', price: 180, lab: 25,  rt: 3,   ni: 'hood', nr: 'hood', scan: 1 },
+  alternator:{ n: 'Alternator',         ic: '⚡', price: 260, lab: 70,  rt: 5,   ni: 'hood', nr: 'hood', scan: 1 },
+  plugs:     { n: 'Bujii',              ic: '🔥', price: 60,  lab: 35,  rt: 3.5, ni: 'hood', nr: 'hood', scan: 1 },
+  oil:       { n: 'Ulei + filtru ulei', ic: '🛢️', price: 110, lab: 30,  rt: 4,   ni: 'hood', nr: 'hood', scan: 1 },
+  belt:      { n: 'Kit distribuție',    ic: '⚙️', price: 320, lab: 160, rt: 7,   ni: 'hood', nr: 'hood', scan: 1 },
+  airf:      { n: 'Filtru aer',         ic: '🌬️', price: 40,  lab: 10,  rt: 2,   ni: 'hood', nr: 'hood', scan: 1 },
+  radiator:  { n: 'Radiator',           ic: '🌡️', price: 220, lab: 80,  rt: 5,   ni: 'hood', nr: 'hood', scan: 1 },
+  tire:      { n: 'Anvelopă',           ic: '🛞', price: 140, lab: 25,  rt: 3.5, ni: null,   nr: 'lift' },
+  pads:      { n: 'Plăcuțe frână',      ic: '🛑', price: 80,  lab: 40,  rt: 4,   ni: 'lift', nr: 'lift' },
+  shock:     { n: 'Amortizor',          ic: '🔩', price: 170, lab: 60,  rt: 5,   ni: 'lift', nr: 'lift' },
+  exhaust:   { n: 'Eșapament',          ic: '💨', price: 210, lab: 60,  rt: 5,   ni: 'lift', nr: 'lift' },
+  headl:     { n: 'Becuri faruri',      ic: '💡', price: 30,  lab: 15,  rt: 2,   ni: null,   nr: null, scan: 1 },
+  taill:     { n: 'Becuri stop',        ic: '🔴', price: 20,  lab: 10,  rt: 1.5, ni: null,   nr: null, scan: 1 },
+  wipers:    { n: 'Ștergătoare',        ic: '🌧️', price: 35,  lab: 5,   rt: 1.5, ni: null,   nr: null },
+};
+// culoarea piesei: bună / stricată / nouă
+const LOOK = {
+  battery: [0x2a2c30, 0x58533f, 0x111317], alternator: [0xa8acb0, 0x6e5a48, 0xdde2e8], plugs: [0x2a2a2a, 0x6a4128, 0x101010],
+  oil: [0xe0b020, 0x5c4a12, 0xffd23a], belt: [0x222222, 0x77695c, 0x0c0c0c], airf: [0x303236, 0x5e573f, 0x1a1c20],
+  radiator: [0x9aa2a8, 0x7d5a38, 0xcdd5db], tire: [0x1e1e1e, 0x4c4741, 0x101010], pads: [0xb02a20, 0x6a3a26, 0xe8402c],
+  shock: [0xc8a020, 0x5c4630, 0xffcc2a], exhaust: [0x6c7074, 0x7c4a28, 0xb8bec4], wipers: [0x1a1a1a, 0x8a8a80, 0x080808],
+};
+const WHEELS = { FL: 'față stânga', FR: 'față dreapta', RL: 'spate stânga', RR: 'spate dreapta' };
+const NEEDMSG = { hood: '🔒 Deschide capota (H)', lift: '🔒 Ridică mașina pe elevator (L)' };
+
+// ---------------- clienți și plângeri ----------------
+// f = variante de defecte (se alege una); 'pads@F' = ambele plăcuțe din față, 'tire@1' = o anvelopă oarecare
+const COMPLAINTS = [
+  { t: 'Nu pornește dimineața, doar țăcăne când dau la cheie.', f: [['battery'], ['battery'], ['alternator']] },
+  { t: 'Mi se descarcă bateria și se aprinde martorul roșu cu baterie.', f: [['alternator'], ['alternator', 'battery']] },
+  { t: 'Scârțâie urât când frânez.', f: [['pads@F'], ['pads@R'], ['pads@F']] },
+  { t: 'Trage într-o parte și vibrează volanul pe autostradă.', f: [['tire@1']] },
+  { t: 'Se încinge motorul, acul trece de 90 în trafic.', f: [['radiator']] },
+  { t: 'Scoate fum negru și trage greu în pantă.', f: [['airf'], ['airf', 'plugs']] },
+  { t: 'Merge în trei pistoane și tremură la ralanti.', f: [['plugs']] },
+  { t: 'Face zgomot ca un tractor pe dedesubt.', f: [['exhaust']] },
+  { t: 'Bubuie pe gropi și se leagănă în viraj.', f: [['shock@F'], ['shock@R']] },
+  { t: 'S-a aprins becul de ulei la bord.', f: [['oil']] },
+  { t: 'Nu văd nimic noaptea, farurile abia luminează.', f: [['headl']] },
+  { t: 'M-a oprit poliția, zice că nu-mi merg stopurile.', f: [['taill']] },
+  { t: 'Am 180.000 km și se aude un clănțănit din motor.', f: [['belt']] },
+  { t: 'Când plouă nu văd nimic prin parbriz.', f: [['wipers']] },
+  { t: 'Vreau revizia: ulei și filtru de aer, ce scrie în carte.', f: [['oil', 'airf']] },
+  { t: 'Merg la ITP săptămâna viitoare. Verifică-mi tot, te rog!', f: 'itp', day: 2 },
+];
+const MODELS = [['Dacia Logan', 'sedan'], ['Dacia Sandero', 'hatch'], ['VW Golf', 'hatch'], ['Ford Focus', 'hatch'], ['Skoda Octavia', 'wagon'],
+  ['VW Passat', 'wagon'], ['Dacia Duster', 'suv'], ['Toyota RAV4', 'suv'], ['Opel Astra', 'sedan'], ['Renault Clio', 'hatch'], ['BMW Seria 3', 'sedan'], ['Audi A4', 'wagon']];
+const NAMES = [['Ion', '👨'], ['Maria', '👩'], ['Gheorghe', '👴'], ['Elena', '👩‍🦰'], ['Vasile', '🧔'], ['Ana', '👱‍♀️'], ['Mihai', '👨‍🦱'], ['Ioana', '👩‍🦱'],
+  ['Costel', '👨‍🦲'], ['Florin', '🧑'], ['Doamna Popescu', '👵'], ['Nea Mitică', '👴'], ['Cristi', '🧑‍🦱'], ['Andreea', '👧'], ['Dorel', '🧔‍♂️'], ['Bianca', '👩‍🦳']];
+const SURN = ['Popescu', 'Ionescu', 'Popa', 'Dumitru', 'Stan', 'Stoica', 'Gheorghe', 'Rusu', 'Munteanu', 'Matei', 'Ciobanu', 'Constantin'];
+const COLORS = [0xb8202a, 0x1f4fa0, 0xe8e8e8, 0x222428, 0x8a8f96, 0x2f6b3a, 0xd9a21b, 0x6d2b8f, 0xc75d1a, 0x3f8fbf, 0x7a1a24, 0xf0f0e8];
+
+const UPG = [
+  { id: 'scanner',  ic: '💻', name: 'Tester OBD', desc: 'Butonul 💻 citește calculatorul mașinii: îți arată starea bateriei, alternatorului, motorului, radiatorului și becurilor.', price: 250 },
+  { id: 'impact',   ic: '🔫', name: 'Pistol pneumatic', desc: 'Schimbi orice piesă de două ori mai repede.', price: 180 },
+  { id: 'lamp',     ic: '🔦', name: 'Lanternă LED', desc: 'Verifici piesele de două ori mai repede.', price: 90 },
+  { id: 'supplier', ic: '📦', name: 'Furnizor en-gros', desc: 'Piesele te costă cu 20% mai puțin (clientul plătește la fel).', price: 300 },
+  { id: 'coffee',   ic: '☕', name: 'Automat de cafea', desc: 'Clienții așteaptă mai mult: +40 s la bacșiș.', price: 120 },
+];
+
+// ---------------- stare ----------------
+const S = {
+  mode: 'menu', // menu | arrive | work | closing | leave | result | summary | over
+  paused: false, day: 1, money: 400, rep: 3, up: {}, carIdx: 0, carsToday: 3,
+  hoodOpen: false, hood: 0, liftUp: false, lift: 0, door: 0, doorOpen: false,
+  busy: null, sel: null, job: null, dayStats: null, sound: true, best: 0,
+};
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE) || 'null');
+    S.sound = localStorage.getItem(SAVE + '.snd') !== '0';
+    S.best = +(localStorage.getItem(SAVE + '.best') || 0);
+    return d;
+  } catch (e) { return null; }
+}
+function writeSave() {
+  try {
+    localStorage.setItem(SAVE, JSON.stringify({ day: S.day, money: S.money, rep: S.rep, up: S.up }));
+    if (S.day - 1 > S.best) { S.best = S.day - 1; localStorage.setItem(SAVE + '.best', S.best); }
+  } catch (e) {}
+}
+const partCost = t => Math.round(PARTS[t].price * (S.up.supplier ? 0.8 : 1));
+const needOk = n => !n || (n === 'hood' ? S.hood > 0.95 : S.lift > 1.55);
+
+// ---------------- scenă ----------------
+const renderer = new THREE.WebGLRenderer({ antialias: !isTouch });
+renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xa9d2ef);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 200);
+
+scene.add(new THREE.HemisphereLight(0xf2f5ff, 0x5a5048, 1.25));
+const key = new THREE.DirectionalLight(0xfff6e8, 1.7);
+key.position.set(3, 12, 5); key.target.position.set(0, 0, 0);
+key.castShadow = true;
+key.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
+Object.assign(key.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 30 });
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+scene.add(key, key.target);
+const underLamp = new THREE.PointLight(0xfff0d0, 0, 6, 1.5); underLamp.position.set(0, 0.5, 0); scene.add(underLamp);
+const bayLamp = new THREE.PointLight(0xfff4e0, 0, 4, 1.5); scene.add(bayLamp);
+
+const matCache = {};
+function M(c, o) {
+  const k = c + (o ? JSON.stringify(o) : '');
+  return matCache[k] || (matCache[k] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.75 }, o)));
+}
+function mesh(geo, mat, x = 0, y = 0, z = 0, parent = scene, shadow = true) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  if (shadow) { m.castShadow = true; m.receiveShadow = true; }
+  parent.add(m);
+  return m;
+}
+const box = (w, h, d, mat, x, y, z, p, sh) => mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, p, sh);
+const cyl = (rt, rb, h, mat, x, y, z, p, seg = 16, sh) => mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat, x, y, z, p, sh);
+function canvasTex(w, h, draw, rep) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep[0], rep[1]);
+  t.anisotropy = 4;
+  return t;
+}
+
+// ---------------- atelierul ----------------
+// interior 18 x 18 m (pereți la ±9), ușa rulantă în spate (z = -9), mașina stă pe elevator în centru, cu botul spre +z
+const HALF = 9, WH = 4.6, DW = 4.8, DH = 3.6;
+const texFloor = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#8d8f8f'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4000; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? '0,0,0' : '255,255,255'},${Math.random() * 0.05})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  g.strokeStyle = 'rgba(40,40,40,.35)'; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);
+  for (let i = 0; i < 3; i++) {
+    const x = Math.random() * w, y = Math.random() * h, r = 10 + Math.random() * 26;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(20,18,15,.35)'); gr.addColorStop(1, 'rgba(20,18,15,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+}, [6, 6]);
+const floor = mesh(new THREE.PlaneGeometry(HALF * 2, HALF * 2), new THREE.MeshStandardMaterial({ map: texFloor, roughness: 0.85 }), 0, 0, 0);
+floor.rotation.x = -Math.PI / 2; floor.castShadow = false;
+// zona elevatorului: linii galbene
+for (const [w, d, x, z] of [[4.4, 0.1, 0, 3.1], [4.4, 0.1, 0, -3.1], [0.1, 6.3, 2.2, 0], [0.1, 6.3, -2.2, 0]]) box(w, 0.006, d, M(0xf2c21b), x, 0.004, z, scene, false);
+// afară: asfalt, iarbă, câteva clădiri
+const outside = mesh(new THREE.PlaneGeometry(80, 40), M(0x5d6166, { roughness: 0.95 }), 0, -0.01, -29); outside.rotation.x = -Math.PI / 2; outside.castShadow = false;
+const grass = mesh(new THREE.PlaneGeometry(200, 120), M(0x6f9a4a), 0, -0.02, -60); grass.rotation.x = -Math.PI / 2; grass.castShadow = false;
+for (let i = 0; i < 9; i++) {
+  const w = rr(5, 9), h = rr(4, 12);
+  box(w, h, 6, M(pick([0xe7c9a0, 0xd8a890, 0xc9d3d9, 0xe9e1cf, 0xb8c9a0])), -28 + i * 7 + rr(-1, 1), h / 2, -38 - rr(0, 6), scene, false);
+}
+for (let i = 0; i < 6; i++) {
+  const x = rr(-20, 20), z = rr(-22, -30);
+  cyl(0.12, 0.16, 2, M(0x6b4a2e), x, 1, z, scene, 8, false);
+  mesh(new THREE.SphereGeometry(1.2, 10, 8), M(0x4f8a3a), x, 2.7, z, scene, false);
+}
+// pereți
+const texWall = canvasTex(64, 256, (g, w, h) => {
+  g.fillStyle = '#e7e2d6'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#3b4a5a'; g.fillRect(0, h * 0.74, w, h * 0.26);
+  g.fillStyle = '#f2c21b'; g.fillRect(0, h * 0.72, w, h * 0.025);
+  for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.04})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+});
+const wallMat = new THREE.MeshStandardMaterial({ map: texWall, roughness: 0.9 });
+const plain = M(0xe7e2d6, { roughness: 0.9 });
+function wall(w, x, z, ry) { const m = box(w, WH, 0.3, wallMat, x, WH / 2, z, scene, false); m.rotation.y = ry; m.receiveShadow = true; return m; }
+const side = (HALF * 2 - DW) / 2;
+wall(side, -HALF + side / 2, -HALF, 0); wall(side, HALF - side / 2, -HALF, 0);
+box(DW, WH - DH, 0.3, plain, 0, DH + (WH - DH) / 2, -HALF, scene, false);
+wall(HALF * 2, 0, HALF, 0); wall(HALF * 2, -HALF, 0, Math.PI / 2); wall(HALF * 2, HALF, 0, Math.PI / 2);
+const ceil = mesh(new THREE.PlaneGeometry(HALF * 2, HALF * 2), M(0x4a4f56, { roughness: 1 }), 0, WH, 0, scene, false); ceil.rotation.x = Math.PI / 2;
+for (let i = 0; i < 5; i++) box(0.18, 0.35, HALF * 2, M(0x3a3f46), -7 + i * 3.5, WH - 0.18, 0, scene, false);
+// ușa rulantă
+const texShutter = canvasTex(64, 128, (g, w, h) => {
+  g.fillStyle = '#b9bec4'; g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 8) { g.fillStyle = '#8f959c'; g.fillRect(0, y, w, 2); g.fillStyle = '#d4d8dc'; g.fillRect(0, y + 2, w, 1); }
+}, [3, 6]);
+const shutter = box(DW, DH, 0.08, new THREE.MeshStandardMaterial({ map: texShutter, roughness: 0.5, metalness: 0.4 }), 0, DH / 2, -HALF - 0.05, scene, false);
+box(0.2, DH, 0.36, M(0xf2c21b), -DW / 2 - 0.1, DH / 2, -HALF, scene, false);
+box(0.2, DH, 0.36, M(0xf2c21b), DW / 2 + 0.1, DH / 2, -HALF, scene, false);
+// firma
+const texSign = canvasTex(512, 128, (g, w, h) => {
+  g.fillStyle = '#1f2a36'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#f2c21b'; g.fillRect(0, h - 10, w, 10);
+  g.fillStyle = '#fff'; g.font = 'bold 54px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('🔧 NO-SANTOS SERVICE', w / 2, h / 2 - 4);
+});
+box(5, 1.25, 0.06, new THREE.MeshStandardMaterial({ map: texSign, roughness: 0.6 }), 0, 3.2, HALF - 0.2, scene, false);
+// tuburi de neon
+for (const [x, z] of [[-3.5, -4], [3.5, -4], [-3.5, 1], [3.5, 1], [-3.5, 5.5], [3.5, 5.5], [0, -1.5], [0, 3.5]]) {
+  box(0.22, 0.06, 1.8, M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 1.4 }), x, WH - 0.12, z, scene, false);
+}
+// bancul de lucru cu panou de scule
+const texPeg = canvasTex(256, 128, (g, w, h) => {
+  g.fillStyle = '#c9a77a'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(0,0,0,.25)';
+  for (let x = 6; x < w; x += 12) for (let y = 6; y < h; y += 12) g.fillRect(x, y, 2, 2);
+  g.strokeStyle = '#2a2a2a'; g.lineWidth = 6; g.lineCap = 'round';
+  for (let i = 0; i < 7; i++) { const x = 20 + i * 32; g.beginPath(); g.moveTo(x, 20); g.lineTo(x + 4, 70 + i * 5); g.stroke(); }
+  g.strokeStyle = '#c0392b'; g.lineWidth = 10; g.beginPath(); g.moveTo(40, 100); g.lineTo(110, 100); g.stroke();
+  g.strokeStyle = '#2f6fd8'; g.beginPath(); g.moveTo(140, 100); g.lineTo(220, 100); g.stroke();
+});
+const bench = new THREE.Group(); bench.position.set(-HALF + 0.55, 0, -3); bench.rotation.y = Math.PI / 2; scene.add(bench);
+box(3.2, 0.08, 0.8, M(0x8a5a32), 0, 0.92, 0, bench);
+for (const x of [-1.5, 1.5]) for (const z of [-0.33, 0.33]) box(0.07, 0.9, 0.07, M(0x3a3f46), x, 0.45, z, bench);
+box(3.1, 0.04, 0.7, M(0x3a3f46), 0, 0.25, 0, bench);
+box(3.2, 1.4, 0.04, new THREE.MeshStandardMaterial({ map: texPeg }), 0, 1.75, -0.38, bench, false);
+box(0.5, 0.18, 0.25, M(0xc0392b), -0.8, 1.05, 0.05, bench); // trusă
+cyl(0.09, 0.09, 0.32, M(0x2f6fd8), 0.6, 1.12, 0, bench, 12); // canistră
+box(0.35, 0.3, 0.25, M(0x2a2d33), 1.2, 1.11, 0, bench); // menghină
+// dulapul roșu cu sertare
+const texDrawer = canvasTex(64, 128, (g, w, h) => {
+  g.fillStyle = '#c62f24'; g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 21) { g.fillStyle = '#8c1e16'; g.fillRect(0, y, w, 2); g.fillStyle = '#d8d8d8'; g.fillRect(w * 0.25, y + 8, w * 0.5, 3); }
+});
+const chest = box(0.7, 1.1, 1.4, new THREE.MeshStandardMaterial({ map: texDrawer, roughness: 0.45, metalness: 0.3 }), -HALF + 0.5, 0.55, 2.2);
+box(0.72, 0.5, 1.42, M(0xc62f24, { roughness: 0.45, metalness: 0.3 }), -HALF + 0.5, 1.35, 2.2);
+// anvelope stivuite
+for (let s = 0; s < 2; s++) for (let i = 0; i < 4; i++) {
+  const t = mesh(new THREE.TorusGeometry(0.3, 0.12, 8, 18), M(0x161616, { roughness: 0.9 }), HALF - 0.6 - s * 0.85, 0.12 + i * 0.24, -6.5);
+  t.rotation.x = Math.PI / 2;
+}
+// butoaie de ulei
+for (const [x, z, c] of [[HALF - 0.6, 5.2, 0x1f5da8], [HALF - 0.6, 6.0, 0xc0392b], [HALF - 1.3, 5.6, 0x2a8a3a]]) {
+  cyl(0.3, 0.3, 0.9, M(c, { roughness: 0.5, metalness: 0.4 }), x, 0.45, z, scene, 16);
+}
+// raft cu cutii
+const shelf = new THREE.Group(); shelf.position.set(HALF - 0.45, 0, -1.5); shelf.rotation.y = -Math.PI / 2; scene.add(shelf);
+for (const y of [0.3, 1.0, 1.7, 2.4]) box(2.8, 0.05, 0.6, M(0x4a5560), 0, y, 0, shelf);
+for (const x of [-1.37, 1.37]) box(0.05, 2.5, 0.6, M(0x2f6fd8), x, 1.25, 0, shelf);
+for (const y of [0.3, 1.0, 1.7]) for (let i = 0; i < 4; i++) {
+  const h = rr(0.25, 0.5);
+  box(rr(0.35, 0.55), h, 0.45, M(pick([0xc89a5a, 0xb88a4a, 0xd8b070, 0x2f6fd8, 0xf2f2f2])), -1 + i * 0.66, y + 0.03 + h / 2, 0, shelf);
+}
+// conuri și cric
+for (const [x, z] of [[2.9, 3.6], [-2.9, 3.6]]) {
+  cyl(0.02, 0.17, 0.45, M(0xff6a1a), x, 0.25, z, scene, 12);
+  box(0.36, 0.03, 0.36, M(0xff6a1a), x, 0.015, z);
+}
+const jack = new THREE.Group(); jack.position.set(3.4, 0, -4.5); jack.rotation.y = 0.6; scene.add(jack);
+box(0.35, 0.14, 0.9, M(0xc0392b, { metalness: 0.3, roughness: 0.5 }), 0, 0.12, 0, jack);
+const jh = cyl(0.025, 0.025, 1.1, M(0x2a2a2a), 0, 0.5, -0.75, jack, 8); jh.rotation.x = 0.8;
+// compresor
+cyl(0.25, 0.25, 0.8, M(0xc0392b, { metalness: 0.3, roughness: 0.5 }), -HALF + 0.6, 0.3, -6.3, scene, 16).rotation.z = Math.PI / 2;
+box(0.4, 0.3, 0.35, M(0x2a2d33), -HALF + 0.6, 0.75, -6.3);
+
+// elevatorul cu două coloane
+const LIFT = new THREE.Group(); scene.add(LIFT);
+const liftArms = new THREE.Group(); scene.add(liftArms);
+for (const sx of [-1, 1]) {
+  box(0.32, 2.9, 0.36, M(0x1f5da8, { roughness: 0.5, metalness: 0.3 }), sx * 1.62, 1.45, 0, LIFT);
+  box(0.4, 0.12, 0.44, M(0xf2c21b), sx * 1.62, 2.94, 0, LIFT);
+  box(0.7, 0.04, 0.7, M(0x3a3f46), sx * 1.62, 0.02, 0, LIFT);
+  box(0.22, 0.32, 0.3, M(0x2a2d33), sx * 1.4, 0.16, 0, liftArms);
+  for (const dz of [-1, 1]) {
+    const a = box(0.9, 0.07, 0.12, M(0xd8dde2, { metalness: 0.5, roughness: 0.4 }), sx * 1.0, 0.05, dz * 0.55, liftArms);
+    a.rotation.y = sx * dz * 0.55;
+    cyl(0.07, 0.07, 0.08, M(0x1a1a1a), sx * 0.62, 0.12, dz * 0.85, liftArms, 10);
+  }
+}
+
+// ---------------- mașina ----------------
+const TYPES = {
+  sedan: { L: 4.5, W: 1.78, g: 0.26, belt: 0.92, roof: 1.42, wb: 2.66, R: 0.32, hood: 1.15, ws: 0.62, trunk: 0.95, rg: 0.58 },
+  hatch: { L: 4.06, W: 1.75, g: 0.26, belt: 0.93, roof: 1.47, wb: 2.56, R: 0.31, hood: 0.98, ws: 0.6, trunk: 0.1, rg: 0.22 },
+  wagon: { L: 4.68, W: 1.8, g: 0.27, belt: 0.93, roof: 1.47, wb: 2.74, R: 0.32, hood: 1.1, ws: 0.62, trunk: 0.1, rg: 0.16 },
+  suv:   { L: 4.4, W: 1.86, g: 0.38, belt: 1.08, roof: 1.74, wb: 2.66, R: 0.37, hood: 1.05, ws: 0.56, trunk: 0.1, rg: 0.16 },
+};
+let C = null; // mașina curentă
+const pickables = [];
+
+function extrudeX(shape, width, bevel = 0.04) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth: width - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 3, curveSegments: 16 });
+  g.translate(0, 0, -(width - 2 * bevel) / 2);
+  g.rotateY(-Math.PI / 2); // x-ul formei devine z (lungimea mașinii), botul spre +z
+  return g;
+}
+const plateTex = canvasTex(256, 56, (g, w, h) => {
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#1f4fa0'; g.fillRect(0, 0, 30, h);
+  g.fillStyle = '#ffd200'; g.font = 'bold 12px sans-serif'; g.fillText('RO', 6, h - 8);
+  g.fillStyle = '#111'; g.font = 'bold 38px system-ui,sans-serif'; g.textBaseline = 'middle';
+  g.fillText('NS 07 CAR', 40, h / 2 + 2);
+});
+function partMat(type, state) {
+  const m = new THREE.MeshStandardMaterial({ color: LOOK[type][state === 'bad' ? 1 : state === 'new' ? 2 : 0], roughness: state === 'new' ? 0.4 : 0.8, metalness: ['alternator', 'radiator', 'exhaust'].includes(type) ? 0.5 : 0.1 });
+  return m;
+}
+
+function makeCar(model, color, bad) {
+  const T = TYPES[model[1]];
+  const { L, W, g, belt, roof, wb, R } = T;
+  const car = new THREE.Group(); scene.add(car);
+  const body = new THREE.Group(); car.add(body); // se leagănă puțin la oprire
+  const zWs = L / 2 - T.hood, bay = belt - 0.38, hoodTop = belt - 0.03;
+  const paint = new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, metalness: 0.45, clearcoat: 1, clearcoatRoughness: 0.12 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x1a2632, roughness: 0.08, metalness: 0.7 });
+  const dark = M(0x1c1d20, { roughness: 0.7 });
+  const occ = [];
+  const st = k => bad.has(k) ? 'bad' : 'ok';
+
+  // caroseria de jos, cu pasajele roților și locașul motorului
+  const s = new THREE.Shape(), ar = R + 0.07, zf = wb / 2, zr = -wb / 2;
+  s.moveTo(L / 2 - 0.16, g);
+  s.lineTo(zf + ar, g); s.lineTo(zf + ar, R); s.absarc(zf, R, ar, 0, Math.PI, false); s.lineTo(zf - ar, g);
+  s.lineTo(zr + ar, g); s.lineTo(zr + ar, R); s.absarc(zr, R, ar, 0, Math.PI, false); s.lineTo(zr - ar, g);
+  s.lineTo(-L / 2 + 0.14, g); s.quadraticCurveTo(-L / 2, g, -L / 2, g + 0.14);
+  s.lineTo(-L / 2, belt - 0.08); s.quadraticCurveTo(-L / 2, belt, -L / 2 + 0.08, belt);
+  s.lineTo(zWs, belt); s.lineTo(zWs, bay); s.lineTo(L / 2 - 0.06, bay);
+  s.quadraticCurveTo(L / 2, bay, L / 2, bay - 0.06); s.lineTo(L / 2, g + 0.16); s.quadraticCurveTo(L / 2, g, L / 2 - 0.16, g);
+  const lower = mesh(extrudeX(s, W), paint, 0, 0, 0, body); occ.push(lower);
+  // habitaclu (sticlă) + plafon + stâlpi
+  const rb = -L / 2 + T.trunk, rRoof = rb + T.rg, fRoof = zWs - T.ws;
+  const c = new THREE.Shape();
+  c.moveTo(zWs + 0.02, belt - 0.02); c.lineTo(fRoof, roof); c.lineTo(rRoof, roof); c.lineTo(rb, belt - 0.02);
+  const cabin = mesh(extrudeX(c, W - 0.16, 0.03), glass, 0, 0, 0, body); occ.push(cabin);
+  occ.push(box(W - 0.14, 0.06, fRoof - rRoof + 0.06, paint, 0, roof + 0.02, (fRoof + rRoof) / 2, body));
+  const hgt = roof - belt;
+  for (const sx of [-1, 1]) {
+    const a = box(0.05, Math.hypot(T.ws, hgt), 0.07, paint, sx * (W / 2 - 0.08), (belt + roof) / 2, (zWs + fRoof) / 2, body); a.rotation.x = -Math.atan2(T.ws, hgt);
+    const cp = box(0.05, Math.hypot(T.rg, hgt), 0.12, paint, sx * (W / 2 - 0.08), (belt + roof) / 2, (rb + rRoof) / 2, body); cp.rotation.x = Math.atan2(T.rg, hgt);
+    box(0.05, hgt, 0.1, paint, sx * (W / 2 - 0.075), (belt + roof) / 2, (fRoof + rRoof) / 2 + 0.05, body);
+    box(0.04, 0.012, L * 0.62, M(0x111111), sx * (W / 2 + 0.005), belt - 0.18, 0.05, body, false); // linia ușilor
+    box(0.14, 0.09, 0.07, paint, sx * (W / 2 + 0.06), belt + 0.09, zWs - 0.12, body); // oglinzi
+    box(0.03, 0.03, 0.14, M(0xd0d0d0, { metalness: 0.8, roughness: 0.3 }), sx * (W / 2 + 0.01), belt - 0.1, 0.25, body, false); // mânere
+    box(0.03, 0.03, 0.14, M(0xd0d0d0, { metalness: 0.8, roughness: 0.3 }), sx * (W / 2 + 0.01), belt - 0.1, -0.75, body, false);
+    // aripile din față (lângă motor)
+    occ.push(box(0.1, hoodTop - bay, T.hood - 0.1, paint, sx * (W / 2 - 0.05), (hoodTop + bay) / 2, zWs + (T.hood - 0.1) / 2, body));
+  }
+  // bara față / spate, grila, numere
+  occ.push(box(W + 0.02, 0.2, 0.2, dark, 0, g + 0.12, L / 2 - 0.02, body));
+  occ.push(box(W + 0.02, 0.2, 0.2, dark, 0, g + 0.12, -L / 2 + 0.02, body));
+  const grille = box(W - 0.2, hoodTop - bay - 0.02, 0.08, M(0x15161a, { roughness: 0.5 }), 0, (hoodTop + bay) / 2, L / 2 - 0.03, body); occ.push(grille);
+  for (const z of [L / 2 + 0.085, -L / 2 - 0.085]) {
+    const p = box(0.52, 0.11, 0.015, new THREE.MeshStandardMaterial({ map: plateTex }), 0, g + 0.14, z, body, false);
+    if (z < 0) p.rotation.y = Math.PI;
+  }
+  // locașul motorului (fundul negru)
+  const bayFloor = box(W - 0.2, 0.02, T.hood - 0.12, M(0x111214), 0, bay + 0.01, zWs + T.hood / 2, body, false);
+  // capota, cu balamaua la parbriz
+  const hoodPivot = new THREE.Group(); hoodPivot.position.set(0, hoodTop, zWs + 0.01); body.add(hoodPivot);
+  const hoodMesh = box(W - 0.05, 0.05, T.hood - 0.02, paint, 0, -0.02, (T.hood - 0.02) / 2, hoodPivot); occ.push(hoodMesh);
+  box(W - 0.3, 0.02, T.hood - 0.2, M(0x2a2a2a), 0, -0.055, (T.hood - 0.02) / 2, hoodPivot, false);
+
+  const slots = {}; const zones = [];
+  const reg = (k, type, meshes) => { slots[k] = { k, type, meshes, cond: 0, bad: false, known: false, replaced: false, req: false, extra: false }; meshes.forEach(m => { if (LOOK[type]) m.material = partMat(type, st(k)); }); };
+  const zone = (id, name, ic, pos, need, keys, meshes) => {
+    const z = { id, name, ic, pos, need, keys, meshes };
+    meshes.forEach(m => { m.userData.zone = z; pickables.push(m); });
+    zones.push(z); return z;
+  };
+
+  // --- motorul ---
+  const ez = zWs + T.hood * 0.5, ex = 0.05;
+  const block = box(0.62, 0.18, 0.44, M(0x6a6e74, { metalness: 0.6, roughness: 0.45 }), ex, bay + 0.1, ez, body);
+  const cover = box(0.52, 0.06, 0.32, M(0x2a2d33, { metalness: 0.3, roughness: 0.4 }), ex, bay + 0.22, ez, body);
+  const plugs = [];
+  for (let i = 0; i < 4; i++) plugs.push(cyl(0.022, 0.022, 0.07, null, ex - 0.18 + i * 0.12, bay + 0.27, ez - 0.05, body, 8));
+  const oilCap = cyl(0.035, 0.035, 0.03, null, ex + 0.15, bay + 0.265, ez + 0.09, body, 12);
+  const belt1 = mesh(new THREE.TorusGeometry(0.075, 0.012, 6, 20), null, ex - 0.33, bay + 0.12, ez + 0.05, body); belt1.rotation.y = Math.PI / 2; belt1.scale.set(1, 1.5, 1);
+  const pulley = cyl(0.05, 0.05, 0.03, M(0x9aa0a6, { metalness: 0.6 }), ex - 0.33, bay + 0.08, ez + 0.07, body, 14); pulley.rotation.z = Math.PI / 2;
+  const alt = cyl(0.065, 0.065, 0.13, null, ex + 0.41, bay + 0.14, ez + 0.12, body, 14); alt.rotation.z = Math.PI / 2;
+  reg('plugs', 'plugs', plugs); reg('oil', 'oil', [oilCap]); reg('belt', 'belt', [belt1]); reg('alternator', 'alternator', [alt]);
+  zone('engine', 'Motor', '⚙️', new THREE.Vector3(ex, bay + 0.42, ez), 'hood', ['plugs', 'oil', 'belt', 'alternator'], [block, cover, ...plugs, oilCap, belt1, alt]);
+  // baterie
+  const bx = -(W / 2 - 0.3), bz = zWs + 0.22;
+  const batt = box(0.26, 0.18, 0.17, null, bx, bay + 0.1, bz, body);
+  const t1 = cyl(0.02, 0.02, 0.03, M(0xc0392b), bx - 0.07, bay + 0.2, bz, body, 8), t2 = cyl(0.02, 0.02, 0.03, M(0x222222), bx + 0.07, bay + 0.2, bz, body, 8);
+  reg('battery', 'battery', [batt]);
+  zone('battery', 'Baterie', '🔋', new THREE.Vector3(bx, bay + 0.38, bz), 'hood', ['battery'], [batt, t1, t2]);
+  // filtru de aer
+  const ax = W / 2 - 0.32, az = zWs + 0.24;
+  const abox = box(0.28, 0.11, 0.22, null, ax, bay + 0.09, az, body);
+  const hose = cyl(0.04, 0.04, 0.26, M(0x1a1a1a), (ax + ex + 0.3) / 2, bay + 0.12, az + 0.1, body, 10); hose.rotation.z = Math.PI / 2;
+  reg('airf', 'airf', [abox]);
+  zone('airbox', 'Filtru de aer', '🌬️', new THREE.Vector3(ax, bay + 0.36, az), 'hood', ['airf'], [abox, hose]);
+  // radiator
+  const rad = box(W - 0.42, 0.24, 0.05, null, 0, bay + 0.14, L / 2 - 0.16, body);
+  const cap = cyl(0.03, 0.03, 0.03, M(0x2a5da8), 0.4, bay + 0.28, L / 2 - 0.16, body, 10);
+  reg('radiator', 'radiator', [rad]);
+  zone('radiator', 'Radiator', '🌡️', new THREE.Vector3(0, bay + 0.42, L / 2 - 0.12), 'hood', ['radiator'], [rad, cap]);
+
+  // --- roțile ---
+  const wheels = [];
+  for (const [wk, sx, sz] of [['FL', 1, 1], ['FR', -1, 1], ['RL', 1, -1], ['RR', -1, -1]]) {
+    const wx = sx * (W / 2 - 0.12), wz = sz * wb / 2;
+    const wg = new THREE.Group(); wg.position.set(wx, R, wz); car.add(wg);
+    const spin = new THREE.Group(); wg.add(spin);
+    const tire = cyl(R, R, 0.22, null, 0, 0, 0, spin, 28); tire.rotation.z = Math.PI / 2;
+    const rim = cyl(R * 0.62, R * 0.62, 0.225, M(0xc9cdd2, { metalness: 0.8, roughness: 0.3 }), 0, 0, 0, spin, 18); rim.rotation.z = Math.PI / 2;
+    for (let i = 0; i < 5; i++) {
+      const sp = box(0.02, R * 1.1, 0.05, M(0x8a9096, { metalness: 0.7, roughness: 0.35 }), sx * 0.115, 0, 0, spin);
+      sp.rotation.x = i * Math.PI * 2 / 5;
+    }
+    cyl(0.04, 0.04, 0.24, M(0x6a6e74, { metalness: 0.7 }), 0, 0, 0, spin, 10).rotation.z = Math.PI / 2;
+    const disc = cyl(R * 0.55, R * 0.55, 0.025, M(0x8a7a6a, { metalness: 0.6, roughness: 0.5 }), -sx * 0.13, 0, 0, wg, 18); disc.rotation.z = Math.PI / 2;
+    const caliper = box(0.06, 0.12, 0.15, null, -sx * 0.15, R * 0.42, 0, wg);
+    const shock = cyl(0.04, 0.04, 0.44, null, sx * (W / 2 - 0.38), R + 0.12, wz, car, 10);
+    const spring = mesh(new THREE.TorusGeometry(0.065, 0.01, 4, 14), M(0x3a3f46), sx * (W / 2 - 0.38), R + 0.2, wz, car); spring.rotation.x = Math.PI / 2;
+    reg('tire_' + wk, 'tire', [tire]); reg('pads_' + wk, 'pads', [caliper]); reg('shock_' + wk, 'shock', [shock]);
+    if (bad.has('tire_' + wk) && Math.random() < 0.5) { tire.scale.set(1, 1, 1); tire.userData.flat = true; wg.scale.y = 0.9; wg.position.y = R * 0.92; }
+    zone('w' + wk, 'Roată ' + WHEELS[wk], '🛞', new THREE.Vector3(wx + sx * 0.2, R + 0.12, wz), null, ['tire_' + wk, 'pads_' + wk, 'shock_' + wk], [tire, rim, caliper, shock]);
+    wheels.push({ wg, spin, k: wk }); occ.push(tire, rim);
+  }
+  // --- eșapament ---
+  const exm = [];
+  const pipe = cyl(0.035, 0.035, L * 0.55, null, 0.32, g - 0.04, 0.15, car, 10); pipe.rotation.x = Math.PI / 2; exm.push(pipe);
+  exm.push(box(0.32, 0.15, 0.55, null, 0.32, g - 0.06, -L / 2 + 0.75, car));
+  const tip = cyl(0.045, 0.045, 0.3, null, 0.32, g - 0.02, -L / 2 + 0.2, car, 10); tip.rotation.x = Math.PI / 2; exm.push(tip);
+  reg('exhaust', 'exhaust', exm);
+  zone('exhaust', 'Eșapament', '💨', new THREE.Vector3(0.32, g - 0.25, -L / 2 + 0.9), 'lift', ['exhaust'], exm);
+  // --- faruri și stopuri ---
+  const hl = [], tl = [];
+  for (const sx of [-1, 1]) {
+    const on = !bad.has('headl') || sx < 0 && Math.random() < 0.3;
+    hl.push(box(0.34, 0.11, 0.05, new THREE.MeshStandardMaterial({ color: 0xf4f4ee, emissive: 0xfff2c8, emissiveIntensity: on ? 1.6 : 0.03, roughness: 0.2 }), sx * (W / 2 - 0.26), hoodTop - 0.12, L / 2 + 0.03, body, false));
+    tl.push(box(0.32, 0.1, 0.05, new THREE.MeshStandardMaterial({ color: 0x7a1010, emissive: 0xff1a10, emissiveIntensity: bad.has('taill') ? 0.03 : 1.3, roughness: 0.3 }), sx * (W / 2 - 0.22), belt - 0.13, -L / 2 - 0.02, body, false));
+  }
+  slots.headl = { k: 'headl', type: 'headl', meshes: hl }; slots.taill = { k: 'taill', type: 'taill', meshes: tl };
+  zone('front', 'Faruri', '💡', new THREE.Vector3(0, hoodTop - 0.12, L / 2 + 0.3), null, ['headl'], hl);
+  zone('rear', 'Stopuri', '🔴', new THREE.Vector3(0, belt - 0.13, -L / 2 - 0.3), null, ['taill'], tl);
+  // --- ștergătoare ---
+  const wp = [];
+  for (const sx of [-1, 1]) { const w = box(0.5, 0.015, 0.03, null, sx * 0.28, belt + 0.03, zWs - 0.06, body, false); w.rotation.z = sx * 0.06; wp.push(w); }
+  reg('wipers', 'wipers', wp);
+  zone('wipers', 'Ștergătoare', '🌧️', new THREE.Vector3(0, belt + 0.22, zWs - 0.2), null, ['wipers'], wp);
+  for (const k in slots) Object.assign(slots[k], { cond: 0, bad: false, known: false, replaced: false, req: false, extra: false });
+
+  return { car, body, T, hoodPivot, wheels, slots, zones, occ, hl, tl, exhaustTip: tip, z: -16, v: 0, sway: 0, bayY: bay, hoodLen: T.hood, zWs };
+}
+function setLook(sl, state) {
+  if (sl.type === 'headl') { sl.meshes.forEach(m => m.material.emissiveIntensity = state === 'bad' ? 0.03 : 1.6); return; }
+  if (sl.type === 'taill') { sl.meshes.forEach(m => m.material.emissiveIntensity = state === 'bad' ? 0.03 : 1.3); return; }
+  sl.meshes.forEach(m => { m.material.dispose(); m.material = partMat(sl.type, state); });
+  if (sl.type === 'tire') { const wg = sl.meshes[0].parent.parent; const R = C.T.R; wg.scale.y = 1; wg.position.y = R; }
+}
+function disposeCar(c) {
+  scene.remove(c.car);
+  for (let i = pickables.length - 1; i >= 0; i--) if (!pickables[i].parent || isIn(pickables[i], c.car)) pickables.splice(i, 1);
+  c.car.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+}
+function isIn(o, root) { while (o) { if (o === root) return true; o = o.parent; } return false; }
+
+// ---------------- fum din eșapament ----------------
+const SMOKE = [];
+const smokeGeo = new THREE.SphereGeometry(0.12, 8, 6);
+for (let i = 0; i < 26; i++) {
+  const m = new THREE.Mesh(smokeGeo, new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0, depthWrite: false }));
+  m.visible = false; scene.add(m); SMOKE.push({ m, t: 1, v: new THREE.Vector3() });
+}
+let smokeI = 0, smokeAcc = 0;
+function puff(p, dark) {
+  const s = SMOKE[smokeI++ % SMOKE.length];
+  s.m.position.copy(p); s.t = 0; s.m.visible = true; s.m.material.color.setHex(dark ? 0x1e1e1e : 0xb8bcc0);
+  s.v.set(rr(-0.2, 0.2), rr(0.3, 0.6), -rr(0.4, 0.9));
+}
+function updateSmoke(dt) {
+  for (const s of SMOKE) {
+    if (s.t >= 1) { s.m.visible = false; continue; }
+    s.t += dt / 1.6; s.m.position.addScaledVector(s.v, dt);
+    s.m.scale.setScalar(1 + s.t * 3); s.m.material.opacity = 0.55 * (1 - s.t);
+  }
+}
+
+// ---------------- sunet ----------------
+let AC = null, master = null, eng = null;
+function audio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = S.sound ? 0.5 : 0; master.connect(AC.destination); } catch (e) { return; } }
+  if (AC.state === 'suspended') AC.resume();
+}
+function tone(f, d, type = 'sine', v = 0.2, f2) {
+  if (!AC || !S.sound) return;
+  const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.02);
+}
+let noiseBuf = null;
+function noise(d, v = 0.3, fq = 2000, q = 1) {
+  if (!AC || !S.sound) return;
+  if (!noiseBuf) { noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const a = noiseBuf.getChannelData(0); for (let i = 0; i < a.length; i++) a[i] = Math.random() * 2 - 1; }
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(), t = AC.currentTime;
+  s.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = fq; f.Q.value = q;
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.02);
+}
+const SFX = {
+  clank() { noise(0.15, 0.4, 3200, 3); tone(420, 0.18, 'triangle', 0.1, 260); },
+  ratchet() { noise(0.035, 0.25, 4500, 4); },
+  ding() { tone(1320, 0.25, 'sine', 0.2); setTimeout(() => tone(1760, 0.45, 'sine', 0.18), 110); },
+  beep() { tone(990, 0.08, 'square', 0.06); },
+  bad() { tone(220, 0.35, 'sawtooth', 0.1, 120); },
+  pop() { tone(500, 0.08, 'sine', 0.15, 900); },
+  hiss() { noise(0.6, 0.12, 6000, 0.5); },
+};
+function engine(on) {
+  if (!AC || !S.sound) { on = false; }
+  if (on && !eng) {
+    const o = AC.createOscillator(), o2 = AC.createOscillator(), f = AC.createBiquadFilter(), g = AC.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 42; o2.type = 'square'; o2.frequency.value = 21;
+    f.type = 'lowpass'; f.frequency.value = 380; g.gain.value = 0;
+    o.connect(f); o2.connect(f); f.connect(g); g.connect(master); o.start(); o2.start();
+    eng = { o, o2, g };
+  } else if (!on && eng) {
+    const e = eng; eng = null;
+    try { e.g.gain.setTargetAtTime(0, AC.currentTime, 0.1); setTimeout(() => { e.o.stop(); e.o2.stop(); }, 600); } catch (er) {}
+  }
+}
+function engineLevel(v, rough) {
+  if (!eng) return;
+  const t = AC.currentTime;
+  eng.g.gain.setTargetAtTime(0.06 + Math.min(0.08, Math.abs(v) * 0.03), t, 0.1);
+  eng.o.frequency.setTargetAtTime(38 + Math.abs(v) * 14 + (rough ? Math.sin(t * 13) * 6 : 0), t, 0.08);
+  eng.o2.frequency.setTargetAtTime(19 + Math.abs(v) * 7, t, 0.08);
+}
+
+// ---------------- UI ----------------
+let toastT = 0;
+function toast(msg, cls = '') { const t = $('toast'); t.textContent = msg; t.className = 'chip show ' + cls; toastT = 2.2; }
+const _v = new THREE.Vector3();
+function toScreen(p) { _v.copy(p).project(camera); return { x: (_v.x + 1) / 2 * innerWidth, y: (1 - _v.y) / 2 * innerHeight, behind: _v.z > 1 }; }
+function float(text, world, cls = '') {
+  const p = toScreen(world);
+  const d = document.createElement('div'); d.className = 'float ' + cls; d.textContent = text;
+  d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
+  $('spots').appendChild(d);
+  requestAnimationFrame(() => { d.style.transform = 'translate(-50%, -150%)'; d.style.opacity = '0'; });
+  setTimeout(() => d.remove(), 1400);
+}
+function hud() {
+  $('money').textContent = '💰 ' + S.money + ' lei';
+  const r = Math.round(S.rep * 2) / 2;
+  let st = ''; for (let i = 1; i <= 5; i++) st += r >= i ? '★' : r >= i - 0.5 ? '⯪' : '☆';
+  $('rep').textContent = st;
+  $('day').textContent = '📅 Ziua ' + S.day + ' · 🚗 ' + Math.min(S.carIdx + 1, S.carsToday) + '/' + S.carsToday;
+}
+function zoneWorld(z) { return C.car.localToWorld(z.pos.clone()); }
+
+// hotspot-urile (etichetele de pe mașină)
+let spotEls = [];
+function buildSpots() {
+  $('spots').querySelectorAll('.spot').forEach(e => e.remove());
+  spotEls = C.zones.map(z => {
+    const b = document.createElement('button');
+    b.className = 'spot'; b.innerHTML = `<span class="i">${z.ic}</span><span class="n">${z.name}</span>`;
+    b.addEventListener('click', e => { e.stopPropagation(); audio(); selectZone(z); });
+    $('spots').appendChild(b); z.el = b; return b;
+  });
+}
+function zoneState(z) {
+  const sl = z.keys.map(k => C.slots[k]);
+  if (sl.some(s => s.known && s.cond < 30)) return 'bad';
+  if (sl.every(s => s.known)) return 'ok';
+  return '';
+}
+const ray = new THREE.Raycaster();
+let occFrame = 0;
+function updateSpots() {
+  const show = C && (S.mode === 'work');
+  document.body.classList.toggle('compact', innerWidth < 760);
+  occFrame++;
+  for (const z of C ? C.zones : []) {
+    const el = z.el; if (!el) continue;
+    const lock = !needOk(z.need);
+    if (!show || lock && z.id !== 'engine' && z.id !== 'exhaust') { el.style.display = 'none'; continue; }
+    const w = zoneWorld(z), p = toScreen(w);
+    if (p.behind) { el.style.display = 'none'; continue; }
+    el.style.display = 'flex'; el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
+    const st = zoneState(z);
+    if (occFrame % 6 === 0) {
+      const dir = w.clone().sub(camera.position); const dist = dir.length(); dir.normalize();
+      ray.set(camera.position, dir); ray.far = dist - 0.12;
+      const hit = ray.intersectObjects(C.occ, false).length > 0;
+      z.hid = hit;
+    }
+    el.className = 'spot' + (S.sel === z ? ' sel' : '') + (st ? ' ' + st : '') + (lock ? ' lock' : '') + (z.hid && S.sel !== z ? ' hid' : '');
+  }
+}
+
+function selectZone(z) {
+  S.sel = z; SFX.pop(); renderZP();
+}
+function slotStatus(s) {
+  if (s.replaced) return ['n', '✨ Piesă nouă'];
+  if (!s.known) return ['', 'Nu știi încă. Verific-o 🔍'];
+  if (s.cond < 30) return ['r', `❌ ${Math.round(s.cond)}% · defectă`];
+  if (s.cond < 60) return ['y', `⚠️ ${Math.round(s.cond)}% · uzată, mai merge`];
+  return ['g', `✅ ${Math.round(s.cond)}% · bună`];
+}
+function renderZP() {
+  const zp = $('zp');
+  const z = S.sel;
+  if (!z || S.mode !== 'work') { zp.style.display = 'none'; return; }
+  zp.style.display = 'block';
+  let h = `<h3><span>${z.ic}</span> ${z.name}<button class="x" id="zpX" title="Închide (Esc)">✕</button></h3>`;
+  const needs = new Set();
+  for (const k of z.keys) {
+    const s = C.slots[k], P = PARTS[s.type];
+    const [cls, txt] = slotStatus(s);
+    const okI = needOk(P.ni), okR = needOk(P.nr);
+    if (!okI) needs.add(P.ni); else if (!okR && !s.replaced) needs.add(P.nr);
+    const busyHere = S.busy && S.busy.slot === s;
+    h += `<div class="row"><div class="ic">${P.ic}</div><div class="tx"><b>${P.n}</b><small class="${cls}">${txt}</small>` +
+      (busyHere ? `<div class="pb"><i id="pbRow"></i></div>` : '') + `</div>` +
+      `<button data-a="i" data-k="${k}" ${s.known || s.replaced || !okI || S.busy ? 'disabled' : ''} title="Verifică">🔍</button>` +
+      `<button class="rep" data-a="r" data-k="${k}" ${s.replaced || !okR || S.busy ? 'disabled' : ''} title="Schimbă piesa">🔧 ${partCost(s.type)} lei</button></div>`;
+  }
+  for (const n of needs) h += `<div class="lockmsg">${NEEDMSG[n]}</div>`;
+  zp.innerHTML = h;
+  $('zpX').onclick = () => { S.sel = null; renderZP(); };
+  zp.querySelectorAll('button[data-a]').forEach(b => b.onclick = () => { audio(); act(b.dataset.a, C.slots[b.dataset.k]); });
+}
+function renderJob() {
+  const j = S.job, el = $('job');
+  if (!j || !(S.mode === 'work' || S.mode === 'arrive' || S.mode === 'closing')) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const spent = j.bought.reduce((a, b) => a + b.cost, 0);
+  el.innerHTML = `<div class="who">${j.face} <b>${j.client}</b> · ${j.model[0]} · ${j.km.toLocaleString('ro-RO')} km</div>` +
+    j.says.map(t => `<div class="say">„${t}”</div>`).join('') +
+    `<div class="tipT" id="tipT"></div>` +
+    `<div class="tools">` +
+    `<button id="tHood" class="${S.hoodOpen ? 'on' : ''}"><span class="e">${S.hoodOpen ? '🔓' : '🔒'}</span>Capota (H)</button>` +
+    `<button id="tLift" class="${S.liftUp ? 'on' : ''}"><span class="e">${S.liftUp ? '⬇️' : '⬆️'}</span>${S.liftUp ? 'Coboară' : 'Ridică'} (L)</button>` +
+    `<button id="tScan" ${S.up.scanner ? '' : 'disabled title="Cumpără Tester OBD la sfârșitul zilei"'}><span class="e">💻</span>Tester (T)</button>` +
+    `<button id="tDone" class="done"><span class="e">✅</span>Predă (Enter)</button></div>` +
+    `<div id="bought">${j.bought.length ? '🧾 Piese puse: ' + j.bought.map(b => PARTS[b.type].ic).join(' ') + ` · ${spent} lei` : '🧾 Încă n-ai schimbat nimic.'}</div>`;
+  $('tHood').onclick = () => { audio(); toggleHood(); };
+  $('tLift').onclick = () => { audio(); toggleLift(); };
+  $('tScan').onclick = () => { audio(); scan(); };
+  $('tDone').onclick = () => { audio(); handOver(); };
+  const dis = S.mode !== 'work' || !!S.busy;
+  ['tHood', 'tLift', 'tScan', 'tDone'].forEach(id => { if (dis) $(id).disabled = true; });
+  updTip();
+}
+function updTip() {
+  const j = S.job, e = $('tipT'); if (!j || !e) return;
+  const left = j.tipWin - j.t;
+  e.className = 'tipT' + (left <= 0 ? ' late' : '');
+  e.innerHTML = left > 0 ? `⏱ Bacșiș dacă termini în <b>${fmt(left)}</b>` : '⏱ <b>Fără bacșiș</b>, clientul se uită la ceas.';
+}
+
+// ---------------- acțiuni ----------------
+function toggleHood() {
+  if (S.mode !== 'work' || S.busy) return;
+  S.hoodOpen = !S.hoodOpen; SFX.clank(); renderJob(); renderZP();
+}
+function toggleLift() {
+  if (S.mode !== 'work' || S.busy) return;
+  S.liftUp = !S.liftUp; SFX.hiss(); renderJob(); renderZP();
+}
+function scan() {
+  if (S.mode !== 'work' || S.busy) return;
+  if (!S.up.scanner) { toast('Nu ai tester. Îl poți cumpăra seara, după ultima mașină.', 'bad'); return; }
+  S.busy = { kind: 'scan', t: 0, dur: 2.5, label: '💻 Citesc calculatorul mașinii…' };
+  SFX.beep(); renderJob(); renderZP();
+}
+function act(a, s) {
+  if (S.mode !== 'work' || S.busy || !s) return;
+  const P = PARTS[s.type];
+  if (a === 'i') {
+    if (s.known || s.replaced) return;
+    if (!needOk(P.ni)) { toast(NEEDMSG[P.ni], 'bad'); return; }
+    S.busy = { kind: 'i', slot: s, t: 0, dur: S.up.lamp ? 0.7 : 1.4, label: '🔍 Verific: ' + P.n };
+  } else {
+    if (s.replaced) return;
+    if (!needOk(P.nr)) { toast(NEEDMSG[P.nr], 'bad'); return; }
+    const cost = partCost(s.type);
+    if (S.money < cost) { toast(`Nu ai bani de ${P.n} (${cost} lei).`, 'bad'); SFX.bad(); return; }
+    S.money -= cost; S.job.bought.push({ type: s.type, cost, k: s.k });
+    float('−' + cost + ' lei', zoneWorld(S.sel || C.zones[0]), 'bad');
+    S.busy = { kind: 'r', slot: s, t: 0, dur: P.rt * (S.up.impact ? 0.5 : 1), label: '🔧 Schimb: ' + P.n, cost };
+  }
+  renderZP(); renderJob();
+}
+function finishBusy() {
+  const b = S.busy; S.busy = null;
+  if (b.kind === 'scan') {
+    let bad = [];
+    for (const k in C.slots) { const s = C.slots[k]; if (PARTS[s.type].scan && !s.replaced) { s.known = true; if (s.cond < 30) bad.push(PARTS[s.type].n); } }
+    SFX.ding();
+    toast(bad.length ? '💻 Erori: ' + bad.join(', ') : '💻 Calculatorul nu arată nicio eroare.', bad.length ? 'bad' : 'good');
+  } else if (b.kind === 'i') {
+    const s = b.slot; s.known = true;
+    const [, txt] = slotStatus(s);
+    toast(PARTS[s.type].ic + ' ' + PARTS[s.type].n + ': ' + txt.replace(/^\S+ /, ''), s.cond < 30 ? 'bad' : s.cond < 60 ? '' : 'good');
+    SFX.beep();
+  } else {
+    const s = b.slot; s.replaced = true; s.known = true; s.oldCond = s.cond; s.cond = 100;
+    setLook(s, 'new'); SFX.clank();
+    const zw = C.zones.find(z => z.keys.includes(s.k));
+    float('✨ ' + PARTS[s.type].n + ' nouă', zoneWorld(zw), 'good');
+    pops.push({ meshes: s.meshes, t: 0 });
+  }
+  renderZP(); renderJob();
+}
+const pops = [];
+
+// ---------------- clienți ----------------
+function resolveFault(spec, out) {
+  for (const f of spec) {
+    const [p, w] = f.split('@');
+    if (!w) out.add(p);
+    else if (w === 'F') { out.add(p + '_FL'); out.add(p + '_FR'); }
+    else if (w === 'R') { out.add(p + '_RL'); out.add(p + '_RR'); }
+    else out.add(p + '_' + pick(['FL', 'FR', 'RL', 'RR']));
+  }
+}
+const ALLKEYS = ['battery', 'alternator', 'plugs', 'oil', 'belt', 'airf', 'radiator', 'exhaust', 'headl', 'taill', 'wipers',
+  ...['tire', 'pads', 'shock'].flatMap(p => ['FL', 'FR', 'RL', 'RR'].map(w => p + '_' + w))];
+function newJob() {
+  const nm = pick(NAMES);
+  const model = pick(MODELS);
+  const nC = S.day >= 3 && Math.random() < 0.35 ? 2 : 1;
+  const pool = shuffle(COMPLAINTS.filter(c => !c.day || S.day >= c.day));
+  const req = new Set(), says = [];
+  for (const c of pool) {
+    if (says.length >= nC) break;
+    if (c.f === 'itp') { if (says.length) continue; shuffle(ALLKEYS.slice()).slice(0, ri(2, 3)).forEach(k => req.add(k)); says.push(c.t); break; }
+    const tmp = new Set(); resolveFault(pick(c.f), tmp);
+    if ([...tmp].some(k => req.has(k))) continue;
+    tmp.forEach(k => req.add(k)); says.push(c.t);
+  }
+  const extra = new Set();
+  if (S.day >= 2 && Math.random() < 0.55) {
+    const k = pick(ALLKEYS.filter(k => !req.has(k)));
+    extra.add(k);
+  }
+  const bad = new Set([...req, ...extra]);
+  const job = {
+    client: nm[0].includes(' ') ? nm[0] : nm[0] + ' ' + pick(SURN), face: nm[1], model, km: ri(40, 320) * 1000,
+    says, req, extra, t: 0, tipWin: 70 + req.size * 22 + (S.up.coffee ? 40 : 0), bought: [],
+  };
+  if (C) disposeCar(C);
+  C = makeCar(model, pick(COLORS), bad);
+  for (const k in C.slots) {
+    const s = C.slots[k];
+    s.req = req.has(k); s.extra = extra.has(k); s.bad = s.req || s.extra;
+    s.cond = s.req ? rr(3, 26) : s.extra ? rr(12, 28) : rr(46, 98);
+  }
+  C.rough = bad.has('plugs') || bad.has('airf') || bad.has('exhaust');
+  S.job = job;
+  buildSpots();
+}
+
+function startDay() {
+  S.carIdx = 0; S.carsToday = 3 + Math.min(3, Math.floor((S.day - 1) / 2));
+  S.dayStats = { earned: 0, spent: 0, cars: 0, happy: 0, startMoney: S.money };
+  nextCar();
+}
+function nextCar() {
+  S.sel = null; S.busy = null; S.hoodOpen = false; S.liftUp = false;
+  newJob();
+  S.mode = 'arrive'; S.doorOpen = true; C.z = -17; C.arriveT = 0;
+  engine(true);
+  hideOverlay(); renderJob(); renderZP(); hud();
+}
+function handOver() {
+  if (S.mode !== 'work' || S.busy) return;
+  if (!S.job.bought.length && !confirmEmpty) { confirmEmpty = true; toast('N-ai schimbat nimic. Apasă încă o dată ca să predai așa.', 'bad'); return; }
+  confirmEmpty = false;
+  S.sel = null; S.hoodOpen = false; S.liftUp = false; S.mode = 'closing';
+  renderZP(); renderJob();
+}
+let confirmEmpty = false;
+function evaluate() {
+  const j = S.job, lines = [];
+  const mult = 0.8 + S.rep * 0.08;
+  let pay = 0, wasted = 0, missed = 0, fixedReq = 0;
+  for (const k in C.slots) {
+    const s = C.slots[k], P = PARTS[s.type];
+    const where = k.includes('_') ? ' ' + WHEELS[k.split('_')[1]] : '';
+    if (s.replaced && s.bad) {
+      const v = Math.round((P.price * 1.25 + P.lab) * mult); pay += v;
+      if (s.req) fixedReq++;
+      lines.push(['g', `✅ ${P.ic} ${P.n}${where} schimbat (era ${Math.round(s.oldCond)}%)` + (s.extra ? ' · ai găsit-o tu, clientul îți mulțumește' : ''), '+' + v + ' lei']);
+    } else if (s.replaced && !s.bad) {
+      const cost = j.bought.find(b => b.k === k).cost; wasted += cost;
+      lines.push(['y', `💸 ${P.ic} ${P.n}${where} era bun (${Math.round(s.oldCond)}%). Clientul nu-l plătește.`, '−' + cost + ' lei']);
+    } else if (s.req) {
+      missed++;
+      lines.push(['r', `❌ ${P.ic} ${P.n}${where} a rămas defect (${Math.round(s.cond)}%).`, '']);
+    }
+  }
+  const allFixed = missed === 0 && fixedReq === j.req.size;
+  let tip = 0;
+  if (allFixed && j.t <= j.tipWin) { tip = Math.round(pay * 0.15) + 10; lines.push(['g', `⏱ Ai terminat repede (${fmt(j.t)}). Bacșiș!`, '+' + tip + ' lei']); }
+  let dRep;
+  if (allFixed) { dRep = wasted > 0 ? 0.25 : 0.5; }
+  else { dRep = -1; lines.push(['r', '😠 Clientul pleacă nervos: mașina are încă problema cu care a venit.', '−1 ★']); }
+  S.rep = clamp(S.rep + dRep, 0, 5);
+  S.money += pay + tip;
+  S.dayStats.earned += pay + tip; S.dayStats.spent += j.bought.reduce((a, b) => a + b.cost, 0); S.dayStats.cars++;
+  if (allFixed) S.dayStats.happy++;
+  const profit = pay + tip - j.bought.reduce((a, b) => a + b.cost, 0);
+  return { lines, pay: pay + tip, profit, allFixed, dRep };
+}
+function showResult(r) {
+  const j = S.job;
+  const last = S.carIdx + 1 >= S.carsToday;
+  showPanel(`<h2>${r.allFixed ? '😀 Client mulțumit!' : '😠 Client nemulțumit'}</h2>
+    <p style="text-align:center">${j.face} <b>${j.client}</b> · ${j.model[0]}</p>
+    <ul class="res">${r.lines.map(l => `<li class="${l[0]}">${l[1]}<b>${l[2]}</b></li>`).join('') || '<li>Nu ai făcut nimic la mașină.</li>'}</ul>
+    <div class="stats"><div>Încasat<b>${r.pay} lei</b></div><div>Profit (după piese)<b style="color:${r.profit >= 0 ? '#2e7d3f' : '#c0392b'}">${r.profit} lei</b></div></div>
+    <button class="go" id="goNext">${S.rep <= 0 ? 'Mai departe' : last ? '🌙 Închide atelierul' : '🚗 Următorul client'}</button>`);
+  $('goNext').onclick = () => {
+    audio();
+    if (S.rep <= 0) return gameOver();
+    S.carIdx++;
+    if (S.carIdx >= S.carsToday) daySummary(); else nextCar();
+  };
+}
+let pendingNext = false;
+function daySummary() {
+  S.mode = 'summary';
+  const d = S.dayStats;
+  S.day++; writeSave();
+  const shop = () => UPG.map(u => `<button data-u="${u.id}" ${S.up[u.id] || S.money < u.price ? 'disabled' : ''}><span class="ic">${u.ic}</span><span class="tx">${u.name}<small>${u.desc}</small></span><span class="pr">${S.up[u.id] ? '✔ ai' : u.price + ' lei'}</span></button>`).join('');
+  const draw = () => {
+    showPanel(`<h2>🌙 Sfârșitul zilei ${S.day - 1}</h2>
+      <div class="stats"><div>Mașini reparate<b>${d.happy} / ${d.cars}</b></div><div>Încasări<b>${d.earned} lei</b></div>
+      <div>Cheltuit pe piese<b>${d.spent} lei</b></div><div>Bani acum<b>${S.money} lei</b></div></div>
+      <p><b>Scule pentru atelier</b> (rămân pentru totdeauna):</p><div class="shop">${shop()}</div>
+      <button class="go" id="goDay">☀️ Ziua ${S.day}</button>`);
+    $('panel').querySelectorAll('[data-u]').forEach(b => b.onclick = () => {
+      const u = UPG.find(x => x.id === b.dataset.u);
+      if (S.money < u.price || S.up[u.id]) return;
+      S.money -= u.price; S.up[u.id] = true; SFX.ding(); writeSave(); hud(); draw();
+    });
+    $('goDay').onclick = () => { audio(); writeSave(); startDay(); };
+  };
+  draw();
+}
+function gameOver() {
+  S.mode = 'over';
+  try { localStorage.removeItem(SAVE); } catch (e) {}
+  showPanel(`<h1>🔒 Atelier închis</h1><p style="text-align:center">Prea mulți clienți nemulțumiți. Nimeni nu mai vine la tine.</p>
+    <div class="stats"><div>Ai rezistat<b>${S.day} ${S.day === 1 ? 'zi' : 'zile'}</b></div><div>Record<b>${Math.max(S.best, S.day - 1)} zile</b></div></div>
+    <button class="go" id="goNew">🔧 Deschide alt atelier</button>`);
+  $('goNew').onclick = () => { Object.assign(S, { day: 1, money: 400, rep: 3, up: {} }); startDay(); };
+}
+function showPanel(html) { $('panel').innerHTML = html; $('overlay').classList.add('show'); }
+function hideOverlay() { $('overlay').classList.remove('show'); }
+
+function helpHTML() {
+  return `<p>Ai un service auto. Clienții vin pe rând cu mașina și îți spun ce o doare. Tu cauți defectul, schimbi piesele stricate și predai mașina.</p>
+  <ul>
+    <li><b>Rotește camera</b> trăgând cu mouse-ul sau cu degetul; rotița sau ciupitul face zoom.</li>
+    <li>Apasă pe etichetele de pe mașină (⚙️ Motor, 🛞 Roată…). Cu <b>🔍</b> verifici piesa, cu <b>🔧</b> o schimbi (plătești piesa pe loc).</li>
+    <li>Motorul, bateria și radiatorul se văd doar cu <b>capota deschisă</b> <kbd>H</kbd>. Frânele, amortizoarele și eșapamentul doar cu mașina <b>ridicată pe elevator</b> <kbd>L</kbd>.</li>
+    <li>Uită-te și cu ochii: piesele stricate arată ruginite sau prăfuite, o anvelopă poate fi dezumflată, un far ars nu luminează.</li>
+    <li>Clientul plătește piesele stricate pe care le-ai schimbat (+25%) și manopera. O piesă bună schimbată degeaba <b>n-o plătește</b>.</li>
+    <li>Dacă problema clientului rămâne, pierzi o stea ★. Cu 0 stele se închide atelierul. Dacă termini repede, primești bacșiș.</li>
+    <li>Dacă găsești și alte piese stricate, le poți schimba: clientul le plătește.</li>
+    <li>Seara cumperi scule: <b>Tester OBD</b> <kbd>T</kbd>, pistol pneumatic, lanternă și altele.</li>
+  </ul>`;
+}
+function showStart() {
+  S.mode = 'menu';
+  const sv = loadSave();
+  showPanel(`<h1>🔧 Car Mechanic</h1>${helpHTML()}
+    ${S.best ? `<p style="text-align:center">🏆 Record: ${S.best} ${S.best === 1 ? 'zi' : 'zile'}</p>` : ''}
+    ${sv ? `<button class="go" id="goCont">▶ Continuă: ziua ${sv.day} · ${sv.money} lei</button><button class="go2" id="goNew">Începe de la zero</button>` : `<button class="go" id="goNew">🔧 Deschide atelierul</button>`}`);
+  if (sv) $('goCont').onclick = () => { audio(); Object.assign(S, { day: sv.day, money: sv.money, rep: sv.rep, up: sv.up || {} }); startDay(); };
+  $('goNew').onclick = () => { audio(); Object.assign(S, { day: 1, money: 400, rep: 3, up: {} }); startDay(); };
+}
+function togglePause() {
+  if (S.mode === 'menu' || S.mode === 'summary' || S.mode === 'over' || S.mode === 'result') return;
+  S.paused = !S.paused;
+  if (S.paused) {
+    showPanel(`<h2>⏸ Pauză</h2>${helpHTML()}<button class="go" id="goRes">▶ Înapoi la lucru</button>`);
+    $('goRes').onclick = () => togglePause();
+  } else hideOverlay();
+}
+
+// ---------------- camera ----------------
+const cam = { th: 0.75, ph: 1.15, r: 7.2, tgt: new THREE.Vector3(0, 0.8, 0) };
+function placeCamera(dt) {
+  const lifted = S.lift > 0.9;
+  const ty = S.lift + (lifted ? 0.35 : 0.75);
+  const k = 1 - Math.exp(-dt * 4);
+  cam.tgt.y = lerp(cam.tgt.y, ty, k);
+  cam.tgt.z = lerp(cam.tgt.z, S.mode === 'arrive' && C ? clamp(C.z * 0.4, -4, 0) : 0, k);
+  cam.ph = clamp(cam.ph, 0.25, lifted ? 2.35 : 1.45);
+  cam.r = clamp(cam.r, 2.4, 8.4);
+  const port = camera.aspect < 1;
+  const fov = port ? 72 : 50;
+  if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const sp = Math.sin(cam.ph);
+  let x = cam.tgt.x + cam.r * sp * Math.sin(cam.th), y = cam.tgt.y + cam.r * Math.cos(cam.ph), z = cam.tgt.z + cam.r * sp * Math.cos(cam.th);
+  x = clamp(x, -HALF + 0.4, HALF - 0.4); z = clamp(z, -HALF + 0.4, HALF - 0.4); y = clamp(y, 0.2, WH - 0.25);
+  camera.position.set(x, y, z);
+  camera.lookAt(cam.tgt);
+}
+const cv = renderer.domElement;
+const ptrs = new Map();
+let drag = null, pinch = 0;
+cv.addEventListener('pointerdown', e => {
+  audio();
+  cv.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) drag = { x: e.clientX, y: e.clientY, moved: 0 };
+  else { drag = null; const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
+});
+cv.addEventListener('pointermove', e => {
+  const p = ptrs.get(e.pointerId);
+  if (!p) { hover(e); return; }
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch) cam.r *= pinch / d; pinch = d; return;
+  }
+  if (drag) { drag.moved += Math.abs(dx) + Math.abs(dy); cam.th -= dx * 0.008; cam.ph -= dy * 0.006; }
+});
+function endPtr(e) {
+  if (drag && drag.moved < 7 && ptrs.size === 1) clickPick(e);
+  ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0;
+  if (!ptrs.size) drag = null;
+}
+cv.addEventListener('pointerup', endPtr);
+cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; pinch = 0; });
+cv.addEventListener('wheel', e => { e.preventDefault(); cam.r *= 1 + clamp(e.deltaY, -100, 100) * 0.0012; }, { passive: false });
+const ndc = new THREE.Vector2();
+function pickAt(e) {
+  if (!C || S.mode !== 'work') return null;
+  ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera); ray.far = 50;
+  const hits = ray.intersectObjects([...pickables, ...C.occ], false);
+  for (const h of hits) { if (h.object.userData.zone) return h.object.userData.zone; if (C.occ.includes(h.object) && !h.object.userData.zone) return null; }
+  return null;
+}
+function clickPick(e) { const z = pickAt(e); if (z) selectZone(z); }
+let hoverT = 0;
+function hover(e) {
+  if (isTouch || performance.now() - hoverT < 60) return; hoverT = performance.now();
+  cv.style.cursor = pickAt(e) ? 'pointer' : 'grab';
+}
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  audio();
+  const k = e.key.toLowerCase();
+  if (k === 'escape') { if (S.sel) { S.sel = null; renderZP(); } else togglePause(); return; }
+  if (k === 'm') { toggleSound(); return; }
+  if (S.paused) return;
+  if (k === 'h') toggleHood();
+  else if (k === 'l') toggleLift();
+  else if (k === 't') scan();
+  else if (k === 'enter') { if (S.mode === 'work') handOver(); else if ($('overlay').classList.contains('show')) { const b = $('panel').querySelector('.go'); if (b) b.click(); } }
+});
+function toggleSound() {
+  S.sound = !S.sound; $('bSound').textContent = S.sound ? '🔊' : '🔇';
+  if (master) master.gain.value = S.sound ? 0.5 : 0;
+  if (!S.sound) engine(false);
+  try { localStorage.setItem(SAVE + '.snd', S.sound ? '1' : '0'); } catch (e) {}
+}
+$('bSound').onclick = () => { audio(); toggleSound(); };
+$('bHelp').onclick = () => { audio(); if (S.mode === 'menu') return; togglePause(); };
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+
+// ---------------- bucla ----------------
+const clock = new THREE.Clock();
+const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+function update(dt) {
+  // ușa, capota, elevatorul
+  S.door = clamp(S.door + (S.doorOpen ? 1 : -1) * dt / 1.6, 0, 1);
+  shutter.position.y = DH / 2 + ease(S.door) * (DH - 0.15);
+  const prevHood = S.hood;
+  S.hood = clamp(S.hood + (S.hoodOpen ? 1 : -1) * dt / 0.7, 0, 1);
+  if ((prevHood <= 0.95) !== (S.hood <= 0.95) && S.mode === 'work') renderZP();
+  const liftGoal = S.liftUp ? 1.75 : 0;
+  const prevLift = S.lift;
+  S.lift = S.lift < liftGoal ? Math.min(liftGoal, S.lift + dt * 0.75) : Math.max(liftGoal, S.lift - dt * 0.9);
+  liftArms.position.y = S.lift;
+  underLamp.intensity = S.lift > 0.5 ? 6 * Math.min(1, S.lift / 1.75) : 0;
+  if (Math.abs(S.lift - prevLift) > 1e-4 && S.lift > 0 && S.lift < 1.75 && Math.random() < dt * 8) SFX.ratchet();
+  if (prevLift > 0 && S.lift <= 0 || prevLift < 1.75 && S.lift >= 1.75) { if (S.mode === 'work' || S.mode === 'closing') { renderZP(); } }
+  if (C) {
+    C.hoodPivot.rotation.x = -1.15 * ease(S.hood);
+    bayLamp.intensity = S.hood * 3;
+    bayLamp.position.copy(C.car.localToWorld(new THREE.Vector3(0, C.bayY + 0.9, C.zWs + C.hoodLen / 2)));
+    // mers
+    let v = 0;
+    if (S.mode === 'arrive') {
+      C.arriveT += dt;
+      const u = clamp(C.arriveT / 4.2, 0, 1);
+      const nz = -17 + 17 * (1 - Math.pow(1 - u, 2.4));
+      v = (nz - C.z) / Math.max(dt, 1e-4); C.z = nz;
+      if (u >= 1) { S.mode = 'work'; S.doorOpen = false; C.sway = 0.03; engine(false); renderJob(); }
+    } else if (C.leaving) {
+      C.leaveT += dt;
+      const u = clamp(C.leaveT / 3.6, 0, 1);
+      const nz = -17 * Math.pow(u, 2);
+      v = (nz - C.z) / Math.max(dt, 1e-4); C.z = nz;
+      if (u >= 1 && C.leaving) {
+        C.leaving = false; S.doorOpen = false; engine(false);
+        if (pendingNext) { pendingNext = false; if (S.carIdx < S.carsToday) nextCar(); }
+      }
+    }
+    C.car.position.set(0, (C.z > -1 && C.z < 1 ? S.lift : 0), C.z);
+    for (const w of C.wheels) w.spin.rotation.x += v * dt / C.T.R;
+    if (Math.abs(v) > 0.05) { engineLevel(v, C.rough); smokeAcc += dt; if (smokeAcc > (C.rough ? 0.06 : 0.25)) { smokeAcc = 0; puff(C.exhaustTip.getWorldPosition(new THREE.Vector3()), C.rough); } }
+    // legănat la oprire
+    C.sway *= Math.exp(-dt * 3);
+    C.body.rotation.x = Math.sin(performance.now() / 120) * C.sway;
+    if (S.mode === 'closing' && S.hood <= 0 && S.lift <= 0) {
+      const r = evaluate();
+      S.mode = 'result'; C.leaving = true; C.leaveT = 0; S.doorOpen = true; engine(true);
+      SFX.ding(); renderJob(); hud();
+      setTimeout(() => showResult(r), 300);
+    }
+    if (S.mode === 'work' && !S.paused) { S.job.t += dt; updTip(); }
+  }
+  if (S.busy) {
+    const b = S.busy; b.t += dt;
+    $('busy').style.display = 'block'; $('busyT').textContent = b.label; $('busyB').style.width = Math.min(100, b.t / b.dur * 100) + '%';
+    const pr = $('pbRow'); if (pr) pr.style.width = Math.min(100, b.t / b.dur * 100) + '%';
+    if (b.kind === 'r' && Math.random() < dt * 9) SFX.ratchet();
+    if (b.kind === 'scan' && Math.random() < dt * 3) SFX.beep();
+    if (b.t >= b.dur) finishBusy();
+  } else $('busy').style.display = 'none';
+  for (let i = pops.length - 1; i >= 0; i--) {
+    const p = pops[i]; p.t += dt / 0.5;
+    const s = p.t < 1 ? 1 + Math.sin(p.t * Math.PI) * 0.35 : 1;
+    p.meshes.forEach(m => { if (!m.userData.s0) m.userData.s0 = m.scale.clone(); m.scale.copy(m.userData.s0).multiplyScalar(s); });
+    if (p.t >= 1) pops.splice(i, 1);
+  }
+  updateSmoke(dt);
+}
+// mașina rămâne pe loc când apeși „Următorul client” înainte să iasă: o lăsăm să termine
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  if (!S.paused) update(dt);
+  placeCamera(dt);
+  if (S.mode === 'menu') cam.th += dt * 0.12;
+  updateSpots();
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').classList.remove('show'); }
+  hud();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+// o mașină de decor pe elevator în meniu
+C = makeCar(pick(MODELS), pick(COLORS), new Set()); C.z = 0;
+$('bSound').textContent = S.sound ? '🔊' : '🔇';
+showStart();
+$('bSound').textContent = S.sound ? '🔊' : '🔇';
+frame();
+
+// pentru teste
+window.__game = { S, get C() { return C; }, act, scan, handOver, toggleHood, toggleLift, selectZone, update, cam,
+  step(n = 60, dt = 1 / 60) { for (let i = 0; i < n; i++) update(dt); } };
+</script>
+</body>
+</html>
