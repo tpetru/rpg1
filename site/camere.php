@@ -90,6 +90,31 @@ header('Cache-Control: no-cache, must-revalidate');
   .camlist { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; }
   .camlist li { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid var(--border); }
   .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  details.spoiler { border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
+  details.spoiler > summary {
+    cursor: pointer; padding: 8px 10px; list-style: none; font-weight: 600; display: flex; align-items: center; gap: 8px;
+  }
+  details.spoiler > summary::-webkit-details-marker { display: none; }
+  details.spoiler > summary::after { content: '▸'; margin-left: auto; color: var(--muted); transition: transform .15s; }
+  details.spoiler[open] > summary::after { transform: rotate(90deg); }
+  details.spoiler > #sidesBox { padding: 0 8px 8px; }
+  .fab {
+    position: absolute; right: 10px; bottom: 30px; z-index: 2; display: none;
+    padding: 10px 14px; border-radius: 22px; font-weight: 700; border: 0; color: #140a02;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 6px 18px rgba(0,0,0,.5);
+  }
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9; display: flex; align-items: flex-end; }
+  .sheet {
+    width: 100%; max-height: 75vh; overflow: auto; background: var(--panel); border-top: 1px solid var(--border);
+    border-radius: 18px 18px 0 0; padding: 12px 14px 20px; box-shadow: 0 -12px 40px rgba(0,0,0,.6);
+  }
+  .sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .sheet-head b { flex: 1; font-size: 15px; }
+  @media (max-width: 860px) {
+    details.spoiler { display: none; }
+    .fab { display: block; }
+    .stage { aspect-ratio: 1 / 1; min-height: 0; }   /* min-height + 4:3 latea pagina peste ecranul telefonului */
+  }
   .modal-bg {
     position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center;
     z-index: 10; padding: 16px;
@@ -121,11 +146,13 @@ header('Cache-Control: no-cache, must-revalidate');
     <div class="stage" id="stage">
       <canvas id="cv"></canvas>
       <div class="hint" id="hint"></div>
+      <button class="fab" id="fabSides">📏 Laturi</button>
       <div class="campop" id="campop" hidden>
         <button id="cpMove" title="Mută camera pe alt perete">✥ Mută</button>
         <button id="cpLeft" title="Rotește spre stânga (ține apăsat)">⟲</button>
         <span class="deg" id="cpDeg"></span>
         <button id="cpRight" title="Rotește spre dreapta (ține apăsat)">⟳</button>
+        <button id="cpDel" title="Șterge camera">🗑</button>
         <button id="cpClose" title="Închide">✕</button>
       </div>
     </div>
@@ -150,13 +177,19 @@ header('Cache-Control: no-cache, must-revalidate');
         <button class="small on" id="btnZones">🎨 Zone filmate: afișate</button>
         <button class="small" id="btnClear">Ascunde camerele</button>
       </div>
-      <table id="sides"></table>
-      <div class="muted" id="areaInfo" style="margin-top:6px"></div>
+      <details class="spoiler" id="sidesDet">
+        <summary id="sidesSum">📏 Dimensiuni laturi</summary>
+        <div id="sidesBox">
+          <table id="sides"></table>
+          <div class="muted" id="areaInfo" style="margin-top:6px"></div>
+        </div>
+      </details>
       <div class="warn" id="warn"></div>
     </div>
 
     <div class="card">
       <button class="big" id="btnGen">⚡ Generează</button>
+      <button id="btnAddCam" style="width:100%;margin-top:8px">＋ Adaugă cameră</button>
       <div id="result" hidden>
         <div class="stats" style="margin-top:10px">
           <div>Acoperire<b id="stPct">–</b></div>
@@ -172,6 +205,12 @@ header('Cache-Control: no-cache, must-revalidate');
       Trage de colțuri ca să le muți, de „+” de pe mijlocul unei laturi ca să adaugi un colț, sau de interiorul formei ca s-o muți cu totul.
       Lungimile se pot scrie exact în tabel (în metri). Zonele <span style="color:#ff7a7a">roșiatice</span> sunt nefilmate.
     </div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="sheetBg" hidden>
+  <div class="sheet" id="sheet">
+    <div class="sheet-head"><b id="sheetTitle">Dimensiuni laturi</b><button class="small" id="sheetClose">✕ Închide</button></div>
   </div>
 </div>
 
@@ -456,7 +495,7 @@ cv.addEventListener('pointerdown', e => {
       setActive(np); drag = { type: 'v', i: i + 1 }; invalidate(); cv.setPointerCapture(e.pointerId); return;
     }
   }
-  if (lh) { const inp = document.querySelector(`#sides input[data-i="${lh.i}"]`); if (inp) { inp.focus(); inp.select(); } return; }
+  if (lh) { openSides(); const inp = document.querySelector(`#sides input[data-i="${lh.i}"]`); if (inp) { inp.focus(); inp.select(); } return; }
   const w = toW(sx, sy);
   if (inside(w, p)) { drag = { type: 'move', start: w, orig: p.map(q => q.slice()) }; cv.setPointerCapture(e.pointerId); return; }
   // click in alta forma => o activeaza (constructiile au prioritate fata de teren)
@@ -677,7 +716,8 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 // Model: terenul (minus casa) e impartit in celule mici. Fiecare "candidat" = o pozitie pe peretele casei
 // + o directie (din 5 in 5 grade). Pentru fiecare candidat stim exact ce celule vede (raza, unghi si linia
 // de vedere blocata de pereti) sub forma de bitset. Apoi cautam combinatia de N candidati cu acoperire maxima.
-async function optimize(st, progress) {
+// geometria comuna (celule libere, pereti) folosita si de optimizare si de camerele adaugate manual
+function buildScene() {
   const B = buildings.map(b => ccw(b.poly)), Ld = land;
   const edges = []; B.forEach(P => P.forEach((p, i) => edges.push([p, P[(i + 1) % P.length]])));
   const NE = edges.length;
@@ -693,9 +733,13 @@ async function optimize(st, progress) {
   }
   const C = cells.length, WORDS = (C + 31) >>> 5;
   if (!C) throw new Error('nu există teren liber în jurul construcțiilor');
+  const camB = B.map((P, bi) => bi).filter(bi => buildings[bi].cams);
+  return { B, edges, NE, inAny, x0, y0, x1, y1, cell, cells, gidx, nx, ny, C, WORDS, camB };
+}
+async function optimize(st, progress) {
+  const { B, edges, NE, inAny, x0, y0, cell, cells, gidx, nx, ny, C, WORDS, camB } = buildScene();
   // celule din primii 5 m fata de constructiile pe care se pun camere
   const nearMask = new Uint32Array(WORDS);
-  const camB = B.map((P, bi) => bi).filter(bi => buildings[bi].cams);
   cells.forEach((p, k) => { if (camB.some(bi => distToPoly(p, B[bi]) <= 5)) nearMask[k >>> 5] |= 1 << (k & 31); });
 
   // pozitii candidate pe perimetrul constructiilor bifate
@@ -875,6 +919,23 @@ function drawCameras() {
 }
 function hexA(h, a) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
+// ---------- tabelul de laturi: spoiler pe desktop, popup (bottom sheet) pe telefon ----------
+const sidesBox = document.getElementById('sidesBox'), sidesDet = document.getElementById('sidesDet');
+const sheetBg = document.getElementById('sheetBg'), mobileQ = window.matchMedia('(max-width: 860px)');
+try { if (localStorage.getItem('camere.sidesOpen') === '1') sidesDet.open = true; } catch (e) {}
+sidesDet.addEventListener('toggle', () => { try { localStorage.setItem('camere.sidesOpen', sidesDet.open ? '1' : '0'); } catch (e) {} });
+function sidesTitle() { return '📏 Laturi: ' + (active === 'land' ? 'Teren' : (buildings[active].name || 'Construcție')); }
+function openSides() {
+  if (!mobileQ.matches) { sidesDet.open = true; return; }
+  document.getElementById('sheetTitle').textContent = sidesTitle();
+  document.getElementById('sheet').appendChild(sidesBox); sheetBg.hidden = false;
+}
+function closeSheet() { if (sheetBg.hidden) return; sheetBg.hidden = true; sidesDet.appendChild(sidesBox); }
+document.getElementById('fabSides').onclick = openSides;
+document.getElementById('sheetClose').onclick = closeSheet;
+sheetBg.addEventListener('click', e => { if (e.target === sheetBg) closeSheet(); });
+mobileQ.addEventListener('change', closeSheet);
+
 // ---------- editare manuala a camerelor ----------
 let selCam = -1, camMove = null, camDrag = null;
 const pop = document.getElementById('campop');
@@ -977,6 +1038,32 @@ function holdRepeat(btn, fn) {
 holdRepeat(document.getElementById('cpLeft'), () => rotateCam(5));     // stanga = sens trigonometric (harta are nordul sus)
 holdRepeat(document.getElementById('cpRight'), () => rotateCam(-5));
 document.getElementById('cpClose').onclick = () => { closeCam(); draw(); };
+document.getElementById('cpDel').onclick = () => {
+  if (selCam < 0) return;
+  result.cams.splice(selCam, 1); closeCam(); refreshCoverage(true); refreshUI(); draw();
+};
+// camera noua: apare pe un perete si urmareste mouse-ul / degetul pana o asezi
+document.getElementById('btnAddCam').onclick = () => {
+  const pr = problems();
+  if (pr.length) { alertWarn(pr.join(' ')); return; }
+  if (drawing) return;
+  if (!result) {
+    let S; try { S = buildScene(); } catch (e) { alertWarn(e.message); return; }
+    result = { cells: S.cells, cell: S.cell, cams: [], count: new Uint8Array(S.C), C: S.C, cov: 0, dbl: 0, st: Object.assign({}, settings),
+               img: null, box: [S.x0, S.y0, S.x0 + S.nx * S.cell, S.y0 + S.ny * S.cell], nx: S.nx, ny: S.ny, gidx: S.gidx,
+               edges: S.edges, B: S.B, WORDS: S.WORDS, camB: S.camB, manual: true };
+  }
+  if (result.cams.length >= 20) { alertWarn('Maxim 20 de camere.'); return; }
+  const bi = result.camB[0], pos = snapToWall(labelPoint(result.B[bi]));
+  if (!pos) return;
+  result.cams.push({ pos, dir: Math.atan2(pos.n[1], pos.n[0]), bits: new Uint32Array(result.WORDS) });
+  const c = result.cams[result.cams.length - 1]; c.bits = camBits(c.pos, c.dir);
+  closeCam(); refreshCoverage(true); refreshUI();
+  selCam = result.cams.length - 1; camMove = { ci: selCam };
+  document.getElementById('hint').textContent = 'Așază camera nouă: mișcă mouse-ul (sau trage cu degetul) de-a lungul pereților și dă click. Apoi o poți roti.';
+  if (mobileQ.matches) document.getElementById('stage').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  draw();
+};
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && (selCam >= 0 || camMove)) { closeCam(); refreshUI(); draw(); }
   if (selCam >= 0 && !camMove && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); rotateCam(e.key === 'ArrowLeft' ? 5 : -5); }
