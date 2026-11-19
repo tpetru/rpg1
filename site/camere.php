@@ -43,8 +43,15 @@ header('Cache-Control: no-cache, must-revalidate');
   .side { display: flex; flex-direction: column; gap: 12px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
   .card h2 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: .3px; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-  .tabs button { flex: 1; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 1 1 auto; }
+  .tabs button.add { flex: 0 0 auto; border-style: dashed; color: var(--muted); }
+  .bopts { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .bopts input[type=text] {
+    flex: 1 1 120px; min-width: 0; font: inherit; color: var(--text); background: #0d1014; border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 7px;
+  }
+  .bopts label { color: var(--muted); font-size: 13px; white-space: nowrap; }
   button {
     font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border);
     border-radius: 10px; padding: 7px 10px; cursor: pointer;
@@ -112,9 +119,11 @@ header('Cache-Control: no-cache, must-revalidate');
 
   <div class="side">
     <div class="card">
-      <div class="tabs">
-        <button id="tabLand">🌳 Teren</button>
-        <button id="tabHouse">🏠 Casă</button>
+      <div class="tabs" id="tabs"></div>
+      <div class="bopts" id="bopts">
+        <input type="text" id="bName" maxlength="30" placeholder="Nume construcție">
+        <label title="Algoritmul poate monta camere pe pereții ei"><input type="checkbox" id="bCams"> camere pe ea</label>
+        <button class="small" id="bDel" title="Șterge construcția">🗑</button>
       </div>
       <div class="row" style="margin-bottom:8px">
         <button class="small" id="btnDraw">✏️ Desenează din nou</button>
@@ -184,8 +193,8 @@ const COLORS = ['#ff6a00', '#3fa9ff', '#ffd23f', '#c86bff', '#4fe3a1', '#ff4f8b'
                 '#ff9f6b', '#a0a0ff', '#e3c85a', '#ff6bd5', '#6bffc8', '#d8ff6b', '#6b9bff', '#ffb36b',
                 '#b36bff', '#6bffe9', '#ff6b6b', '#c8c8c8'];
 let land = rect(0, 0, 30, 20);
-let house = lshape(9, 5, 12, 10);
-let active = 'house';
+let buildings = [{ name: 'Casă', poly: lshape(9, 5, 12, 10), cams: true }];
+let active = 0;              // 'land' sau indexul constructiei editate
 let drawing = null;          // puncte in curs de desenare
 let result = null;           // rezultatul generarii
 let settings = { count: 4, fov: 90, range: 15, near: true };
@@ -196,10 +205,14 @@ function lshape(x, y, w, h) {
 }
 try {
   const s = JSON.parse(localStorage.getItem(STORE) || 'null');
-  if (s && s.land && s.house) { land = s.land; house = s.house; if (s.settings) settings = Object.assign(settings, s.settings); }
+  if (s && s.land && (s.buildings || s.house)) {
+    land = s.land;
+    buildings = s.buildings && s.buildings.length ? s.buildings : [{ name: 'Casă', poly: s.house, cams: true }];
+    if (s.settings) settings = Object.assign(settings, s.settings);
+  }
 } catch (e) {}
 function save() {
-  try { localStorage.setItem(STORE, JSON.stringify({ land, house, settings })); } catch (e) {}
+  try { localStorage.setItem(STORE, JSON.stringify({ land, buildings, settings })); } catch (e) {}
 }
 
 // ---------- geometrie ----------
@@ -259,7 +272,7 @@ const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const stage = document.getElementById('stage');
 let W = 0, H = 0, DPR = 1, view = { s: 10, ox: 0, oy: 0 };
 function fit() {
-  const pts = land.concat(house);
+  const pts = buildings.reduce((a, b) => a.concat(b.poly), land.slice());
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
   const pad = 46, w = Math.max(x1 - x0, 1), h = Math.max(y1 - y0, 1);
@@ -301,11 +314,23 @@ function draw() {
   if (result) drawCoverage();
 
   pathPoly(land); ctx.strokeStyle = '#5fbf74'; ctx.lineWidth = active === 'land' ? 2.5 : 1.5; ctx.stroke();
-  pathPoly(house); ctx.fillStyle = '#3a3f47'; ctx.fill();
-  ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = active === 'house' ? 3 : 2; ctx.stroke();
+  buildings.forEach((b, bi) => {
+    pathPoly(b.poly); ctx.fillStyle = bi === active ? '#454b55' : '#3a3f47'; ctx.fill();
+    ctx.strokeStyle = bi === active ? '#ffffff' : '#c8c8c8'; ctx.lineWidth = bi === active ? 3 : 2; ctx.stroke();
+  });
 
-  drawLabels(land, active === 'land', '#8fe0a0');
-  drawLabels(house, active === 'house', '#ffffff');
+  labelHits = [];
+  drawLabels(land, 'land', '#8fe0a0');
+  buildings.forEach((b, bi) => drawLabels(b.poly, bi, '#ffffff'));
+  // numele constructiilor
+  ctx.font = 'bold 13px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  buildings.forEach((b, bi) => {
+    const c = toS(labelPoint(b.poly));
+    ctx.font = 'bold 13px Segoe UI, sans-serif';
+    ctx.fillStyle = bi === active ? '#ffffff' : '#aab2bb'; ctx.fillText(b.name || 'Construcție', c[0], b.cams ? c[1] : c[1] - 7);
+    if (!b.cams) { ctx.font = '11px Segoe UI, sans-serif'; ctx.fillStyle = '#8e969f'; ctx.fillText('fără camere', c[0], c[1] + 8); }
+  });
+  ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
 
   if (drawing) {
     ctx.strokeStyle = '#ffd08a'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
@@ -319,7 +344,7 @@ function draw() {
     }
   } else {
     // manere pentru forma activa
-    const p = active === 'land' ? land : house;
+    const p = getActive();
     p.forEach((q, i) => {
       const s = toS(q), m = toS(mul(add(q, p[(i + 1) % p.length]), 0.5));
       ctx.fillStyle = '#ff6a00'; ctx.beginPath(); ctx.arc(s[0], s[1], 6, 0, 7); ctx.fill();
@@ -334,22 +359,25 @@ function draw() {
 }
 
 let labelHits = [];
-function drawLabels(p, act, color) {
-  if (p === land) labelHits = labelHits.filter(h => h.poly !== 'land'); else labelHits = labelHits.filter(h => h.poly !== 'house');
+function drawLabels(p, id, color) {
+  const act = active === id;
   const P = ccw(p), flipped = P !== p;
   ctx.font = (act ? 'bold ' : '') + '12px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (let i = 0; i < p.length; i++) {
     const a = p[i], b = p[(i + 1) % p.length], d = len(sub(b, a));
     if (d < 0.3) continue;
     let n = norm([b[1] - a[1], -(b[0] - a[0])]); if (flipped) n = mul(n, -1);   // normala exterioara
-    const off = (p === land ? 14 : 24) / view.s;
+    let bw = 0, bh = 0;
+    if (p !== land) { const xs = p.map(q => q[0]), ys = p.map(q => q[1]); bw = Math.max(...xs) - Math.min(...xs); bh = Math.max(...ys) - Math.min(...ys); }
+    const outside = p === land || Math.min(bw, bh) * view.s < 120;     // constructiile mici: etichete in afara
+    const off = (p === land ? 14 : outside ? -13 : 24) / view.s;
     const m = toS(add(mul(add(a, b), 0.5), mul(n, p === land ? off : -off)));
     const txt = d.toFixed(2).replace(/\.?0+$/, '') + ' m';
     const w = ctx.measureText(txt).width + 8;
     ctx.fillStyle = act ? 'rgba(11,13,16,.85)' : 'rgba(11,13,16,.6)';
     ctx.fillRect(m[0] - w / 2, m[1] - 8, w, 16);
     ctx.fillStyle = act ? color : '#8e969f'; ctx.fillText(txt, m[0], m[1]);
-    labelHits.push({ poly: p === land ? 'land' : 'house', i, x: m[0], y: m[1], w, h: 16 });
+    labelHits.push({ poly: id, i, x: m[0], y: m[1], w, h: 16 });
   }
   ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
 }
@@ -368,8 +396,20 @@ function snap(w, poly, idx) {
   }
   return [x, y];
 }
-function getActive() { return active === 'land' ? land : house; }
-function setActive(p) { if (active === 'land') land = p; else house = p; }
+function getActive() { return active === 'land' ? land : buildings[active].poly; }
+function setActive(p) { if (active === 'land') land = p; else buildings[active].poly = p; }
+// punct pentru eticheta: centroidul daca e in interior, altfel mijlocul celui mai lung segment orizontal
+function labelPoint(p) {
+  const c = centroid(p); if (inside(c, p)) return c;
+  let best = c, bl = -1;
+  for (let i = 0; i < p.length; i++) {
+    const y = (p[i][1] + p[(i + 1) % p.length][1]) / 2, xs = [];
+    for (let j = 0; j < p.length; j++) { const a = p[j], b = p[(j + 1) % p.length]; if ((a[1] > y) !== (b[1] > y)) xs.push(a[0] + (y - a[1]) * (b[0] - a[0]) / (b[1] - a[1])); }
+    xs.sort((u, v) => u - v);
+    for (let k = 0; k + 1 < xs.length; k += 2) if (xs[k + 1] - xs[k] > bl) { bl = xs[k + 1] - xs[k]; best = [(xs[k] + xs[k + 1]) / 2, y]; }
+  }
+  return best;
+}
 
 cv.addEventListener('pointerdown', e => {
   const [sx, sy] = evPos(e);
@@ -393,9 +433,9 @@ cv.addEventListener('pointerdown', e => {
   if (lh) { const inp = document.querySelector(`#sides input[data-i="${lh.i}"]`); if (inp) { inp.focus(); inp.select(); } return; }
   const w = toW(sx, sy);
   if (inside(w, p)) { drag = { type: 'move', start: w, orig: p.map(q => q.slice()) }; cv.setPointerCapture(e.pointerId); return; }
-  // click in cealalta forma => o activeaza
-  const other = active === 'land' ? house : land;
-  if (inside(w, other) || (active === 'house' && inside(w, land))) { selectTab(active === 'land' ? 'house' : 'land'); }
+  // click in alta forma => o activeaza (constructiile au prioritate fata de teren)
+  const hit = buildings.findIndex(b => inside(w, b.poly));
+  if (hit >= 0) selectTab(hit); else if (active !== 'land' && inside(w, land)) selectTab('land');
 });
 cv.addEventListener('pointermove', e => {
   const [sx, sy] = evPos(e);
@@ -426,17 +466,56 @@ function invalidate(full = true) { result = null; save(); if (full) refreshUI();
 
 // ---------- panou ----------
 function selectTab(t) { active = t; if (drawing) { drawing = null; document.getElementById('btnDone').hidden = true; } refreshUI(); draw(); }
-document.getElementById('tabLand').onclick = () => selectTab('land');
-document.getElementById('tabHouse').onclick = () => selectTab('house');
+function renderTabs() {
+  const el = document.getElementById('tabs'); el.innerHTML = '';
+  const mk = (txt, on, fn, cls) => { const b = document.createElement('button'); b.textContent = txt; if (on) b.classList.add('on'); if (cls) b.classList.add(cls); b.onclick = fn; el.appendChild(b); };
+  mk('🌳 Teren', active === 'land', () => selectTab('land'));
+  buildings.forEach((b, bi) => mk((bi === 0 ? '🏠 ' : '🏚 ') + (b.name || 'Construcție ' + (bi + 1)), active === bi, () => selectTab(bi)));
+  mk('＋ Construcție', false, addBuilding, 'add');
+  const bo = document.getElementById('bopts'); bo.hidden = active === 'land';
+  if (active !== 'land') {
+    const b = buildings[active];
+    if (document.activeElement !== document.getElementById('bName')) document.getElementById('bName').value = b.name;
+    document.getElementById('bCams').checked = b.cams;
+    document.getElementById('bDel').disabled = buildings.length <= 1;
+  }
+}
+const NAMES = ['Garaj', 'Magazie', 'Foișor', 'Anexă', 'Șopron', 'Bucătărie de vară', 'Atelier', 'Saună'];
+function addBuilding() {
+  const used = new Set(buildings.map(b => b.name));
+  const name = NAMES.find(n => !used.has(n)) || 'Construcție ' + (buildings.length + 1);
+  // cautam un loc liber pe teren pentru o constructie de 5 x 4 m
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of land) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+  let poly = null, bestD = -1;
+  for (let y = y0 + 1; y + 4 <= y1 - 1 && true; y += 1) for (let x = x0 + 1; x + 5 <= x1 - 1; x += 1) {
+    const cand = rect(x, y, 5, 4);
+    if (!polyInside(cand, land) || buildings.some(b => polysOverlap(cand, b.poly))) continue;
+    const d = Math.min(...buildings.map(b => Math.min(...cand.map(q => distToPoly(q, b.poly)))));
+    const score = Math.min(d, 3) - 0.01 * d;        // aproape de restul, dar cu spatiu intre ele
+    if (score > bestD) { bestD = score; poly = cand; }
+  }
+  if (!poly) { const c = centroid(land); poly = rect(r1(c[0] - 2.5), r1(c[1] - 2), 5, 4); }
+  buildings.push({ name, poly, cams: true });
+  active = buildings.length - 1; fit(); invalidate();
+}
+document.getElementById('bName').addEventListener('input', e => { buildings[active].name = e.target.value; save(); renderTabs(); draw(); });
+document.getElementById('bCams').addEventListener('change', e => { buildings[active].cams = e.target.checked; invalidate(); });
+document.getElementById('bDel').onclick = () => {
+  if (active === 'land' || buildings.length <= 1) return;
+  buildings.splice(active, 1); active = Math.min(active, buildings.length - 1); fit(); invalidate();
+};
 document.getElementById('btnDraw').onclick = startDraw;
 document.getElementById('btnDone').onclick = () => { if (drawing && drawing.length >= 3) finishDraw(); };
 document.getElementById('btnRect').onclick = () => {
   const p = getActive(); const c = centroid(p);
-  setActive(active === 'land' ? rect(0, 0, 30, 20) : rect(r1(c[0] - 6), r1(c[1] - 5), 12, 10)); fit(); invalidate();
+  const sz = active === 0 ? [12, 10] : [5, 4];
+  setActive(active === 'land' ? rect(0, 0, 30, 20) : rect(r1(c[0] - sz[0] / 2), r1(c[1] - sz[1] / 2), sz[0], sz[1])); fit(); invalidate();
 };
 document.getElementById('btnL').onclick = () => {
   const p = getActive(); const c = centroid(p);
-  setActive(active === 'land' ? lshape(0, 0, 36, 28) : lshape(r1(c[0] - 6), r1(c[1] - 5), 12, 10)); fit(); invalidate();
+  const sz = active === 0 ? [12, 10] : [6, 5];
+  setActive(active === 'land' ? lshape(0, 0, 36, 28) : lshape(r1(c[0] - sz[0] / 2), r1(c[1] - sz[1] / 2), sz[0], sz[1])); fit(); invalidate();
 };
 function centroid(p) { let x = 0, y = 0; p.forEach(q => { x += q[0]; y += q[1]; }); return [x / p.length, y / p.length]; }
 
@@ -472,25 +551,35 @@ function updateTable(valuesOnly) {
   }
   const a = Math.abs(area(p));
   document.getElementById('areaInfo').textContent =
-    `${active === 'land' ? 'Teren' : 'Casă'}: ${p.length} colțuri · suprafață ${a.toFixed(1)} m²` +
-    (active === 'house' ? '' : ` · liber în jurul casei ${(a - Math.abs(area(house))).toFixed(1)} m²`);
+    `${active === 'land' ? 'Teren' : (buildings[active].name || 'Construcție')}: ${p.length} colțuri · suprafață ${a.toFixed(1)} m²` +
+    (active !== 'land' ? '' : ` · liber în jurul construcțiilor ${(a - buildings.reduce((s, b) => s + Math.abs(area(b.poly)), 0)).toFixed(1)} m²`);
 }
 function problems() {
   const out = [];
   if (selfIntersects(land)) out.push('Laturile terenului se intersectează.');
-  if (selfIntersects(house)) out.push('Laturile casei se intersectează.');
-  if (!polyInside(house, land)) out.push('Casa trebuie să fie în întregime pe teren.');
+  buildings.forEach((b, i) => {
+    const nm = b.name || 'Construcția ' + (i + 1);
+    if (selfIntersects(b.poly)) out.push(`Laturile pentru „${nm}” se intersectează.`);
+    if (!polyInside(b.poly, land)) out.push(`„${nm}” trebuie să fie în întregime pe teren.`);
+    for (let j = i + 1; j < buildings.length; j++) if (polysOverlap(b.poly, buildings[j].poly)) out.push(`„${nm}” se suprapune cu „${buildings[j].name || 'Construcția ' + (j + 1)}”.`);
+  });
+  if (!buildings.some(b => b.cams)) out.push('Bifează „camere pe ea” la cel puțin o construcție.');
   return out;
+}
+function polysOverlap(a, b) {
+  if (a.some(p => inside(p, b)) || b.some(p => inside(p, a))) return true;
+  for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++)
+    if (segX(a[i], a[(i + 1) % a.length], b[j], b[(j + 1) % b.length])) return true;
+  return false;
 }
 function updateWarn() { document.getElementById('warn').innerHTML = problems().join('<br>'); }
 function refreshUI() {
-  document.getElementById('tabLand').classList.toggle('on', active === 'land');
-  document.getElementById('tabHouse').classList.toggle('on', active === 'house');
+  renderTabs();
   updateTable(false); updateWarn();
   document.getElementById('result').hidden = !result;
   document.getElementById('hint').textContent = drawing
     ? 'Click pentru fiecare colț. Închide forma apăsând pe primul punct (portocaliu), dublu-click sau „Închide forma”.'
-    : (active === 'land' ? 'Editezi terenul.' : 'Editezi casa.') + ' Trage de colțuri, de „+” sau de interior.';
+    : (active === 'land' ? 'Editezi terenul.' : `Editezi: ${buildings[active].name || 'construcția'}.`) + ' Trage de colțuri, de „+” sau de interior.';
 }
 
 // ---------- modal ----------
@@ -540,7 +629,10 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 // + o directie (din 5 in 5 grade). Pentru fiecare candidat stim exact ce celule vede (raza, unghi si linia
 // de vedere blocata de pereti) sub forma de bitset. Apoi cautam combinatia de N candidati cu acoperire maxima.
 async function optimize(st, progress) {
-  const H = ccw(house), Ld = land, n = H.length;
+  const B = buildings.map(b => ccw(b.poly)), Ld = land;
+  const edges = []; B.forEach(P => P.forEach((p, i) => edges.push([p, P[(i + 1) % P.length]])));
+  const NE = edges.length;
+  const inAny = p => B.some(P => inside(p, P));
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of Ld) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
   const cell = Math.max(0.25, Math.sqrt((x1 - x0) * (y1 - y0) / 14000));
@@ -548,18 +640,21 @@ async function optimize(st, progress) {
   const nx = Math.ceil((x1 - x0) / cell), ny = Math.ceil((y1 - y0) / cell);
   for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
     const p = [x0 + (gx + 0.5) * cell, y0 + (gy + 0.5) * cell];
-    if (inside(p, Ld) && !inside(p, H)) { cells.push(p); gidx.push(gx + (ny - 1 - gy) * nx); }
+    if (inside(p, Ld) && !inAny(p)) { cells.push(p); gidx.push(gx + (ny - 1 - gy) * nx); }
   }
   const C = cells.length, WORDS = (C + 31) >>> 5;
-  if (!C) throw new Error('nu există teren liber în jurul casei');
-  // celule din primii 5 m fata de casa
+  if (!C) throw new Error('nu există teren liber în jurul construcțiilor');
+  // celule din primii 5 m fata de constructiile pe care se pun camere
   const nearMask = new Uint32Array(WORDS);
-  cells.forEach((p, k) => { if (distToPoly(p, H) <= 5) nearMask[k >>> 5] |= 1 << (k & 31); });
+  const camB = B.map((P, bi) => bi).filter(bi => buildings[bi].cams);
+  cells.forEach((p, k) => { if (camB.some(bi => distToPoly(p, B[bi]) <= 5)) nearMask[k >>> 5] |= 1 << (k & 31); });
 
-  // pozitii candidate pe perimetru
-  const perim = H.reduce((s, p, i) => s + len(sub(H[(i + 1) % n], p)), 0);
-  const spacing = Math.max(0.5, perim / 110);
+  // pozitii candidate pe perimetrul constructiilor bifate
+  const perimAll = camB.reduce((s, bi) => s + B[bi].reduce((t, p, i) => t + len(sub(B[bi][(i + 1) % B[bi].length], p)), 0), 0);
+  const spacing = Math.max(0.5, perimAll / 130);
   const positions = [];
+  for (const bi of camB) {
+  const H = B[bi], n = H.length;
   for (let i = 0; i < n; i++) {
     const a = H[i], b = H[(i + 1) % n], e = sub(b, a), el = len(e), d = norm(e);
     const nOut = [d[1], -d[0]];
@@ -567,12 +662,14 @@ async function optimize(st, progress) {
     // coltul a (pe bisectoarea normalelor), apoi puncte de-a lungul laturii
     let cn = norm(add(nOut, nPrev)); let cp = add(a, mul(cn, 0.05));
     if (inside(cp, H)) cp = add(a, mul(cn, -0.05));
-    positions.push({ p: cp, n: cn, wall: i, t: 0, corner: true });
+    if (!inAny(cp)) positions.push({ p: cp, n: cn, b: bi, wall: i, t: 0, corner: true });
     const k = Math.floor(el / spacing);
     for (let j = 1; j < k; j++) {
       const t = j * el / k;
-      positions.push({ p: add(add(a, mul(d, t)), mul(nOut, 0.05)), n: nOut, wall: i, t, corner: false });
+      const pp = add(add(a, mul(d, t)), mul(nOut, 0.05));
+      if (!inAny(pp)) positions.push({ p: pp, n: nOut, b: bi, wall: i, t, corner: false });
     }
+  }
   }
 
   const DIRS = 72, dStep = 2 * Math.PI / DIRS, half = st.fov / 2 * Math.PI / 180, R2 = st.range * st.range;
@@ -585,7 +682,7 @@ async function optimize(st, progress) {
       const q = cells[k], dx = q[0] - c[0], dy = q[1] - c[1];
       if (dx * dx + dy * dy > R2) continue;
       let blocked = false;
-      for (let w = 0; w < n; w++) if (segX(c, q, H[w], H[(w + 1) % n])) { blocked = true; break; }
+      for (let w = 0; w < NE; w++) if (segX(c, q, edges[w][0], edges[w][1])) { blocked = true; break; }
       if (!blocked) visible.push(k, Math.atan2(dy, dx));
     }
     const sets = [];
@@ -615,7 +712,7 @@ async function optimize(st, progress) {
 
   const unionOf = (sel, skip) => { const u = new Uint32Array(WORDS); sel.forEach((ci, j) => { if (j === skip) return; const b = pool[ci].bits; for (let w = 0; w < WORDS; w++) u[w] |= b[w]; }); return u; };
   const gainScore = (u, b) => { let s = 0, sn = 0; for (let w = 0; w < WORDS; w++) { const v = u[w] | b[w]; if (v) { s += pc(v); if (nearW) sn += pc(v & nearMask[w]); } } return s + nearW * sn; };
-  const tooClose = (sel, ci, skip) => sel.some((cj, j) => j !== skip && cj !== undefined && pool[cj].pos === pool[ci].pos);
+  const tooClose = (sel, ci, skip) => sel.some((cj, j) => j !== skip && cj !== undefined && len(sub(pool[cj].pos.p, pool[ci].pos.p)) < 1);
 
   // 1) greedy
   progress(0.5, 'Aleg camerele una câte una (greedy)…'); await tick();
@@ -669,7 +766,7 @@ async function optimize(st, progress) {
   cams.forEach(c => { for (let k = 0; k < C; k++) if (c.bits[k >>> 5] & (1 << (k & 31))) count[k]++; });
   let cov = 0, dbl = 0; for (let k = 0; k < C; k++) { if (count[k]) cov++; if (count[k] > 1) dbl++; }
   const img = makeImage(nx, ny, gidx, cams, count, C);
-  return { cells, cell, cams, count, C, cov, dbl, st: Object.assign({}, st), H, img, box: [x0, y0, x0 + nx * cell, y0 + ny * cell] };
+  return { cells, cell, cams, count, C, cov, dbl, st: Object.assign({}, st), img, box: [x0, y0, x0 + nx * cell, y0 + ny * cell] };
 }
 function pc(v) { v = v - ((v >>> 1) & 0x55555555); v = (v & 0x33333333) + ((v >>> 2) & 0x33333333); return (((v + (v >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; }
 function pcAll(b) { let s = 0; for (let i = 0; i < b.length; i++) if (b[i]) s += pc(b[i]); return s; }
@@ -735,9 +832,10 @@ function showResult() {
   document.getElementById('stCam').textContent = r.st.fov + '° · ' + r.st.range + ' m';
   const ul = document.getElementById('camlist'); ul.innerHTML = '';
   // numele colturilor sunt cele din tabel (poligonul original, nu cel reorientat)
-  const orig = house, flipped = ccw(orig) !== orig, n = orig.length;
   const dirs = ['E', 'NE', 'N', 'NV', 'V', 'SV', 'S', 'SE'];
   r.cams.forEach((c, ci) => {
+    const orig = buildings[c.pos.b].poly, flipped = ccw(orig) !== orig, n = orig.length;
+    const bn = buildings.length > 1 ? `pe ${buildings[c.pos.b].name || 'construcția ' + (c.pos.b + 1)}, ` : '';
     let wa = c.pos.wall, wb = (wa + 1) % n, t = c.pos.t;
     // pozitia pe casa in termeni de colturi din tabel
     let where;
@@ -747,7 +845,7 @@ function showResult() {
     const deg = ((c.dir * 180 / Math.PI) % 360 + 360) % 360;
     const li = document.createElement('li');
     li.innerHTML = `<span class="dot" style="background:${COLORS[ci % COLORS.length]}"></span>
-      <span><b>Camera ${ci + 1}</b> ${where}${r.st.fov < 360 ? `, orientată spre ${dirs[Math.round(deg / 45) % 8]} (${deg.toFixed(0)}°)` : ''}</span>`;
+      <span><b>Camera ${ci + 1}</b> ${bn}${where}${r.st.fov < 360 ? `, orientată spre ${dirs[Math.round(deg / 45) % 8]} (${deg.toFixed(0)}°)` : ''}</span>`;
     ul.appendChild(li);
   });
 }
