@@ -36,6 +36,13 @@ header('Cache-Control: no-cache, must-revalidate');
     overflow: hidden; touch-action: none; aspect-ratio: 4 / 3; min-height: 300px;
   }
   .stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  .campop {
+    position: absolute; z-index: 3; display: flex; gap: 4px; padding: 5px; transform: translate(-50%, 0);
+    background: rgba(18,22,27,.96); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    white-space: nowrap; touch-action: none; user-select: none;
+  }
+  .campop button { padding: 6px 10px; font-size: 13px; }
+  .campop .deg { align-self: center; color: var(--muted); font-size: 12px; padding: 0 4px; min-width: 38px; text-align: center; }
   .hint {
     position: absolute; left: 10px; bottom: 8px; right: 10px; color: var(--muted); font-size: 12px;
     pointer-events: none; text-shadow: 0 1px 2px #000;
@@ -114,6 +121,13 @@ header('Cache-Control: no-cache, must-revalidate');
     <div class="stage" id="stage">
       <canvas id="cv"></canvas>
       <div class="hint" id="hint"></div>
+      <div class="campop" id="campop" hidden>
+        <button id="cpMove" title="Mută camera pe alt perete">✥ Mută</button>
+        <button id="cpLeft" title="Rotește spre stânga (ține apăsat)">⟲</button>
+        <span class="deg" id="cpDeg"></span>
+        <button id="cpRight" title="Rotește spre dreapta (ține apăsat)">⟳</button>
+        <button id="cpClose" title="Închide">✕</button>
+      </div>
     </div>
   </div>
 
@@ -131,6 +145,11 @@ header('Cache-Control: no-cache, must-revalidate');
         <button class="small" id="btnL">⌐ Formă L</button>
         <button class="small" id="btnDone" hidden>✔ Închide forma</button>
       </div>
+      <div class="row" id="viewBtns" style="margin-bottom:8px" hidden>
+        <button class="small on" id="btnDirs">🔦 Direcții: afișate</button>
+        <button class="small on" id="btnZones">🎨 Zone filmate: afișate</button>
+        <button class="small" id="btnClear">Ascunde camerele</button>
+      </div>
       <table id="sides"></table>
       <div class="muted" id="areaInfo" style="margin-top:6px"></div>
       <div class="warn" id="warn"></div>
@@ -146,11 +165,6 @@ header('Cache-Control: no-cache, must-revalidate');
           <div>Unghi / distanță<b id="stCam">–</b></div>
         </div>
         <ul class="camlist" id="camlist"></ul>
-        <div class="row" style="margin-top:8px">
-          <button class="small on" id="btnDirs">🔦 Direcții: afișate</button>
-          <button class="small on" id="btnZones">🎨 Zone filmate: afișate</button>
-          <button class="small" id="btnClear">Ascunde camerele</button>
-        </div>
       </div>
     </div>
 
@@ -360,6 +374,8 @@ function draw() {
     ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
   }
   if (result) drawCameras();
+  if (selCam >= 0 && !camMove && !camDrag) placePop();
+  cv.style.cursor = camMove ? 'move' : '';
 }
 
 let labelHits = [];
@@ -417,6 +433,12 @@ function labelPoint(p) {
 
 cv.addEventListener('pointerdown', e => {
   const [sx, sy] = evPos(e);
+  if (result && !drawing) {
+    if (camMove) { camDrag = { ci: camMove.ci, moved: true }; moveCamTo(toW(sx, sy)); cv.setPointerCapture(e.pointerId); return; }
+    const ci = hitCam(sx, sy);
+    if (ci >= 0) { camDrag = { ci, sx, sy, moved: false }; cv.setPointerCapture(e.pointerId); return; }
+    if (selCam >= 0) { closeCam(); return; }
+  }
   if (drawing) {
     const w = snap(toW(sx, sy));
     if (drawing.length >= 3) { const f = toS(drawing[0]); if (Math.hypot(f[0] - sx, f[1] - sy) < 12) { finishDraw(); return; } }
@@ -443,6 +465,13 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   const [sx, sy] = evPos(e);
+  if (result && camMove && !camDrag) { moveCamTo(toW(sx, sy)); return; }
+  if (result && !drag && !drawing) cv.style.cursor = hitCam(sx, sy) >= 0 ? 'pointer' : '';      // camera urmareste mouse-ul
+  if (camDrag) {
+    if (!camDrag.moved && Math.hypot(sx - camDrag.sx, sy - camDrag.sy) > 6) { camDrag.moved = true; selCam = camDrag.ci; hidePop(); }
+    if (camDrag.moved) moveCamTo(toW(sx, sy));
+    return;
+  }
   if (drawing) { hover = snap(toW(sx, sy)); draw(); return; }
   if (!drag) return;
   const w = toW(sx, sy), p = getActive();
@@ -454,7 +483,15 @@ cv.addEventListener('pointermove', e => {
   }
   invalidate(false);
 });
-function endDrag() { if (drag) { drag = null; fit(); invalidate(); } }
+function endDrag() {
+  if (camDrag) {
+    const d = camDrag; camDrag = null;
+    if (d.moved) { camMove = null; finishCamEdit(); refreshUI(); openCam(d.ci); }
+    else if (selCam === d.ci) closeCam(); else openCam(d.ci);
+    return;
+  }
+  if (drag) { drag = null; fit(); invalidate(); }
+}
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 cv.addEventListener('dblclick', () => { if (drawing && drawing.length >= 3) finishDraw(); });
@@ -466,7 +503,7 @@ function finishDraw() {
 }
 
 // orice modificare a formelor invalideaza camerele
-function invalidate(full = true) { result = null; save(); if (full) refreshUI(); else { updateTable(true); updateWarn(); } draw(); }
+function invalidate(full = true) { result = null; closeCam(); save(); if (full) refreshUI(); else { updateTable(true); updateWarn(); } draw(); }
 
 // ---------- panou ----------
 function selectTab(t) { active = t; if (drawing) { drawing = null; document.getElementById('btnDone').hidden = true; } refreshUI(); draw(); }
@@ -581,6 +618,7 @@ function refreshUI() {
   renderTabs();
   updateTable(false); updateWarn();
   document.getElementById('result').hidden = !result;
+  document.getElementById('viewBtns').hidden = !result;
   document.getElementById('hint').textContent = drawing
     ? 'Click pentru fiecare colț. Închide forma apăsând pe primul punct (portocaliu), dublu-click sau „Închide forma”.'
     : (active === 'land' ? 'Editezi terenul.' : `Editezi: ${buildings[active].name || 'construcția'}.`) + ' Trage de colțuri, de „+” sau de interior.';
@@ -610,7 +648,7 @@ function syncShow() {
 }
 document.getElementById('btnDirs').onclick = () => { show.dirs = !show.dirs; syncShow(); save(); draw(); };
 document.getElementById('btnZones').onclick = () => { show.zones = !show.zones; syncShow(); save(); draw(); };
-document.getElementById('btnClear').onclick = () => { result = null; refreshUI(); draw(); };
+document.getElementById('btnClear').onclick = () => { closeCam(); result = null; refreshUI(); draw(); };
 
 let cancelRun = false;
 async function go() {
@@ -627,7 +665,7 @@ async function go() {
       document.getElementById('mThink').textContent = msg;
     });
     if (!r || cancelRun) return;
-    result = r; modal.hidden = true; refreshUI(); showResult(); draw();
+    closeCam(); result = r; modal.hidden = true; refreshUI(); showResult(); draw();
   } catch (err) {
     document.getElementById('mThink').textContent = 'Eroare: ' + err.message;
     document.getElementById('mActions').hidden = false;
@@ -777,7 +815,8 @@ async function optimize(st, progress) {
   cams.forEach(c => { for (let k = 0; k < C; k++) if (c.bits[k >>> 5] & (1 << (k & 31))) count[k]++; });
   let cov = 0, dbl = 0; for (let k = 0; k < C; k++) { if (count[k]) cov++; if (count[k] > 1) dbl++; }
   const img = makeImage(nx, ny, gidx, cams, count, C);
-  return { cells, cell, cams, count, C, cov, dbl, st: Object.assign({}, st), img, box: [x0, y0, x0 + nx * cell, y0 + ny * cell] };
+  return { cells, cell, cams: cams.map(c => ({ pos: c.pos, dir: c.dir, bits: c.bits })), count, C, cov, dbl, st: Object.assign({}, st), img,
+           box: [x0, y0, x0 + nx * cell, y0 + ny * cell], nx, ny, gidx, edges, B, WORDS, camB, manual: false };
 }
 function pc(v) { v = v - ((v >>> 1) & 0x55555555); v = (v & 0x33333333) + ((v >>> 2) & 0x33333333); return (((v + (v >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; }
 function pcAll(b) { let s = 0; for (let i = 0; i < b.length; i++) if (b[i]) s += pc(b[i]); return s; }
@@ -823,6 +862,7 @@ function drawCameras() {
       ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.arc(p[0], p[1], R, -c.dir - half, -c.dir + half); ctx.closePath(); ctx.stroke();
       ctx.setLineDash([]);
     }
+    if (ci === selCam) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p[0], p[1], 14, 0, 7); ctx.stroke(); }
     ctx.fillStyle = col; ctx.strokeStyle = '#0b0d10'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(p[0], p[1], 9, 0, 7); ctx.fill(); ctx.stroke();
     if (show.dirs && half < Math.PI) {
@@ -835,12 +875,121 @@ function drawCameras() {
 }
 function hexA(h, a) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
+// ---------- editare manuala a camerelor ----------
+let selCam = -1, camMove = null, camDrag = null;
+const pop = document.getElementById('campop');
+function hitCam(sx, sy) {
+  if (!result) return -1;
+  for (let i = result.cams.length - 1; i >= 0; i--) { const p = toS(result.cams[i].pos.p); if (Math.hypot(p[0] - sx, p[1] - sy) < 13) return i; }
+  return -1;
+}
+function openCam(ci) { selCam = ci; camMove = null; placePop(); draw(); }
+function closeCam() { selCam = -1; camMove = null; camDrag = null; hidePop(); if (typeof cv !== 'undefined') cv.style.cursor = ''; }
+function hidePop() { pop.hidden = true; }
+function placePop() {
+  if (selCam < 0 || !result) { hidePop(); return; }
+  const c = result.cams[selCam], p = toS(c.pos.p);
+  pop.hidden = false;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let x = Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, p[0])), y = p[1] + 18;
+  if (y + h > H - 4) y = p[1] - 18 - h;
+  pop.style.left = x + 'px'; pop.style.top = y + 'px';
+  const deg = ((c.dir * 180 / Math.PI) % 360 + 360) % 360;
+  document.getElementById('cpDeg').textContent = result.st.fov >= 360 ? '360°' : deg.toFixed(0) + '°';
+  document.getElementById('cpMove').classList.toggle('on', !!camMove);
+}
+// cel mai apropiat punct de pe peretii constructiilor cu camere (cu mic decalaj spre exterior)
+function snapToWall(w) {
+  const r = result; let best = null, bd = Infinity;
+  for (const bi of r.camB) {
+    const P = r.B[bi], n = P.length;
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n], ab = sub(b, a), el = len(ab);
+      const t = Math.max(0, Math.min(el, dot(sub(w, a), ab) / (el || 1)));
+      const q = add(a, mul(ab, t / (el || 1))), d = len(sub(w, q));
+      if (d < bd) { bd = d; best = { bi, i, t, el, a, b }; }
+    }
+  }
+  if (!best) return null;
+  const P = r.B[best.bi], n = P.length, d = norm(sub(best.b, best.a)), nOut = [d[1], -d[0]];
+  const cornerTol = Math.max(0.25, 10 / view.s);
+  let i = best.i, t = best.t, corner = false;
+  if (t > best.el - cornerTol) { i = (i + 1) % n; t = 0; }
+  if (t < cornerTol) corner = true;
+  const inAny = p => r.B.some(Q => inside(p, Q));
+  let pos;
+  if (corner) {
+    const a = P[i], e = norm(sub(P[(i + 1) % n], a)), dp = norm(sub(a, P[(i + n - 1) % n]));
+    const cn = norm(add([e[1], -e[0]], [dp[1], -dp[0]]));
+    let cp = add(a, mul(cn, 0.05)); if (inside(cp, P)) cp = add(a, mul(cn, -0.05));
+    pos = { p: cp, n: cn, b: best.bi, wall: i, t: 0, corner: true };
+  } else {
+    pos = { p: add(add(best.a, mul(d, t)), mul(nOut, 0.05)), n: nOut, b: best.bi, wall: best.i, t, corner: false };
+  }
+  return inAny(pos.p) ? null : pos;
+}
+// ce vede o camera (aceeasi regula ca la optimizare: raza, unghi, pereti care blocheaza)
+function camBits(pos, dir) {
+  const r = result, c = pos.p, R2 = r.st.range * r.st.range, half = r.st.fov / 2 * Math.PI / 180;
+  const bits = new Uint32Array(r.WORDS), E = r.edges, NE = E.length;
+  for (let k = 0; k < r.C; k++) {
+    const q = r.cells[k], dx = q[0] - c[0], dy = q[1] - c[1];
+    if (dx * dx + dy * dy > R2) continue;
+    if (half < Math.PI) { let da = Math.atan2(dy, dx) - dir; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) > half) continue; }
+    let blocked = false;
+    for (let w = 0; w < NE; w++) if (segX(c, q, E[w][0], E[w][1])) { blocked = true; break; }
+    if (!blocked) bits[k >>> 5] |= 1 << (k & 31);
+  }
+  return bits;
+}
+function moveCamTo(w) {
+  const c = result.cams[camDrag ? camDrag.ci : camMove.ci], pos = snapToWall(w);
+  if (!pos) return;
+  // camera mutata priveste drept in fata peretelui (sau pe bisectoare, in colturi); apoi se poate roti
+  c.pos = pos; c.dir = Math.atan2(pos.n[1], pos.n[0]);
+  c.bits = camBits(c.pos, c.dir); refreshCoverage(false); draw();
+}
+function rotateCam(deltaDeg) {
+  if (selCam < 0 || result.st.fov >= 360) return;
+  const c = result.cams[selCam]; c.dir += deltaDeg * Math.PI / 180;
+  c.bits = camBits(c.pos, c.dir); finishCamEdit(); placePop();
+}
+function finishCamEdit() { refreshCoverage(true); draw(); }
+function refreshCoverage(full) {
+  const r = result; r.manual = true;
+  r.count = new Uint8Array(r.C);
+  r.cams.forEach(c => { for (let k = 0; k < r.C; k++) if (c.bits[k >>> 5] & (1 << (k & 31))) r.count[k]++; });
+  r.cov = 0; r.dbl = 0; for (let k = 0; k < r.C; k++) { if (r.count[k]) r.cov++; if (r.count[k] > 1) r.dbl++; }
+  r.img = makeImage(r.nx, r.ny, r.gidx, r.cams, r.count, r.C);
+  if (full) showResult(); else { const cellA = r.cell * r.cell; document.getElementById('stPct').textContent = (100 * r.cov / r.C).toFixed(1) + '%'; document.getElementById('stArea').textContent = (r.cov * cellA).toFixed(0) + ' / ' + (r.C * cellA).toFixed(0) + ' m²'; }
+}
+document.getElementById('cpMove').onclick = () => {
+  if (selCam < 0) return;
+  camMove = camMove ? null : { ci: selCam };
+  if (camMove) { hidePop(); document.getElementById('hint').textContent = 'Mișcă mouse-ul (sau trage cu degetul) de-a lungul pereților și dă click ca să fixezi camera. Esc oprește mutarea.'; }
+};
+function holdRepeat(btn, fn) {
+  let t1 = null, t2 = null;
+  const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); fn(); t1 = setTimeout(() => { t2 = setInterval(fn, 70); }, 350); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+}
+holdRepeat(document.getElementById('cpLeft'), () => rotateCam(5));     // stanga = sens trigonometric (harta are nordul sus)
+holdRepeat(document.getElementById('cpRight'), () => rotateCam(-5));
+document.getElementById('cpClose').onclick = () => { closeCam(); draw(); };
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && (selCam >= 0 || camMove)) { closeCam(); refreshUI(); draw(); }
+  if (selCam >= 0 && !camMove && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); rotateCam(e.key === 'ArrowLeft' ? 5 : -5); }
+});
+
 function showResult() {
   const r = result, cellA = r.cell * r.cell;
   document.getElementById('stPct').textContent = (100 * r.cov / r.C).toFixed(1) + '%';
   document.getElementById('stArea').textContent = (r.cov * cellA).toFixed(0) + ' / ' + (r.C * cellA).toFixed(0) + ' m²';
   document.getElementById('stDouble').textContent = (r.dbl * cellA).toFixed(0) + ' m²';
   document.getElementById('stCam').textContent = r.st.fov + '° · ' + r.st.range + ' m';
+  document.getElementById('stPct').textContent += r.manual ? ' ✋' : '';
+  document.getElementById('stPct').title = r.manual ? 'Camerele au fost ajustate manual' : '';
   const ul = document.getElementById('camlist'); ul.innerHTML = '';
   // numele colturilor sunt cele din tabel (poligonul original, nu cel reorientat)
   const dirs = ['E', 'NE', 'N', 'NV', 'V', 'SV', 'S', 'SE'];
