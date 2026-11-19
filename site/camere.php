@@ -147,6 +147,8 @@ header('Cache-Control: no-cache, must-revalidate');
         </div>
         <ul class="camlist" id="camlist"></ul>
         <div class="row" style="margin-top:8px">
+          <button class="small on" id="btnDirs">🔦 Direcții: afișate</button>
+          <button class="small on" id="btnZones">🎨 Zone filmate: afișate</button>
           <button class="small" id="btnClear">Ascunde camerele</button>
         </div>
       </div>
@@ -198,6 +200,7 @@ let active = 0;              // 'land' sau indexul constructiei editate
 let drawing = null;          // puncte in curs de desenare
 let result = null;           // rezultatul generarii
 let settings = { count: 4, fov: 90, range: 15, near: true };
+let show = { dirs: true, zones: true };   // ce se deseneaza peste camere
 
 function rect(x, y, w, h) { return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]]; }
 function lshape(x, y, w, h) {
@@ -209,10 +212,11 @@ try {
     land = s.land;
     buildings = s.buildings && s.buildings.length ? s.buildings : [{ name: 'Casă', poly: s.house, cams: true }];
     if (s.settings) settings = Object.assign(settings, s.settings);
+    if (s.show) show = Object.assign(show, s.show);
   }
 } catch (e) {}
 function save() {
-  try { localStorage.setItem(STORE, JSON.stringify({ land, buildings, settings })); } catch (e) {}
+  try { localStorage.setItem(STORE, JSON.stringify({ land, buildings, settings, show })); } catch (e) {}
 }
 
 // ---------- geometrie ----------
@@ -311,7 +315,7 @@ function draw() {
 
   pathPoly(land); ctx.fillStyle = '#16301f'; ctx.fill();
 
-  if (result) drawCoverage();
+  if (result && show.zones) drawCoverage();
 
   pathPoly(land); ctx.strokeStyle = '#5fbf74'; ctx.lineWidth = active === 'land' ? 2.5 : 1.5; ctx.stroke();
   buildings.forEach((b, bi) => {
@@ -599,6 +603,13 @@ document.getElementById('mPlus').onclick = () => mCount.value = Math.min(20, (+m
 document.getElementById('mCancel').onclick = () => { cancelRun = true; modal.hidden = true; };
 modal.addEventListener('keydown', e => { if (e.key === 'Enter' && !document.getElementById('mActions').hidden) go(); if (e.key === 'Escape') { cancelRun = true; modal.hidden = true; } });
 document.getElementById('mGo').onclick = go;
+function syncShow() {
+  const d = document.getElementById('btnDirs'), z = document.getElementById('btnZones');
+  d.classList.toggle('on', show.dirs); d.textContent = '🔦 Direcții: ' + (show.dirs ? 'afișate' : 'ascunse');
+  z.classList.toggle('on', show.zones); z.textContent = '🎨 Zone filmate: ' + (show.zones ? 'afișate' : 'ascunse');
+}
+document.getElementById('btnDirs').onclick = () => { show.dirs = !show.dirs; syncShow(); save(); draw(); };
+document.getElementById('btnZones').onclick = () => { show.zones = !show.zones; syncShow(); save(); draw(); };
 document.getElementById('btnClear').onclick = () => { result = null; refreshUI(); draw(); };
 
 let cancelRun = false;
@@ -806,7 +817,7 @@ function drawCameras() {
   r.cams.forEach((c, ci) => {
     const col = COLORS[ci % COLORS.length], p = toS(c.pos.p);
     // conturul unghiului de vedere
-    if (half < Math.PI) {
+    if (show.dirs && half < Math.PI) {
       const R = r.st.range * view.s;
       ctx.strokeStyle = hexA(col, 0.7); ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.arc(p[0], p[1], R, -c.dir - half, -c.dir + half); ctx.closePath(); ctx.stroke();
@@ -814,7 +825,7 @@ function drawCameras() {
     }
     ctx.fillStyle = col; ctx.strokeStyle = '#0b0d10'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(p[0], p[1], 9, 0, 7); ctx.fill(); ctx.stroke();
-    if (half < Math.PI) {
+    if (show.dirs && half < Math.PI) {
       const tip = [p[0] + Math.cos(-c.dir) * 17, p[1] + Math.sin(-c.dir) * 17];
       ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
     }
@@ -850,6 +861,7 @@ function showResult() {
   });
 }
 
+syncShow();
 refreshUI();
 resize();
 })();
