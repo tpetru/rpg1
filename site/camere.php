@@ -98,6 +98,8 @@ header('Cache-Control: no-cache, must-revalidate');
   details.spoiler > summary::after { content: '▸'; margin-left: auto; color: var(--muted); transition: transform .15s; }
   details.spoiler[open] > summary::after { transform: rotate(90deg); }
   details.spoiler > #sidesBox { padding: 0 8px 8px; }
+  .zoombar { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; flex-direction: column; gap: 4px; }
+  .zoombar button { width: 36px; height: 36px; padding: 0; font-size: 18px; line-height: 1; background: rgba(24,29,35,.92); }
   .fab {
     position: absolute; right: 10px; bottom: 30px; z-index: 2; display: none;
     padding: 10px 14px; border-radius: 22px; font-weight: 700; border: 0; color: #140a02;
@@ -147,6 +149,11 @@ header('Cache-Control: no-cache, must-revalidate');
       <canvas id="cv"></canvas>
       <div class="hint" id="hint"></div>
       <button class="fab" id="fabSides">📏 Laturi</button>
+      <div class="zoombar">
+        <button id="zIn" title="Zoom in">＋</button>
+        <button id="zOut" title="Zoom out">－</button>
+        <button id="zFit" title="Încadrează tot">⤢</button>
+      </div>
       <div class="campop" id="campop" hidden>
         <button id="cpMove" title="Mută camera pe alt perete">✥ Mută</button>
         <button id="cpLeft" title="Rotește spre stânga (ține apăsat)">⟲</button>
@@ -203,7 +210,7 @@ header('Cache-Control: no-cache, must-revalidate');
 
     <div class="card muted">
       Trage de colțuri ca să le muți, de „+” de pe mijlocul unei laturi ca să adaugi un colț, sau de interiorul formei ca s-o muți cu totul.
-      Lungimile se pot scrie exact în tabel (în metri). Zonele <span style="color:#ff7a7a">roșiatice</span> sunt nefilmate.
+      Lungimile se pot scrie exact în tabel (în metri). Zoom cu rotița mouse-ului, cu două degete pe telefon sau din butoanele ＋/－; tragi de fundal ca să muți harta, iar ⤢ încadrează tot. Zonele <span style="color:#ff7a7a">roșiatice</span> sunt nefilmate.
     </div>
   </div>
 </div>
@@ -328,7 +335,10 @@ function setSide(poly, i, newLen) {
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const stage = document.getElementById('stage');
 let W = 0, H = 0, DPR = 1, view = { s: 10, ox: 0, oy: 0 };
-function fit() {
+// vederea se reincadreaza automat doar pana cand utilizatorul face zoom / pan (butonul ⤢ revine la incadrare)
+let userView = false;
+function fit() { if (!userView) fitAll(); }
+function fitAll() {
   const pts = buildings.reduce((a, b) => a.concat(b.poly), land.slice());
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
@@ -470,8 +480,33 @@ function labelPoint(p) {
   return best;
 }
 
+// ---------- zoom & pan ----------
+function zoomAt(sx, sy, k) {
+  const w = toW(sx, sy), s = Math.max(1.5, Math.min(600, view.s * k));
+  view = { s, ox: sx - w[0] * s, oy: sy + w[1] * s }; userView = true; draw();
+}
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); const [sx, sy] = evPos(e);
+  zoomAt(sx, sy, Math.pow(1.0015, -e.deltaY * (e.deltaMode === 1 ? 33 : 1)));
+}, { passive: false });
+document.getElementById('zIn').onclick = () => zoomAt(W / 2, H / 2, 1.4);
+document.getElementById('zOut').onclick = () => zoomAt(W / 2, H / 2, 1 / 1.4);
+document.getElementById('zFit').onclick = () => { userView = false; fitAll(); draw(); };
+const pointers = new Map(); let pinch = null, lastDrawAdd = null;
+window.addEventListener('pointerup', e => pointers.delete(e.pointerId));
+window.addEventListener('pointercancel', e => pointers.delete(e.pointerId));
+function pinchState() { const [a, b] = [...pointers.values()]; return { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; }
+
 cv.addEventListener('pointerdown', e => {
   const [sx, sy] = evPos(e);
+  if (e.pointerType === 'mouse') pointers.clear();
+  pointers.set(e.pointerId, [sx, sy]);
+  if (pointers.size === 2) {        // al doilea deget: pinch zoom, anulam ce incepuse primul deget
+    if (drawing && lastDrawAdd && performance.now() - lastDrawAdd < 600) { drawing.pop(); }
+    if (drag && drag.type !== 'pan') { drag = null; invalidate(); }
+    drag = null; camDrag = null; pinch = pinchState(); draw(); return;
+  }
+  if (pointers.size > 2) return;
   if (result && !drawing) {
     if (camMove) { camDrag = { ci: camMove.ci, moved: true }; moveCamTo(toW(sx, sy)); cv.setPointerCapture(e.pointerId); return; }
     const ci = hitCam(sx, sy);
@@ -481,7 +516,7 @@ cv.addEventListener('pointerdown', e => {
   if (drawing) {
     const w = snap(toW(sx, sy));
     if (drawing.length >= 3) { const f = toS(drawing[0]); if (Math.hypot(f[0] - sx, f[1] - sy) < 12) { finishDraw(); return; } }
-    drawing.push(w); draw(); return;
+    drawing.push(w); lastDrawAdd = performance.now(); draw(); return;
   }
   const lh = labelHits.find(h => h.poly === active && Math.abs(sx - h.x) < h.w / 2 && Math.abs(sy - h.y) < h.h / 2);
   const p = getActive();
@@ -497,13 +532,27 @@ cv.addEventListener('pointerdown', e => {
   }
   if (lh) { openSides(); const inp = document.querySelector(`#sides input[data-i="${lh.i}"]`); if (inp) { inp.focus(); inp.select(); } return; }
   const w = toW(sx, sy);
-  if (inside(w, p)) { drag = { type: 'move', start: w, orig: p.map(q => q.slice()) }; cv.setPointerCapture(e.pointerId); return; }
-  // click in alta forma => o activeaza (constructiile au prioritate fata de teren)
+  if (active !== 'land' && inside(w, p)) { drag = { type: 'move', start: w, orig: p.map(q => q.slice()) }; cv.setPointerCapture(e.pointerId); return; }
+  // altfel: tragere = pan; click simplu in alta forma = o activeaza (constructiile au prioritate fata de teren)
   const hit = buildings.findIndex(b => inside(w, b.poly));
-  if (hit >= 0) selectTab(hit); else if (active !== 'land' && inside(w, land)) selectTab('land');
+  const target = hit >= 0 ? hit : (active !== 'land' && inside(w, land) ? 'land' : null);
+  drag = { type: 'pan', sx, sy, ox: view.ox, oy: view.oy, moved: false, target }; cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointermove', e => {
   const [sx, sy] = evPos(e);
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [sx, sy]);
+  if (pinch) {
+    if (pointers.size < 2) return;
+    const now = pinchState();
+    zoomAt(pinch.m[0], pinch.m[1], now.d / pinch.d);
+    view.ox += now.m[0] - pinch.m[0]; view.oy += now.m[1] - pinch.m[1]; draw();
+    pinch = now; return;
+  }
+  if (drag && drag.type === 'pan') {
+    if (!drag.moved && Math.hypot(sx - drag.sx, sy - drag.sy) > 5) drag.moved = true;
+    if (drag.moved) { view.ox = drag.ox + sx - drag.sx; view.oy = drag.oy + sy - drag.sy; userView = true; draw(); }
+    return;
+  }
   if (result && camMove && !camDrag) { moveCamTo(toW(sx, sy)); return; }
   if (result && !drag && !drawing) cv.style.cursor = hitCam(sx, sy) >= 0 ? 'pointer' : '';      // camera urmareste mouse-ul
   if (camDrag) {
@@ -522,7 +571,14 @@ cv.addEventListener('pointermove', e => {
   }
   invalidate(false);
 });
-function endDrag() {
+function endDrag(e) {
+  if (e && e.pointerId !== undefined) pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) pinch = null; return; }
+  if (drag && drag.type === 'pan') {
+    const d = drag; drag = null;
+    if (!d.moved && d.target !== null) selectTab(d.target);
+    return;
+  }
   if (camDrag) {
     const d = camDrag; camDrag = null;
     if (d.moved) { camMove = null; finishCamEdit(); refreshUI(); openCam(d.ci); }
