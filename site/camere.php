@@ -859,7 +859,7 @@ async function optimize(st, progress) {
   cams.forEach(c => { for (let k = 0; k < C; k++) if (c.bits[k >>> 5] & (1 << (k & 31))) count[k]++; });
   let cov = 0, dbl = 0; for (let k = 0; k < C; k++) { if (count[k]) cov++; if (count[k] > 1) dbl++; }
   const img = makeImage(nx, ny, gidx, cams, count, C);
-  return { cells, cell, cams: cams.map(c => ({ pos: c.pos, dir: c.dir, bits: c.bits })), count, C, cov, dbl, st: Object.assign({}, st), img,
+  return { cells, cell, cams: cams.map(c => ({ pos: c.pos, dir: c.dir, bits: c.bits, rel: angDiff(c.dir, Math.atan2(c.pos.n[1], c.pos.n[0])) })), count, C, cov, dbl, st: Object.assign({}, st), img,
            box: [x0, y0, x0 + nx * cell, y0 + ny * cell], nx, ny, gidx, edges, B, WORDS, camB, manual: false };
 }
 function pc(v) { v = v - ((v >>> 1) & 0x55555555); v = (v & 0x33333333) + ((v >>> 2) & 0x33333333); return (((v + (v >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; }
@@ -1006,13 +1006,14 @@ function camBits(pos, dir) {
 function moveCamTo(w) {
   const c = result.cams[camDrag ? camDrag.ci : camMove.ci], pos = snapToWall(w);
   if (!pos) return;
-  // camera mutata priveste drept in fata peretelui (sau pe bisectoare, in colturi); apoi se poate roti
-  c.pos = pos; c.dir = Math.atan2(pos.n[1], pos.n[0]);
+  // rotatia e tinuta minte fata de perete (c.rel): la mutare camera pastreaza unghiul fata de peretele nou
+  c.pos = pos; c.dir = Math.atan2(pos.n[1], pos.n[0]) + (c.rel || 0);
   c.bits = camBits(c.pos, c.dir); refreshCoverage(false); draw();
 }
+function angDiff(a, b) { const d = a - b; return Math.atan2(Math.sin(d), Math.cos(d)); }
 function rotateCam(deltaDeg) {
   if (selCam < 0 || result.st.fov >= 360) return;
-  const c = result.cams[selCam]; c.dir += deltaDeg * Math.PI / 180;
+  const c = result.cams[selCam], d = deltaDeg * Math.PI / 180; c.dir += d; c.rel = angDiff((c.rel || 0) + d, 0);
   c.bits = camBits(c.pos, c.dir); finishCamEdit(); placePop();
 }
 function finishCamEdit() { refreshCoverage(true); draw(); }
@@ -1056,7 +1057,7 @@ document.getElementById('btnAddCam').onclick = () => {
   if (result.cams.length >= 20) { alertWarn('Maxim 20 de camere.'); return; }
   const bi = result.camB[0], pos = snapToWall(labelPoint(result.B[bi]));
   if (!pos) return;
-  result.cams.push({ pos, dir: Math.atan2(pos.n[1], pos.n[0]), bits: new Uint32Array(result.WORDS) });
+  result.cams.push({ pos, dir: Math.atan2(pos.n[1], pos.n[0]), rel: 0, bits: new Uint32Array(result.WORDS) });
   const c = result.cams[result.cams.length - 1]; c.bits = camBits(c.pos, c.dir);
   closeCam(); refreshCoverage(true); refreshUI();
   selCam = result.cams.length - 1; camMove = { ci: selCam };
