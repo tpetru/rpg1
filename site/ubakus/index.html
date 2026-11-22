@@ -133,6 +133,13 @@
   table.cmp td.worst { color: var(--bad); }
   table.cmp td.lay { white-space: normal; text-align: left; font-size: 11.5px; color: var(--muted); vertical-align: top; min-width: 150px; }
   table.cmp .ubar { height: 6px; border-radius: 3px; background: var(--accent); margin: 4px auto 0; }
+  .winners { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .win { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .win .cat { color: var(--muted); font-size: 12px; }
+  .win .who { font-weight: 800; font-size: 15px; margin: 2px 0; color: var(--good); }
+  .win .why { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+  table.cmp th .cups { display: block; font-size: 14px; letter-spacing: 2px; }
+  table.cmp tr.sec td { color: var(--accent-2); font-weight: 700; text-align: left; padding-top: 12px; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--accent); color: #140a02; font-weight: 700; padding: 8px 14px; border-radius: 10px; z-index: 30; }
 </style>
 </head>
@@ -184,8 +191,9 @@
 
     <div class="card" id="cCmp" hidden>
       <h2>Comparator <span class="sp"></span><button class="small" id="cmpCur" title="Adaugă și construcția de acum, nesalvată">+ construcția actuală</button><button class="small" id="cmpClear">Golește</button></h2>
+      <div class="winners" id="cmpWin"></div>
       <div class="tblwrap"><table class="cmp" id="cmpTbl"></table></div>
-      <div class="muted" style="margin-top:6px">Verde = cea mai bună valoare pe rând, roșu = cea mai slabă.</div>
+      <div class="muted" style="margin-top:6px">Verde = cea mai bună valoare pe rând, roșu = cea mai slabă. Câștigătorii sunt orientativi: focul ține cont doar de clasa materialelor (A1/A2 = incombustibil) și de cât din grosime sunt, nu de o încercare reală la foc; respirabilitatea e rezistența totală la difuzia vaporilor s<sub>d</sub>.</div>
     </div>
 
     <div class="card" id="cTbl">
@@ -335,6 +343,15 @@ const GROUPS = [
     ['pamant', 'Pământ / pietriș', 2.00, 2000, 1000, 50, 'stone'],
   ]],
 ];
+// clasa de reactie la foc (Euroclase SR EN 13501-1), valori tipice
+const FIRE = {
+  tenc_ext: 'A2', tenc_ipsos: 'A1', gips_carton: 'A2', celuloza: 'B', pir: 'B', aerogel: 'C', spuma_puf: 'E',
+  eps: 'E', eps_graf: 'E', xps: 'E', fibra_lemn: 'E', pluta: 'E', canepa: 'E', mdf_dif: 'E',
+  lemn_moale: 'D', lemn_tare: 'D', clt: 'D', osb: 'D', pal: 'D', placaj: 'D', parchet: 'D', laminat: 'D', lambriu: 'D',
+  bariera: 'E', frana: 'E', membrana: 'E', bitum: 'E', pvc: 'E',
+};
+const fireOf = id => FIRE[id] || 'A1';
+const FIRE_RANK = { A1: 0, A2: 1, B: 2, C: 3, D: 4, E: 5, F: 6 };
 const MAT = {};
 const MAT_ORDER = [];
 for (const [g, list] of GROUPS) for (const [id, name, l, rho, c, mu, cat] of list) {
@@ -753,7 +770,7 @@ function update() {
     if (r.condLayers.has(x.i)) tags.push('<span class="tag cond">condens</span>');
     if (x.mx) tags.push(`<span class="tag">${fmt(x.mx.f * 100, 0)}% ${esc(MAT[x.ly.mix.m].name.toLowerCase())}</span>`);
     row.querySelector('[data-info]').innerHTML =
-      `<span>λ <b>${fmtN(x.l)}</b></span><span>R <b>${fmt(x.R, 2)}</b> m²K/W</span><span>s<sub>d</sub> <b>${fmtN(x.sd)}</b> m</span>` + tags.join(' ');
+      `<span>λ <b>${fmtN(x.l)}</b></span><span>R <b>${fmt(x.R, 2)}</b> m²K/W</span><span>s<sub>d</sub> <b>${fmtN(x.sd)}</b> m</span>` + (x.mat.cat === 'air' || x.mat.cat === 'airv' ? '' : `<span>foc <b>${fireOf(x.ly.m)}</b></span>`) + tags.join(' ');
   });
   $('totThick').textContent = has ? `grosime totală ${fmt(r.Dtot * 100, 1)} cm` : '';
 
@@ -1046,8 +1063,42 @@ function renderCmp() {
   $('cmpCur').classList.toggle('on', cmpCur);
   const card = $('cCmp');
   card.hidden = cols.length === 0 && !SAVED.length;
-  if (!cols.length) { $('cmpTbl').innerHTML = '<tr><td class="muted" style="text-align:left;padding:10px 2px">Apasă ⇄ la configurațiile salvate ca să le compari aici.</td></tr>'; return; }
-  const R = cols.map(c => ({ ...c, r: computeFor(c.st) }));
+  if (!cols.length) { $('cmpWin').innerHTML = ''; $('cmpTbl').innerHTML = '<tr><td class="muted" style="text-align:left;padding:10px 2px">Apasă ⇄ la configurațiile salvate ca să le compari aici.</td></tr>'; return; }
+  const R = cols.map(c => {
+    const r = computeFor(c.st);
+    // foc: cat din grosime e incombustibil (A1/A2), masa incombustibila, cel mai slab strat
+    const solid = r.L.filter(x => x.mat.cat !== 'air' && x.mat.cat !== 'airv');
+    const tot = solid.reduce((a, x) => a + x.dm, 0) || 1;
+    const nc = solid.filter(x => FIRE_RANK[fireOf(x.ly.m)] <= 1 && !(x.mx && FIRE_RANK[fireOf(x.ly.mix.m)] > 1));
+    const worst = solid.reduce((w, x) => Math.max(w, FIRE_RANK[fireOf(x.ly.m)], x.mx ? FIRE_RANK[fireOf(x.ly.mix.m)] : 0), 0);
+    const fire = { frac: nc.reduce((a, x) => a + x.dm, 0) / tot * 100, mass: nc.reduce((a, x) => a + x.rho * x.dm, 0),
+      worst: Object.keys(FIRE_RANK).find(k => FIRE_RANK[k] === worst),
+      combCm: (tot - nc.reduce((a, x) => a + x.dm, 0)) * 100 };
+    fire.score = fire.frac * 1000 + Math.min(fire.mass, 999);
+    // condens: cantitate, apoi cat de aproape ajunge vaporul de saturatie (rezerva)
+    const ratio = Math.max(...r.samples.map(p => p.ps > 0 ? p.p / p.ps : 0));
+    return { ...c, r, fire, reserve: Math.max(0, (1 - ratio) * 100), kwh: r.U * c.st.hdd * 24 / 1000 };
+  });
+  // castigatori pe categorii (pot fi mai multi la egalitate)
+  const winBy = (val, dir) => {
+    const vs = R.map(val), best = dir < 0 ? Math.min(...vs) : Math.max(...vs);
+    return R.filter((c, i) => Math.abs(vs[i] - best) <= 1e-6 * Math.max(1, Math.abs(best)));
+  };
+  const names = ws => ws.length === R.length && R.length > 1 ? 'Egalitate' : ws.map(c => esc(c.name)).join(', ');
+  const CATS = [
+    { k: 'e', ico: '⚡', name: 'Eficiență energetică', w: winBy(c => c.r.U, -1),
+      why: w => `U ${fmt(w.r.U, 3)} W/m²K, ~${fmt(w.kwh, 0)} kWh/m²·an` },
+    { k: 'f', ico: '🔥', name: 'Rezistență la foc', w: winBy(c => c.fire.score, 1),
+      why: w => `${fmt(w.fire.frac, 0)} % din grosime incombustibil (A1/A2), cel mai slab strat clasa ${w.fire.worst}` },
+    { k: 'c', ico: '💧', name: 'Condens', w: (() => { const m = winBy(c => c.r.Mc, -1); return m.length > 1 ? winBy(c => m.includes(c) ? c.reserve : -1, 1) : m; })(),
+      why: w => w.r.Mc > 0 ? `cel mai puțin condens: ${fmt(w.r.Mc * 1000, 0)} g/m²` : `fără condens, rezervă ${fmt(w.reserve, 0)} % până la saturație` },
+    { k: 'b', ico: '🌬', name: 'Respirabilitate (vapori)', w: winBy(c => c.r.Stot, -1),
+      why: w => `s<sub>d</sub> total ${fmtN(w.r.Stot)} m${w.r.Stot < 2 ? ', deschis la difuzie' : w.r.Stot > 100 ? ', practic etanș' : ''}` },
+  ];
+  if (R.length > 1) {
+    $('cmpWin').innerHTML = CATS.map(k => `<div class="win"><div class="cat">${k.ico} ${k.name}</div><div class="who">🏆 ${names(k.w)}</div><div class="why">${k.w.length === R.length ? 'toate la fel' : k.why(k.w[0])}</div></div>`).join('');
+  } else $('cmpWin').innerHTML = '<div class="muted">Pune cel puțin două configurații în comparator ca să vezi câștigătorii.</div>';
+  const cups = c => R.length > 1 ? CATS.filter(k => k.w.includes(c) && k.w.length < R.length).map(k => k.ico).join('') : '';
   const maxU = Math.max(...R.map(c => c.r.U));
   // rand: [eticheta, valoare numerica, text, directie (-1 mai mic e mai bun, 1 mai mare, 0 neutru)]
   const rows = [
@@ -1059,14 +1110,19 @@ function renderCmp() {
     ['Temp. perete interior', c => c.r.tsi, c => fmt(c.r.tsi, 1) + ' °C', 1],
     ['Condens [g/m²]', c => c.r.Mc * 1000, c => c.r.Mc > 0 ? fmt(c.r.Mc * 1000, 0) : 'nu', -1],
     ['Se usucă vara', null, c => c.r.Mc > 0 ? (c.r.Me > c.r.Mc ? 'da' : '<span style="color:var(--bad)">nu</span>') : '–', 0],
+    ['Rezervă până la condens', c => c.reserve, c => c.r.Mc > 0 ? '<span style="color:var(--bad)">0 %</span>' : fmt(c.reserve, 0) + ' %', 1],
+    ['s<sub>d</sub> total [m] (respirabilitate)', c => c.r.Stot, c => fmtN(c.r.Stot), -1],
+    ['Incombustibil din grosime', c => c.fire.score, c => fmt(c.fire.frac, 0) + ' %', 1],
+    ['Strat cel mai inflamabil', c => -FIRE_RANK[c.fire.worst], c => 'clasa ' + c.fire.worst, 1],
+    ['Grosime combustibilă [cm]', c => c.fire.combCm, c => fmt(c.fire.combCm, 1), -1],
     ['Defazaj [h]', c => c.r.lag, c => fmt(c.r.lag, 1), 1],
     ['Factor atenuare', c => c.r.decr, c => fmt(c.r.decr, 2), -1],
     ['Masă [kg/m²]', c => c.r.mass, c => fmt(c.r.mass, 0), 0],
     ['Pierdere [kWh/m²·an]', c => c.r.U * c.st.hdd * 24 / 1000, c => fmt(c.r.U * c.st.hdd * 24 / 1000, 0), -1],
-    ['Economie vs. cea mai slabă', c => (maxU - c.r.U) / maxU * 100, c => maxU > c.r.U ? '−' + fmt((maxU - c.r.U) / maxU * 100, 0) + ' %' : '–', 0],
+    ['Pierde mai puțin decât cea mai slabă cu', c => (maxU - c.r.U) / maxU * 100, c => maxU > c.r.U ? fmt((maxU - c.r.U) / maxU * 100, 0) + ' %' : '–', 0],
     ['Climă (int / ext)', null, c => `${fmt(c.st.ti, 0)}°/${fmt(c.st.phii, 0)}% · ${fmt(c.st.te, 0)}°/${fmt(c.st.phie, 0)}%`, 0],
   ];
-  let h = `<tr><th></th>${R.map(c => `<th>${esc(c.name)}${c.cur ? '<small>nesalvată</small>' : ''}</th>`).join('')}</tr>`;
+  let h = `<tr><th></th>${R.map(c => `<th><span class="cups">${cups(c)}</span>${esc(c.name)}${c.cur ? '<small>nesalvată</small>' : ''}</th>`).join('')}</tr>`;
   for (const [lbl, val, txt, dir] of rows) {
     let best = null, worst = null;
     if (dir && val && R.length > 1) {
