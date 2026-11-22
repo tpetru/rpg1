@@ -29,8 +29,8 @@
   @media (max-width: 920px) {
     .layout { grid-template-columns: minmax(0, 1fr); }
     .layout > .col { display: contents; }
-    #cElem { order: 1; } #cLayers { order: 2; } #cU { order: 3; } #cMoist { order: 4; } #cChart { order: 5; }
-    #cSummer { order: 6; } #cLoss { order: 7; } #cTbl { order: 8; } #cHelp { order: 9; }
+    #cElem { order: 1; } #cLayers { order: 2; } #cU { order: 3; } #cSaved { order: 4; } #cMoist { order: 5; } #cCmp { order: 6; }
+    #cChart { order: 7; } #cSummer { order: 8; } #cLoss { order: 9; } #cTbl { order: 10; } #cHelp { order: 11; }
   }
   .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px; min-width: 0; }
@@ -114,6 +114,25 @@
   .tblwrap { overflow-x: auto; }
   .help { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
   .help b { color: var(--text); }
+  /* salvate + comparator */
+  .saverow { display: flex; gap: 6px; }
+  .saverow input { flex: 1; min-width: 0; }
+  .saved { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .saved li { display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px; padding: 5px 6px 5px 9px; }
+  .saved li.cur { border-color: var(--accent); }
+  .saved .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .saved .nm small { display: block; color: var(--muted); font-size: 11px; }
+  .saved .uv { font-weight: 700; font-size: 13px; white-space: nowrap; }
+  .saved button.cmp.on { background: var(--blue); border-color: var(--blue); color: #04121f; }
+  table.cmp { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+  table.cmp th, table.cmp td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+  table.cmp th { vertical-align: bottom; font-weight: 700; min-width: 120px; white-space: normal; }
+  table.cmp th small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; }
+  table.cmp td:first-child, table.cmp th:first-child { text-align: left; color: var(--muted); font-weight: 600; position: sticky; left: 0; background: var(--panel); min-width: 0; }
+  table.cmp td.best { color: var(--good); font-weight: 700; }
+  table.cmp td.worst { color: var(--bad); }
+  table.cmp td.lay { white-space: normal; text-align: left; font-size: 11.5px; color: var(--muted); vertical-align: top; min-width: 150px; }
+  table.cmp .ubar { height: 6px; border-radius: 3px; background: var(--accent); margin: 4px auto 0; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--accent); color: #140a02; font-weight: 700; padding: 8px 14px; border-radius: 10px; z-index: 30; }
 </style>
 </head>
@@ -163,6 +182,12 @@
       <div class="legend" id="legend"></div>
     </div>
 
+    <div class="card" id="cCmp" hidden>
+      <h2>Comparator <span class="sp"></span><button class="small" id="cmpCur" title="Adaugă și construcția de acum, nesalvată">+ construcția actuală</button><button class="small" id="cmpClear">Golește</button></h2>
+      <div class="tblwrap"><table class="cmp" id="cmpTbl"></table></div>
+      <div class="muted" style="margin-top:6px">Verde = cea mai bună valoare pe rând, roșu = cea mai slabă.</div>
+    </div>
+
     <div class="card" id="cTbl">
       <h2>Detalii pe straturi</h2>
       <div class="tblwrap"><table class="res" id="tbl"></table></div>
@@ -176,6 +201,13 @@
       <div class="muted" id="rVal"></div>
       <div class="scale" id="scale"></div>
       <div class="verdict" id="uVerdict"></div>
+    </div>
+
+    <div class="card" id="cSaved">
+      <h2>Configurații salvate</h2>
+      <div class="saverow"><input type="text" id="saveName" maxlength="60" placeholder="Nume, ex. Casa mea - perete"><button id="btnSave">💾 Salvează</button></div>
+      <ul class="saved" id="savedList"></ul>
+      <div class="muted" style="margin-top:8px">Se păstrează în acest browser. Apasă pe nume ca s-o deschizi, ⇄ ca s-o pui în comparator.</div>
     </div>
 
     <div class="card" id="cMoist">
@@ -786,6 +818,7 @@ function update() {
   $('yearNote').textContent = has ? `La ΔT = ${fmt(S.ti - S.te, 0)} K și ${S.hdd} grade-zile. Pentru 100 m² de astfel de ${T.name.toLowerCase()}: ~${Math.round(kwh * 100).toLocaleString('ro-RO')} kWh/an (≈ ${Math.round(kwh * 100 / 10.5).toLocaleString('ro-RO')} m³ de gaz).` : '';
 
   renderTable(r);
+  if (typeof renderSaved === 'function' && SAVED) renderSaved();
   sizeChart();
   if (chartMode === 't') drawTemp(r); else drawGlaser(r);
 }
@@ -943,6 +976,112 @@ $('chart').addEventListener('mousemove', hover);
 $('chart').addEventListener('mouseleave', () => tip.hidden = true);
 $('chart').addEventListener('touchstart', hover, { passive: true });
 document.addEventListener('touchstart', e => { if (!e.target.closest('#chart')) tip.hidden = true; }, { passive: true });
+
+// ---------------------------------------------------------------- salvate + comparator
+let SAVED = [];
+try { SAVED = JSON.parse(localStorage.getItem('ubakus.saved')) || []; } catch (e) {}
+if (!Array.isArray(SAVED)) SAVED = [];
+SAVED = SAVED.filter(x => x && x.state && Array.isArray(x.state.layers)).map(x => ({ ...x, state: sanitize(x.state) }));
+let cmpCur = false;
+try { cmpCur = localStorage.getItem('ubakus.cmpCur') === '1'; } catch (e) {}
+function storeSaved() {
+  try { localStorage.setItem('ubakus.saved', JSON.stringify(SAVED)); localStorage.setItem('ubakus.cmpCur', cmpCur ? '1' : ''); } catch (e) {}
+}
+const sameState = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function computeFor(st) { const old = S; S = st; try { return compute(); } finally { S = old; } }
+const clone = o => JSON.parse(JSON.stringify(o));
+
+$('btnSave').onclick = () => {
+  if (!S.layers.length) { toast('Adaugă întâi straturi'); return; }
+  let name = $('saveName').value.trim() || `${TYPES[S.type].name} ${SAVED.length + 1}`;
+  const ex = SAVED.find(x => x.name.toLowerCase() === name.toLowerCase());
+  if (ex) { ex.state = clone(S); ex.ts = Date.now(); toast('Actualizat: ' + name); }
+  else { SAVED.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, state: clone(S), ts: Date.now(), cmp: true }); toast('Salvat și pus în comparator'); }
+  $('saveName').value = '';
+  storeSaved(); renderSaved();
+};
+$('saveName').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnSave').click(); });
+$('savedList').addEventListener('click', e => {
+  const li = e.target.closest('li'); if (!li) return;
+  const it = SAVED.find(x => x.id === li.dataset.id); if (!it) return;
+  const b = e.target.closest('button');
+  if (!b) {   // incarca
+    S = sanitize(clone(it.state));
+    for (const k of ['ti', 'phii', 'te', 'phie', 'days', 'hdd']) $(k).value = S[k];
+    openDet = new Set(); $('saveName').value = it.name;
+    renderTypes(); renderLayers(); update(); toast('Deschis: ' + it.name);
+    return;
+  }
+  if (b.dataset.a === 'cmp') it.cmp = !it.cmp;
+  else if (b.dataset.a === 'upd') { if (!S.layers.length) return; it.state = clone(S); it.ts = Date.now(); toast('Actualizat: ' + it.name); }
+  else if (b.dataset.a === 'del') {
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Sigur?'; b.classList.add('on'); setTimeout(() => { if (b.isConnected) { b.dataset.sure = ''; b.textContent = '✕'; b.classList.remove('on'); } }, 2500); return; }
+    SAVED = SAVED.filter(x => x !== it);
+  }
+  storeSaved(); renderSaved();
+});
+$('cmpCur').onclick = () => { cmpCur = !cmpCur; storeSaved(); renderSaved(); };
+$('cmpClear').onclick = () => { SAVED.forEach(x => x.cmp = false); cmpCur = false; storeSaved(); renderSaved(); };
+
+function renderSaved() {
+  const box = $('savedList');
+  box.innerHTML = SAVED.length ? SAVED.map(x => {
+    const r = computeFor(x.state);
+    const cur = sameState(x.state, S);
+    const d = r.Dtot * 100;
+    return `<li data-id="${x.id}" class="${cur ? 'cur' : ''}">
+      <div class="nm" title="Deschide">${esc(x.name)}<small>${TYPES[x.state.type].name} · ${fmt(d, 1)} cm · ${x.state.layers.length} straturi${cur ? ' · deschisă' : ''}</small></div>
+      <span class="uv">U ${fmt(r.U, 3)}</span>
+      ${cur ? '' : '<button class="icon" data-a="upd" title="Suprascrie cu construcția de acum">💾</button>'}
+      <button class="icon cmp${x.cmp ? ' on' : ''}" data-a="cmp" title="${x.cmp ? 'Scoate din comparator' : 'Pune în comparator'}">⇄</button>
+      <button class="icon" data-a="del" title="Șterge" style="width:auto;min-width:30px;padding:0 6px">✕</button>
+    </li>`;
+  }).join('') : '<li class="muted" style="justify-content:center">Nimic salvat încă</li>';
+  renderCmp();
+}
+
+function renderCmp() {
+  const cols = SAVED.filter(x => x.cmp).map(x => ({ name: x.name, st: x.state }));
+  if (cmpCur && !SAVED.some(x => x.cmp && sameState(x.state, S)) && S.layers.length) cols.unshift({ name: 'Actuală', st: S, cur: true });
+  $('cmpCur').classList.toggle('on', cmpCur);
+  const card = $('cCmp');
+  card.hidden = cols.length === 0 && !SAVED.length;
+  if (!cols.length) { $('cmpTbl').innerHTML = '<tr><td class="muted" style="text-align:left;padding:10px 2px">Apasă ⇄ la configurațiile salvate ca să le compari aici.</td></tr>'; return; }
+  const R = cols.map(c => ({ ...c, r: computeFor(c.st) }));
+  const maxU = Math.max(...R.map(c => c.r.U));
+  // rand: [eticheta, valoare numerica, text, directie (-1 mai mic e mai bun, 1 mai mare, 0 neutru)]
+  const rows = [
+    ['Tip', null, c => TYPES[c.st.type].name, 0],
+    ['U [W/m²K]', c => c.r.U, c => `<b>${fmt(c.r.U, 3)}</b><div class="ubar" style="width:${Math.max(4, c.r.U / maxU * 100)}%"></div>`, -1],
+    ['R [m²K/W]', c => c.r.Rtot, c => fmt(c.r.Rtot, 2), 1],
+    ['Grosime [cm]', c => c.r.Dtot * 100, c => fmt(c.r.Dtot * 100, 1), -1],
+    ['Față de C107', null, c => c.r.U <= 1 / TYPES[c.st.type].rmin ? (c.r.U <= TYPES[c.st.type].urec ? '✔ eficient' : '✔ minim') : '✘ sub minim', 0],
+    ['Temp. perete interior', c => c.r.tsi, c => fmt(c.r.tsi, 1) + ' °C', 1],
+    ['Condens [g/m²]', c => c.r.Mc * 1000, c => c.r.Mc > 0 ? fmt(c.r.Mc * 1000, 0) : 'nu', -1],
+    ['Se usucă vara', null, c => c.r.Mc > 0 ? (c.r.Me > c.r.Mc ? 'da' : '<span style="color:var(--bad)">nu</span>') : '–', 0],
+    ['Defazaj [h]', c => c.r.lag, c => fmt(c.r.lag, 1), 1],
+    ['Factor atenuare', c => c.r.decr, c => fmt(c.r.decr, 2), -1],
+    ['Masă [kg/m²]', c => c.r.mass, c => fmt(c.r.mass, 0), 0],
+    ['Pierdere [kWh/m²·an]', c => c.r.U * c.st.hdd * 24 / 1000, c => fmt(c.r.U * c.st.hdd * 24 / 1000, 0), -1],
+    ['Economie vs. cea mai slabă', c => (maxU - c.r.U) / maxU * 100, c => maxU > c.r.U ? '−' + fmt((maxU - c.r.U) / maxU * 100, 0) + ' %' : '–', 0],
+    ['Climă (int / ext)', null, c => `${fmt(c.st.ti, 0)}°/${fmt(c.st.phii, 0)}% · ${fmt(c.st.te, 0)}°/${fmt(c.st.phie, 0)}%`, 0],
+  ];
+  let h = `<tr><th></th>${R.map(c => `<th>${esc(c.name)}${c.cur ? '<small>nesalvată</small>' : ''}</th>`).join('')}</tr>`;
+  for (const [lbl, val, txt, dir] of rows) {
+    let best = null, worst = null;
+    if (dir && val && R.length > 1) {
+      const vs = R.map(val), lo = Math.min(...vs), hi = Math.max(...vs);
+      if (hi - lo > 1e-9 * Math.max(1, Math.abs(hi))) { best = dir < 0 ? lo : hi; worst = dir < 0 ? hi : lo; }
+    }
+    h += `<tr><td>${lbl}</td>${R.map(c => {
+      const v = val ? val(c) : null;
+      const cls = best != null && Math.abs(v - best) < 1e-9 ? 'best' : worst != null && Math.abs(v - worst) < 1e-9 ? 'worst' : '';
+      return `<td class="${cls}">${txt(c)}</td>`;
+    }).join('')}</tr>`;
+  }
+  h += `<tr><td>Straturi</td>${R.map(c => `<td class="lay">${c.r.L.map(x => `${fmt(x.dm * 100, x.dm < 0.01 ? 2 : 1)} ${esc(x.mat.name)}`).join('<br>')}</td>`).join('')}</tr>`;
+  $('cmpTbl').innerHTML = h;
+}
 
 renderTypes(); renderLayers(); update();
 let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(update, 150); });
