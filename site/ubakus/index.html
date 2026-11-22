@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculator U · Izolație termică</title>
+<meta name="description" content="Calculator coeficient U pentru pereți, acoperișuri și planșee: straturi, profil de temperatură, punct de rouă, condens (Glaser) și protecție termică pe timp de vară.">
+<link rel="icon" type="image/png" href="/samp/ucp/assets/img/favicon.ico">
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #12161b; --panel-2: #181d23; --border: #252b32;
+    --text: #f2f2f2; --muted: #8e969f; --accent: #ff6a00; --accent-2: #ff8533;
+    --good: #4cc46a; --ok: #e5c13a; --bad: #ff5a5a; --blue: #4aa8ff; --temp: #ff5a3c;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px; }
+  a { color: var(--accent-2); }
+  header { padding: 14px 16px 6px; max-width: 1280px; margin: 0 auto; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  header .ttl { flex: 1 1 300px; }
+  header h1 { margin: 0; font-size: 1.3rem; }
+  header h1 span { color: var(--accent); }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .layout {
+    display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px;
+    max-width: 1280px; margin: 0 auto; padding: 10px 16px 30px;
+  }
+  @media (max-width: 920px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .layout > .col { display: contents; }
+    #cElem { order: 1; } #cLayers { order: 2; } #cU { order: 3; } #cMoist { order: 4; } #cChart { order: 5; }
+    #cSummer { order: 6; } #cLoss { order: 7; } #cTbl { order: 8; } #cHelp { order: 9; }
+  }
+  .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px; min-width: 0; }
+  .card h2 { margin: 0 0 10px; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .sp { flex: 1; }
+  button, select, input {
+    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px;
+  }
+  button { padding: 7px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.on { background: var(--accent); border-color: var(--accent); color: #140a02; font-weight: 700; }
+  button.small { padding: 3px 8px; font-size: 12px; border-radius: 8px; }
+  button.icon { width: 30px; height: 30px; padding: 0; font-size: 14px; line-height: 1; flex: none; }
+  button.add {
+    width: 100%; padding: 10px; border-style: dashed; color: var(--muted);
+  }
+  button.add:hover { color: var(--text); }
+  select { padding: 6px 7px; max-width: 100%; }
+  input[type=number], input[type=text] { padding: 6px 7px; width: 100%; background: #0d1014; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs button { flex: 1 1 auto; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .fld label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+  .fld .in { display: flex; align-items: center; gap: 5px; }
+  .unit { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .side-lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 4px 2px; display: flex; align-items: center; gap: 6px; }
+  .side-lbl::after { content: ''; flex: 1; border-top: 1px dashed var(--border); }
+
+  /* straturi */
+  .layers { display: flex; flex-direction: column; gap: 6px; }
+  .layer { background: var(--panel-2); border: 1px solid var(--border); border-radius: 11px; padding: 7px; }
+  .layer.ign { opacity: .55; }
+  .lmain { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .sw { width: 14px; align-self: stretch; min-height: 30px; border-radius: 4px; flex: none; }
+  .lmain select.mat { flex: 1 1 200px; min-width: 0; }
+  .thick { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .thick input { width: 74px; }
+  .lbtns { display: flex; gap: 4px; margin-left: auto; }
+  .linfo { font-size: 12px; color: var(--muted); margin: 5px 0 0 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .linfo b { color: var(--text); font-weight: 600; }
+  .ldet { margin: 8px 0 2px 20px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .ldet .grid2 { grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); }
+  .mixrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .mixrow select { flex: 1 1 180px; min-width: 0; }
+  .mixrow input[type=number] { width: 70px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; background: #2a3038; color: var(--muted); }
+  .tag.cond { background: rgba(74,168,255,.18); color: var(--blue); }
+
+  /* rezultate */
+  .ubig { display: flex; align-items: baseline; gap: 8px; }
+  .ubig b { font-size: 38px; font-weight: 800; letter-spacing: -1px; }
+  .ubig span { color: var(--muted); }
+  .scale { position: relative; height: 14px; border-radius: 7px; margin: 14px 0 26px;
+    background: linear-gradient(90deg, #1f9d55 0%, #4cc46a 18%, #e5c13a 45%, #ff8a3a 68%, #ff4a4a 100%); }
+  .scale .mk { position: absolute; top: -5px; width: 4px; height: 24px; background: #fff; border-radius: 2px; transform: translateX(-2px); box-shadow: 0 0 0 2px #000; }
+  .scale .ref { position: absolute; top: 14px; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; padding-top: 3px; }
+  .scale .ref::before { content: ''; position: absolute; left: 50%; top: -6px; height: 6px; border-left: 1px solid var(--muted); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; }
+  .stats div { background: var(--panel-2); border-radius: 8px; padding: 6px 8px; }
+  .stats b { display: block; font-size: 16px; }
+  .verdict { margin-top: 10px; padding: 8px 10px; border-radius: 9px; font-size: 13px; line-height: 1.4; }
+  .verdict.good { background: rgba(76,196,106,.12); border: 1px solid rgba(76,196,106,.35); }
+  .verdict.ok { background: rgba(229,193,58,.10); border: 1px solid rgba(229,193,58,.35); }
+  .verdict.bad { background: rgba(255,90,90,.10); border: 1px solid rgba(255,90,90,.35); }
+  .verdict b { display: block; margin-bottom: 2px; }
+
+  /* grafice */
+  .chart { width: 100%; height: auto; display: block; user-select: none; }
+  .chart text { font-family: inherit; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend i { display: inline-block; width: 16px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+  .tip { position: fixed; pointer-events: none; z-index: 20; background: rgba(18,22,27,.96); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+
+  table.res { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.res th, table.res td { padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  table.res th { color: var(--muted); font-weight: 600; }
+  table.res td:nth-child(2), table.res th:nth-child(2) { text-align: left; white-space: normal; }
+  table.res tr.tot td { font-weight: 700; border-bottom: 0; }
+  .tblwrap { overflow-x: auto; }
+  .help { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .help b { color: var(--text); }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--accent); color: #140a02; font-weight: 700; padding: 8px 14px; border-radius: 10px; z-index: 30; }
+</style>
+</head>
+<body>
+<header>
+  <div class="ttl">
+    <h1>Calculator <span>U</span> · izolație termică</h1>
+    <p>Construiește peretele, acoperișul sau planșeul strat cu strat și vezi coeficientul U, temperaturile prin element, punctul de rouă, condensul și comportarea vara.</p>
+  </div>
+  <div class="tabs" style="flex:0 1 auto">
+    <select id="preset" title="Exemple"><option value="">Exemple…</option></select>
+    <button id="btnShare" title="Copiază un link cu această construcție">🔗 Link</button>
+    <button id="btnReset" title="Golește">Nou</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="col">
+    <div class="card" id="cElem">
+      <h2>Element de construcție</h2>
+      <div class="tabs" id="types"></div>
+      <div class="grid2" style="margin-top:10px">
+        <div class="fld"><label>Temperatură interior</label><div class="in"><input type="number" id="ti" step="1"><span class="unit">°C</span></div></div>
+        <div class="fld"><label>Umiditate interior</label><div class="in"><input type="number" id="phii" step="5" min="1" max="99"><span class="unit">%</span></div></div>
+        <div class="fld"><label>Temperatură exterior</label><div class="in"><input type="number" id="te" step="1"><span class="unit">°C</span></div></div>
+        <div class="fld"><label>Umiditate exterior</label><div class="in"><input type="number" id="phie" step="5" min="1" max="100"><span class="unit">%</span></div></div>
+        <div class="fld"><label>Durată perioadă rece</label><div class="in"><input type="number" id="days" step="10" min="1"><span class="unit">zile</span></div></div>
+        <div class="fld"><label>Grade-zile încălzire</label><div class="in"><input type="number" id="hdd" step="100" min="0"><span class="unit">K·zile</span></div></div>
+      </div>
+      <div class="muted" style="margin-top:8px">Implicit: metoda Glaser (20 °C / 50 % în casă, −5 °C / 80 % afară, 90 de zile). Pentru profilul de temperatură la ger pune −15 °C (zona II) sau −18 °C (zona III).</div>
+    </div>
+
+    <div class="card" id="cLayers">
+      <h2>Straturi <span class="sp"></span><span class="muted" id="totThick"></span></h2>
+      <div class="side-lbl">Interior 🏠</div>
+      <div class="layers" id="layers"></div>
+      <div class="side-lbl">Exterior 🌧</div>
+      <button class="add" id="btnAdd">+ Adaugă strat</button>
+    </div>
+
+    <div class="card" id="cChart">
+      <h2>Secțiune și temperaturi
+        <span class="sp"></span>
+        <span class="tabs" id="chartTabs"><button class="small on" data-c="t">Temperatură</button><button class="small" data-c="g">Diagrama Glaser</button></span>
+      </h2>
+      <svg class="chart" id="chart" viewBox="0 0 800 380"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="card" id="cTbl">
+      <h2>Detalii pe straturi</h2>
+      <div class="tblwrap"><table class="res" id="tbl"></table></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card" id="cU">
+      <h2>Coeficient de transfer termic</h2>
+      <div class="ubig"><b id="uVal">–</b><span>W/(m²·K)</span></div>
+      <div class="muted" id="rVal"></div>
+      <div class="scale" id="scale"></div>
+      <div class="verdict" id="uVerdict"></div>
+    </div>
+
+    <div class="card" id="cMoist">
+      <h2>Umezeală și condens</h2>
+      <div class="stats">
+        <div>Temp. suprafață interioară<b id="tsi">–</b></div>
+        <div>Punct de rouă în cameră<b id="tdew">–</b></div>
+        <div>Condens în perete<b id="cond">–</b></div>
+        <div>Uscare vara (est.)<b id="dry">–</b></div>
+      </div>
+      <div class="verdict" id="mVerdict"></div>
+    </div>
+
+    <div class="card" id="cSummer">
+      <h2>Protecție termică vara</h2>
+      <div class="stats">
+        <div>Defazaj<b id="lag">–</b></div>
+        <div>Factor de atenuare<b id="damp">–</b></div>
+        <div>Masă termică<b id="mass">–</b></div>
+        <div>Capacitate termică<b id="cap">–</b></div>
+      </div>
+      <div class="verdict" id="sVerdict"></div>
+    </div>
+
+    <div class="card" id="cLoss">
+      <h2>Pierdere de căldură</h2>
+      <div class="stats">
+        <div>Flux la ΔT de calcul<b id="flux">–</b></div>
+        <div>Pe an, per m²<b id="year">–</b></div>
+      </div>
+      <div class="muted" style="margin-top:8px" id="yearNote"></div>
+    </div>
+
+    <div class="card help" id="cHelp">
+      <h2>Cum se citește</h2>
+      <p><b>U</b> spune câți wați trec printr-un m² la 1 °C diferență. Cu cât e mai mic, cu atât izolația e mai bună. Rezistența <b>R = 1/U</b>.</p>
+      <p><b>Punctul de rouă</b> e temperatura la care vaporii din aer se transformă în apă. Dacă undeva în perete temperatura scade sub el, apare condens. Calculul folosește metoda Glaser: vaporii trec prin straturi după rezistența lor la difuzie <b>s<sub>d</sub> = μ·d</b>.</p>
+      <p>Regulă simplă: straturile din interior trebuie să fie mai „etanșe” la vapori decât cele din exterior. Polistirenul pe exterior la un perete de BCA e ok, dar o folie de plastic pe exterior nu.</p>
+      <p><b>Defazajul</b> arată cu câte ore întârzie căldura de la soare până ajunge în casă. Peste 10 ore, căldura de după-amiază ajunge noaptea, când poți aerisi.</p>
+      <p class="muted">Calcul orientativ după principiile SR EN ISO 6946, 13788 și 13786. Nu înlocuiește un audit energetic sau un proiect. Punțile termice (stâlpi, centuri, buiandrugi) nu sunt incluse.</p>
+    </div>
+  </div>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+'use strict';
+// ---------------------------------------------------------------- materiale
+// lambda W/(m·K), rho kg/m³, c J/(kg·K), mu (-). cat = culoare/model in sectiune.
+const GROUPS = [
+  ['Tencuieli și finisaje', [
+    ['tenc_var', 'Tencuială var-ciment', 0.87, 1800, 1000, 20, 'plaster'],
+    ['tenc_ipsos', 'Tencuială de ipsos', 0.51, 1200, 1000, 10, 'plaster'],
+    ['tenc_argila', 'Tencuială de argilă', 0.80, 1700, 1000, 8, 'plaster'],
+    ['tenc_ext', 'Tencuială decorativă (siliconică)', 0.70, 1800, 1000, 60, 'plaster'],
+    ['tenc_term', 'Tencuială termoizolantă', 0.09, 350, 1000, 8, 'plaster'],
+    ['gips_carton', 'Gips-carton', 0.25, 850, 1000, 8, 'board'],
+    ['fibrociment', 'Placă fibrociment', 0.35, 1400, 1000, 40, 'board'],
+  ]],
+  ['Zidărie', [
+    ['car_plina', 'Cărămidă plină', 0.80, 1800, 880, 10, 'brick'],
+    ['car_goluri', 'Cărămidă cu goluri (GVP)', 0.55, 1400, 880, 8, 'brick'],
+    ['bloc_cer', 'Bloc ceramic (Porotherm/Brikston)', 0.25, 800, 1000, 6, 'brick'],
+    ['bloc_cer_izo', 'Bloc ceramic umplut cu vată', 0.10, 700, 1000, 6, 'brick'],
+    ['bca_400', 'BCA 400', 0.11, 400, 1000, 5, 'aac'],
+    ['bca_500', 'BCA 500', 0.14, 500, 1000, 6, 'aac'],
+    ['bca_600', 'BCA 600', 0.17, 600, 1000, 7, 'aac'],
+    ['silico', 'Bloc silico-calcar', 0.99, 1800, 1000, 15, 'brick'],
+    ['bolt_beton', 'Bolțar de beton', 0.80, 1400, 1000, 10, 'concrete'],
+    ['chirpici', 'Chirpici / paiantă', 0.70, 1600, 1000, 8, 'brick'],
+    ['piatra', 'Piatră naturală (calcar)', 1.70, 2400, 1000, 150, 'stone'],
+    ['granit', 'Granit', 2.80, 2700, 790, 10000, 'stone'],
+  ]],
+  ['Beton și șape', [
+    ['beton_armat', 'Beton armat', 2.30, 2400, 1000, 80, 'concrete'],
+    ['beton', 'Beton simplu', 1.65, 2200, 1000, 70, 'concrete'],
+    ['sapa', 'Șapă de ciment', 1.40, 2000, 1000, 50, 'concrete'],
+    ['sapa_anh', 'Șapă anhidrit', 1.20, 2100, 1000, 30, 'concrete'],
+    ['beton_usor', 'Beton ușor (granulit)', 0.45, 1200, 1000, 8, 'concrete'],
+    ['pietris', 'Pietriș / balast', 2.00, 1900, 1000, 50, 'stone'],
+  ]],
+  ['Izolații', [
+    ['eps', 'Polistiren expandat EPS alb', 0.039, 18, 1450, 50, 'ins'],
+    ['eps_graf', 'Polistiren EPS grafitat', 0.031, 16, 1450, 50, 'ins_gr'],
+    ['xps', 'Polistiren extrudat XPS', 0.034, 35, 1450, 150, 'ins_x'],
+    ['vata_baz', 'Vată bazaltică (plăci fațadă)', 0.036, 120, 1030, 1, 'wool'],
+    ['vata_sticla', 'Vată de sticlă (saltele)', 0.037, 20, 1030, 1, 'wool'],
+    ['vata_035', 'Vată minerală λ 0,035', 0.035, 30, 1030, 1, 'wool'],
+    ['pir', 'Spumă PIR / PUR (plăci)', 0.023, 32, 1400, 60, 'ins_x'],
+    ['spuma_puf', 'Spumă poliuretanică pulverizată', 0.038, 10, 1400, 3, 'ins'],
+    ['fibra_lemn', 'Fibră de lemn (plăci)', 0.040, 140, 2100, 3, 'wood_f'],
+    ['celuloza', 'Celuloză insuflată', 0.039, 50, 2000, 2, 'wool'],
+    ['pluta', 'Plută expandată', 0.040, 110, 1700, 10, 'wood_f'],
+    ['canepa', 'Cânepă / lână de oaie', 0.040, 35, 1600, 2, 'wool'],
+    ['perlita', 'Perlit / vermiculit', 0.055, 90, 1000, 3, 'ins'],
+    ['sticla_spuma', 'Sticlă celulară (Foamglas)', 0.042, 115, 1000, 1e6, 'ins_x'],
+    ['aerogel', 'Aerogel', 0.016, 150, 1000, 5, 'ins'],
+  ]],
+  ['Lemn și plăci', [
+    ['lemn_moale', 'Lemn rășinoase (brad, molid)', 0.13, 500, 1600, 40, 'wood'],
+    ['lemn_tare', 'Lemn esență tare (stejar, fag)', 0.18, 700, 1600, 50, 'wood'],
+    ['clt', 'Lemn masiv încleiat (CLT)', 0.13, 470, 1600, 50, 'wood'],
+    ['osb', 'OSB', 0.13, 650, 1700, 200, 'board'],
+    ['pal', 'PAL', 0.14, 600, 1700, 50, 'board'],
+    ['placaj', 'Placaj', 0.15, 500, 1600, 100, 'board'],
+    ['mdf_dif', 'Placă MDF difuzivă', 0.10, 550, 1700, 11, 'board'],
+    ['parchet', 'Parchet lemn', 0.18, 700, 1600, 50, 'wood'],
+    ['laminat', 'Parchet laminat', 0.17, 900, 1700, 100, 'board'],
+    ['gresie', 'Gresie / faianță', 1.30, 2300, 840, 200, 'stone'],
+  ]],
+  ['Folii și hidroizolații', [
+    ['bariera', 'Barieră de vapori PE (sd ≈ 100 m)', 0.40, 950, 1800, 500000, 'film'],
+    ['frana', 'Frână de vapori (sd ≈ 2 m)', 0.40, 950, 1800, 10000, 'film'],
+    ['membrana', 'Membrană anticondens respirantă (sd ≈ 0,02 m)', 0.40, 950, 1800, 40, 'film'],
+    ['bitum', 'Membrană bituminoasă', 0.23, 1100, 1000, 50000, 'film_d'],
+    ['pvc', 'Membrană PVC / TPO', 0.16, 1300, 1000, 15000, 'film_d'],
+    ['folie_alu', 'Folie aluminiu', 160, 2700, 880, 1e9, 'film'],
+  ]],
+  ['Aer și acoperire', [
+    ['aer', 'Strat de aer neventilat', null, 1.2, 1000, 1, 'air'],
+    ['aer_vent', 'Strat de aer ventilat (fațadă/țiglă)', null, 1.2, 1000, 1, 'airv'],
+    ['tigla', 'Țiglă ceramică', 1.00, 2000, 800, 40, 'tile'],
+    ['tabla', 'Tablă / țiglă metalică', 50, 7800, 450, 1e9, 'film_d'],
+    ['lambriu', 'Lambriu / placare lemn', 0.13, 500, 1600, 40, 'wood'],
+    ['pamant', 'Pământ / pietriș', 2.00, 2000, 1000, 50, 'stone'],
+  ]],
+];
+const MAT = {};
+const MAT_ORDER = [];
+for (const [g, list] of GROUPS) for (const [id, name, l, rho, c, mu, cat] of list) {
+  MAT[id] = { id, name, l, rho, c, mu, cat, group: g };
+  MAT_ORDER.push(id);
+}
+const CAT = {
+  plaster: { fill: '#d9cfbf', pat: 'dots' },
+  board:   { fill: '#e7e2d6', pat: 'none' },
+  brick:   { fill: '#b65a3a', pat: 'brick' },
+  aac:     { fill: '#cfd3d6', pat: 'dots' },
+  concrete:{ fill: '#8c9196', pat: 'dots' },
+  stone:   { fill: '#77706a', pat: 'stone' },
+  ins:     { fill: '#f4f1e9', pat: 'wave' },
+  ins_gr:  { fill: '#9aa0a6', pat: 'wave' },
+  ins_x:   { fill: '#7fb4e0', pat: 'wave' },
+  wool:    { fill: '#e9c95a', pat: 'wave' },
+  wood_f:  { fill: '#b88a55', pat: 'wave' },
+  wood:    { fill: '#c08a50', pat: 'grain' },
+  film:    { fill: '#5ad0ff', pat: 'none' },
+  film_d:  { fill: '#33383f', pat: 'none' },
+  air:     { fill: '#1a222b', pat: 'none' },
+  airv:    { fill: '#141a20', pat: 'vent' },
+  tile:    { fill: '#a8462c', pat: 'none' },
+};
+
+// tipuri de element: rezistente superficiale (SR EN ISO 6946) si cerinte
+const TYPES = {
+  wall:  { name: 'Perete exterior', rsi: 0.13, rse: 0.04, rmin: 1.80, urec: 0.20, upas: 0.15 },
+  roof:  { name: 'Acoperiș / terasă', rsi: 0.10, rse: 0.04, rmin: 5.00, urec: 0.15, upas: 0.12 },
+  attic: { name: 'Planșeu sub pod', rsi: 0.10, rse: 0.10, rmin: 5.00, urec: 0.15, upas: 0.12 },
+  floor: { name: 'Planșeu peste subsol', rsi: 0.17, rse: 0.17, rmin: 2.90, urec: 0.25, upas: 0.15 },
+};
+
+const PRESETS = [
+  { name: 'Perete cărămidă plină 37,5 cm, neizolat', type: 'wall', layers: [['tenc_var', 2], ['car_plina', 37.5], ['tenc_var', 2.5]] },
+  { name: 'Perete cărămidă 37,5 + polistiren grafitat 10 cm', type: 'wall', layers: [['tenc_var', 2], ['car_plina', 37.5], ['eps_graf', 10], ['tenc_ext', 0.5]] },
+  { name: 'Perete BCA 30 + EPS 10 cm', type: 'wall', layers: [['tenc_ipsos', 1.5], ['bca_500', 30], ['eps', 10], ['tenc_ext', 0.5]] },
+  { name: 'Perete Porotherm 25 + vată bazaltică 15 cm', type: 'wall', layers: [['tenc_var', 1.5], ['bloc_cer', 25], ['vata_baz', 15], ['tenc_var', 1]] },
+  { name: 'Perete beton armat 25 + EPS 15 cm (bloc)', type: 'wall', layers: [['tenc_var', 1.5], ['beton_armat', 25], ['eps_graf', 15], ['tenc_ext', 0.5]] },
+  { name: 'Casă pe structură de lemn (montanți + vată)', type: 'wall', layers: [['gips_carton', 1.25], ['frana', 0.02], ['osb', 1.5], ['vata_035', 16, 'lemn_moale', 12], ['fibra_lemn', 6], ['tenc_ext', 0.6]] },
+  { name: '⚠ Exemplu greșit: folie de plastic pe exterior', type: 'wall', layers: [['gips_carton', 1.25], ['vata_035', 16, 'lemn_moale', 12], ['bariera', 0.02], ['osb', 1.5]] },
+  { name: 'Mansardă: vată între căpriori + frână vapori', type: 'roof', layers: [['gips_carton', 1.25], ['aer', 3], ['frana', 0.02], ['vata_035', 20, 'lemn_moale', 10], ['membrana', 0.05], ['aer_vent', 4], ['tigla', 2]] },
+  { name: 'Terasă beton cu XPS', type: 'roof', layers: [['tenc_var', 1.5], ['beton_armat', 15], ['bitum', 0.4], ['pir', 14], ['bitum', 0.8]] },
+  { name: 'Planșeu sub pod: vată 25 cm', type: 'attic', layers: [['tenc_var', 1.5], ['beton_armat', 13], ['bariera', 0.02], ['vata_sticla', 25]] },
+  { name: 'Planșeu peste subsol cu EPS dedesubt', type: 'floor', layers: [['parchet', 1.5], ['sapa', 5], ['beton_armat', 15], ['eps', 10], ['tenc_term', 1]] },
+];
+
+// ---------------------------------------------------------------- stare
+const DEF = { type: 'wall', ti: 20, phii: 50, te: -5, phie: 80, days: 90, hdd: 3400, layers: [] };
+let S = null;
+function fromPreset(p) {
+  return { ...DEF, type: p.type, layers: p.layers.map(([m, d, mm, mp]) => ({ m, d, mix: mm ? { m: mm, p: mp } : null, ov: {} })) };
+}
+function load() {
+  try {
+    if (location.hash.length > 3) {
+      const s = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
+      if (s && Array.isArray(s.layers)) return sanitize(s);
+    }
+  } catch (e) {}
+  try {
+    const s = JSON.parse(localStorage.getItem('ubakus.v1'));
+    if (s && Array.isArray(s.layers)) return sanitize(s);
+  } catch (e) {}
+  return fromPreset(PRESETS[2]);
+}
+function sanitize(s) {
+  const o = { ...DEF, ...s };
+  if (!TYPES[o.type]) o.type = 'wall';
+  o.layers = (s.layers || []).filter(l => l && MAT[l.m]).map(l => ({
+    m: l.m, d: +l.d > 0 ? +l.d : 1,
+    mix: l.mix && MAT[l.mix.m] ? { m: l.mix.m, p: Math.min(90, Math.max(1, +l.mix.p || 10)) } : null,
+    ov: l.ov && typeof l.ov === 'object' ? l.ov : {},
+  }));
+  return o;
+}
+function save() {
+  try { localStorage.setItem('ubakus.v1', JSON.stringify(S)); } catch (e) {}
+}
+S = load();
+
+// ---------------------------------------------------------------- fizica
+const psat = t => t >= 0 ? 610.5 * Math.exp(17.269 * t / (237.3 + t)) : 610.5 * Math.exp(21.875 * t / (265.5 + t));
+function dewOf(p) {           // temperatura de roua pentru presiunea partiala p [Pa]
+  const x = Math.log(Math.max(p, 1) / 610.5);
+  if (p >= 610.5) return 237.3 * x / (17.269 - x);
+  return 265.5 * x / (21.875 - x);
+}
+function airR(dm) {           // rezistenta strat de aer neventilat, flux orizontal (ISO 6946 tab. 8)
+  const T = [[0, 0], [0.005, 0.11], [0.007, 0.13], [0.010, 0.15], [0.015, 0.17], [0.025, 0.18], [3, 0.18]];
+  for (let i = 1; i < T.length; i++) if (dm <= T[i][0]) {
+    const [a, ra] = T[i - 1], [b, rb] = T[i];
+    return ra + (rb - ra) * (dm - a) / (b - a);
+  }
+  return 0.18;
+}
+function props(id, ov, dm) {  // proprietati efective (cu suprascrieri) pentru un material
+  const m = MAT[id];
+  const p = { l: m.l, rho: m.rho, c: m.c, mu: m.mu };
+  if (m.cat === 'air' || m.cat === 'airv') p.l = dm / airR(dm);
+  if (ov) for (const k of ['l', 'rho', 'c', 'mu']) if (ov[k] != null && ov[k] !== '' && isFinite(+ov[k]) && +ov[k] > 0) p[k] = +ov[k];
+  return p;
+}
+
+// inmultire complexa minimala pentru metoda matriciala (ISO 13786)
+const C = (re, im = 0) => ({ re, im });
+const cm = (a, b) => C(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
+const ca = (a, b) => C(a.re + b.re, a.im + b.im);
+function mmul(A, B) {
+  return [
+    [ca(cm(A[0][0], B[0][0]), cm(A[0][1], B[1][0])), ca(cm(A[0][0], B[0][1]), cm(A[0][1], B[1][1]))],
+    [ca(cm(A[1][0], B[0][0]), cm(A[1][1], B[1][0])), ca(cm(A[1][0], B[0][1]), cm(A[1][1], B[1][1]))],
+  ];
+}
+function layerMatrix(d, l, rho, c) {
+  const T = 86400, delta = Math.sqrt(l * T / (Math.PI * rho * c)), x = d / delta;
+  const ch = Math.cosh(x), sh = Math.sinh(x), co = Math.cos(x), si = Math.sin(x);
+  const z11 = C(ch * co, sh * si);
+  const k12 = -delta / (2 * l), k21 = -l / delta;
+  const z12 = C(k12 * (sh * co + ch * si), k12 * (ch * si - sh * co));
+  const z21 = C(k21 * (sh * co - ch * si), k21 * (sh * co + ch * si));
+  return [[z11, z12], [z21, z11]];
+}
+const resMatrix = R => [[C(1), C(-R)], [C(0), C(1)]];
+
+function compute() {
+  const T = TYPES[S.type];
+  const L = S.layers.map((ly, i) => {
+    const dm = ly.d / 100;
+    const p = props(ly.m, ly.ov, dm);
+    const mx = ly.mix ? { f: ly.mix.p / 100, ...props(ly.mix.m, null, dm) } : null;
+    return { i, ly, mat: MAT[ly.m], dm, ...p, R: dm / p.l, sd: p.mu * dm, mx };
+  });
+  // un strat de aer ventilat scoate din calcul tot ce e in exteriorul lui; Rse = Rsi
+  let nEff = L.length, rse = T.rse;
+  const vi = L.findIndex(x => x.mat.cat === 'airv');
+  if (vi >= 0) { nEff = vi; rse = T.rsi; }
+  const E = L.slice(0, nEff);
+  L.forEach((x, k) => x.ign = k >= nEff);
+
+  // R pe zona principala (prin izolatie)
+  const Rmain = E.reduce((s, x) => s + x.R, 0);
+  // straturi neomogene: medie intre limita superioara si inferioara (ISO 6946 §6.7)
+  const mixed = E.filter(x => x.mx);
+  let Rtot, Rup = null, Rlo = null;
+  if (mixed.length) {
+    const k = Math.min(mixed.length, 6);
+    let invRu = 0;
+    for (let mask = 0; mask < (1 << k); mask++) {
+      let f = 1, R = T.rsi + rse;
+      for (const x of E) {
+        const mi = mixed.indexOf(x);
+        if (mi >= 0 && mi < k) {
+          const useMix = mask & (1 << mi);
+          f *= useMix ? x.mx.f : 1 - x.mx.f;
+          R += useMix ? x.dm / x.mx.l : x.R;
+        } else R += x.R;
+      }
+      invRu += f / R;
+    }
+    Rup = 1 / invRu;
+    Rlo = T.rsi + rse + E.reduce((s, x) => s + (x.mx ? x.dm / ((1 - x.mx.f) * x.l + x.mx.f * x.mx.l) : x.R), 0);
+    Rtot = (Rup + Rlo) / 2;
+  } else Rtot = T.rsi + Rmain + rse;
+  const U = 1 / Rtot;
+
+  // profil de temperatura (pe zona principala, cu U-ul zonei)
+  const Rpath = T.rsi + Rmain + rse;
+  const q = (S.ti - S.te) / Rpath;
+  let t = S.ti - q * T.rsi, x = 0, s = 0;
+  const tsi = t;
+  const samples = [];         // puncte fine pentru grafice: x[m], t, s (sd cumulat)
+  for (const ly of E) {
+    ly.t0 = t; ly.x0 = x; ly.s0 = s;
+    const N = Math.max(2, Math.min(40, Math.round(ly.dm * 400)));
+    for (let j = 0; j <= N; j++) {
+      if (j === 0 && samples.length) continue;
+      const f = j / N;
+      samples.push({ x: x + ly.dm * f, t: t - q * ly.R * f, s: s + ly.sd * f, li: ly.i });
+    }
+    t -= q * ly.R; x += ly.dm; s += ly.sd;
+    ly.t1 = t; ly.x1 = x; ly.s1 = s;
+  }
+  if (!samples.length) samples.push({ x: 0, t: tsi, s: 0, li: -1 });
+  const tse = t;
+  // straturile ignorate primesc temperatura aerului exterior (sunt ventilate)
+  for (const ly of L.slice(nEff)) { ly.t0 = ly.t1 = S.te; ly.x0 = x; x += ly.dm; ly.x1 = x; ly.s0 = ly.s1 = s; }
+  const Stot = s, Dtot = x;
+
+  // Glaser: linia presiunii reale = "sfoara intinsa" sub curba presiunii de saturatie
+  const pi = S.phii / 100 * psat(S.ti), pe = S.phie / 100 * psat(S.te);
+  for (const p of samples) p.ps = psat(p.t);
+  const pts = [{ s: 0, p: pi, k: -1 }];
+  samples.forEach((p, k) => pts.push({ s: p.s, p: p.ps, k }));
+  pts.push({ s: Stot, p: pe, k: -2 });
+  pts.sort((a, b) => a.s - b.s || a.p - b.p);
+  const hull = [];
+  for (const p of pts) {
+    if (hull.length && Math.abs(hull[hull.length - 1].s - p.s) < 1e-12) continue; // acelasi s: pastram minimul
+    while (hull.length >= 2) {
+      const a = hull[hull.length - 2], b = hull[hull.length - 1];
+      if ((b.s - a.s) * (p.p - a.p) - (b.p - a.p) * (p.s - a.s) <= 0) hull.pop(); else break;
+    }
+    hull.push(p);
+  }
+  // ultimul punct trebuie sa fie pe (Stot, pe); daca pe > ps la exterior (aer saturat) taiem
+  if (hull[hull.length - 1].s < Stot - 1e-12) hull.push({ s: Stot, p: pe, k: -2 });
+  const pAt = sv => {
+    for (let k = 1; k < hull.length; k++) if (sv <= hull[k].s + 1e-12) {
+      const a = hull[k - 1], b = hull[k];
+      return b.s - a.s < 1e-12 ? b.p : a.p + (b.p - a.p) * (sv - a.s) / (b.s - a.s);
+    }
+    return pe;
+  };
+  for (const p of samples) { p.p = pAt(p.s); p.td = dewOf(p.p); p.cond = false; }
+  const D0 = 2e-10;           // permeabilitatea la vapori a aerului, kg/(m·s·Pa)
+  const slope = (a, b) => (b.s - a.s) < 1e-9 ? 0 : (a.p - b.p) / (b.s - a.s);
+  let gc = 0;
+  const condLayers = new Set();
+  for (let k = 1; k < hull.length - 1; k++) {
+    const h = hull[k];
+    const gin = D0 * slope(hull[k - 1], h), gout = D0 * slope(h, hull[k + 1]);
+    gc += Math.max(0, gin - gout);
+    if (h.k >= 0) { samples[h.k].cond = true; condLayers.add(samples[h.k].li); }
+  }
+  // zone continue: puncte intre doua atingeri succesive aflate pe curba
+  for (let k = 1; k < hull.length - 2; k++) {
+    if (hull[k].k >= 0 && hull[k + 1].k >= 0 && hull[k + 1].k - hull[k].k > 0 && hull[k + 1].k - hull[k].k < 400) {
+      for (let j = hull[k].k; j <= hull[k + 1].k; j++) if (samples[j].p >= samples[j].ps * 0.995) { samples[j].cond = true; condLayers.add(samples[j].li); }
+    }
+  }
+  const Mc = gc * S.days * 86400;  // kg/m²
+
+  // uscare vara (estimare Glaser, 90 zile, 12 °C peste tot, 70 % in/ext, saturat in zona de condens)
+  let Me = null;
+  if (Mc > 0) {
+    const touch = hull.slice(1, -1).filter(h => h.k >= 0);
+    const s1 = touch[0].s, s2 = touch[touch.length - 1].s;
+    const pc = psat(12), pa = 0.7 * psat(12);
+    const ge = D0 * ((pc - pa) / Math.max(s1, 1e-3) + (pc - pa) / Math.max(Stot - s2, 1e-3));
+    Me = ge * 90 * 86400;
+  }
+
+  // vara: metoda matriciala, perioada 24 h
+  let Z = resMatrix(T.rsi);
+  for (const ly of E) {
+    if (ly.mat.cat === 'air' || ly.mat.cat === 'airv' || ly.dm <= 0) Z = mmul(resMatrix(ly.R), Z);
+    else Z = mmul(layerMatrix(ly.dm, ly.l, ly.rho, ly.c), Z);
+  }
+  Z = mmul(resMatrix(rse), Z);
+  const z12 = Z[0][1];
+  const absZ = Math.hypot(z12.re, z12.im);
+  const decr = (1 / absZ) / (1 / Rpath);
+  let lag = Math.atan2(-z12.im, -z12.re) * 24 / (2 * Math.PI);
+  while (lag < 0) lag += 24;
+  while (lag >= 24) lag -= 24;
+  const mass = E.reduce((s, x) => s + x.rho * x.dm, 0);
+  const cap = E.reduce((s, x) => s + x.rho * x.dm * x.c, 0) / 1000; // kJ/(m²K)
+
+  return { T, L, E, nEff, rse, Rtot, Rup, Rlo, U, tsi, tse, samples, hull, pi, pe, Stot, Dtot, Mc, Me, condLayers,
+           lag, decr, mass, cap, q: (S.ti - S.te) * U };
+}
+
+// ---------------------------------------------------------------- UI: straturi
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (v, d = 2) => (isFinite(v) ? v.toFixed(d) : '–').replace('.', ',');
+const fmtN = v => v >= 1000 ? Math.round(v).toLocaleString('ro-RO') : v >= 10 ? v.toFixed(1).replace('.', ',') : v.toFixed(2).replace('.', ',');
+let openDet = new Set();
+
+function matOptions(sel) {
+  return GROUPS.map(([g, list]) => `<optgroup label="${esc(g)}">` +
+    list.map(([id, name]) => `<option value="${id}"${id === sel ? ' selected' : ''}>${esc(name)}</option>`).join('') +
+    '</optgroup>').join('');
+}
+
+function renderTypes() {
+  $('types').innerHTML = Object.entries(TYPES).map(([k, t]) => `<button data-t="${k}" class="${k === S.type ? 'on' : ''}">${t.name}</button>`).join('');
+}
+$('types').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.type = b.dataset.t; renderTypes(); update();
+});
+
+function renderLayers() {
+  const box = $('layers');
+  if (!S.layers.length) {
+    box.innerHTML = '<div class="muted" style="padding:10px 4px">Niciun strat. Apasă „Adaugă strat” sau alege un exemplu de sus.</div>';
+    return;
+  }
+  box.innerHTML = S.layers.map((ly, i) => {
+    const m = MAT[ly.m];
+    const p = props(ly.m, null, ly.d / 100);
+    const ov = ly.ov || {};
+    const det = openDet.has(i);
+    const isAir = m.cat === 'air' || m.cat === 'airv';
+    return `<div class="layer" data-i="${i}">
+      <div class="lmain">
+        <div class="sw" style="background:${CAT[m.cat].fill}"></div>
+        <select class="mat" data-k="m">${matOptions(ly.m)}</select>
+        <div class="thick"><input type="number" data-k="d" min="0.01" step="${ly.d < 1 ? 0.01 : 0.5}" value="${ly.d}"><span class="unit">cm</span></div>
+        <div class="lbtns">
+          <button class="icon" data-a="det" title="Proprietăți / strat neomogen">${det ? '▴' : '⋯'}</button>
+          <button class="icon" data-a="up" title="Mută spre interior"${i === 0 ? ' disabled' : ''}>↑</button>
+          <button class="icon" data-a="down" title="Mută spre exterior"${i === S.layers.length - 1 ? ' disabled' : ''}>↓</button>
+          <button class="icon" data-a="dup" title="Duplică">⧉</button>
+          <button class="icon" data-a="del" title="Șterge">✕</button>
+        </div>
+      </div>
+      <div class="linfo" data-info></div>
+      ${det ? `<div class="ldet">
+        <div class="grid2">
+          <div class="fld"><label>λ [W/(m·K)]</label><input type="number" step="0.001" data-ov="l" placeholder="${isAir ? 'auto' : p.l}" value="${ov.l ?? ''}"></div>
+          <div class="fld"><label>μ (difuzie)</label><input type="number" step="1" data-ov="mu" placeholder="${p.mu}" value="${ov.mu ?? ''}"></div>
+          <div class="fld"><label>ρ [kg/m³]</label><input type="number" step="10" data-ov="rho" placeholder="${p.rho}" value="${ov.rho ?? ''}"></div>
+          <div class="fld"><label>c [J/(kg·K)]</label><input type="number" step="10" data-ov="c" placeholder="${p.c}" value="${ov.c ?? ''}"></div>
+        </div>
+        <div class="muted" style="margin-top:4px">Lasă gol pentru valoarea din catalog. Pune valoarea din fișa tehnică a produsului tău dacă o ai.</div>
+        <div class="mixrow">
+          <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-k="mixon" style="width:auto"${ly.mix ? ' checked' : ''}> Strat neomogen</label>
+          ${ly.mix ? `<span class="muted">din care</span><select data-k="mixm">${matOptions(ly.mix.m)}</select>
+          <input type="number" min="1" max="90" step="1" data-k="mixp" value="${ly.mix.p}"><span class="unit">% din suprafață</span>` :
+          '<span class="muted">ex. vată între căpriori sau montanți de lemn</span>'}
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+$('layers').addEventListener('input', e => {
+  const row = e.target.closest('.layer'); if (!row) return;
+  const ly = S.layers[+row.dataset.i];
+  const k = e.target.dataset.k, o = e.target.dataset.ov;
+  if (k === 'd') { const v = parseFloat(e.target.value); if (v > 0) ly.d = v; update(); }
+  else if (k === 'mixp') { const v = parseFloat(e.target.value); if (v > 0 && v < 100) ly.mix.p = v; update(); }
+  else if (o) { const v = e.target.value; if (v === '') delete ly.ov[o]; else ly.ov[o] = parseFloat(v); update(); }
+});
+$('layers').addEventListener('change', e => {
+  const row = e.target.closest('.layer'); if (!row) return;
+  const i = +row.dataset.i, ly = S.layers[i];
+  const k = e.target.dataset.k;
+  if (k === 'm') { ly.m = e.target.value; ly.ov = {}; const c = MAT[ly.m].cat; if ((c === 'film' || c === 'film_d') && ly.d > 1) ly.d = c === 'film' ? 0.02 : 0.4; renderLayers(); update(); }
+  else if (k === 'mixon') { ly.mix = e.target.checked ? { m: 'lemn_moale', p: 12 } : null; renderLayers(); update(); }
+  else if (k === 'mixm') { ly.mix.m = e.target.value; update(); }
+});
+$('layers').addEventListener('click', e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const i = +b.closest('.layer').dataset.i, a = b.dataset.a, L = S.layers;
+  const remap = f => { openDet = new Set([...openDet].map(f).filter(x => x >= 0)); };
+  if (a === 'det') { openDet.has(i) ? openDet.delete(i) : openDet.add(i); }
+  else if (a === 'up' && i > 0) { [L[i - 1], L[i]] = [L[i], L[i - 1]]; remap(x => x === i ? i - 1 : x === i - 1 ? i : x); }
+  else if (a === 'down' && i < L.length - 1) { [L[i + 1], L[i]] = [L[i], L[i + 1]]; remap(x => x === i ? i + 1 : x === i + 1 ? i : x); }
+  else if (a === 'dup') { L.splice(i + 1, 0, JSON.parse(JSON.stringify(L[i]))); remap(x => x > i ? x + 1 : x); }
+  else if (a === 'del') { L.splice(i, 1); remap(x => x === i ? -1 : x > i ? x - 1 : x); }
+  renderLayers(); update();
+});
+$('btnAdd').onclick = () => { S.layers.push({ m: 'vata_baz', d: 10, mix: null, ov: {} }); renderLayers(); update(); };
+
+for (const k of ['ti', 'phii', 'te', 'phie', 'days', 'hdd']) {
+  $(k).value = S[k];
+  $(k).addEventListener('input', () => {
+    let v = parseFloat($(k).value); if (!isFinite(v)) return;
+    if (k === 'phii') v = Math.min(99, Math.max(1, v));
+    if (k === 'phie') v = Math.min(100, Math.max(1, v));
+    if (k === 'days') v = Math.max(1, v);
+    S[k] = v; update();
+  });
+}
+
+const pre = $('preset');
+pre.innerHTML += PRESETS.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join('');
+pre.onchange = () => {
+  if (pre.value === '') return;
+  const keep = { ti: S.ti, phii: S.phii, te: S.te, phie: S.phie, days: S.days, hdd: S.hdd };
+  S = { ...fromPreset(PRESETS[+pre.value]), ...keep };
+  openDet = new Set(); pre.value = '';
+  renderTypes(); renderLayers(); update();
+};
+$('btnReset').onclick = () => { S = { ...DEF, layers: [] }; for (const k of ['ti', 'phii', 'te', 'phie', 'days', 'hdd']) $(k).value = S[k]; openDet = new Set(); renderTypes(); renderLayers(); update(); };
+$('btnShare').onclick = () => {
+  const h = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+  const url = location.origin + location.pathname + '#' + h;
+  history.replaceState(null, '', '#' + h);
+  const done = () => toast('Link copiat');
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => toast('Link pus în bara de adrese'));
+  else toast('Link pus în bara de adrese');
+};
+function toast(msg) {
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1800);
+}
+
+// ---------------------------------------------------------------- UI: rezultate
+let chartMode = 't';
+$('chartTabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  chartMode = b.dataset.c;
+  for (const x of $('chartTabs').children) x.classList.toggle('on', x === b);
+  update();
+});
+
+function update() {
+  save();
+  if (location.hash) history.replaceState(null, '', location.pathname);
+  const r = compute();
+  const T = r.T;
+  const has = r.E.length > 0;
+
+  // info pe randuri
+  document.querySelectorAll('.layer').forEach(row => {
+    const x = r.L[+row.dataset.i]; if (!x) return;
+    row.classList.toggle('ign', x.ign);
+    const tags = [];
+    if (x.ign) tags.push('<span class="tag">ventilat, nu contează la U</span>');
+    if (r.condLayers.has(x.i)) tags.push('<span class="tag cond">condens</span>');
+    if (x.mx) tags.push(`<span class="tag">${fmt(x.mx.f * 100, 0)}% ${esc(MAT[x.ly.mix.m].name.toLowerCase())}</span>`);
+    row.querySelector('[data-info]').innerHTML =
+      `<span>λ <b>${fmtN(x.l)}</b></span><span>R <b>${fmt(x.R, 2)}</b> m²K/W</span><span>s<sub>d</sub> <b>${fmtN(x.sd)}</b> m</span>` + tags.join(' ');
+  });
+  $('totThick').textContent = has ? `grosime totală ${fmt(r.Dtot * 100, 1)} cm` : '';
+
+  // U
+  $('uVal').textContent = has ? fmt(r.U, 3) : '–';
+  $('rVal').innerHTML = has ? `R<sub>total</sub> = ${fmt(r.Rtot, 2)} m²K/W (cu R<sub>si</sub> ${fmt(T.rsi, 2)} și R<sub>se</sub> ${fmt(r.rse, 2)})` +
+    (r.Rup ? `<br>Strat neomogen: limita sup. ${fmt(r.Rup, 2)}, inf. ${fmt(r.Rlo, 2)}, eroare max. ${fmt((r.Rup - r.Rlo) / (2 * r.Rtot) * 100, 0)} %` : '') : '';
+  const pos = u => Math.min(100, Math.sqrt(Math.max(0, u) / 2.5) * 100);
+  const umin = 1 / T.rmin;
+  $('scale').innerHTML = (has ? `<div class="mk" style="left:${pos(r.U)}%"></div>` : '') +
+    `<div class="ref" style="left:${pos(T.upas)}%">pasivă</div>` +
+    `<div class="ref" style="left:${pos(umin)}%">C107</div>` +
+    `<div class="ref" style="left:${pos(1.0)}%">1,0</div><div class="ref" style="left:${pos(2.0)}%">2,0</div>`;
+  const uv = $('uVerdict');
+  if (!has) { uv.className = 'verdict'; uv.innerHTML = ''; }
+  else if (r.U <= T.urec) { uv.className = 'verdict good'; uv.innerHTML = `<b>Foarte bine izolat</b>Sub ${fmt(T.urec, 2)}, nivel de casă eficientă energetic.${r.U <= T.upas ? ' Atinge chiar nivelul de casă pasivă.' : ''}`; }
+  else if (r.U <= umin) { uv.className = 'verdict ok'; uv.innerHTML = `<b>Respectă minimul legal</b>R ≥ ${fmt(T.rmin, 2)} m²K/W cerut de C107 pentru ${T.name.toLowerCase()}. Pentru o casă eficientă ținta e U ≤ ${fmt(T.urec, 2)}.`; }
+  else { uv.className = 'verdict bad'; uv.innerHTML = `<b>Izolație insuficientă</b>Minimul C107 pentru ${T.name.toLowerCase()} e R ≥ ${fmt(T.rmin, 2)} (U ≤ ${fmt(umin, 2)}). Mai e nevoie de cam ${fmt(Math.max(0, T.rmin - r.Rtot) * 0.036 * 100 + 0.5, 0)} cm de vată/polistiren.`; }
+
+  // umezeala
+  const tdi = dewOf(r.pi);
+  const t80 = dewOf(r.pi / 0.8); // temperatura la care umiditatea la suprafata ajunge 80 % (mucegai)
+  $('tsi').textContent = has ? fmt(r.tsi, 1) + ' °C' : '–';
+  $('tdew').textContent = fmt(tdi, 1) + ' °C';
+  $('cond').textContent = has ? (r.Mc > 0 ? fmt(r.Mc * 1000, 0) + ' g/m²' : 'nu') : '–';
+  $('cond').style.color = r.Mc > 0.5 ? 'var(--bad)' : r.Mc > 0 ? 'var(--ok)' : 'var(--good)';
+  $('dry').textContent = r.Me != null ? fmt(r.Me * 1000, 0) + ' g/m²' : '–';
+  const mv = $('mVerdict'); const msg = [];
+  let cls = 'good';
+  if (!has) { mv.className = 'verdict'; mv.innerHTML = ''; }
+  else {
+    if (r.tsi < tdi) { cls = 'bad'; msg.push(`<b>Condens pe perete în interior</b>Suprafața are ${fmt(r.tsi, 1)} °C, sub punctul de rouă de ${fmt(tdi, 1)} °C.`); }
+    else if (r.tsi < t80) { cls = 'bad'; msg.push(`<b>Risc de mucegai</b>La suprafață umiditatea trece de 80 % (peretele are sub ${fmt(t80, 1)} °C).`); }
+    if (r.Mc > 0) {
+      const dries = r.Me != null && r.Me > r.Mc;
+      const bad = r.Mc > 1.0 || !dries;
+      if (bad) cls = 'bad'; else if (cls === 'good') cls = 'ok';
+      const where = [...r.condLayers].map(i => MAT[S.layers[i].m].name.toLowerCase()).filter((v, k, a) => a.indexOf(v) === k).join(', ');
+      msg.push(`<b>${bad ? 'Condens problematic' : 'Puțin condens, se usucă vara'}</b>Se adună ~${fmt(r.Mc * 1000, 0)} g/m² în ${S.days} zile${where ? ' (în ' + esc(where) + ')' : ''}. ` +
+        (dries ? `Vara se pot evapora ~${fmt(r.Me * 1000, 0)} g/m².` : 'Nu apucă să se usuce vara.') +
+        (bad ? ' Pune o frână de vapori spre interior sau un strat mai deschis la difuzie spre exterior.' : ''));
+    }
+    if (!msg.length) msg.push(`<b>Fără condens</b>Temperatura rămâne peste punctul de rouă în toată grosimea, iar suprafața interioară e caldă (${fmt(r.tsi, 1)} °C).`);
+    mv.className = 'verdict ' + cls; mv.innerHTML = msg.join('<br>');
+  }
+
+  // vara
+  $('lag').textContent = has ? fmt(r.lag, 1) + ' h' : '–';
+  $('damp').textContent = has ? fmt(r.decr, 2) : '–';
+  $('mass').textContent = has ? fmt(r.mass, 0) + ' kg/m²' : '–';
+  $('cap').textContent = has ? fmt(r.cap, 0) + ' kJ/m²K' : '–';
+  const sv = $('sVerdict');
+  if (!has) { sv.className = 'verdict'; sv.innerHTML = ''; }
+  else if (r.lag >= 10 && r.decr <= 0.3) { sv.className = 'verdict good'; sv.innerHTML = `<b>Bun pentru vară</b>Căldura de la ora 14 ajunge înăuntru pe la ${String(Math.round(14 + r.lag) % 24).padStart(2, '0')}:00 și atenuată la ${fmt(r.decr * 100, 0)} %.`; }
+  else if (r.lag >= 7) { sv.className = 'verdict ok'; sv.innerHTML = `<b>Mediu</b>Căldura întârzie ${fmt(r.lag, 1)} ore. Peste 10 ore ar fi ideal la mansarde și acoperișuri.`; }
+  else { sv.className = 'verdict bad'; sv.innerHTML = `<b>Se încălzește repede</b>Doar ${fmt(r.lag, 1)} ore întârziere. Materiale grele (fibră de lemn, celuloză, cărămidă) ajută vara.`; }
+
+  // pierderi
+  $('flux').textContent = has ? fmt(r.q, 1) + ' W/m²' : '–';
+  const kwh = r.U * S.hdd * 24 / 1000;
+  $('year').textContent = has ? fmt(kwh, 0) + ' kWh/m²' : '–';
+  $('yearNote').textContent = has ? `La ΔT = ${fmt(S.ti - S.te, 0)} K și ${S.hdd} grade-zile. Pentru 100 m² de astfel de ${T.name.toLowerCase()}: ~${Math.round(kwh * 100).toLocaleString('ro-RO')} kWh/an (≈ ${Math.round(kwh * 100 / 10.5).toLocaleString('ro-RO')} m³ de gaz).` : '';
+
+  renderTable(r);
+  sizeChart();
+  if (chartMode === 't') drawTemp(r); else drawGlaser(r);
+}
+
+function renderTable(r) {
+  if (!r.L.length) { $('tbl').innerHTML = ''; return; }
+  const rows = r.L.map((x, k) => `<tr style="${x.ign ? 'opacity:.5' : ''}">
+    <td>${k + 1}</td><td>${esc(x.mat.name)}${x.mx ? ` <span class="muted">+${fmt(x.mx.f * 100, 0)}% ${esc(MAT[x.ly.mix.m].name.toLowerCase())}</span>` : ''}</td>
+    <td>${fmt(x.dm * 100, x.dm < 0.01 ? 2 : 1)}</td><td>${fmtN(x.l)}</td><td>${x.ign ? '–' : fmt(x.R, 3)}</td>
+    <td>${fmt(x.t0, 1)} → ${fmt(x.t1, 1)}</td><td>${fmtN(x.sd)}</td><td>${fmt(x.rho * x.dm, 0)}</td></tr>`).join('');
+  $('tbl').innerHTML = `<tr><th>#</th><th>Material (interior → exterior)</th><th>d [cm]</th><th>λ</th><th>R</th><th>θ [°C]</th><th>s<sub>d</sub> [m]</th><th>kg/m²</th></tr>
+    <tr class="muted"><td></td><td>Suprafață interioară R<sub>si</sub></td><td></td><td></td><td>${fmt(r.T.rsi, 2)}</td><td>${fmt(S.ti, 1)} → ${fmt(r.tsi, 1)}</td><td></td><td></td></tr>
+    ${rows}
+    <tr class="muted"><td></td><td>Suprafață exterioară R<sub>se</sub></td><td></td><td></td><td>${fmt(r.rse, 2)}</td><td>${fmt(r.tse, 1)} → ${fmt(S.te, 1)}</td><td></td><td></td></tr>
+    <tr class="tot"><td></td><td>Total</td><td>${fmt(r.Dtot * 100, 1)}</td><td></td><td>${fmt(r.Rtot, 3)}</td><td></td><td>${fmtN(r.Stot)}</td><td>${fmt(r.mass, 0)}</td></tr>`;
+}
+
+// ---------------------------------------------------------------- grafice
+let W = 800, H = 380;
+const PL = 52, PR = 20, PT = 18, PB = 38;
+function sizeChart() {
+  const cw = $('chart').clientWidth || 800;
+  W = cw < 600 ? 520 : 800; H = cw < 600 ? 460 : 380;
+  $('chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
+}
+const DEFS = `<defs>
+  <pattern id="p-dots" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="0.9" fill="rgba(0,0,0,.25)"/><circle cx="6" cy="6" r="0.7" fill="rgba(0,0,0,.2)"/></pattern>
+  <pattern id="p-brick" width="20" height="12" patternUnits="userSpaceOnUse"><path d="M0 0H20M0 6H20M5 0V6M15 6V12" stroke="rgba(0,0,0,.35)" stroke-width="1" fill="none"/></pattern>
+  <pattern id="p-stone" width="14" height="14" patternUnits="userSpaceOnUse"><path d="M0 4L6 0M7 14L14 8M2 10L5 13" stroke="rgba(0,0,0,.3)" fill="none"/></pattern>
+  <pattern id="p-wave" width="16" height="10" patternUnits="userSpaceOnUse"><path d="M0 5Q4 0 8 5T16 5" stroke="rgba(0,0,0,.28)" fill="none"/></pattern>
+  <pattern id="p-grain" width="10" height="24" patternUnits="userSpaceOnUse"><path d="M3 0C5 8 1 16 3 24M8 0C9 10 6 14 8 24" stroke="rgba(0,0,0,.28)" fill="none"/></pattern>
+  <pattern id="p-vent" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M5 2V8M3 4L5 2L7 4" stroke="rgba(255,255,255,.18)" fill="none"/></pattern>
+</defs>`;
+
+function layerBands(r, xOf) {      // dreptunghiuri pentru straturi, latime min. 3 px
+  let out = '';
+  for (const x of r.L) {
+    const a = xOf(x, 0), b = Math.max(xOf(x, 1), a + 3);
+    const c = CAT[x.mat.cat];
+    out += `<g data-li="${x.i}" opacity="${x.ign ? 0.45 : 1}"><rect x="${a}" y="${PT}" width="${b - a}" height="${H - PT - PB}" fill="${c.fill}"/>` +
+      (c.pat !== 'none' ? `<rect x="${a}" y="${PT}" width="${b - a}" height="${H - PT - PB}" fill="url(#p-${c.pat})"/>` : '') +
+      (x.mx ? `<rect x="${a}" y="${PT}" width="${b - a}" height="${H - PT - PB}" fill="none" stroke="rgba(0,0,0,.4)" stroke-dasharray="4 4"/>` : '') +
+      `<line x1="${b}" y1="${PT}" x2="${b}" y2="${H - PB}" stroke="rgba(0,0,0,.45)"/></g>`;
+  }
+  return out;
+}
+function niceTicks(lo, hi, n) {
+  const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(s => s >= step0) || mag * 10;
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+
+function drawTemp(r) {
+  const svg = $('chart');
+  if (!r.L.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" fill="#8e969f" text-anchor="middle">Adaugă straturi ca să vezi secțiunea</text>`; $('legend').innerHTML = ''; return; }
+  const air = 46;                  // zona de aer de fiecare parte
+  const x0 = PL + air, x1 = W - PR - air;
+  const sx = v => x0 + (x1 - x0) * v / r.Dtot;
+  let tmin = Math.min(S.te, ...r.samples.map(p => p.td)) - 2, tmax = Math.max(S.ti, dewOf(r.pi)) + 2;
+  const sy = t => PT + (H - PT - PB) * (tmax - t) / (tmax - tmin);
+  let g = DEFS;
+  g += `<rect x="${PL}" y="${PT}" width="${air}" height="${H - PT - PB}" fill="rgba(255,106,0,.07)"/><rect x="${x1}" y="${PT}" width="${air}" height="${H - PT - PB}" fill="rgba(74,168,255,.07)"/>`;
+  g += layerBands(r, (x, e) => sx(e ? x.x1 : x.x0));
+  // grila
+  for (const t of niceTicks(tmin, tmax, 7)) {
+    g += `<line x1="${PL}" x2="${W - PR}" y1="${sy(t)}" y2="${sy(t)}" stroke="rgba(255,255,255,${t === 0 ? .35 : .08})"/>` +
+      `<text x="${PL - 6}" y="${sy(t) + 4}" fill="#8e969f" font-size="11" text-anchor="end">${t}°</text>`;
+  }
+  // zone de condens
+  const cs = r.samples.filter(p => p.cond);
+  for (const p of cs) g += `<rect x="${sx(p.x) - 3}" y="${PT}" width="6" height="${H - PT - PB}" fill="rgba(74,168,255,.45)"/>`;
+  // punct de roua
+  const dew = [`${PL},${sy(dewOf(r.pi))}`, `${x0},${sy(dewOf(r.pi))}`, ...r.samples.map(p => `${sx(p.x)},${sy(p.td)}`), `${x1},${sy(dewOf(r.pe))}`, `${W - PR},${sy(dewOf(r.pe))}`];
+  g += `<polyline points="${dew.join(' ')}" fill="none" stroke="#4aa8ff" stroke-width="2" stroke-dasharray="6 4"/>`;
+  // temperatura
+  const tp = [`${PL},${sy(S.ti)}`, `${x0},${sy(r.tsi)}`, ...r.samples.map(p => `${sx(p.x)},${sy(p.t)}`), `${x1},${sy(r.tse)}`];
+  if (r.nEff < r.L.length) tp.push(`${sx(r.E.length ? r.E[r.E.length - 1].x1 : 0)},${sy(r.tse)}`);
+  tp.push(`${W - PR},${sy(S.te)}`);
+  g += `<polyline points="${tp.join(' ')}" fill="none" stroke="#ff5a3c" stroke-width="3" stroke-linejoin="round"/>`;
+  // etichete temperaturi la interfete
+  const lab = (x, t, up) => `<text x="${x}" y="${sy(t) + (up ? -8 : 16)}" fill="#fff" font-size="11" text-anchor="middle" style="paint-order:stroke" stroke="#0b0d10" stroke-width="3">${fmt(t, 1)}</text>`;
+  g += lab(x0, r.tsi, true) + lab(x1, r.tse, false);
+  if (r.E.length <= 8) for (const x of r.E.slice(0, -1)) if (sx(x.x1) - x0 > 30 && x1 - sx(x.x1) > 30) g += lab(sx(x.x1), x.t1, true);
+  g += `<text x="${PL + air / 2}" y="${H - PB + 16}" fill="#ff8533" font-size="11" text-anchor="middle">${fmt(S.ti, 0)}°C</text>`;
+  g += `<text x="${x1 + air / 2}" y="${H - PB + 16}" fill="#4aa8ff" font-size="11" text-anchor="middle">${fmt(S.te, 0)}°C</text>`;
+  g += `<text x="${PL + 4}" y="${H - 6}" fill="#8e969f" font-size="11">interior</text><text x="${W - PR - 4}" y="${H - 6}" fill="#8e969f" font-size="11" text-anchor="end">exterior</text>`;
+  g += `<text x="${(x0 + x1) / 2}" y="${H - 6}" fill="#8e969f" font-size="11" text-anchor="middle">grosime ${fmt(r.Dtot * 100, 1)} cm</text>`;
+  svg.innerHTML = g;
+  $('legend').innerHTML = `<span><i style="background:#ff5a3c"></i>Temperatură</span><span><i style="background:repeating-linear-gradient(90deg,#4aa8ff 0 6px,transparent 6px 9px)"></i>Punct de rouă</span>` +
+    (cs.length ? `<span><i style="background:rgba(74,168,255,.6);height:10px"></i>Zonă de condens</span>` : '') + `<span>Treci cu mouse-ul / degetul peste secțiune</span>`;
+  svg._hit = { kind: 't', sx, r, x0, x1 };
+}
+
+function drawGlaser(r) {
+  const svg = $('chart');
+  if (!r.L.length) { svg.innerHTML = ''; $('legend').innerHTML = ''; return; }
+  // axa x = sd cumulat; straturile cu sd foarte mic primesc latime minima ca sa se vada
+  // scara radical: o bariera de vapori de 100 m nu mai inghite tot graficul
+  const minW = 0.06 * Math.sqrt(Math.max(r.Stot, 0.01));
+  const vis = r.E.map(x => Math.max(Math.sqrt(x.sd), minW));
+  const totV = vis.reduce((a, b) => a + b, 0) || 1;
+  const x0 = PL, x1 = W - PR;
+  const starts = []; let acc = 0; for (const v of vis) { starts.push(acc); acc += v; }
+  // mapare sd -> x (pe bucati, pe fiecare strat)
+  const sx = s => {
+    for (let k = 0; k < r.E.length; k++) {
+      const e = r.E[k];
+      if (s <= e.s1 + 1e-12 || k === r.E.length - 1) {
+        const f = e.sd > 0 ? Math.min(1, Math.max(0, (s - e.s0) / e.sd)) : 1;
+        return x0 + (x1 - x0) * (starts[k] + f * vis[k]) / totV;
+      }
+    }
+    return x1;
+  };
+  const pmax = Math.max(r.pi, ...r.samples.map(p => p.ps)) * 1.08;
+  const sy = p => PT + (H - PT - PB) * (1 - p / pmax);
+  let g = DEFS;
+  const Etmp = { ...r, L: r.E };
+  g += layerBands(Etmp, (x, e) => x0 + (x1 - x0) * (starts[r.E.indexOf(x)] + (e ? vis[r.E.indexOf(x)] : 0)) / totV);
+  g += `<rect x="${x0}" y="${PT}" width="${x1 - x0}" height="${H - PT - PB}" fill="rgba(11,13,16,.55)"/>`;
+  for (const p of niceTicks(0, pmax, 6)) g += `<line x1="${x0}" x2="${x1}" y1="${sy(p)}" y2="${sy(p)}" stroke="rgba(255,255,255,.08)"/><text x="${x0 - 6}" y="${sy(p) + 4}" fill="#8e969f" font-size="11" text-anchor="end">${p}</text>`;
+  g += `<text x="12" y="${PT + 4}" fill="#8e969f" font-size="11" transform="rotate(-90 12 ${PT + 4})" text-anchor="end">Pa</text>`;
+  const ps = r.samples.map(p => `${sx(p.s)},${sy(p.ps)}`);
+  g += `<polyline points="${ps.join(' ')}" fill="none" stroke="#ff5a3c" stroke-width="2.5"/>`;
+  const pp = r.samples.map(p => `${sx(p.s)},${sy(p.p)}`);
+  g += `<polyline points="${pp.join(' ')}" fill="none" stroke="#4aa8ff" stroke-width="2.5"/>`;
+  for (const p of r.samples.filter(p => p.cond)) g += `<circle cx="${sx(p.s)}" cy="${sy(p.p)}" r="4" fill="#4aa8ff" stroke="#fff"/>`;
+  for (const e of r.E) {
+    const a = sx(e.s0), b = sx(e.s1);
+    if (b - a > 36) g += `<text x="${(a + b) / 2}" y="${H - PB + 14}" fill="#8e969f" font-size="10" text-anchor="middle">${fmtN(e.sd)} m</text>`;
+  }
+  g += `<text x="${(x0 + x1) / 2}" y="${H - 6}" fill="#8e969f" font-size="11" text-anchor="middle">rezistență la difuzie s<tspan dy="3" font-size="8">d</tspan><tspan dy="-3"> cumulată, total ${fmtN(r.Stot)} m (scară comprimată)</tspan></text>`;
+  svg.innerHTML = g;
+  $('legend').innerHTML = `<span><i style="background:#ff5a3c"></i>Presiune de saturație p<sub>s</sub></span><span><i style="background:#4aa8ff"></i>Presiunea vaporilor p</span>` +
+    `<span>Unde linia albastră atinge roșul, apare condens.</span>`;
+  svg._hit = { kind: 'g', r, sx };
+}
+
+// tooltip pe sectiune
+const tip = $('tip');
+function hover(ev) {
+  const svg = $('chart');
+  const g = ev.target.closest('g[data-li]');
+  if (!g || !svg._hit) { tip.hidden = true; return; }
+  const r = svg._hit.r, x = r.L[+g.dataset.li];
+  tip.innerHTML = `<b>${esc(x.mat.name)}</b><br>${fmt(x.dm * 100, 1)} cm · λ ${fmtN(x.l)} · μ ${fmtN(x.mu)}<br>` +
+    (x.ign ? 'strat ventilat (în afara calculului)' : `θ ${fmt(x.t0, 1)} → ${fmt(x.t1, 1)} °C<br>R ${fmt(x.R, 2)} m²K/W · s<sub>d</sub> ${fmtN(x.sd)} m`);
+  const p = ev.touches ? ev.touches[0] : ev;
+  tip.hidden = false;
+  tip.style.left = Math.min(innerWidth - tip.offsetWidth - 8, p.clientX + 12) + 'px';
+  tip.style.top = (p.clientY + 14) + 'px';
+}
+$('chart').addEventListener('mousemove', hover);
+$('chart').addEventListener('mouseleave', () => tip.hidden = true);
+$('chart').addEventListener('touchstart', hover, { passive: true });
+document.addEventListener('touchstart', e => { if (!e.target.closest('#chart')) tip.hidden = true; }, { passive: true });
+
+renderTypes(); renderLayers(); update();
+let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(update, 150); });
+</script>
+</body>
+</html>

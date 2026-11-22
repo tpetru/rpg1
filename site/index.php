@@ -54,6 +54,7 @@
     <a href="https://docs.no-santos.com/">Spre Docs →</a>
     <a href="https://games.no-santos.com/">Spre Games →</a>
     <a href="/camere/">Spre Camere →</a>
+    <a href="/ubakus/">Spre Calculator U →</a>
   </div>
 </body>
 </html>
