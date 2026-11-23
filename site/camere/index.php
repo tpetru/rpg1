@@ -98,6 +98,11 @@ header('Cache-Control: no-cache, must-revalidate');
   details.spoiler > summary::after { content: '▸'; margin-left: auto; color: var(--muted); transition: transform .15s; }
   details.spoiler[open] > summary::after { transform: rotate(90deg); }
   details.spoiler > #sidesBox { padding: 0 8px 8px; }
+  .reliefbar { border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); padding: 8px; margin-bottom: 8px; }
+  .reliefbar .row { margin-bottom: 6px; }
+  .reliefbar label { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .reliefbar input[type=range] { flex: 1; accent-color: var(--accent); }
+  .reliefbar .val { color: var(--text); min-width: 42px; text-align: right; }
   .zoombar { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; flex-direction: column; gap: 4px; }
   .zoombar button { width: 36px; height: 36px; padding: 0; font-size: 18px; line-height: 1; background: rgba(24,29,35,.92); }
   .fab {
@@ -179,6 +184,23 @@ header('Cache-Control: no-cache, must-revalidate');
         <button class="small" id="btnL">⌐ Formă L</button>
         <button class="small" id="btnDone" hidden>✔ Închide forma</button>
       </div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="small" id="btnRelief">⛰ Relief teren</button>
+      </div>
+      <div class="reliefbar" id="reliefBar" hidden>
+        <div class="row">
+          <button class="small on" data-tool="up">⬆ Ridică</button>
+          <button class="small" data-tool="down">⬇ Coboară</button>
+          <button class="small" data-tool="smooth">〰 Netezește</button>
+          <button class="small" data-tool="erase">⌫ Șterge</button>
+        </div>
+        <label>Rază <input type="range" id="rRad" min="0.5" max="10" step="0.5" value="3"><span class="val" id="rRadV">3 m</span></label>
+        <label>Putere <input type="range" id="rPow" min="1" max="10" step="1" value="4"><span class="val" id="rPowV">4</span></label>
+        <div class="row" style="margin:6px 0 0">
+          <button class="small" id="rReset">Resetează relieful</button>
+          <span class="muted" id="rInfo" style="align-self:center"></span>
+        </div>
+      </div>
       <div class="row" id="viewBtns" style="margin-bottom:8px" hidden>
         <button class="small on" id="btnDirs">🔦 Direcții: afișate</button>
         <button class="small on" id="btnZones">🎨 Zone filmate: afișate</button>
@@ -231,6 +253,8 @@ header('Cache-Control: no-cache, must-revalidate');
     </div>
     <label for="mFov">Unghi de vedere al unei camere (grade)</label>
     <input type="number" id="mFov" min="30" max="360" step="5" value="90">
+    <label for="mCamH">Înălțimea de montare a camerelor (metri, față de sol)</label>
+    <input type="number" id="mCamH" min="0.5" max="15" step="0.5" value="3">
     <label for="mRange">Distanța utilă de filmare (metri)</label>
     <input type="number" id="mRange" min="2" max="60" step="1" value="15">
     <label><input type="checkbox" id="mNear" checked> Prioritate pe zona din jurul casei (primii 5 m)</label>
@@ -259,9 +283,25 @@ let buildings = [{ name: 'Casă', poly: lshape(9, 5, 12, 10), cams: true }];
 let active = 0;              // 'land' sau indexul constructiei editate
 let drawing = null;          // puncte in curs de desenare
 let result = null;           // rezultatul generarii
-let settings = { count: 4, fov: 90, range: 15, near: true };
+let settings = { count: 4, fov: 90, range: 15, near: true, camH: 3 };
+// relieful: inaltimi (m) pe o grila de RS metri, rara (doar punctele modificate); cheie = i,j
+const RS = 0.5, TARGET_H = 1.0;          // tinta = ce e la ~1 m deasupra solului (o persoana)
+let relief = new Map();
+const rkey = (i, j) => (i + 50000) * 100000 + (j + 50000);
 let show = { dirs: true, zones: true };   // ce se deseneaza peste camere
 
+function reliefArray() {
+  const out = [];
+  relief.forEach((h, k) => { out.push([Math.floor(k / 100000) - 50000, (k % 100000) - 50000, Math.round(h * 100) / 100]); });
+  return out;
+}
+function rget(i, j) { return relief.get(rkey(i, j)) || 0; }
+// inaltimea solului intr-un punct (interpolare biliniara intre punctele grilei)
+function groundAt(x, y) {
+  if (!relief.size) return 0;
+  const fx = x / RS, fy = y / RS, i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j;
+  return rget(i, j) * (1 - u) * (1 - v) + rget(i + 1, j) * u * (1 - v) + rget(i, j + 1) * (1 - u) * v + rget(i + 1, j + 1) * u * v;
+}
 function rect(x, y, w, h) { return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]]; }
 function lshape(x, y, w, h) {
   return [[x, y], [x + w, y], [x + w, y + h * 0.55], [x + w * 0.55, y + h * 0.55], [x + w * 0.55, y + h], [x, y + h]];
@@ -273,10 +313,11 @@ try {
     buildings = s.buildings && s.buildings.length ? s.buildings : [{ name: 'Casă', poly: s.house, cams: true }];
     if (s.settings) settings = Object.assign(settings, s.settings);
     if (s.show) show = Object.assign(show, s.show);
+    if (Array.isArray(s.relief)) s.relief.forEach(([i, j, h]) => relief.set(rkey(i, j), h));
   }
 } catch (e) {}
 function save() {
-  try { localStorage.setItem(STORE, JSON.stringify({ land, buildings, settings, show })); } catch (e) {}
+  try { localStorage.setItem(STORE, JSON.stringify({ land, buildings, settings, show, relief: reliefArray() })); } catch (e) {}
 }
 
 // ---------- geometrie ----------
@@ -377,6 +418,7 @@ function draw() {
   }
 
   pathPoly(land); ctx.fillStyle = '#16301f'; ctx.fill();
+  if (!reliefMode) drawRelief();
 
   if (result && show.zones) drawCoverage();
 
@@ -422,6 +464,7 @@ function draw() {
     });
     ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
   }
+  if (reliefMode) { drawRelief(); drawBrush(); }
   if (result) drawCameras();
   if (selCam >= 0 && !camMove && !camDrag) placePop();
   cv.style.cursor = camMove ? 'move' : '';
@@ -503,10 +546,17 @@ cv.addEventListener('pointerdown', e => {
   pointers.set(e.pointerId, [sx, sy]);
   if (pointers.size === 2) {        // al doilea deget: pinch zoom, anulam ce incepuse primul deget
     if (drawing && lastDrawAdd && performance.now() - lastDrawAdd < 600) { drawing.pop(); }
-    if (drag && drag.type !== 'pan') { drag = null; invalidate(); }
+    if (drag && drag.type === 'paint') { drag = null; reliefChanged(); }
+    else if (drag && drag.type !== 'pan') { drag = null; invalidate(); }
     drag = null; camDrag = null; pinch = pinchState(); draw(); return;
   }
   if (pointers.size > 2) return;
+  if (reliefMode) {
+    if (e.button === 1 || e.button === 2) {     // in modul relief: click dreapta / mijloc = muta harta
+      drag = { type: 'pan', sx, sy, ox: view.ox, oy: view.oy, moved: false, target: null }; cv.setPointerCapture(e.pointerId); return;
+    }
+    drag = { type: 'paint' }; cv.setPointerCapture(e.pointerId); brushAt = toW(sx, sy); paint(brushAt); return;
+  }
   if (result && !drawing) {
     if (camMove) { camDrag = { ci: camMove.ci, moved: true }; moveCamTo(toW(sx, sy)); cv.setPointerCapture(e.pointerId); return; }
     const ci = hitCam(sx, sy);
@@ -553,6 +603,11 @@ cv.addEventListener('pointermove', e => {
     if (drag.moved) { view.ox = drag.ox + sx - drag.sx; view.oy = drag.oy + sy - drag.sy; userView = true; draw(); }
     return;
   }
+  if (reliefMode) {
+    brushAt = toW(sx, sy);
+    if (drag && drag.type === 'paint') paint(brushAt); else draw();
+    return;
+  }
   if (result && camMove && !camDrag) { moveCamTo(toW(sx, sy)); return; }
   if (result && !drag && !drawing) cv.style.cursor = hitCam(sx, sy) >= 0 ? 'pointer' : '';      // camera urmareste mouse-ul
   if (camDrag) {
@@ -579,6 +634,7 @@ function endDrag(e) {
     if (!d.moved && d.target !== null) selectTab(d.target);
     return;
   }
+  if (drag && drag.type === 'paint') { drag = null; reliefChanged(); return; }
   if (camDrag) {
     const d = camDrag; camDrag = null;
     if (d.moved) { camMove = null; finishCamEdit(); refreshUI(); openCam(d.ci); }
@@ -589,6 +645,8 @@ function endDrag(e) {
 }
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('contextmenu', e => { if (reliefMode) e.preventDefault(); });
+cv.addEventListener('pointerleave', () => { if (reliefMode && !drag) { brushAt = null; draw(); } });
 cv.addEventListener('dblclick', () => { if (drawing && drawing.length >= 3) finishDraw(); });
 
 function startDraw() { drawing = []; hover = null; result = null; document.getElementById('btnDone').hidden = false; refreshUI(); draw(); }
@@ -714,7 +772,9 @@ function refreshUI() {
   updateTable(false); updateWarn();
   document.getElementById('result').hidden = !result;
   document.getElementById('viewBtns').hidden = !result;
-  document.getElementById('hint').textContent = drawing
+  document.getElementById('hint').textContent = reliefMode
+    ? 'Relief: trage peste teren ca să modifici înălțimea. Click dreapta + tragere (sau două degete) mută harta.'
+    : drawing
     ? 'Click pentru fiecare colț. Închide forma apăsând pe primul punct (portocaliu), dublu-click sau „Închide forma”.'
     : (active === 'land' ? 'Editezi terenul.' : `Editezi: ${buildings[active].name || 'construcția'}.`) + ' Trage de colțuri, de „+” sau de interior.';
 }
@@ -727,6 +787,7 @@ document.getElementById('btnGen').onclick = () => {
   if (pr.length) { alertWarn(pr.join(' ')); return; }
   mCount.value = settings.count; document.getElementById('mFov').value = settings.fov;
   document.getElementById('mRange').value = settings.range; document.getElementById('mNear').checked = settings.near;
+  document.getElementById('mCamH').value = settings.camH;
   document.getElementById('mProgress').hidden = true; document.getElementById('mActions').hidden = false;
   modal.hidden = false; setTimeout(() => { mCount.focus(); mCount.select(); }, 30);
 };
@@ -751,6 +812,7 @@ async function go() {
   settings.fov = Math.max(30, Math.min(360, +document.getElementById('mFov').value || 90));
   settings.range = Math.max(2, Math.min(60, +document.getElementById('mRange').value || 15));
   settings.near = document.getElementById('mNear').checked;
+  settings.camH = Math.max(0.5, Math.min(15, +document.getElementById('mCamH').value || 3));
   save();
   document.getElementById('mActions').hidden = true; document.getElementById('mProgress').hidden = false;
   cancelRun = false;
@@ -790,10 +852,34 @@ function buildScene() {
   const C = cells.length, WORDS = (C + 31) >>> 5;
   if (!C) throw new Error('nu există teren liber în jurul construcțiilor');
   const camB = B.map((P, bi) => bi).filter(bi => buildings[bi].cams);
-  return { B, edges, NE, inAny, x0, y0, x1, y1, cell, cells, gidx, nx, ny, C, WORDS, camB };
+  const T = buildTerrain(x0, y0, x1, y1), cellZ = new Float32Array(C);
+  if (!T.flat) for (let k = 0; k < C; k++) cellZ[k] = T.h(cells[k][0], cells[k][1]) + TARGET_H; else cellZ.fill(TARGET_H);
+  return { B, edges, NE, inAny, x0, y0, x1, y1, cell, cells, gidx, nx, ny, C, WORDS, camB, T, cellZ };
+}
+// copie densa a reliefului (pentru calcule rapide) si testul de linie de vedere peste dealuri
+function buildTerrain(x0, y0, x1, y1) {
+  if (!relief.size) return { flat: true, h: () => 0 };
+  const i0 = Math.floor(x0 / RS) - 2, j0 = Math.floor(y0 / RS) - 2, ni = Math.ceil(x1 / RS) + 3 - i0, nj = Math.ceil(y1 / RS) + 3 - j0;
+  const data = new Float32Array(ni * nj);
+  for (let j = 0; j < nj; j++) for (let i = 0; i < ni; i++) data[j * ni + i] = rget(i0 + i, j0 + j);
+  const h = (x, y) => {
+    let fx = x / RS - i0, fy = y / RS - j0;
+    fx = Math.max(0, Math.min(ni - 1.001, fx)); fy = Math.max(0, Math.min(nj - 1.001, fy));
+    const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, o = j * ni + i;
+    return data[o] * (1 - u) * (1 - v) + data[o + 1] * u * (1 - v) + data[o + ni] * (1 - u) * v + data[o + ni + 1] * u * v;
+  };
+  return { flat: false, h };
+}
+function terrainBlocked(T, c, zc, q, zq) {
+  const dx = q[0] - c[0], dy = q[1] - c[1], n = Math.ceil(Math.hypot(dx, dy) / (RS * 0.7));
+  for (let s = 1; s < n; s++) {
+    const t = s / n;
+    if (T.h(c[0] + dx * t, c[1] + dy * t) > zc + (zq - zc) * t) return true;
+  }
+  return false;
 }
 async function optimize(st, progress) {
-  const { B, edges, NE, inAny, x0, y0, cell, cells, gidx, nx, ny, C, WORDS, camB } = buildScene();
+  const { B, edges, NE, inAny, x0, y0, cell, cells, gidx, nx, ny, C, WORDS, camB, T, cellZ } = buildScene();
   // celule din primii 5 m fata de constructiile pe care se pun camere
   const nearMask = new Uint32Array(WORDS);
   cells.forEach((p, k) => { if (camB.some(bi => distToPoly(p, B[bi]) <= 5)) nearMask[k >>> 5] |= 1 << (k & 31); });
@@ -825,13 +911,14 @@ async function optimize(st, progress) {
   const cands = [];   // {pos, dir, bits, cnt}
   for (let pi = 0; pi < positions.length; pi++) {
     if (cancelRun) return null;
-    const pos = positions[pi], c = pos.p;
+    const pos = positions[pi], c = pos.p, zc = T.h(c[0], c[1]) + st.camH;
     const visible = [];
     for (let k = 0; k < C; k++) {
       const q = cells[k], dx = q[0] - c[0], dy = q[1] - c[1];
       if (dx * dx + dy * dy > R2) continue;
       let blocked = false;
       for (let w = 0; w < NE; w++) if (segX(c, q, edges[w][0], edges[w][1])) { blocked = true; break; }
+      if (!blocked && !T.flat && terrainBlocked(T, c, zc, q, cellZ[k])) blocked = true;
       if (!blocked) visible.push(k, Math.atan2(dy, dx));
     }
     const sets = [];
@@ -916,7 +1003,7 @@ async function optimize(st, progress) {
   let cov = 0, dbl = 0; for (let k = 0; k < C; k++) { if (count[k]) cov++; if (count[k] > 1) dbl++; }
   const img = makeImage(nx, ny, gidx, cams, count, C);
   return { cells, cell, cams: cams.map(c => ({ pos: c.pos, dir: c.dir, bits: c.bits, rel: angDiff(c.dir, Math.atan2(c.pos.n[1], c.pos.n[0])) })), count, C, cov, dbl, st: Object.assign({}, st), img,
-           box: [x0, y0, x0 + nx * cell, y0 + ny * cell], nx, ny, gidx, edges, B, WORDS, camB, manual: false };
+           box: [x0, y0, x0 + nx * cell, y0 + ny * cell], nx, ny, gidx, edges, B, WORDS, camB, T, cellZ, manual: false };
 }
 function pc(v) { v = v - ((v >>> 1) & 0x55555555); v = (v & 0x33333333) + ((v >>> 2) & 0x33333333); return (((v + (v >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; }
 function pcAll(b) { let s = 0; for (let i = 0; i < b.length; i++) if (b[i]) s += pc(b[i]); return s; }
@@ -974,6 +1061,96 @@ function drawCameras() {
   });
 }
 function hexA(h, a) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+// ---------- relief: pensula ----------
+let reliefMode = false, rTool = 'up', brushAt = null, reliefImg = null;
+const rRad = document.getElementById('rRad'), rPow = document.getElementById('rPow');
+function syncRelief() {
+  document.getElementById('btnRelief').classList.toggle('on', reliefMode);
+  document.getElementById('reliefBar').hidden = !reliefMode;
+  document.querySelectorAll('#reliefBar [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === rTool));
+  document.getElementById('rRadV').textContent = rRad.value + ' m';
+  document.getElementById('rPowV').textContent = rPow.value;
+  let mx = 0, mn = 0; relief.forEach(h => { if (h > mx) mx = h; if (h < mn) mn = h; });
+  document.getElementById('rInfo').textContent = relief.size ? `între ${mn.toFixed(1)} și +${mx.toFixed(1)} m` : 'teren plat';
+}
+document.getElementById('btnRelief').onclick = () => {
+  reliefMode = !reliefMode; brushAt = null;
+  if (reliefMode) { if (drawing) { drawing = null; document.getElementById('btnDone').hidden = true; } closeCam(); }
+  syncRelief(); refreshUI(); draw();
+};
+document.querySelectorAll('#reliefBar [data-tool]').forEach(b => b.onclick = () => { rTool = b.dataset.tool; syncRelief(); });
+rRad.oninput = rPow.oninput = syncRelief;
+document.getElementById('rReset').onclick = () => { relief.clear(); reliefChanged(); };
+function paint(w) {
+  const R = +rRad.value, pw = +rPow.value, k = 0.025 * pw;
+  const i0 = Math.floor((w[0] - R) / RS), i1 = Math.ceil((w[0] + R) / RS), j0 = Math.floor((w[1] - R) / RS), j1 = Math.ceil((w[1] + R) / RS);
+  const upd = [];
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+    const d = Math.hypot(i * RS - w[0], j * RS - w[1]); if (d > R) continue;
+    const f = 0.5 + 0.5 * Math.cos(Math.PI * d / R);         // margini moi
+    const h = rget(i, j); let nh = h;
+    if (rTool === 'up') nh = h + k * f;
+    else if (rTool === 'down') nh = h - k * f;
+    else if (rTool === 'smooth') nh = h + ((rget(i + 1, j) + rget(i - 1, j) + rget(i, j + 1) + rget(i, j - 1)) / 4 - h) * Math.min(1, 0.15 * pw) * f;
+    else nh = h * (1 - Math.min(1, 0.12 * pw) * f);
+    upd.push([i, j, Math.max(-20, Math.min(20, nh))]);
+  }
+  upd.forEach(([i, j, h]) => { if (Math.abs(h) < 0.005) relief.delete(rkey(i, j)); else relief.set(rkey(i, j), h); });
+  reliefImg = null; draw();
+}
+// dupa o trasatura: camerele raman pe loc, dar ce vad se recalculeaza
+function reliefChanged() {
+  reliefImg = null; save(); syncRelief();
+  if (result) {
+    let S; try { S = buildScene(); } catch (e) { draw(); return; }
+    result.T = S.T; result.cellZ = S.cellZ;
+    result.cams.forEach(c => c.bits = camBits(c.pos, c.dir));
+    refreshCoverage(true);
+  }
+  draw();
+}
+function makeReliefImg() {
+  let i0 = Infinity, j0 = Infinity, i1 = -Infinity, j1 = -Infinity, mx = 0.5;
+  relief.forEach((h, k) => {
+    const i = Math.floor(k / 100000) - 50000, j = (k % 100000) - 50000;
+    i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); mx = Math.max(mx, Math.abs(h));
+  });
+  i0 -= 1; j0 -= 1; i1 += 1; j1 += 1;
+  const ni = i1 - i0 + 1, nj = j1 - j0 + 1, c = document.createElement('canvas'); c.width = ni; c.height = nj;
+  const g = c.getContext('2d'), im = g.createImageData(ni, nj), d = im.data;
+  for (let j = 0; j < nj; j++) for (let i = 0; i < ni; i++) {
+    const h = rget(i0 + i, j0 + j); if (!h && !rget(i0 + i + 1, j0 + j) && !rget(i0 + i, j0 + j + 1)) continue;
+    // umbrire: lumina din nord-vest
+    const gx = (rget(i0 + i + 1, j0 + j) - rget(i0 + i - 1, j0 + j)) / (2 * RS), gy = (rget(i0 + i, j0 + j + 1) - rget(i0 + i, j0 + j - 1)) / (2 * RS);
+    const shade = Math.max(-1, Math.min(1, (gx - gy) * 0.8));
+    const a = Math.min(1, Math.abs(h) / mx), o = ((nj - 1 - j) * ni + i) * 4;
+    const base = h >= 0 ? [214, 160, 82] : [70, 140, 230];
+    const lit = 1 - shade * 0.45;
+    d[o] = base[0] * lit; d[o + 1] = base[1] * lit; d[o + 2] = base[2] * lit; d[o + 3] = 40 + 150 * a;
+  }
+  g.putImageData(im, 0, 0);
+  return { c, box: [(i0 - 0.5) * RS, (j0 - 0.5) * RS, (i1 + 0.5) * RS, (j1 + 0.5) * RS] };
+}
+function drawRelief() {
+  if (!relief.size) return;
+  if (!reliefImg) reliefImg = makeReliefImg();
+  const a = toS([reliefImg.box[0], reliefImg.box[3]]), b = toS([reliefImg.box[2], reliefImg.box[1]]);
+  ctx.save(); pathPoly(land); ctx.clip(); ctx.imageSmoothingEnabled = true;
+  ctx.globalAlpha = reliefMode ? 0.95 : 0.6;
+  ctx.drawImage(reliefImg.c, a[0], a[1], b[0] - a[0], b[1] - a[1]);
+  ctx.restore();
+}
+function drawBrush() {
+  if (!brushAt) return;
+  const p = toS(brushAt), R = +rRad.value * view.s;
+  ctx.strokeStyle = rTool === 'down' ? '#7fb6ff' : rTool === 'up' ? '#ffcf8a' : '#ffffff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.arc(p[0], p[1], R, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  const h = groundAt(brushAt[0], brushAt[1]), t = (h >= 0 ? '+' : '') + h.toFixed(2) + ' m';
+  ctx.font = 'bold 12px Segoe UI, sans-serif'; const w = ctx.measureText(t).width + 10;
+  ctx.fillStyle = 'rgba(11,13,16,.85)'; ctx.fillRect(p[0] + 10, p[1] - 26, w, 18);
+  ctx.fillStyle = '#fff'; ctx.fillText(t, p[0] + 15, p[1] - 13);
+}
 
 // ---------- tabelul de laturi: spoiler pe desktop, popup (bottom sheet) pe telefon ----------
 const sidesBox = document.getElementById('sidesBox'), sidesDet = document.getElementById('sidesDet');
@@ -1048,13 +1225,14 @@ function snapToWall(w) {
 // ce vede o camera (aceeasi regula ca la optimizare: raza, unghi, pereti care blocheaza)
 function camBits(pos, dir) {
   const r = result, c = pos.p, R2 = r.st.range * r.st.range, half = r.st.fov / 2 * Math.PI / 180;
-  const bits = new Uint32Array(r.WORDS), E = r.edges, NE = E.length;
+  const bits = new Uint32Array(r.WORDS), E = r.edges, NE = E.length, T = r.T, zc = T.h(c[0], c[1]) + (r.st.camH || 3);
   for (let k = 0; k < r.C; k++) {
     const q = r.cells[k], dx = q[0] - c[0], dy = q[1] - c[1];
     if (dx * dx + dy * dy > R2) continue;
     if (half < Math.PI) { let da = Math.atan2(dy, dx) - dir; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) > half) continue; }
     let blocked = false;
     for (let w = 0; w < NE; w++) if (segX(c, q, E[w][0], E[w][1])) { blocked = true; break; }
+    if (!blocked && !T.flat && terrainBlocked(T, c, zc, q, r.cellZ[k])) blocked = true;
     if (!blocked) bits[k >>> 5] |= 1 << (k & 31);
   }
   return bits;
@@ -1108,7 +1286,7 @@ document.getElementById('btnAddCam').onclick = () => {
     let S; try { S = buildScene(); } catch (e) { alertWarn(e.message); return; }
     result = { cells: S.cells, cell: S.cell, cams: [], count: new Uint8Array(S.C), C: S.C, cov: 0, dbl: 0, st: Object.assign({}, settings),
                img: null, box: [S.x0, S.y0, S.x0 + S.nx * S.cell, S.y0 + S.ny * S.cell], nx: S.nx, ny: S.ny, gidx: S.gidx,
-               edges: S.edges, B: S.B, WORDS: S.WORDS, camB: S.camB, manual: true };
+               edges: S.edges, B: S.B, WORDS: S.WORDS, camB: S.camB, T: S.T, cellZ: S.cellZ, manual: true };
   }
   if (result.cams.length >= 20) { alertWarn('Maxim 20 de camere.'); return; }
   const bi = result.camB[0], pos = snapToWall(labelPoint(result.B[bi]));
@@ -1131,7 +1309,7 @@ function showResult() {
   document.getElementById('stPct').textContent = (100 * r.cov / r.C).toFixed(1) + '%';
   document.getElementById('stArea').textContent = (r.cov * cellA).toFixed(0) + ' / ' + (r.C * cellA).toFixed(0) + ' m²';
   document.getElementById('stDouble').textContent = (r.dbl * cellA).toFixed(0) + ' m²';
-  document.getElementById('stCam').textContent = r.st.fov + '° · ' + r.st.range + ' m';
+  document.getElementById('stCam').textContent = r.st.fov + '° · ' + r.st.range + ' m · h ' + (r.st.camH || 3) + ' m';
   document.getElementById('stPct').textContent += r.manual ? ' ✋' : '';
   document.getElementById('stPct').title = r.manual ? 'Camerele au fost ajustate manual' : '';
   const ul = document.getElementById('camlist'); ul.innerHTML = '';
@@ -1155,6 +1333,7 @@ function showResult() {
 }
 
 syncShow();
+syncRelief();
 refreshUI();
 resize();
 })();
