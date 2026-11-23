@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exterior · Planificator curte 3D</title>
+<meta name="description" content="Desenează în 3D exteriorul curții: teren cu pantă, casă, copaci, plante, alei, pavaj, borduri, trotuar și garduri.">
+<link rel="icon" type="image/png" href="/samp/ucp/assets/img/favicon.ico">
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #12161b; --panel-2: #181d23; --border: #252b32;
+    --text: #f2f2f2; --muted: #8e969f; --accent: #ff6a00; --accent-2: #ff8533; --blue: #4aa8ff;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); height: 100%; }
+  body { font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px; display: flex; flex-direction: column; }
+  a { color: var(--accent-2); }
+  button, select, input { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px; }
+  button { padding: 6px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; border-color: var(--border); }
+  button.on { background: var(--accent); border-color: var(--accent); color: #140a02; font-weight: 700; }
+  select { padding: 5px 6px; max-width: 100%; }
+  input[type=number], input[type=text] { padding: 5px 7px; width: 100%; background: #0d1014; }
+  input[type=color] { width: 100%; height: 30px; padding: 2px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 1.1rem; white-space: nowrap; }
+  header h1 span { color: var(--accent); }
+  header .sp { flex: 1; }
+  header .grp { display: flex; gap: 6px; flex-wrap: wrap; }
+  header a.back { color: var(--muted); text-decoration: none; font-size: 13px; }
+
+  #app { flex: 1; min-height: 0; display: grid; grid-template-columns: 96px minmax(0,1fr) 330px; }
+  #tools { border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 6px; display: flex; flex-direction: column; gap: 4px; }
+  #tools .glbl { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin: 8px 2px 2px; }
+  #tools button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 11.5px; line-height: 1.1; }
+  #tools button .ic { font-size: 20px; }
+  #view { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #bcd8ef; touch-action: none; }
+  #view canvas { display: block; }
+  #panel { border-left: 1px solid var(--border); overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+  .card h2 { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .3px; display: flex; gap: 6px; align-items: center; }
+  .card h2 b { color: var(--text); font-size: 14px; }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fld label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+  .fld.wide { grid-column: 1 / -1; }
+  .fld .in { display: flex; align-items: center; gap: 5px; }
+  .fld.chk label { display: flex; gap: 6px; align-items: center; color: var(--text); font-size: 13px; margin-top: 6px; cursor: pointer; }
+  .unit { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .muted { color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .btns button { flex: 1 1 auto; }
+  button.danger:hover { border-color: #ff5a5a; color: #ff8080; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 13px; margin-top: 8px; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  .kv b { font-weight: 600; }
+  .bar { height: 8px; border-radius: 4px; background: #2a3038; overflow: hidden; display: flex; margin-top: 8px; }
+  .bar i { display: block; height: 100%; }
+  ul.help { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+  ul.help b { color: var(--text); font-weight: 600; }
+
+  /* overlay pe scena 3D */
+  .ov { position: absolute; z-index: 5; }
+  #hint { left: 10px; top: 10px; right: 70px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; pointer-events: none; }
+  #hint .msg { background: rgba(11,13,16,.82); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; font-size: 13px; max-width: 520px; }
+  #hint button { pointer-events: auto; background: rgba(11,13,16,.85); }
+  #hint button.go { background: var(--accent); color: #140a02; font-weight: 700; border-color: var(--accent); }
+  #compass { right: 10px; top: 10px; width: 52px; height: 52px; border-radius: 50%; background: rgba(11,13,16,.72); border: 1px solid var(--border); cursor: pointer; }
+  #compass svg { width: 100%; height: 100%; display: block; }
+  #viewbtns { left: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  #viewbtns button, #sun { background: rgba(11,13,16,.82); }
+  #sun { right: 10px; bottom: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 5px 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  #sun input { width: 120px; accent-color: var(--accent); }
+  .lbl { background: rgba(11,13,16,.78); color: #fff; font-size: 11.5px; padding: 1px 6px; border-radius: 6px; white-space: nowrap; pointer-events: none; font-weight: 600; }
+  .lbl.ter { background: rgba(255,106,0,.85); color: #140a02; }
+  .lbl.cur { background: rgba(74,168,255,.92); color: #04121f; }
+
+  @media (max-width: 900px) {
+    html, body { height: auto; }
+    #app { grid-template-columns: minmax(0,1fr); display: flex; flex-direction: column; }
+    #tools { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; padding: 6px; }
+    #tools .glbl { display: none; }
+    #tools button { flex: 0 0 66px; }
+    #view { height: 62vh; flex: none; }
+    #panel { border-left: 0; }
+    #sun input { width: 90px; }
+    #sun { bottom: 54px; }
+    #viewbtns button { padding: 5px 9px; }
+    #hint { right: 70px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <a class="back" href="/">←</a>
+  <h1>Exterior <span>· curte 3D</span></h1>
+  <div class="sp"></div>
+  <div class="grp">
+    <button id="bUndo" title="Anulează (Ctrl+Z)">↶</button>
+    <button id="bRedo" title="Refă (Ctrl+Y)">↷</button>
+    <button id="bNew">Nou</button>
+    <button id="bDemo">Exemplu</button>
+    <button id="bExport" title="Salvează proiectul ca fișier">Export</button>
+    <button id="bImport" title="Deschide un proiect salvat">Import</button>
+    <button id="bPng" title="Salvează imaginea">📷 PNG</button>
+    <input type="file" id="fImport" accept=".json,application/json" hidden>
+  </div>
+</header>
+<div id="app">
+  <nav id="tools"></nav>
+  <main id="view">
+    <div id="hint" class="ov" hidden></div>
+    <div id="compass" class="ov" title="Nord · click pentru vedere de sus"><svg viewBox="0 0 52 52"><g id="cmpG"><path d="M26 6 L32 26 L26 23 L20 26 Z" fill="#ff6a00"/><path d="M26 46 L32 26 L26 29 L20 26 Z" fill="#8e969f"/><text x="26" y="17" text-anchor="middle" font-size="0"></text></g><text id="cmpN" x="26" y="5" text-anchor="middle" font-size="9" fill="#fff" font-weight="700"></text></svg></div>
+    <div id="viewbtns" class="ov">
+      <button id="v3d">3D</button>
+      <button id="vTop">De sus</button>
+      <button id="vFit">Încadrează</button>
+    </div>
+    <div id="sun" class="ov">☀ <input type="range" id="hour" min="6" max="20" step="0.25"> <span id="hourT"></span></div>
+  </main>
+  <aside id="panel"></aside>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const D2R = Math.PI / 180;
+const $ = s => document.querySelector(s);
+const fmt = (v, d = 2) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString('ro-RO', { maximumFractionDigits: d });
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function rng(seed) {
+  let a = (seed >>> 0) || 1;
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+
+/* ───────────────────────── Stare ───────────────────────── */
+const LS = 'exterior.v1', LSUI = 'exterior.ui';
+let S = null;
+const UI = Object.assign({ snap: 0.25, grid: true, shadows: true, hour: 15 }, (() => { try { return JSON.parse(localStorage.getItem(LSUI)) || {}; } catch { return {}; } })());
+const saveUI = () => { try { localStorage.setItem(LSUI, JSON.stringify(UI)); } catch {} };
+
+const DIRS = { N: [0, -1], NE: [.7071, -.7071], E: [1, 0], SE: [.7071, .7071], S: [0, 1], SV: [-.7071, .7071], V: [-1, 0], NV: [-.7071, -.7071] };
+const DIRN = { N: 'Nord', NE: 'Nord-Est', E: 'Est', SE: 'Sud-Est', S: 'Sud', SV: 'Sud-Vest', V: 'Vest', NV: 'Nord-Vest' };
+function gy(x, z) { const t = S.terrain, k = t.slope / 100, d = DIRS[t.dir] || DIRS.S; return -k * (x * d[0] + z * d[1]); }
+
+/* ───────────────────────── Texturi ───────────────────────── */
+function speckle(g, s, n, a, seed = 9) { const r = rng(seed); for (let i = 0; i < n; i++) { const v = r() < .5 ? 0 : 255; g.fillStyle = `rgba(${v},${v},${v},${a * r()})`; g.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } }
+function shade(hex, f) { return new THREE.Color(hex).offsetHSL(0, 0, f).getStyle(); }
+const DRAW = {
+  grass(g, s) { g.fillStyle = '#5c8a3c'; g.fillRect(0, 0, s, s); const r = rng(1); for (let i = 0; i < 14000; i++) { g.fillStyle = `hsl(${80 + r() * 30},${38 + r() * 25}%,${26 + r() * 24}%)`; g.fillRect(r() * s, r() * s, 1.5, 2 + r() * 4); } },
+  gravel(g, s) { g.fillStyle = '#9c958a'; g.fillRect(0, 0, s, s); const r = rng(3); for (let i = 0; i < 9000; i++) { const v = 140 + r() * 90 | 0, t = r() * 20 - 10; g.fillStyle = `rgb(${v + t | 0},${v},${v - t - 8 | 0})`; g.beginPath(); g.ellipse(r() * s, r() * s, 1.5 + r() * 3, 1.2 + r() * 2.5, r() * 3, 0, 7); g.fill(); } },
+  soil(g, s) { g.fillStyle = '#5a4030'; g.fillRect(0, 0, s, s); const r = rng(4); for (let i = 0; i < 9000; i++) { g.fillStyle = `hsl(${20 + r() * 15},${30 + r() * 20}%,${15 + r() * 22}%)`; g.fillRect(r() * s, r() * s, 1 + r() * 3, 1 + r() * 3); } },
+  hedge(g, s) { g.fillStyle = '#2d5626'; g.fillRect(0, 0, s, s); const r = rng(6); for (let i = 0; i < 5000; i++) { g.fillStyle = `hsl(${95 + r() * 25},${35 + r() * 25}%,${16 + r() * 22}%)`; g.beginPath(); g.ellipse(r() * s, r() * s, 2 + r() * 4, 1.5 + r() * 3, r() * 3, 0, 7); g.fill(); } },
+  plaster(g, s) { g.fillStyle = '#f2f2f2'; g.fillRect(0, 0, s, s); speckle(g, s, 16000, .07, 11); },
+  tiles(g, s) { g.fillStyle = '#e8e8e8'; g.fillRect(0, 0, s, s); const rows = 3, rh = s / rows, r = rng(12);
+    for (let i = 0; i < rows; i++) { const gr = g.createLinearGradient(0, i * rh, 0, (i + 1) * rh); gr.addColorStop(0, '#9c9c9c'); gr.addColorStop(.18, '#f4f4f4'); gr.addColorStop(1, '#c9c9c9'); g.fillStyle = gr; g.fillRect(0, i * rh, s, rh);
+      const n = 5, off = (i % 2) * s / n / 2; g.fillStyle = 'rgba(0,0,0,.25)'; for (let k = 0; k <= n; k++) g.fillRect(k * s / n + off, i * rh, 2, rh); }
+    speckle(g, s, 4000, .1, 13); },
+  brick(g, s) { g.fillStyle = '#cfc7bb'; g.fillRect(0, 0, s, s); const bw = s / 4, bh = s / 15, r = rng(14);
+    for (let row = 0; row < 15; row++) { const off = (row % 2) * bw / 2; for (let c = -1; c < 5; c++) { g.fillStyle = shade('#9b4a35', (r() - .5) * .12); g.fillRect(c * bw + off + 2, row * bh + 2, bw - 4, bh - 3); } }
+    speckle(g, s, 5000, .12, 15); },
+  cobble(g, s) { g.fillStyle = '#4b4844'; g.fillRect(0, 0, s, s); const n = 10, c = s / n, r = rng(16);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { g.fillStyle = shade('#7f7c78', (r() - .5) * .16); const jx = (r() - .5) * 4, jy = (r() - .5) * 4; g.beginPath(); g.roundRect(i * c + 3 + jx, j * c + 3 + jy, c - 6, c - 6, 9); g.fill(); }
+    speckle(g, s, 6000, .15, 17); },
+  planks(g, s) { const n = 10, ph = s / n, r = rng(18);
+    for (let i = 0; i < n; i++) { g.fillStyle = shade('#9a6b43', (r() - .5) * .1); g.fillRect(0, i * ph, s, ph);
+      for (let k = 0; k < 14; k++) { g.fillStyle = `rgba(60,35,15,${.1 + r() * .15})`; g.fillRect(0, i * ph + r() * ph, s, 1); }
+      g.fillStyle = '#3b2716'; g.fillRect(0, i * ph, s, 3); g.fillRect(r() * s, i * ph, 3, ph); } },
+  granite(g, s) { g.fillStyle = '#8f8d8a'; g.fillRect(0, 0, s, s); const r = rng(19); for (let i = 0; i < 20000; i++) { const t = r(); g.fillStyle = t < .4 ? 'rgba(30,30,30,.5)' : t < .75 ? 'rgba(235,235,235,.45)' : 'rgba(170,120,110,.4)'; g.fillRect(r() * s, r() * s, 2, 2); } },
+};
+const pavers = cols => (g, s) => { g.fillStyle = '#57544f'; g.fillRect(0, 0, s, s); const r = rng(5), bw = s / 5, bh = s / 10;
+  for (let row = 0; row < 10; row++) { const off = (row % 2) * bw / 2; for (let c = -1; c < 6; c++) { g.fillStyle = cols[r() * cols.length | 0]; g.fillRect(c * bw + off + 2, row * bh + 2, bw - 4, bh - 4); } }
+  speckle(g, s, 7000, .14, 21); };
+const slabs = (n, base, j) => (g, s) => { g.fillStyle = j; g.fillRect(0, 0, s, s); const c = s / n, r = rng(22);
+  for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) { g.fillStyle = shade(base, (r() - .5) * .08); g.fillRect(i * c + 2, k * c + 2, c - 4, c - 4); }
+  speckle(g, s, 9000, .1, 23); };
+const concrete = base => (g, s) => { g.fillStyle = base; g.fillRect(0, 0, s, s); speckle(g, s, 22000, .09, 24); g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(0, 0, s, 3); g.fillRect(0, 0, 3, s); };
+const fenceTex = kind => (g, s) => { g.clearRect(0, 0, s, s); const r = rng(25);
+  if (kind === 'lemn') { const n = 8, sw = s / n; for (let i = 0; i < n; i++) { g.fillStyle = shade('#8a5f3a', (r() - .5) * .1); g.fillRect(i * sw + 2, 0, sw * .72, s); for (let k = 0; k < 6; k++) { g.fillStyle = 'rgba(50,30,10,.2)'; g.fillRect(i * sw + 2 + r() * sw * .7, 0, 1, s); } } }
+  else if (kind === 'metal') { g.fillStyle = '#2e3236'; for (let i = 0; i < 9; i++) g.fillRect(i * s / 9 + 4, 0, 6, s); g.fillRect(0, 10, s, 8); g.fillRect(0, s - 18, s, 8); }
+  else { g.strokeStyle = '#41704a'; g.lineWidth = 2.2; const st = s / 12; g.beginPath(); for (let i = -12; i <= 24; i++) { g.moveTo(i * st, 0); g.lineTo(i * st + s, s); g.moveTo(i * st, 0); g.lineTo(i * st - s, s); } g.stroke(); g.fillStyle = '#41704a'; g.fillRect(0, 0, s, 4); g.fillRect(0, s - 4, s, 4); } };
+
+const MATS = {
+  pietris: { l: 'Pietriș', size: 1, draw: DRAW.gravel },
+  pavele: { l: 'Pavele gri', size: 1, draw: pavers(['#9b9890', '#8f8c86', '#a6a29a', '#96938c']) },
+  pavele_rosu: { l: 'Pavele roșii', size: 1, draw: pavers(['#9a5a48', '#8b4f3f', '#a86552', '#86503f']) },
+  pavele_bej: { l: 'Pavele bej', size: 1, draw: pavers(['#c9b99a', '#bba989', '#d4c4a6', '#c2b08f']) },
+  dale: { l: 'Dale 40×40', size: 1.2, draw: slabs(3, '#b3aea4', '#7a766e') },
+  gresie: { l: 'Gresie 60×60', size: 1.2, draw: slabs(2, '#d6cfc3', '#9a958c') },
+  beton: { l: 'Beton', size: 2, draw: concrete('#a4a19b') },
+  piatra: { l: 'Piatră cubică', size: 1, draw: DRAW.cobble },
+  lemn: { l: 'Deck lemn', size: 1.4, draw: DRAW.planks },
+  pamant: { l: 'Pământ', size: 1.5, draw: DRAW.soil },
+  granit: { l: 'Granit', size: 1, draw: DRAW.granite },
+  beton_alb: { l: 'Beton deschis', size: 1, draw: concrete('#c6c3bc') },
+  iarba: { l: 'Iarbă', size: 2, draw: DRAW.grass },
+  hedge: { size: 1, draw: DRAW.hedge }, caramida: { size: 1, draw: DRAW.brick }, tencuiala: { size: 2, draw: DRAW.plaster }, tigla: { size: 1, draw: DRAW.tiles },
+  f_lemn: { size: 1, draw: fenceTex('lemn'), px: 256 }, f_metal: { size: 1, draw: fenceTex('metal'), px: 256 }, f_plasa: { size: 1, draw: fenceTex('plasa'), px: 256 },
+};
+const texCache = {};
+function tex(name) {
+  if (texCache[name]) return texCache[name];
+  const d = MATS[name], s = d.px || 512, c = document.createElement('canvas'); c.width = c.height = s;
+  d.draw(c.getContext('2d'), s);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return texCache[name] = t;
+}
+const matCache = {};
+const M = (key, o) => matCache[key] || (matCache[key] = new THREE.MeshStandardMaterial(Object.assign({ roughness: .88, side: THREE.DoubleSide }, o)));
+const texMat = (name, extra = {}) => M('t:' + name + JSON.stringify(extra), Object.assign({ map: tex(name) }, extra));
+const colMat = (hex, extra = {}) => M('c:' + hex + JSON.stringify(extra), Object.assign({ color: hex }, extra));
+const leafMat = hex => M('l:' + hex, { color: hex, flatShading: true, roughness: .9 });
+const fenceMat = k => M('f:' + k, { map: tex('f_' + k), alphaTest: .5, roughness: .7, metalness: k === 'metal' ? .4 : 0 });
+
+/* ───────────────────────── Geometrie ───────────────────────── */
+class GB {
+  constructor() { this.p = []; this.uv = []; }
+  tri(a, b, c) { for (const v of [a, b, c]) { this.p.push(v[0], v[1], v[2]); this.uv.push(v[3], v[4]); } }
+  quad(a, b, c, d) { this.tri(a, b, c); this.tri(a, c, d); }
+  geom() { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); g.computeVertexNormals(); return g; }
+}
+function offsets(pts, hw, closed) {
+  const n = pts.length, L = [], R = [];
+  for (let i = 0; i < n; i++) {
+    const p = pts[i], prev = i > 0 ? pts[i - 1] : (closed ? pts[n - 1] : null), next = i < n - 1 ? pts[i + 1] : (closed ? pts[0] : null);
+    let n1 = null, n2 = null;
+    if (prev) { const dx = p.x - prev.x, dz = p.z - prev.z, l = Math.hypot(dx, dz) || 1; n1 = [-dz / l, dx / l]; }
+    if (next) { const dx = next.x - p.x, dz = next.z - p.z, l = Math.hypot(dx, dz) || 1; n2 = [-dz / l, dx / l]; }
+    let m = n1 || n2 || [0, 1], sc = 1;
+    if (n1 && n2) { const mx = n1[0] + n2[0], mz = n1[1] + n2[1], ml = Math.hypot(mx, mz); if (ml > 1e-6) { m = [mx / ml, mz / ml]; sc = 1 / Math.max(.3, m[0] * n1[0] + m[1] * n1[1]); } }
+    L.push({ x: p.x + m[0] * hw * sc, z: p.z + m[1] * hw * sc }); R.push({ x: p.x - m[0] * hw * sc, z: p.z - m[1] * hw * sc });
+  }
+  return { L, R };
+}
+// bandă care urmărește terenul (alee, bordură, gard...), coordonate în lume
+function ribbon(pts, width, b, t, size, opt = {}) {
+  const closed = !!opt.closed, fit = !!opt.fit, per = opt.period || size, n = pts.length;
+  const { L, R } = offsets(pts, width / 2, closed), gb = new GB(), seg = closed ? n : n - 1;
+  const top = q => [q.x, gy(q.x, q.z) + t, q.z, q.x / size, q.z / size];
+  const vb = (q, d) => [q.x, gy(q.x, q.z) + b, q.z, d / per, fit ? 0 : b / size];
+  const vt = (q, d) => [q.x, gy(q.x, q.z) + t, q.z, d / per, fit ? 1 : t / size];
+  let dist = 0;
+  for (let s = 0; s < seg; s++) {
+    const i = s, j = (s + 1) % n, len = Math.hypot(pts[j].x - pts[i].x, pts[j].z - pts[i].z);
+    gb.quad(top(L[i]), top(L[j]), top(R[j]), top(R[i]));
+    gb.quad(vb(L[i], dist), vb(L[j], dist + len), vt(L[j], dist + len), vt(L[i], dist));
+    gb.quad(vb(R[i], dist), vb(R[j], dist + len), vt(R[j], dist + len), vt(R[i], dist));
+    dist += len;
+  }
+  if (!closed) for (const k of [0, n - 1]) gb.quad(vb(L[k], 0), vb(R[k], width), vt(R[k], width), vt(L[k], 0));
+  return gb.geom();
+}
+function slab(pts, b, t, size) {
+  const gb = new GB(), tris = THREE.ShapeUtils.triangulateShape(pts.map(p => new THREE.Vector2(p.x, p.z)), []);
+  const v = (p, o) => [p.x, gy(p.x, p.z) + o, p.z, p.x / size, p.z / size];
+  for (const [a, c, d] of tris) gb.tri(v(pts[a], t), v(pts[c], t), v(pts[d], t));
+  let dist = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length], len = Math.hypot(q.x - p.x, q.z - p.z);
+    const w = (r, o, d) => [r.x, gy(r.x, r.z) + o, r.z, d / size, o / size];
+    gb.quad(w(p, b, dist), w(q, b, dist + len), w(q, t, dist + len), w(p, t, dist)); dist += len;
+  }
+  return gb.geom();
+}
+function boxW(w, h, d, size = 1) { // cutie cu UV la scară reală
+  const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) { const i = f * 4 + k; uv.setXY(i, uv.getX(i) * dims[f][0] / size, uv.getY(i) * dims[f][1] / size); }
+  return g;
+}
+const shared = g => (g.userData.shared = true, g);
+const ICO = shared(new THREE.IcosahedronGeometry(1, 1)), ICO0 = shared(new THREE.IcosahedronGeometry(1, 0));
+const CYL = shared(new THREE.CylinderGeometry(.7, 1, 1, 7)), CONE = shared(new THREE.ConeGeometry(1, 1, 8)), BOX = shared(new THREE.BoxGeometry(1, 1, 1));
+const SPH = shared(new THREE.SphereGeometry(1, 16, 12));
+function mesh(geo, mat, cast = true, recv = true) { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = recv; return m; }
+function part(geo, mat, x, y, z, sx, sy = sx, sz = sx) { const m = mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); return m; }
+function rectCorners(it, pad = 0) {
+  const t = (it.rot || 0) * D2R, c = Math.cos(t), s = Math.sin(t), hw = it.w / 2 + pad, hd = it.d / 2 + pad;
+  return [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([lx, lz]) => ({ x: it.x + lx * c + lz * s, z: it.z - lx * s + lz * c }));
+}
+const toWorld = (it, lx, lz) => { const t = (it.rot || 0) * D2R, c = Math.cos(t), s = Math.sin(t); return { x: it.x + lx * c + lz * s, z: it.z - lx * s + lz * c }; };
+function polyArea(p) { let a = 0; for (let i = 0; i < p.length; i++) { const q = p[(i + 1) % p.length]; a += p[i].x * q.z - q.x * p[i].z; } return Math.abs(a) / 2; }
+function polyLen(p, closed) { let l = 0; for (let i = 0; i < p.length - (closed ? 0 : 1); i++) { const q = p[(i + 1) % p.length]; l += Math.hypot(q.x - p[i].x, q.z - p[i].z); } return l; }
+function inPoly(x, z, p) { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { if ((p[i].z > z) !== (p[j].z > z) && x < (p[j].x - p[i].x) * (z - p[i].z) / (p[j].z - p[i].z) + p[i].x) c = !c; } return c; }
+
+/* ───────────────────────── Tipuri de obiecte ───────────────────────── */
+const n = (k, l, min, max, step, u = 'm') => ({ k, l, t: 'num', min, max, step, u });
+const sl = (k, l, opts, wide) => ({ k, l, t: 'sel', opts, wide });
+const co = (k, l) => ({ k, l, t: 'col' });
+const ck = (k, l) => ({ k, l, t: 'chk' });
+const matOpts = keys => keys.map(k => [k, MATS[k].l]);
+
+const TYPES = {
+  house: { l: 'Casă', ic: '🏠', kind: 'rect', def: { w: 11, d: 9, rot: 0, floors: 1, floorH: 2.9, roof: 'doua', pitch: 35, wall: '#ece6d8', roofc: '#9a4430', plinth: '#6f6b66', win: true },
+    f: [n('w', 'Lățime', 2, 60, .1), n('d', 'Adâncime', 2, 60, .1), n('rot', 'Rotire', -180, 180, 1, '°'), n('floors', 'Niveluri', 1, 5, 1, ''), n('floorH', 'Înălțime nivel', 2.2, 5, .1),
+      sl('roof', 'Acoperiș', [['doua', 'În două ape'], ['patru', 'În patru ape'], ['una', 'Într-o apă'], ['plat', 'Terasă (plat)']]), n('pitch', 'Pantă acoperiș', 3, 60, 1, '°'),
+      co('wall', 'Pereți'), co('roofc', 'Acoperiș'), co('plinth', 'Soclu'), ck('win', 'Ferestre și ușă')] },
+  gazebo: { l: 'Foișor', ic: '🛖', kind: 'point', def: { s: 3.5, rot: 0, roofc: '#6b3b25' }, f: [n('s', 'Latură', 2, 8, .1), n('rot', 'Rotire', -180, 180, 1, '°'), co('roofc', 'Acoperiș')] },
+  pool: { l: 'Piscină', ic: '🏊', kind: 'rect', def: { w: 7, d: 3.5, rot: 0 }, f: [n('w', 'Lungime', 1.5, 25, .1), n('d', 'Lățime', 1, 15, .1), n('rot', 'Rotire', -180, 180, 1, '°')] },
+  path: { l: 'Alee', ic: '〰️', kind: 'line', def: { w: 1.2, mat: 'dale' }, f: [n('w', 'Lățime', .3, 8, .05), sl('mat', 'Material', matOpts(['pietris', 'dale', 'pavele', 'pavele_rosu', 'pavele_bej', 'piatra', 'beton', 'lemn', 'pamant']))] },
+  paving: { l: 'Pavaj', ic: '🧱', kind: 'poly', def: { mat: 'pavele' }, f: [sl('mat', 'Material', matOpts(['pavele', 'pavele_rosu', 'pavele_bej', 'dale', 'gresie', 'piatra', 'beton', 'lemn', 'pietris', 'granit']), true)] },
+  curb: { l: 'Bordură', ic: '▬', kind: 'line', def: { h: .12, w: .1, mat: 'beton_alb' }, f: [n('h', 'Înălțime peste teren', 0, .6, .01), n('w', 'Lățime', .05, .4, .01), sl('mat', 'Material', matOpts(['beton_alb', 'beton', 'granit']), true)] },
+  sidewalk: { l: 'Trotuar', ic: '🚶', kind: 'line', def: { w: 1.5, h: .12, mat: 'dale', curb: 'dreapta' }, f: [n('w', 'Lățime', .5, 6, .05), n('h', 'Înălțime', 0, .4, .01), sl('mat', 'Material', matOpts(['dale', 'pavele', 'pavele_rosu', 'beton', 'gresie'])), sl('curb', 'Bordură', [['nu', 'Fără'], ['stanga', 'Stânga'], ['dreapta', 'Dreapta'], ['ambele', 'Ambele părți']])] },
+  fence: { l: 'Gard', ic: '🚧', kind: 'line', def: { sp: 'metal', h: 1.8 }, f: [sl('sp', 'Tip', [['metal', 'Metalic pe soclu'], ['lemn', 'Lemn (șipci)'], ['plasa', 'Plasă de sârmă'], ['zid', 'Zid de cărămidă']]), n('h', 'Înălțime', .4, 4, .05)] },
+  tree: { l: 'Copac', ic: '🌳', kind: 'point', def: { sp: 'foios', h: 7, cr: 5 },
+    f: [sl('sp', 'Specie', [['foios', 'Foios (tei, nuc)'], ['artar', 'Arțar toamna'], ['fructifer', 'Pom fructifer'], ['mesteacan', 'Mesteacăn'], ['conifer', 'Molid / brad'], ['tuia', 'Tuia'], ['salcie', 'Salcie']], true), n('h', 'Înălțime', .5, 35, .1), n('cr', 'Diametru coroană', .3, 20, .1)] },
+  plant: { l: 'Plantă', ic: '🌿', kind: 'point', def: { sp: 'tufa', s: 1, col: '#d6335a' },
+    f: [sl('sp', 'Plantă', [['tufa', 'Tufă'], ['buxus', 'Buxus (sferă)'], ['trandafir', 'Trandafir'], ['hortensie', 'Hortensie'], ['lavanda', 'Lavandă'], ['iarba', 'Iarbă ornamentală'], ['flori', 'Flori']], true), n('s', 'Mărime', .2, 4, .05), co('col', 'Culoare flori')] },
+  bed: { l: 'Strat flori', ic: '🌷', kind: 'poly', def: { col: 'mix', dens: 14 }, f: [sl('col', 'Flori', [['mix', 'Amestec'], ['#d6335a', 'Roșii'], ['#f2c12e', 'Galbene'], ['#9b6fd1', 'Mov'], ['#f4f1ea', 'Albe'], ['#f28cb8', 'Roz']]), n('dens', 'Densitate', 1, 40, 1, '/m²')] },
+  hedge: { l: 'Gard viu', ic: '🌲', kind: 'line', def: { h: 1.6, w: .7 }, f: [n('h', 'Înălțime', .3, 5, .05), n('w', 'Grosime', .2, 3, .05)] },
+  bench: { l: 'Bancă', ic: '🪑', kind: 'point', def: { rot: 0 }, f: [n('rot', 'Rotire', -180, 180, 1, '°')] },
+  lamp: { l: 'Lampă', ic: '💡', kind: 'point', def: { h: .9 }, f: [n('h', 'Înălțime', .3, 5, .05)] },
+};
+const DEF = {}; for (const k in TYPES) DEF[k] = clone(TYPES[k].def);
+const TOOLS = [['select', '👆', 'Selectează'], 'Construcții', 'house', 'gazebo', 'pool', 'Amenajări', 'path', 'paving', 'curb', 'sidewalk', 'fence', 'Vegetație', 'tree', 'plant', 'bed', 'hedge', 'Diverse', 'bench', 'lamp'];
+const TERRAIN_F = [n('w', 'Lățime (Est–Vest)', 4, 400, .1), n('d', 'Lungime (Nord–Sud)', 4, 400, .1), n('slope', 'Pantă', 0, 60, .5, '%'),
+  sl('dir', 'Coboară spre', Object.entries(DIRN)), n('ext', 'Teren în jur', 0, 100, 1)];
+
+/* ───────────────────────── Constructori 3D ───────────────────────── */
+const BUILD = {
+  house(it) {
+    const g = new THREE.Group(), cs = rectCorners(it, .05), hs = cs.map(p => gy(p.x, p.z));
+    const top = Math.max(...hs), low = Math.min(...hs), fy = top + .2, w = it.w, d = it.d, Ht = it.floors * it.floorH;
+    g.position.set(it.x, fy, it.z); g.rotation.y = (it.rot || 0) * D2R;
+    const ph = fy - low + .3; g.add(part(boxW(w + .1, ph, d + .1, 2), colMat(it.plinth || '#6f6b66'), 0, -ph / 2, 0, 1));
+    const wm = M('w:' + it.wall, { map: tex('tencuiala'), color: it.wall });
+    g.add(part(boxW(w, Ht, d, 2), wm, 0, Ht / 2, 0, 1));
+    const band = colMat(shade(it.wall, -.08));
+    for (let f = 1; f < it.floors; f++) g.add(part(BOX, band, 0, f * it.floorH - .08, 0, w + .08, .16, d + .08));
+    if (it.win) {
+      const frame = colMat('#f6f6f4'), glass = M('glass', { color: '#2b4660', roughness: .08, metalness: .35 }), door = colMat('#6b4a2f');
+      const sides = [{ len: w, at: t => [t, d / 2], ry: 0, front: true }, { len: w, at: t => [t, -d / 2], ry: 0 }, { len: d, at: t => [w / 2, t], ry: Math.PI / 2 }, { len: d, at: t => [-w / 2, t], ry: Math.PI / 2 }];
+      for (let f = 0; f < it.floors; f++) for (const sd of sides) {
+        if (sd.len < 1.8) continue;
+        const cnt = Math.max(1, Math.floor(sd.len / 3.2));
+        for (let k = 0; k < cnt; k++) {
+          const t = -sd.len / 2 + sd.len * (k + .5) / cnt, [px, pz] = sd.at(t), isDoor = sd.front && f === 0 && k === Math.floor(cnt / 2);
+          const add = (geoW, geoH, y, mat, th) => { const m = part(BOX, mat, px, y, pz, geoW, geoH, th); m.rotation.y = sd.ry; g.add(m); };
+          if (isDoor) { add(1.25, 2.35, 1.17, frame, .1); add(1.05, 2.2, 1.1, door, .14); const c = part(BOX, colMat('#4d4a46'), px, 2.55, pz + .45, 1.8, .08, .9); g.add(c); }
+          else { const y = f * it.floorH + 1.55; add(1.32, 1.47, y, frame, .1); add(1.14, 1.29, y, glass, .13); }
+        }
+      }
+    }
+    const rg = roofGroup(it); rg.position.y = Ht; g.add(rg);
+    return g;
+  },
+  gazebo(it) {
+    const g = new THREE.Group(), s = it.s, cs = rectCorners({ x: it.x, z: it.z, w: s, d: s, rot: it.rot }), hs = cs.map(p => gy(p.x, p.z));
+    const fy = Math.max(...hs) + .15, low = Math.min(...hs);
+    g.position.set(it.x, fy, it.z); g.rotation.y = (it.rot || 0) * D2R;
+    const wood = colMat('#8a5f3a'), dark = colMat('#5a3d26');
+    const fh = fy - low + .1; g.add(part(boxW(s, fh, s, 1.4), texMat('lemn'), 0, -fh / 2, 0, 1));
+    for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) g.add(part(BOX, dark, sx * (s / 2 - .12), 1.25, sz * (s / 2 - .12), .14, 2.5, .14));
+    for (const [sx, sz, rx] of [[0, 1, 0], [0, -1, 0], [1, 0, 1], [-1, 0, 1]]) { const m = part(BOX, wood, sx * (s / 2 - .12), .9, sz * (s / 2 - .12), rx ? .06 : s - .3, .08, rx ? s - .3 : .06); if (sz !== 1) g.add(m); }
+    const roof = part(new THREE.ConeGeometry(s * .82, s * .42, 4), colMat(it.roofc), 0, 2.5 + s * .21, 0, 1); roof.rotation.y = Math.PI / 4; g.add(roof);
+    g.add(part(BOX, dark, 0, 2.5, 0, s, .12, s));
+    return g;
+  },
+  pool(it) {
+    const g = new THREE.Group(), cs = rectCorners(it, .3), hs = cs.map(p => gy(p.x, p.z)), top = Math.max(...hs) + .25, low = Math.min(...hs) - .1;
+    g.position.set(it.x, top, it.z); g.rotation.y = (it.rot || 0) * D2R;
+    const hh = top - low, st = texMat('gresie'), w = it.w, d = it.d;
+    for (const sz of [1, -1]) g.add(part(boxW(w + .6, hh, .3, 1.2), st, 0, -hh / 2, sz * (d / 2 + .15), 1));
+    for (const sx of [1, -1]) g.add(part(boxW(.3, hh, d, 1.2), st, sx * (w / 2 + .15), -hh / 2, 0, 1));
+    const water = mesh(new THREE.PlaneGeometry(w, d), M('water', { color: '#2b9fd8', roughness: .06, metalness: .15, transparent: true, opacity: .9 }), false, true);
+    water.rotation.x = -Math.PI / 2; water.position.y = -.1; g.add(water);
+    const inner = mesh(new THREE.BoxGeometry(w, hh, d), M('poolin', { color: '#7fcbe6', side: THREE.BackSide }), false, false); inner.position.y = -hh / 2 - .1; g.add(inner);
+    return g;
+  },
+  path(it) { const g = new THREE.Group(); g.add(mesh(ribbon(it.pts, it.w, -.06, .03, MATS[it.mat].size), texMat(it.mat), false, true)); return g; },
+  paving(it) { const g = new THREE.Group(); g.add(mesh(slab(it.pts, -.06, .045, MATS[it.mat].size), texMat(it.mat), false, true)); return g; },
+  curb(it) { const g = new THREE.Group(); g.add(mesh(ribbon(it.pts, it.w, -.2, it.h, MATS[it.mat].size), texMat(it.mat))); return g; },
+  sidewalk(it) {
+    const g = new THREE.Group(); g.add(mesh(ribbon(it.pts, it.w, -.08, it.h, MATS[it.mat].size), texMat(it.mat), false, true));
+    if (it.curb !== 'nu') { const { L, R } = offsets(it.pts, it.w / 2 + .05, false);
+      // „stânga” = partea din stânga sensului de desenare
+      if (it.curb === 'stanga' || it.curb === 'ambele') g.add(mesh(ribbon(R, .1, -.25, it.h + .03, 1), texMat('beton_alb')));
+      if (it.curb === 'dreapta' || it.curb === 'ambele') g.add(mesh(ribbon(L, .1, -.25, it.h + .03, 1), texMat('beton_alb'))); }
+    return g;
+  },
+  fence(it) {
+    const g = new THREE.Group(), pts = it.pts, h = it.h;
+    if (it.sp === 'zid') { g.add(mesh(ribbon(pts, .25, -.2, h, 1), texMat('caramida'))); g.add(mesh(ribbon(pts, .32, h, h + .06, 1), texMat('beton_alb'))); return g; }
+    const base = it.sp === 'metal' ? .4 : 0;
+    if (base) g.add(mesh(ribbon(pts, .2, -.2, base, 1), texMat('beton_alb')));
+    g.add(mesh(ribbon(pts, .025, base, h, 1, { fit: true, period: 1 }), fenceMat(it.sp)));
+    const pc = colMat({ lemn: '#5a3d26', metal: '#2d3135', plasa: '#3f6b46' }[it.sp]), ps = it.sp === 'lemn' ? .09 : .06;
+    const post = (x, z) => g.add(part(BOX, pc, x, gy(x, z) + (base + h + .08) / 2, z, ps, h - base + .08, ps));
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], len = Math.hypot(b.x - a.x, b.z - a.z), k = Math.max(1, Math.ceil(len / 2.5));
+      for (let j = 0; j < k; j++) { const t = j / k; post(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t); }
+    }
+    const e = pts[pts.length - 1]; post(e.x, e.z);
+    return g;
+  },
+  hedge(it) { const g = new THREE.Group(); g.add(mesh(ribbon(it.pts, it.w, -.1, it.h, 1), texMat('hedge', { roughness: 1 }))); return g; },
+  bed(it) {
+    const g = new THREE.Group(), pts = it.pts; g.add(mesh(slab(pts, -.05, .09, 1.5), texMat('pamant'), false, true));
+    const area = polyArea(pts), cnt = Math.min(2500, Math.round(area * it.dens)), r = rng(it.id * 31 + 7);
+    const xs = pts.map(p => p.x), zs = pts.map(p => p.z), x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+    const fl = new THREE.InstancedMesh(ICO0, M('flower', { color: '#ffffff', flatShading: true }), cnt), lv = new THREE.InstancedMesh(ICO0, leafMat('#3f7a2e'), cnt);
+    fl.castShadow = lv.castShadow = true; const m4 = new THREE.Matrix4(), col = new THREE.Color(), pal = ['#d6335a', '#f2c12e', '#9b6fd1', '#f4f1ea', '#f28cb8', '#ff7a2f'];
+    let k = 0;
+    for (let tries = 0; k < cnt && tries < cnt * 20; tries++) {
+      const x = x0 + r() * (x1 - x0), z = z0 + r() * (z1 - z0); if (!inPoly(x, z, pts)) continue;
+      const y = gy(x, z) + .09, s = .7 + r() * .6;
+      m4.compose(new THREE.Vector3(x, y + .22 * s, z), new THREE.Quaternion(), new THREE.Vector3(.07 * s, .06 * s, .07 * s)); fl.setMatrixAt(k, m4);
+      fl.setColorAt(k, col.set(it.col === 'mix' ? pal[r() * pal.length | 0] : it.col).offsetHSL(0, 0, (r() - .5) * .1));
+      m4.compose(new THREE.Vector3(x, y + .08 * s, z), new THREE.Quaternion(), new THREE.Vector3(.13 * s, .12 * s, .13 * s)); lv.setMatrixAt(k, m4); k++;
+    }
+    fl.count = lv.count = k; g.add(lv, fl); return g;
+  },
+  tree(it) {
+    const g = new THREE.Group(), r = rng(it.id * 7919 + 13), h = it.h, rx = it.cr / 2; g.position.set(it.x, gy(it.x, it.z), it.z);
+    const bark = colMat(it.sp === 'mesteacan' ? '#e9e5dc' : '#5b4232'), pick = a => leafMat(a[r() * a.length | 0]);
+    const trunk = (th, tr) => g.add(part(CYL, bark, 0, th / 2, 0, tr, th, tr));
+    const blobs = (cy, ry, rx2, cols, num) => { g.add(part(ICO, pick(cols), 0, cy, 0, rx2 * .78, ry * .82, rx2 * .78));
+      for (let k = 0; k < num; k++) { const a = k / num * Math.PI * 2 + r(), dd = rx2 * (.35 + r() * .2); g.add(part(ICO, pick(cols), Math.cos(a) * dd, cy + (r() - .4) * ry * .6, Math.sin(a) * dd, rx2 * (.42 + r() * .18), ry * (.5 + r() * .15), rx2 * (.42 + r() * .18))); } };
+    const tr = .05 + h * .016;
+    switch (it.sp) {
+      case 'conifer': { const th = h * .14; trunk(th + h * .3, tr); const ch = h - th; for (let k = 0; k < 4; k++) { const f = k / 4, hh = ch * .42; g.add(part(CONE, pick(['#244a2c', '#2b5533']), 0, th + f * ch * .6 + hh / 2, 0, rx * (1 - f * .72), hh, rx * (1 - f * .72))); } break; }
+      case 'tuia': trunk(.3, tr * .7); g.add(part(ICO, pick(['#2f5d2c', '#356630']), 0, h * .48 + .1, 0, rx, h * .48, rx)); g.add(part(ICO, pick(['#2f5d2c']), 0, h * .8, 0, rx * .6, h * .22, rx * .6)); break;
+      case 'mesteacan': { const th = h * .45; trunk(h * .8, tr * .7); blobs(th + (h - th) / 2, (h - th) / 2, rx * .85, ['#7aa548', '#86b04f', '#6f9a42'], 4); break; }
+      case 'salcie': { const th = h * .35; trunk(th + 1, tr * 1.2); blobs(th + (h - th) * .5, (h - th) * .55, rx, ['#8aa84e', '#7c9b45', '#93b257'], 6);
+        for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + r() * .3, d = rx * (.75 + r() * .2), hh = (h - th) * (.55 + r() * .25); g.add(part(CONE, leafMat(k % 2 ? '#7c9b45' : '#8aa84e'), Math.cos(a) * d, th + (h - th) * .62 - hh / 2, Math.sin(a) * d, rx * .12, -hh, rx * .12)); } break; }
+      case 'artar': { const th = h * .38; trunk(th + (h - th) * .3, tr); blobs(th + (h - th) / 2, (h - th) / 2, rx, ['#d9641e', '#e58a1f', '#c9441b', '#e9b02a'], 5); break; }
+      case 'fructifer': { const th = h * .33; trunk(th + (h - th) * .3, tr); const cy = th + (h - th) / 2, ry = (h - th) / 2; blobs(cy, ry, rx, ['#4f8a34', '#5b9439'], 5);
+        const fr = colMat('#c8302b', { roughness: .5 }); for (let k = 0; k < 16; k++) { const a = r() * Math.PI * 2, e = (r() - .3) * 1.2; g.add(part(SPH, fr, Math.cos(a) * Math.cos(e) * rx * .9, cy + Math.sin(e) * ry * .85, Math.sin(a) * Math.cos(e) * rx * .9, .07)); } break; }
+      default: { const th = h * .38; trunk(th + (h - th) * .3, tr); blobs(th + (h - th) / 2, (h - th) / 2, rx, ['#4f7d2f', '#5a8a34', '#47722b'], 5); }
+    }
+    return g;
+  },
+  plant(it) {
+    const g = new THREE.Group(), r = rng(it.id * 104729 + 3), s = it.s; g.position.set(it.x, gy(it.x, it.z), it.z);
+    const greens = ['#4b7f31', '#568c38', '#3f7029'], pick = a => leafMat(a[r() * a.length | 0]), fc = colMat(it.col, { roughness: .6 });
+    const bush = (sc, cols = greens) => { for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + r(), d = k ? s * .22 * sc : 0; g.add(part(ICO, pick(cols), Math.cos(a) * d, s * .32 * sc, Math.sin(a) * d, s * (.26 + r() * .1) * sc, s * (.24 + r() * .08) * sc, s * (.26 + r() * .1) * sc)); } };
+    const dots = (num, y0, sz, rad) => { for (let k = 0; k < num; k++) { const a = r() * Math.PI * 2, e = r() * 1.2; g.add(part(ICO0, fc, Math.cos(a) * Math.cos(e) * rad, y0 + Math.sin(e) * rad * .7, Math.sin(a) * Math.cos(e) * rad, sz)); } };
+    switch (it.sp) {
+      case 'buxus': g.add(part(ICO, leafMat('#2e5a2a'), 0, s * .48, 0, s / 2)); break;
+      case 'trandafir': bush(.8); dots(14, s * .3, s * .055, s * .34); break;
+      case 'hortensie': bush(.9); dots(9, s * .32, s * .11, s * .36); break;
+      case 'lavanda': { g.add(part(ICO, leafMat('#7d9a6a'), 0, s * .15, 0, s * .4, s * .15, s * .4)); const lm = leafMat('#8f7cc4');
+        for (let k = 0; k < 22; k++) { const a = r() * Math.PI * 2, d = r() * s * .3, m = part(CONE, lm, Math.cos(a) * d, s * .42, Math.sin(a) * d, .03 * s, s * .5, .03 * s); m.rotation.set((r() - .5) * .5, 0, (r() - .5) * .5); g.add(m); } break; }
+      case 'iarba': { const lm = leafMat('#b0b562'); for (let k = 0; k < 26; k++) { const a = r() * Math.PI * 2, m = part(CONE, lm, Math.cos(a) * s * .08, s * .45, Math.sin(a) * s * .08, .035 * s, s * .9, .035 * s); m.rotation.set(Math.sin(a) * .35, 0, -Math.cos(a) * .35); g.add(m); } break; }
+      case 'flori': { const st = leafMat('#4b7f31'); for (let k = 0; k < 9; k++) { const a = r() * Math.PI * 2, d = r() * s * .35, x = Math.cos(a) * d, z = Math.sin(a) * d, hh = s * (.3 + r() * .2);
+        g.add(part(CONE, st, x, hh / 2, z, .025 * s, hh, .025 * s)); g.add(part(ICO0, fc, x, hh, z, .07 * s)); } g.add(part(ICO, leafMat('#4b7f31'), 0, .05 * s, 0, s * .38, s * .08, s * .38)); break; }
+      default: bush(1);
+    }
+    return g;
+  },
+  bench(it) {
+    const g = new THREE.Group(); g.position.set(it.x, gy(it.x, it.z), it.z); g.rotation.y = (it.rot || 0) * D2R;
+    const w = colMat('#8a5f3a'), m = colMat('#2d3135', { metalness: .5, roughness: .5 });
+    for (let k = 0; k < 3; k++) g.add(part(BOX, w, 0, .45, -.14 + k * .14, 1.6, .05, .11));
+    for (let k = 0; k < 2; k++) g.add(part(BOX, w, 0, .66 + k * .16, -.25, 1.6, .1, .04));
+    for (const sx of [-.7, .7]) { g.add(part(BOX, m, sx, .22, 0, .06, .44, .45)); g.add(part(BOX, m, sx, .6, -.26, .06, .5, .04)); }
+    return g;
+  },
+  lamp(it) {
+    const g = new THREE.Group(), h = it.h; g.position.set(it.x, gy(it.x, it.z), it.z);
+    g.add(part(CYL, colMat('#2d3135', { metalness: .5 }), 0, h / 2, 0, .04, h, .04));
+    g.add(part(SPH, M('lampglow', { color: '#fff3c4', emissive: '#ffd36b', emissiveIntensity: 1.2 }), 0, h + .08, 0, .12));
+    return g;
+  },
+};
+function roofGroup(it) {
+  const grp = new THREE.Group(), long = Math.max(it.w, it.d), short = Math.min(it.w, it.d), o = .5;
+  const A = long / 2 + o, B = short / 2 + o, lh = long / 2, sh = short / 2, p = Math.min(it.pitch, 70) * D2R, tn = Math.tan(p), cs = Math.cos(p), e = -o * tn, R = sh * tn;
+  const rm = M('r:' + it.roofc, { map: tex('tigla'), color: it.roofc }), wm = M('w:' + it.wall, { map: tex('tencuiala'), color: it.wall });
+  const rf = new GB(), wl = new GB(), V = (x, y, z, u, v) => [x, y, z, u, v];
+  if (it.roof === 'plat') { grp.add(part(boxW(it.w + .3, .3, it.d + .3, 1), colMat(shade(it.wall, -.12)), 0, .15, 0, 1)); grp.add(part(BOX, colMat('#4a4a4a'), 0, .31, 0, it.w - .1, .02, it.d - .1)); return grp; }
+  if (it.roof === 'doua') {
+    for (const sz of [1, -1]) rf.quad(V(-A, e, sz * B, -A, 0), V(A, e, sz * B, A, 0), V(A, R, 0, A, B / cs), V(-A, R, 0, -A, B / cs));
+    for (const sx of [1, -1]) wl.tri(V(sx * lh, 0, -sh, -sh / 2, 0), V(sx * lh, 0, sh, sh / 2, 0), V(sx * lh, R, 0, 0, R / 2));
+  } else if (it.roof === 'patru') {
+    const rl = Math.max(0, A - B);
+    for (const sz of [1, -1]) rf.quad(V(-A, e, sz * B, -A, 0), V(A, e, sz * B, A, 0), V(rl, R, 0, rl, B / cs), V(-rl, R, 0, -rl, B / cs));
+    for (const sx of [1, -1]) rf.tri(V(sx * A, e, -B, -B, 0), V(sx * A, e, B, B, 0), V(sx * rl, R, 0, 0, B / cs));
+  } else { // o apă
+    const Rh = short * tn;
+    rf.quad(V(-A, e, B, -A, 0), V(A, e, B, A, 0), V(A, e + 2 * B * tn, -B, A, 2 * B / cs), V(-A, e + 2 * B * tn, -B, -A, 2 * B / cs));
+    wl.quad(V(-lh, 0, -sh, -lh / 2, 0), V(lh, 0, -sh, lh / 2, 0), V(lh, Rh, -sh, lh / 2, Rh / 2), V(-lh, Rh, -sh, -lh / 2, Rh / 2));
+    for (const sx of [1, -1]) wl.tri(V(sx * lh, 0, sh, sh / 2, 0), V(sx * lh, 0, -sh, -sh / 2, 0), V(sx * lh, Rh, -sh, -sh / 2, Rh / 2));
+  }
+  grp.add(mesh(rf.geom(), rm)); if (wl.p.length) grp.add(mesh(wl.geom(), wm));
+  if (it.d > it.w) grp.rotation.y = Math.PI / 2;
+  return grp;
+}
+function roofHeight(it) { if (it.roof === 'plat') return .3; const sh = Math.min(it.w, it.d) / 2, tn = Math.tan(Math.min(it.pitch, 70) * D2R); return it.roof === 'una' ? 2 * sh * tn : sh * tn; }
+
+/* ───────────────────────── Scenă ───────────────────────── */
+const view = $('#view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+view.prepend(renderer.domElement);
+const labels = new CSS2DRenderer(); Object.assign(labels.domElement.style, { position: 'absolute', left: 0, top: 0, pointerEvents: 'none' });
+view.prepend(labels.domElement); view.prepend(renderer.domElement);
+
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#bcd8ef'); scene.fog = new THREE.Fog('#bcd8ef', 120, 400);
+const camera = new THREE.PerspectiveCamera(45, 1, .1, 2000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .12; controls.maxPolarAngle = Math.PI / 2 - .03; controls.screenSpacePanning = false; controls.minDistance = 2; controls.maxDistance = 600;
+const hemi = new THREE.HemisphereLight('#dfefff', '#5a6a3a', 1.1); scene.add(hemi);
+const sun = new THREE.DirectionalLight('#fff4e0', 2.6); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0004; sun.shadow.normalBias = .03;
+scene.add(sun, sun.target);
+const terrainG = new THREE.Group(), itemsG = new THREE.Group(), selG = new THREE.Group(), prevG = new THREE.Group();
+scene.add(terrainG, itemsG, selG, prevG);
+let gridObj = null;
+
+function disposeTree(o) { o.traverse(c => { if (c.geometry && !c.geometry.userData.shared) c.geometry.dispose(); }); }
+function buildTerrain() {
+  terrainG.children.slice().forEach(c => { terrainG.remove(c); disposeTree(c); });
+  const t = S.terrain, w = t.w, d = t.d, ext = t.ext;
+  const plane = (W, D, mat, y) => { const g = new THREE.PlaneGeometry(W, D, Math.ceil(W / 10), Math.ceil(D / 10)); g.rotateX(-Math.PI / 2); const p = g.attributes.position, uv = g.attributes.uv;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, gy(x, z) + y); uv.setXY(i, x / 2, z / 2); } g.computeVertexNormals(); return mesh(g, mat, false, true); };
+  if (ext > 0) terrainG.add(plane(w + 2 * ext, d + 2 * ext, texMat('iarba', { color: '#b7bfa3', polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), -.005));
+  terrainG.add(plane(w, d, texMat('iarba'), 0));
+  // margine lot + borne
+  const cs = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]];
+  const bp = []; for (let i = 0; i < 4; i++) { const a = cs[i], b = cs[(i + 1) % 4]; for (let k = 0; k <= 20; k++) { const x = a[0] + (b[0] - a[0]) * k / 20, z = a[1] + (b[1] - a[1]) * k / 20; bp.push(new THREE.Vector3(x, gy(x, z) + .04, z)); } }
+  terrainG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(bp), new THREE.LineBasicMaterial({ color: '#ff8a1f' })));
+  for (const [x, z] of cs) terrainG.add(part(CYL, colMat('#ff6a00'), x, gy(x, z) + .3, z, .04, .6, .04));
+  // grilă 1 m
+  const gp = [], gc = [], c1 = new THREE.Color('#ffffff'), add = (x1, z1, x2, z2, strong) => { gp.push(x1, gy(x1, z1) + .02, z1, x2, gy(x2, z2) + .02, z2); const k = strong ? .5 : .22; gc.push(k, k, k, k, k, k); };
+  for (let x = Math.ceil(-w / 2); x <= w / 2; x++) add(x, -d / 2, x, d / 2, x % 5 === 0);
+  for (let z = Math.ceil(-d / 2); z <= d / 2; z++) add(-w / 2, z, w / 2, z, z % 5 === 0);
+  const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(gp, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(gc, 3));
+  gridObj = new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .35, depthWrite: false }));
+  gridObj.visible = UI.grid; terrainG.add(gridObj);
+  // cote teren
+  const lab = (txt, x, z) => { const el = document.createElement('div'); el.className = 'lbl ter'; el.textContent = txt; const o = new CSS2DObject(el); o.position.set(x, gy(x, z) + .1, z); terrainG.add(o); };
+  lab(fmt(w) + ' m', 0, -d / 2); lab(fmt(d) + ' m', w / 2, 0);
+  // umbre
+  const R = Math.max(w, d) / 2 + Math.min(ext, 20) + 4, sc = sun.shadow.camera; sc.left = sc.bottom = -R; sc.right = sc.top = R; sc.near = 1; sc.far = R * 6; sc.updateProjectionMatrix();
+  sun.shadow.mapSize.set(R > 60 ? 4096 : 2048, R > 60 ? 4096 : 2048); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  scene.fog.near = Math.max(w, d) * 2 + ext * 2; scene.fog.far = scene.fog.near * 3 + 200;
+  groundPlane.normal.set((t.slope / 100) * (DIRS[t.dir] || DIRS.S)[0], 1, (t.slope / 100) * (DIRS[t.dir] || DIRS.S)[1]).normalize(); groundPlane.constant = 0;
+  updateSun();
+}
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function updateSun() {
+  const a = Math.min(Math.PI - .02, Math.max(.02, (UI.hour - 6) / 12 * Math.PI)), el = (6 + 52 * Math.sin(a)) * D2R, R = Math.max(S.terrain.w, S.terrain.d) * 1.5 + 30;
+  sun.position.set(Math.cos(el) * Math.cos(a) * R, Math.sin(el) * R, Math.cos(el) * Math.sin(a) * R);
+  sun.intensity = 2.8 * (.35 + .65 * Math.sin(a)); sun.color.set(Math.sin(a) < .35 ? '#ffd2a0' : '#fff4e0');
+  sun.castShadow = UI.shadows;
+  const hh = Math.floor(UI.hour), mm = Math.round((UI.hour - hh) * 60); $('#hourT').textContent = `${hh}:${String(mm).padStart(2, '0')}`; $('#hour').value = UI.hour;
+}
+
+const objs = {};
+const getItem = id => S.items.find(i => i.id === id);
+function rebuildItem(it) { removeObj(it.id); const o = BUILD[it.type](it); o.userData.itemId = it.id; itemsG.add(o); objs[it.id] = o; }
+function removeObj(id) { const o = objs[id]; if (o) { itemsG.remove(o); disposeTree(o); delete objs[id]; } }
+function rebuildAll() { for (const id in objs) removeObj(+id); buildTerrain(); S.items.forEach(rebuildItem); refreshSel(); }
+
+/* ───────────────────────── Istoric / salvare ───────────────────────── */
+let hist = [], hi = -1;
+function commit() {
+  const s = JSON.stringify(S); if (hist[hi] === s) return;
+  hist = hist.slice(0, hi + 1); hist.push(s); if (hist.length > 200) hist.shift(); hi = hist.length - 1;
+  try { localStorage.setItem(LS, s); } catch {}
+  updUndo(); updStats();
+}
+function restore(s) { S = JSON.parse(s); if (sel && !getItem(sel)) sel = null; draft = null; rebuildAll(); renderPanel(); try { localStorage.setItem(LS, s); } catch {} updUndo(); }
+const undo = () => { if (hi > 0) restore(hist[--hi]); };
+const redo = () => { if (hi < hist.length - 1) restore(hist[++hi]); };
+function updUndo() { $('#bUndo').disabled = hi <= 0; $('#bRedo').disabled = hi >= hist.length - 1; }
+
+function newItem(type, extra) { const it = Object.assign({ id: S.nextId++, type }, clone(DEF[type]), extra); S.items.push(it); rebuildItem(it); return it; }
+
+function demo() {
+  const P = a => a.map(([x, z]) => ({ x, z }));
+  S = { terrain: { w: 22, d: 36, slope: 4, dir: 'S', ext: 18 }, items: [], nextId: 1 };
+  const A = (type, o) => Object.assign({ id: S.nextId++, type }, clone(TYPES[type].def), o);
+  S.items.push(
+    A('sidewalk', { pts: P([[-29, 18.9], [29, 18.9]]), w: 1.6, curb: 'stanga' }),
+    A('paving', { pts: P([[4.6, 1.2], [9.4, 1.2], [9.4, 18.1], [4.6, 18.1]]), mat: 'pavele' }),
+    A('curb', { pts: P([[4.5, 1.2], [4.5, 18]]) }),
+    A('house', { x: -2, z: -3.5, w: 12, d: 9.4, floors: 2, roof: 'patru', pitch: 30 }),
+    A('house', { x: 7, z: -1.5, w: 4.8, d: 6, floors: 1, roof: 'plat', wall: '#d9d2c4', win: false }),
+    A('path', { pts: P([[-2, 1.4], [-2, 6], [-4, 11], [-4, 18.1]]), w: 1.3, mat: 'dale' }),
+    A('paving', { pts: P([[-7.5, -8.2], [1, -8.2], [1, -12.2], [-7.5, -12.2]]), mat: 'lemn' }),
+    A('pool', { x: 5, z: -12.4, w: 6.5, d: 3.4 }),
+    A('fence', { pts: P([[-11, 17.6], [-4.9, 17.6]]), sp: 'metal', h: 1.7 }),
+    A('fence', { pts: P([[-3.1, 17.6], [4.4, 17.6]]), sp: 'metal', h: 1.7 }),
+    A('fence', { pts: P([[9.6, 17.6], [11, 17.6]]), sp: 'metal', h: 1.7 }),
+    A('fence', { pts: P([[11, 17.6], [11, -18], [-11, -18], [-11, 17.6]]), sp: 'plasa', h: 1.6 }),
+    A('hedge', { pts: P([[-10.3, -17.2], [10.3, -17.2]]), h: 1.8 }),
+    A('bed', { pts: P([[-9.5, 3.5], [-5.5, 3.2], [-5, 6.5], [-9.2, 7]]), col: 'mix' }),
+    A('tree', { x: -8.5, z: -15, sp: 'foios', h: 8, cr: 6 }),
+    A('tree', { x: 9, z: -16, sp: 'conifer', h: 9, cr: 4 }),
+    A('tree', { x: -8.5, z: 12, sp: 'mesteacan', h: 7, cr: 3.5 }),
+    A('tree', { x: 1.5, z: 10, sp: 'fructifer', h: 4.5, cr: 3.8 }),
+    A('tree', { x: 1.5, z: 14.5, sp: 'artar', h: 5, cr: 4 }),
+    ...[-12, -9, -6, -3, 0, 3, 6, 9].map(z => A('tree', { x: 10.2, z: z - 3, sp: 'tuia', h: 2.6, cr: .9 })),
+    A('gazebo', { x: -4, z: -15 }),
+    A('bench', { x: -1, z: 13, rot: 90 }),
+    A('lamp', { x: -0.9, z: 8 }), A('lamp', { x: -2.9, z: 15 }),
+    ...[[-0.8, 2.5, 'lavanda'], [-0.8, 3.7, 'lavanda'], [-0.8, 4.9, 'lavanda'], [-3.2, 2.5, 'trandafir'], [-3.2, 3.8, 'hortensie'], [-8.8, 1.8, 'buxus'], [4, 1.5, 'buxus'], [-6.5, 9, 'iarba'], [-7.5, 10, 'tufa']].map(([x, z, sp]) => A('plant', { x, z, sp }))
+  );
+}
+
+/* ───────────────────────── Interacțiune ───────────────────────── */
+let tool = 'select', sel = null, draft = null, cursor = null, drag = null, down = null, shiftKey = false;
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function setRay(e) { const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
+function groundAt(e) { setRay(e); const v = new THREE.Vector3(); return ray.ray.intersectPlane(groundPlane, v) ? { x: v.x, z: v.z } : null; }
+function pickItem(e) { setRay(e); const hit = ray.intersectObjects(itemsG.children, true)[0]; if (!hit) return null; let o = hit.object; while (o && o.userData.itemId == null) o = o.parent; return o ? o.userData.itemId : null; }
+function pickHandle(e) { setRay(e); const hs = selG.children.filter(c => c.userData.h); const hit = ray.intersectObjects(hs, false)[0]; return hit ? hit.object.userData.h : null; }
+const snapV = v => UI.snap ? Math.round(v / UI.snap) * UI.snap : v;
+function itemPoints(it) { const k = TYPES[it.type].kind; return k === 'rect' ? rectCorners(it) : (k === 'line' || k === 'poly') ? it.pts : [{ x: it.x, z: it.z }]; }
+function snapP(p, exceptId, ref) {
+  let best = null, bd = .35;
+  const cand = [...(draft && draft.pts ? draft.pts.slice(0, -1) : [])];
+  for (const it of S.items) if (it.id !== exceptId) cand.push(...itemPoints(it));
+  for (const c of cand) { const d = Math.hypot(c.x - p.x, c.z - p.z); if (d < bd) { bd = d; best = c; } }
+  if (best) return { x: best.x, z: best.z, obj: true };
+  if (ref && shiftKey) { // unghiuri la 15°
+    const dx = p.x - ref.x, dz = p.z - ref.z, l = snapV(Math.hypot(dx, dz)), a = Math.round(Math.atan2(dz, dx) / (15 * D2R)) * 15 * D2R;
+    return { x: ref.x + Math.cos(a) * l, z: ref.z + Math.sin(a) * l };
+  }
+  return { x: snapV(p.x), z: snapV(p.z) };
+}
+
+const cursorRing = mesh(new THREE.RingGeometry(.14, .22, 24), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }), false, false);
+cursorRing.geometry.rotateX(-Math.PI / 2); cursorRing.renderOrder = 20; cursorRing.visible = false; scene.add(cursorRing);
+const curLbl = new CSS2DObject(Object.assign(document.createElement('div'), { className: 'lbl cur' })); curLbl.center.set(-.1, 1.4); scene.add(curLbl); curLbl.visible = false;
+
+function setTool(t) {
+  tool = t; draft = null; clearPreview(); if (t !== 'select') { sel = null; refreshSel(); }
+  document.querySelectorAll('#tools button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  renderPanel(); renderHint();
+}
+function clearPreview() { prevG.children.slice().forEach(c => { prevG.remove(c); disposeTree(c); }); cursorRing.visible = false; curLbl.visible = false; }
+const segLen = (a, b) => Math.hypot(b.x - a.x, b.z - a.z);
+function updatePreview() {
+  clearPreview(); if (tool === 'select' || !cursor) return;
+  const T = TYPES[tool], last = draft && draft.pts ? draft.pts[draft.pts.length - 1] : draft && draft.a, p = snapP(cursor, null, last);
+  cursorRing.position.set(p.x, gy(p.x, p.z) + .03, p.z); cursorRing.visible = true; cursorRing.material.color.set(p.obj ? '#4aa8ff' : '#ff8a1f');
+  let obj = null, txt = '';
+  if (T.kind === 'point') obj = BUILD[tool](Object.assign({ id: 0 }, DEF[tool], { x: p.x, z: p.z }));
+  else if (T.kind === 'rect' && draft) { const r = rectFrom(draft.a, p); if (r.w > .2 && r.d > .2) obj = BUILD[tool](Object.assign({ id: 0 }, DEF[tool], r)); txt = `${fmt(r.w)} × ${fmt(r.d)} m`; }
+  else if (draft && draft.pts.length) {
+    const pts = [...draft.pts, p];
+    if (T.kind === 'line' || pts.length < 3) obj = BUILD[T.kind === 'line' ? tool : 'path'](Object.assign({ id: 0 }, DEF[tool], T.kind === 'line' ? {} : { w: .08, mat: 'beton_alb' }, { pts }));
+    else obj = BUILD[tool](Object.assign({ id: 0 }, DEF[tool], { pts }));
+    txt = fmt(segLen(last, p)) + ' m' + (pts.length > 2 ? ` · total ${fmt(polyLen(pts, false))} m` : '');
+    if (T.kind === 'poly' && pts.length >= 3) txt += ` · ${fmt(polyArea(pts), 1)} m²`;
+  }
+  if (obj) prevG.add(obj);
+  if (txt) { curLbl.element.textContent = txt; curLbl.position.set(p.x, gy(p.x, p.z), p.z); curLbl.visible = true; }
+}
+function rectFrom(a, b) { return { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, w: Math.abs(b.x - a.x), d: Math.abs(b.z - a.z), rot: 0 }; }
+
+function handleClick(e) {
+  const T = TYPES[tool];
+  if (tool === 'select') { select(pickItem(e)); return; }
+  if (!cursor) return;
+  const last = draft && draft.pts ? draft.pts[draft.pts.length - 1] : draft && draft.a, p = snapP(cursor, null, last);
+  if (T.kind === 'point') { newItem(tool, { x: p.x, z: p.z }); commit(); updatePreview(); return; }
+  if (T.kind === 'rect') {
+    if (!draft) { draft = { a: p }; renderHint(); return; }
+    const r = rectFrom(draft.a, p); draft = null;
+    if (r.w < .5 || r.d < .5) { renderHint(); return; }
+    const it = newItem(tool, r); commit(); setTool('select'); select(it.id); return;
+  }
+  if (!draft) draft = { pts: [] };
+  if (T.kind === 'poly' && draft.pts.length >= 3 && segLen(draft.pts[0], p) < .4) { finishDraft(); return; }
+  draft.pts.push({ x: p.x, z: p.z }); renderHint(); updatePreview();
+}
+function finishDraft() {
+  if (!draft || !draft.pts) return;
+  const T = TYPES[tool], pts = [];
+  for (const p of draft.pts) if (!pts.length || segLen(pts[pts.length - 1], p) > .05) pts.push(p);
+  if (T.kind === 'poly' && pts.length > 3 && segLen(pts[0], pts[pts.length - 1]) < .05) pts.pop();
+  draft = null;
+  if (pts.length >= (T.kind === 'poly' ? 3 : 2)) { newItem(tool, { pts }); commit(); }
+  clearPreview(); renderHint(); updatePreview();
+}
+
+function select(id) { sel = id; refreshSel(); renderPanel(); }
+function mkHandle(x, z, h, color, s = 1) {
+  const m = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: h.t === 'm' ? .7 : 1 }));
+  m.position.set(x, gy(x, z) + .15, z); m.renderOrder = 30; m.userData.h = h; m.userData.hs = s; selG.add(m);
+}
+function addLbl(txt, x, z, y = .2) { const el = document.createElement('div'); el.className = 'lbl'; el.textContent = txt; const o = new CSS2DObject(el); o.position.set(x, gy(x, z) + y, z); selG.add(o); }
+function refreshSel() {
+  selG.clear(); const it = sel && getItem(sel); if (!it || !objs[it.id]) return;
+  selG.add(new THREE.BoxHelper(objs[it.id], 0xffc21a));
+  const k = TYPES[it.type].kind;
+  if (k === 'line' || k === 'poly') {
+    const p = it.pts, closed = k === 'poly';
+    p.forEach((q, i) => mkHandle(q.x, q.z, { t: 'v', i }, '#ff8a1f'));
+    for (let i = 0; i < p.length - (closed ? 0 : 1); i++) { const a = p[i], b = p[(i + 1) % p.length], mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
+      mkHandle(mx, mz, { t: 'm', i }, '#ffffff', .65); addLbl(fmt(segLen(a, b)) + ' m', mx, mz, .45); }
+  } else if (k === 'rect') {
+    rectCorners(it).forEach((c, i) => mkHandle(c.x, c.z, { t: 'c', i }, '#ff8a1f'));
+    const f = toWorld(it, 0, it.d / 2 + 1.3); mkHandle(f.x, f.z, { t: 'r' }, '#4aa8ff');
+    const fm = toWorld(it, 0, it.d / 2), sm = toWorld(it, it.w / 2, 0);
+    addLbl(fmt(it.w) + ' m', fm.x, fm.z, .5); addLbl(fmt(it.d) + ' m', sm.x, sm.z, .5);
+  }
+}
+
+function startDrag(e, d) { drag = Object.assign(d, { moved: false }); controls.enabled = false; renderer.domElement.setPointerCapture(e.pointerId); }
+function onDown(e) {
+  if (e.target !== renderer.domElement) return;
+  if (down) { down.cancel = true; return; }
+  down = { id: e.pointerId, x: e.clientX, y: e.clientY, cancel: false, btn: e.button };
+  if (e.button !== 0 || tool !== 'select') return;
+  const h = pickHandle(e), p = groundAt(e); if (!p) return;
+  if (h) {
+    const it = getItem(sel);
+    if (h.t === 'm') { const a = it.pts[h.i], b = it.pts[(h.i + 1) % it.pts.length]; it.pts.splice(h.i + 1, 0, { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 }); startDrag(e, { kind: 'v', i: h.i + 1, id: it.id }); return; }
+    if (h.t === 'c') { startDrag(e, { kind: 'c', id: it.id, o: rectCorners(it)[(h.i + 2) % 4] }); return; }
+    startDrag(e, { kind: h.t, i: h.i, id: it.id }); return;
+  }
+  const id = pickItem(e);
+  if (id != null) { if (id !== sel) select(id); startDrag(e, { kind: 'move', id, start: p, orig: clone(getItem(id)) }); }
+}
+function onMove(e) {
+  shiftKey = e.shiftKey;
+  if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) down.far = true;
+  const p = groundAt(e);
+  if (drag) { if (!p || !down || !down.far) return; drag.moved = true; dragTo(p); return; }
+  cursor = p; if (tool !== 'select') updatePreview();
+}
+function dragTo(p) {
+  const it = getItem(drag.id); if (!it) return;
+  if (drag.kind === 'move') {
+    const dx = snapV(p.x - drag.start.x), dz = snapV(p.z - drag.start.z), o = drag.orig;
+    if (o.pts) it.pts = o.pts.map(q => ({ x: q.x + dx, z: q.z + dz })); else { it.x = o.x + dx; it.z = o.z + dz; }
+  } else if (drag.kind === 'v') { const q = snapP(p, it.id); it.pts[drag.i] = { x: q.x, z: q.z }; }
+  else if (drag.kind === 'c') {
+    const q = snapP(p, it.id), o = drag.o, t = it.rot * D2R, c = Math.cos(t), s = Math.sin(t), dx = q.x - o.x, dz = q.z - o.z;
+    const lx = dx * c - dz * s, lz = dx * s + dz * c, w = Math.max(.5, Math.abs(lx)), d = Math.max(.5, Math.abs(lz)), cx = Math.sign(lx || 1) * w / 2, cz = Math.sign(lz || 1) * d / 2;
+    it.w = +w.toFixed(2); it.d = +d.toFixed(2); it.x = o.x + cx * c + cz * s; it.z = o.z - cx * s + cz * c;
+  } else if (drag.kind === 'r') { let a = Math.atan2(p.x - it.x, p.z - it.z) / D2R; a = Math.round(a / 5) * 5; it.rot = a > 180 ? a - 360 : a; }
+  rebuildItem(it); refreshSel(); syncPanelValues();
+}
+function onUp(e) {
+  if (!down || e.pointerId !== down.id) { if (down) down.cancel = true; return; }
+  const wasClick = !down.cancel && !down.far && down.btn === 0;
+  if (drag) { const moved = drag.moved; drag = null; controls.enabled = true; if (moved) { commit(); renderPanel(); } else if (wasClick) handleClick(e); }
+  else if (wasClick) handleClick(e);
+  down = null;
+}
+view.addEventListener('pointerdown', onDown, { capture: true });
+view.addEventListener('pointermove', onMove);
+view.addEventListener('pointerup', onUp);
+view.addEventListener('pointercancel', () => { if (drag) { drag = null; controls.enabled = true; } down = null; });
+view.addEventListener('pointerleave', () => { if (!drag) { cursor = null; clearPreview(); } });
+renderer.domElement.addEventListener('dblclick', e => {
+  if (draft && draft.pts) { finishDraft(); return; }
+  if (tool === 'select') { const h = pickHandle(e), it = sel && getItem(sel); if (h && h.t === 'v' && it.pts.length > (TYPES[it.type].kind === 'poly' ? 3 : 2)) { it.pts.splice(h.i, 1); rebuildItem(it); refreshSel(); commit(); } }
+});
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+function delSel() { if (!sel) return; S.items = S.items.filter(i => i.id !== sel); removeObj(sel); sel = null; refreshSel(); commit(); renderPanel(); }
+function dupSel() { const it = getItem(sel); if (!it) return; const c = clone(it); c.id = S.nextId++; if (c.pts) c.pts = c.pts.map(p => ({ x: p.x + 1, z: p.z + 1 })); else { c.x += 1; c.z += 1; } S.items.push(c); rebuildItem(c); commit(); select(c.id); }
+function rotSel(dd) { const it = getItem(sel); if (!it || it.rot == null) return; let a = it.rot + dd; a = ((a + 180) % 360 + 360) % 360 - 180; it.rot = a; rebuildItem(it); refreshSel(); commit(); syncPanelValues(); }
+addEventListener('keydown', e => {
+  shiftKey = e.shiftKey;
+  if (e.target.closest && e.target.closest('input,select,textarea')) return;
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 'd') { e.preventDefault(); dupSel(); return; }
+  if (k === 'escape') { if (draft) { draft = null; clearPreview(); updatePreview(); renderHint(); } else if (tool !== 'select') setTool('select'); else select(null); }
+  else if (k === 'enter') finishDraft();
+  else if (k === 'delete' || k === 'backspace') { if (draft && draft.pts && draft.pts.length) { draft.pts.pop(); updatePreview(); renderHint(); } else if (tool === 'select') delSel(); e.preventDefault(); }
+  else if (k === 'r' && tool === 'select') rotSel(e.shiftKey ? -15 : 15);
+});
+addEventListener('keyup', e => { shiftKey = e.shiftKey; });
+
+/* ───────────────────────── Interfață ───────────────────────── */
+function renderTools() {
+  $('#tools').innerHTML = TOOLS.map(t => typeof t === 'string' && !TYPES[t] ? `<div class="glbl">${t}</div>` : (() => { const [k, ic, l] = Array.isArray(t) ? t : [t, TYPES[t].ic, TYPES[t].l]; return `<button data-t="${k}"><span class="ic">${ic}</span>${l}</button>`; })()).join('');
+  $('#tools').onclick = e => { const b = e.target.closest('button'); if (b) setTool(b.dataset.t === tool && tool !== 'select' ? 'select' : b.dataset.t); };
+}
+function renderHint() {
+  const h = $('#hint'); if (tool === 'select') { h.hidden = true; return; }
+  const T = TYPES[tool], np = draft && draft.pts ? draft.pts.length : 0;
+  const msg = { point: `Click pe teren ca să plasezi: <b>${T.l.toLowerCase()}</b>. Esc când ai terminat.`,
+    rect: draft ? 'Acum click pe colțul opus.' : `Click pe primul colț al ${T.l === 'Casă' ? 'casei' : 'piscinei'}, apoi pe colțul opus.`,
+    line: np ? `Punct ${np}. Continuă cu click; dublu-click, Enter sau „Gata” termină. Shift = unghiuri la 15°.` : `Click pe teren pentru primul punct (${T.l.toLowerCase()}).`,
+    poly: np ? `Colț ${np}. Click pe primul punct, Enter sau „Gata” închide forma. Shift = unghiuri la 15°.` : `Click pe teren pentru primul colț (${T.l.toLowerCase()}).` }[T.kind];
+  h.innerHTML = `<div class="msg">${msg}</div>` + (np ? `<button class="go" data-a="done">Gata</button><button data-a="back">↶ Punct</button><button data-a="cancel">Anulează</button>` : `<button data-a="exit">Închide unealta</button>`);
+  h.hidden = false;
+  h.onclick = e => { const a = e.target.dataset.a; if (a === 'done') finishDraft(); else if (a === 'back') { draft.pts.pop(); updatePreview(); renderHint(); } else if (a === 'cancel') { draft = null; clearPreview(); renderHint(); } else if (a === 'exit') setTool('select'); };
+}
+function fieldHTML(f, v, scope) {
+  const id = `f_${scope}_${f.k}`;
+  if (f.t === 'num') return `<div class="fld"><label for="${id}">${f.l}</label><div class="in"><input type="number" id="${id}" data-s="${scope}" data-k="${f.k}" min="${f.min}" max="${f.max}" step="${f.step}" value="${+(+v).toFixed(3)}"><span class="unit">${f.u}</span></div></div>`;
+  if (f.t === 'sel') return `<div class="fld${f.wide ? ' wide' : ''}"><label for="${id}">${f.l}</label><select id="${id}" data-s="${scope}" data-k="${f.k}">${f.opts.map(([k, l]) => `<option value="${k}"${k === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
+  if (f.t === 'col') return `<div class="fld"><label for="${id}">${f.l}</label><input type="color" id="${id}" data-s="${scope}" data-k="${f.k}" value="${v}"></div>`;
+  return `<div class="fld chk"><label><input type="checkbox" data-s="${scope}" data-k="${f.k}"${v ? ' checked' : ''}> ${f.l}</label></div>`;
+}
+const form = (obj, fields, scope) => `<div class="form">${fields.map(f => fieldHTML(f, obj[f.k], scope)).join('')}</div>`;
+const UI_F = [sl('snap', 'Aliniere la grilă', [[0, 'Liber'], [.1, '10 cm'], [.25, '25 cm'], [.5, '50 cm'], [1, '1 m']]), ck('grid', 'Grilă 1 m'), ck('shadows', 'Umbre')];
+function itemInfo(it) {
+  const T = TYPES[it.type], rows = [];
+  if (it.type === 'house') {
+    const cs = rectCorners(it), hs = cs.map(p => gy(p.x, p.z)), top = Math.max(...hs), low = Math.min(...hs);
+    rows.push(['Suprafață construită', fmt(it.w * it.d, 1) + ' m²'], ['Suprafață desfășurată', fmt(it.w * it.d * it.floors, 1) + ' m²'],
+      ['Soclu la colțul cel mai jos', fmt(top + .2 - low) + ' m'], ['Înălțime la streașină', fmt(it.floors * it.floorH + top + .2 - low) + ' m'], ['Înălțime la coamă', fmt(it.floors * it.floorH + roofHeight(it) + top + .2 - low) + ' m']);
+  } else if (T.kind === 'poly') rows.push(['Suprafață', fmt(polyArea(it.pts), 1) + ' m²'], ['Perimetru', fmt(polyLen(it.pts, true)) + ' m'], ['Colțuri', it.pts.length]);
+  else if (T.kind === 'line') { const l = polyLen(it.pts, false); rows.push(['Lungime', fmt(l) + ' m']); if (it.w && it.type !== 'curb') rows.push(['Suprafață', fmt(l * it.w, 1) + ' m²']); }
+  else if (T.kind === 'rect') rows.push(['Suprafață', fmt(it.w * it.d, 1) + ' m²']);
+  if (it.pts) rows.push(['Diferență de nivel', fmt(Math.max(...it.pts.map(p => gy(p.x, p.z))) - Math.min(...it.pts.map(p => gy(p.x, p.z)))) + ' m']);
+  return `<div class="kv">${rows.map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('')}</div>`;
+}
+function stats() {
+  const t = S.terrain, lot = t.w * t.d; let built = 0, hard = 0, water = 0, trees = 0, plants = 0;
+  for (const it of S.items) {
+    if (it.type === 'house') built += it.w * it.d; else if (it.type === 'gazebo') built += it.s * it.s;
+    else if (it.type === 'pool') water += it.w * it.d;
+    else if (it.type === 'paving') hard += polyArea(it.pts);
+    else if (it.type === 'path' || it.type === 'sidewalk') { if (it.pts.every(p => Math.abs(p.x) <= t.w / 2 + .01 && Math.abs(p.z) <= t.d / 2 + .01)) hard += polyLen(it.pts) * it.w; }
+    else if (it.type === 'tree') trees++; else if (it.type === 'plant') plants++;
+  }
+  const green = Math.max(0, lot - built - hard - water), pc = v => fmt(v / lot * 100, 1) + '%';
+  return `<div class="kv"><span>Suprafață teren</span><b>${fmt(lot, 1)} m²</b><span>Construit (POT)</span><b>${fmt(built, 1)} m² · ${pc(built)}</b>
+    <span>Pavat (alei, pavaj)</span><b>${fmt(hard, 1)} m² · ${pc(hard)}</b><span>Piscină</span><b>${fmt(water, 1)} m²</b><span>Spațiu verde</span><b>${fmt(green, 1)} m² · ${pc(green)}</b>
+    <span>Copaci / plante</span><b>${trees} / ${plants}</b><span>Diferență de nivel</span><b>${fmt(t.slope / 100 * (DIRS[t.dir][0] ? (DIRS[t.dir][1] ? t.w * .7071 + t.d * .7071 : t.w) : t.d))} m</b></div>
+    <div class="bar"><i style="width:${built / lot * 100}%;background:#ff8a1f"></i><i style="width:${hard / lot * 100}%;background:#9b9890"></i><i style="width:${water / lot * 100}%;background:#2b9fd8"></i><i style="flex:1;background:#5c8a3c"></i></div>
+    <p class="muted" style="margin:6px 0 0">Aproximativ: suprapunerile nu se scad, iar trotuarul din afara terenului nu intră la pavat.</p>`;
+}
+function updStats() { const e = $('#stats'); if (e) e.innerHTML = stats(); const i = $('#info'); const it = sel && getItem(sel); if (i && it) i.innerHTML = itemInfo(it); }
+const HELP = `<ul class="help"><li>Alege o unealtă din stânga și <b>click pe teren</b>.</li><li>Rotește vederea cu <b>click-stânga + trage</b>, mută cu <b>click-dreapta</b>, zoom cu <b>rotița</b> (pe telefon: 1 deget rotește, 2 degete mută și fac zoom).</li>
+  <li>Cu <b>Selectează</b>: click pe un obiect, trage-l ca să-l muți. Punctele portocalii se trag, cele albe adaugă un punct nou, <b>dublu-click</b> pe un punct îl șterge.</li>
+  <li>La casă și piscină: colțurile schimbă dimensiunea, punctul albastru rotește. Pentru o casă în L pune două case lipite.</li>
+  <li><b>Del</b> șterge, <b>R</b> rotește, <b>Ctrl+D</b> duplică, <b>Ctrl+Z</b> anulează. Totul se salvează automat în browser.</li></ul>`;
+function renderPanel() {
+  let h = '';
+  if (tool !== 'select') h += `<div class="card"><h2>Obiect nou: <b>${TYPES[tool].ic} ${TYPES[tool].l}</b></h2>${form(DEF[tool], TYPES[tool].f, 'def')}<p class="muted" style="margin:8px 0 0">Setările se aplică obiectelor pe care le pui de acum. Le poți schimba oricând după, selectând obiectul.</p></div>`;
+  else if (sel && getItem(sel)) { const it = getItem(sel), T = TYPES[it.type];
+    h += `<div class="card"><h2><b>${T.ic} ${T.l}</b></h2>${form(it, T.f, 'item')}<div id="info">${itemInfo(it)}</div><div class="btns"><button id="pDup">Duplică</button><button id="pDel" class="danger">Șterge</button><button id="pDesel">Gata</button></div></div>`; }
+  else h += `<div class="card"><h2><b>⛰ Teren</b></h2>${form(S.terrain, TERRAIN_F, 'ter')}<p class="muted" style="margin:8px 0 0">Nordul e spre partea de sus a vederii „De sus”. Panta coboară în direcția aleasă.</p></div>`;
+  h += `<div class="card"><h2><b>Statistici</b></h2><div id="stats">${stats()}</div></div>`;
+  h += `<div class="card"><h2><b>Vedere</b></h2>${form(UI, UI_F, 'ui')}</div>`;
+  h += `<div class="card"><h2><b>Cum se folosește</b></h2>${HELP}</div>`;
+  const p = $('#panel'); p.innerHTML = h;
+  p.oninput = e => applyField(e.target, false); p.onchange = e => applyField(e.target, true);
+  const b = id => p.querySelector(id); if (b('#pDup')) { b('#pDup').onclick = dupSel; b('#pDel').onclick = delSel; b('#pDesel').onclick = () => select(null); }
+}
+function syncPanelValues() { const it = sel && getItem(sel); if (!it) return; document.querySelectorAll('#panel [data-s=item]').forEach(el => { const v = it[el.dataset.k]; if (el.type === 'number' && document.activeElement !== el) el.value = +(+v).toFixed(3); }); updStats(); }
+function applyField(el, final) {
+  const s = el.dataset.s, k = el.dataset.k; if (!s) return;
+  let v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? parseFloat(el.value) : el.value;
+  if (el.type === 'number') { if (!isFinite(v)) { if (final) el.value = ''; return; } if (final) { v = Math.min(+el.max, Math.max(+el.min, v)); el.value = v; } }
+  if (s === 'ui') { if (k === 'snap') v = +v; UI[k] = v; saveUI(); if (gridObj) gridObj.visible = UI.grid; updateSun(); return; }
+  if (s === 'def') { DEF[tool][k] = v; return; }
+  if (s === 'ter') { S.terrain[k] = v; rebuildAll(); if (final) commit(); return; }
+  const it = getItem(sel); if (!it) return; it[k] = v;
+  if (it.type === 'house' && k === 'floors') it.floors = Math.round(v);
+  rebuildItem(it); refreshSel(); if (final) commit(); else updStats();
+}
+
+/* ───────────────────────── Vedere ───────────────────────── */
+function fit(top) {
+  const t = S.terrain, R = Math.max(t.w, t.d) * .5 + 4, dist = R / Math.tan(camera.fov * D2R / 2) * (camera.aspect < 1 ? 1.25 / camera.aspect : 1.05);
+  controls.target.set(0, 0, 0);
+  if (top) camera.position.set(0, dist * 1.05, .01); else camera.position.set(dist * .45, dist * .62, dist * .78);
+  controls.update();
+}
+function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h); labels.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(view);
+const cmpG = $('#cmpG'); $('#cmpN').textContent = 'N';
+function loop() {
+  requestAnimationFrame(loop); controls.update();
+  for (const c of selG.children) if (c.userData.h) { const s = camera.position.distanceTo(c.position) * .011 * c.userData.hs; c.scale.setScalar(Math.max(.05, s)); }
+  if (cursorRing.visible) cursorRing.scale.setScalar(Math.max(.6, camera.position.distanceTo(cursorRing.position) * .025));
+  const az = controls.getAzimuthalAngle() / D2R; cmpG.setAttribute('transform', `rotate(${az} 26 26)`);
+  $('#cmpN').setAttribute('transform', `rotate(${az} 26 26)`);
+  renderer.render(scene, camera); labels.render(scene, camera);
+}
+
+/* ───────────────────────── Butoane ───────────────────────── */
+$('#bUndo').onclick = undo; $('#bRedo').onclick = redo;
+$('#v3d').onclick = () => fit(false); $('#vTop').onclick = () => fit(true); $('#vFit').onclick = () => fit(camera.position.y > camera.position.distanceTo(controls.target) * .97);
+$('#compass').onclick = () => fit(true);
+$('#hour').oninput = e => { UI.hour = +e.target.value; updateSun(); saveUI(); };
+$('#bNew').onclick = () => { if (!confirm('Începi un proiect nou? Desenul curent se șterge (îl poți recupera cu ↶).')) return; S = { terrain: clone(S.terrain), items: [], nextId: 1 }; sel = null; rebuildAll(); commit(); renderPanel(); };
+$('#bDemo').onclick = () => { if (S.items.length && !confirm('Încarci exemplul? Desenul curent se înlocuiește (îl poți recupera cu ↶).')) return; demo(); sel = null; rebuildAll(); commit(); renderPanel(); fit(false); };
+$('#bExport').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'exterior', v: 1, ...S }, null, 1)], { type: 'application/json' })); a.download = 'curte.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+$('#bImport').onclick = () => $('#fImport').click();
+$('#fImport').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const d = JSON.parse(await f.text()); if (!d.terrain || !Array.isArray(d.items)) throw 0; S = { terrain: d.terrain, items: d.items.filter(i => TYPES[i.type]), nextId: d.nextId || Math.max(0, ...d.items.map(i => i.id)) + 1 }; sel = null; rebuildAll(); commit(); renderPanel(); fit(false); }
+  catch { alert('Fișierul nu pare un proiect „Exterior”.'); } };
+$('#bPng').onclick = () => { const v = [selG.visible, prevG.visible, cursorRing.visible]; selG.visible = prevG.visible = cursorRing.visible = false; renderer.render(scene, camera);
+  const a = document.createElement('a'); a.href = renderer.domElement.toDataURL('image/png'); a.download = 'curte.png'; a.click(); [selG.visible, prevG.visible, cursorRing.visible] = v; };
+
+/* ───────────────────────── Start ───────────────────────── */
+try { const s = JSON.parse(localStorage.getItem(LS)); if (s && s.terrain && Array.isArray(s.items)) S = s; } catch {}
+if (!S) demo();
+renderTools(); setTool('select'); resize(); rebuildAll(); commit(); renderPanel(); fit(false); loop();
+window.__ext = { get S() { return S; }, camera, controls, scene };
+</script>
+</body>
+</html>
