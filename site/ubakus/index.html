@@ -714,7 +714,7 @@ let openDet = new Set();
 
 function matOptions(sel) {
   return GROUPS.map(([g, list]) => `<optgroup label="${esc(g)}">` +
-    list.map(([id, name]) => `<option value="${id}"${id === sel ? ' selected' : ''}>${esc(name)}</option>`).join('') +
+    list.map(([id, name, l]) => `<option value="${id}"${id === sel ? ' selected' : ''}>${esc(name)}${l != null ? ' · λ ' + fmtN(l) : ''}</option>`).join('') +
     '</optgroup>').join('');
 }
 
