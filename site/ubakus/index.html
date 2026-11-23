@@ -148,6 +148,32 @@
   table.wind th { color: var(--muted); font-weight: 600; }
   table.wind td:first-child, table.wind th:first-child { text-align: left; }
   table.wind tr.hl td { background: rgba(255,106,0,.10); }
+  /* avertizare flotanta condens */
+  .cw { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(780px, calc(100% - 20px)); z-index: 25;
+    border-radius: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.6); overflow: hidden; border: 1px solid #e5c13a; background: var(--panel); }
+  .cw-bar { display: flex; align-items: center; gap: 10px; background: #e5c13a; color: #1d1600; padding: 10px 10px 10px 14px; cursor: pointer; user-select: none; }
+  .cw-bar .t { flex: 1; font-weight: 700; line-height: 1.3; }
+  .cw-bar .t small { display: block; font-weight: 500; opacity: .85; }
+  .cw-bar .chev { font-size: 13px; transition: transform .15s; }
+  .cw.open .cw-bar .chev { transform: rotate(180deg); }
+  .cw-bar button { background: rgba(0,0,0,.12); border: 0; color: #1d1600; width: 32px; height: 32px; padding: 0; font-size: 16px; flex: none; }
+  .cw-bar button:hover { background: rgba(0,0,0,.25); }
+  .cw-body { max-height: min(65vh, 560px); overflow: auto; padding: 12px 14px 14px; font-size: 13px; line-height: 1.5; }
+  .cw-body h3 { margin: 12px 0 6px; font-size: 13px; color: #e5c13a; text-transform: uppercase; letter-spacing: .5px; }
+  .cw-body h3:first-child { margin-top: 0; }
+  .cw-body table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .cw-body td, .cw-body th { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  .cw-body th { color: var(--muted); font-weight: 600; }
+  .cw-body td:nth-child(2), .cw-body th:nth-child(2) { text-align: left; white-space: normal; }
+  .cw-body tr.hot td { background: rgba(74,168,255,.14); }
+  .cw-body tr.plane td { padding: 2px 6px; color: var(--blue); font-weight: 700; text-align: center; border-bottom: 2px dashed var(--blue); }
+  .fix { display: flex; gap: 10px; align-items: center; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin-top: 6px; }
+  .fix div { flex: 1; }
+  .fix b { display: block; }
+  .fix .res { font-size: 12px; color: var(--muted); }
+  .fix .res.okk { color: var(--good); }
+  .fix button { flex: none; background: #e5c13a; color: #1d1600; border: 0; font-weight: 700; }
+  body.cw-on { padding-bottom: 80px; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--accent); color: #140a02; font-weight: 700; padding: 8px 14px; border-radius: 10px; z-index: 30; }
 </style>
 </head>
@@ -279,6 +305,7 @@
   </div>
 </div>
 <div class="tip" id="tip" hidden></div>
+<div class="cw" id="cw" hidden></div>
 
 <script>
 'use strict';
@@ -898,6 +925,7 @@ function update() {
 
   renderTable(r);
   if (typeof drawWind === 'function' && $('windV').value) drawWind(r);
+  if (typeof renderCondWarn === 'function') renderCondWarn(r);
   if (typeof renderSaved === 'function' && SAVED) renderSaved();
   sizeChart();
   if (chartMode === 't') drawTemp(r); else drawGlaser(r);
@@ -1268,6 +1296,127 @@ function drawWind(r) {
   }
   $('windVerdict').className = 'verdict ' + vc; $('windVerdict').innerHTML = msg.join('<br>');
 }
+
+// ---------------------------------------------------------------- avertizare condens
+let cwDismissed = null, cwOpen = false;   // cwDismissed = cheia configuratiei (tip + materiale) inchise cu X
+const cwKey = () => S.type + ':' + S.layers.map(l => l.m).join(',');
+function condInfo(r) {
+  // primul punct unde vaporii ating saturatia (planul de condens)
+  const k = r.samples.findIndex(p => p.cond);
+  if (k < 0) return null;
+  const p = r.samples[k];
+  const L = r.E;
+  const li = L.findIndex(x => x.i === p.li);
+  const ly = L[li];
+  const atEdge = ly && Math.abs(p.x - ly.x1) < 0.0005 && li < L.length - 1;
+  const inner = L.slice(0, atEdge ? li + 1 : li + (p.x - ly.x0 > 0.0005 ? 1 : 0));
+  const outer = L.filter(x => !inner.includes(x));
+  const sdIn = p.s, sdOut = r.Stot - p.s;
+  const tightOut = outer.reduce((b, x) => !b || x.sd > b.sd ? x : b, null);
+  return { k, p, li, ly, atEdge, next: atEdge ? L[li + 1] : null, sdIn, sdOut, tightOut, outer, inner };
+}
+const OPEN_ALT = { bariera: 'membrana', frana: 'membrana', osb: 'mdf_dif', placaj: 'mdf_dif', pal: 'mdf_dif', fibrociment: 'mdf_dif',
+  tenc_ext: 'tenc_var', xps: 'vata_baz', eps: 'frontrock_mp', eps_graf: 'frontrock_mp', pir: 'fibra_lemn', laminat: 'parchet', gresie: 'tenc_var' };
+const WATERPROOF = new Set(['bitum', 'pvc', 'tabla', 'folie_alu', 'sticla_spuma']);
+function condFixes(r, ci) {
+  const out = [];
+  const test = (title, desc, mutate) => {
+    const st = clone(S); mutate(st);
+    const r2 = computeFor(st);
+    if (r2.Mc < r.Mc - 1e-6) out.push({ title, desc, st, r2 });
+  };
+  const L = S.layers;
+  const lastInner = ci.inner.length ? ci.inner[ci.inner.length - 1].i : -1;
+  // 1. frana / bariera de vapori spre interior (dupa finisajul interior)
+  const existing = ci.inner.find(x => x.ly.m === 'frana' || x.ly.m === 'membrana');
+  const hasBarrier = ci.inner.some(x => x.ly.m === 'bariera');
+  if (existing) {
+    test('Înlocuiește ' + MAT[existing.ly.m].name.toLowerCase() + ' cu barieră de vapori', 'Un strat etanș la vapori în interior oprește vaporii înainte să ajungă la zona rece.',
+      st => { st.layers[existing.i] = { m: 'bariera', d: 0.02, mix: null, ov: {} }; });
+  } else if (!hasBarrier) {
+    const first = MAT[L[0].m].cat;
+    const at = ['plaster', 'board', 'wood'].includes(first) && L.length > 1 ? 1 : 0;
+    for (const [m, nm] of [['frana', 'frână de vapori (s<sub>d</sub> ≈ 2 m)'], ['bariera', 'barieră de vapori (s<sub>d</sub> ≈ 100 m)']]) {
+      if (out.some(f => f.r2.Mc === 0)) break;
+      test(`Adaugă ${nm.replace(/<[^>]+>/g, '')} spre interior`, `Se pune ${at ? 'imediat după ' + MAT[L[0].m].name.toLowerCase() : 'pe fața interioară'}, cu rosturile lipite. Vaporii din casă nu mai ajung în zona rece.`,
+        st => { st.layers.splice(at, 0, { m, d: 0.02, mix: null, ov: {} }); });
+    }
+  }
+  // 2. strat mai deschis la difuzie in exterior
+  if (ci.tightOut && !WATERPROOF.has(ci.tightOut.ly.m) && OPEN_ALT[ci.tightOut.ly.m]) {
+    const to = OPEN_ALT[ci.tightOut.ly.m];
+    test(`Înlocuiește ${MAT[ci.tightOut.ly.m].name.toLowerCase()} cu ${MAT[to].name.toLowerCase()}`,
+      'Stratul din exterior trebuie să lase vaporii să iasă. Un material mai deschis la difuzie îi lasă să treacă în loc să-i oprească în perete.',
+      st => { const x = st.layers[ci.tightOut.i]; x.m = to; x.ov = {}; if (MAT[to].cat === 'film') x.d = 0.05; else if (x.d < 1) x.d = 2; });
+  }
+  // 2b. toate straturile exterioare inlocuibile, eventual plus frana de vapori in interior
+  const repl = ci.outer.filter(x => !WATERPROOF.has(x.ly.m) && OPEN_ALT[x.ly.m] && x.sd > 0.3);
+  const swapAll = st => { for (const x of repl) { const y = st.layers[x.i]; y.m = OPEN_ALT[x.ly.m]; y.ov = {}; if (MAT[y.m].cat === 'film') y.d = 0.05; else if (y.d < 1) y.d = 2; } };
+  if (repl.length > 1) test('Deschide la difuzie toate straturile exterioare', repl.map(x => `${MAT[x.ly.m].name.toLowerCase()} → ${MAT[OPEN_ALT[x.ly.m]].name.toLowerCase()}`).join('; ') + '.', swapAll);
+  if (repl.length && !hasBarrier && !out.some(f => f.r2.Mc === 0)) {
+    const at = ['plaster', 'board', 'wood'].includes(MAT[L[0].m].cat) && L.length > 1 ? 1 : 0;
+    test('Exteriorul deschis la difuzie + frână de vapori în interior', 'Combinația clasică pentru pereți ușori: etanș în interior, deschis în exterior. ' + repl.map(x => `${MAT[x.ly.m].name.toLowerCase()} → ${MAT[OPEN_ALT[x.ly.m]].name.toLowerCase()}`).join('; ') + '.',
+      st => { swapAll(st); if (!st.layers.some(l => l.m === 'frana' || l.m === 'bariera')) st.layers.splice(at, 0, { m: 'frana', d: 0.02, mix: null, ov: {} }); });
+  }
+  // 3. mai multa izolatie la exterior (muta punctul de roua spre exterior)
+  const insOut = ci.outer.filter(x => ['ins', 'ins_gr', 'ins_x', 'wool', 'wood_f'].includes(x.mat.cat));
+  if (!insOut.length && S.type === 'wall' && !r.L.some(x => WATERPROOF.has(x.ly.m))) {
+    // izolatie exterioara inainte de finisajul exterior
+    const lastE = r.E[r.E.length - 1];
+    const at = lastE && ['plaster', 'board'].includes(lastE.mat.cat) ? lastE.i : (lastE ? lastE.i + 1 : L.length);
+    test('Adaugă 6 cm de fibră de lemn la exterior', 'Izolația pusă la exterior ține zona de condens caldă și e deschisă la difuzie, deci vaporii ies.',
+      st => { st.layers.splice(at, 0, { m: 'fibra_lemn', d: 6, mix: null, ov: {} }); });
+  }
+  // cele care elimina complet condensul primele
+  out.sort((a, b) => a.r2.Mc - b.r2.Mc);
+  return out.slice(0, 4);
+}
+function renderCondWarn(r) {
+  const box = $('cw');
+  if (!(r.Mc > 0) || !r.E.length) { box.hidden = true; document.body.classList.remove('cw-on'); cwDismissed = null; cwOpen = false; return; }
+  if (cwDismissed === cwKey()) { box.hidden = true; document.body.classList.remove('cw-on'); return; }
+  const ci = condInfo(r);
+  const g = fmt(r.Mc * 1000, 0);
+  let body = '';
+  if (cwOpen && ci) {
+    const where = ci.atEdge ? `între <b>${esc(ci.ly.mat.name)}</b> și <b>${esc(ci.next.mat.name)}</b>` : `în <b>${esc(ci.ly.mat.name)}</b>`;
+    const tdC = ci.p.td, tC = ci.p.t;
+    const rows = [];
+    for (const x of r.L) {
+      rows.push(`<tr class="${r.condLayers.has(x.i) ? 'hot' : ''}" style="${x.ign ? 'opacity:.5' : ''}"><td>${x.i + 1}</td><td>${esc(x.mat.name)}${r.condLayers.has(x.i) ? ' 💧' : ''}</td><td>${fmt(x.dm * 100, x.dm < 0.01 ? 2 : 1)}</td><td>${fmtN(x.mu)}</td><td>${fmtN(x.sd)}</td><td>${fmt(x.t0, 1)} → ${fmt(x.t1, 1)}</td></tr>`);
+      if (ci.atEdge && x.i === ci.ly.i) rows.push(`<tr class="plane"><td colspan="6">▼ aici apare condensul (${fmt(tC, 1)} °C, punct de rouă ${fmt(tdC, 1)} °C) ▼</td></tr>`);
+    }
+    const fixes = condFixes(r, ci);
+    cwFixes = fixes;
+    body = `<div class="cw-body">
+      <h3>Configurația curentă · ${esc(r.T.name)}</h3>
+      <div class="tblwrap"><table><tr><th>#</th><th>Material (interior → exterior)</th><th>d [cm]</th><th>μ</th><th>s<sub>d</sub> [m]</th><th>θ [°C]</th></tr>${rows.join('')}</table></div>
+      <div class="muted" style="margin-top:4px">Climă: ${fmt(S.ti, 0)} °C / ${fmt(S.phii, 0)} % în casă, ${fmt(S.te, 0)} °C / ${fmt(S.phie, 0)} % afară, ${S.days} zile.</div>
+      <h3>De unde vine condensul</h3>
+      <p style="margin:0">Aerul din casă are vapori cu presiunea de ${fmt(r.pi, 0)} Pa și vrea să iasă afară (${fmt(r.pe, 0)} Pa). Vaporii trec ${ci.sdIn * 5 < ci.sdOut ? 'ușor ' : ''}prin straturile dinspre interior (s<sub>d</sub> total ${fmtN(ci.sdIn)} m), dar ${ci.tightOut ? `sunt frânați de straturile dinspre exterior (s<sub>d</sub> ${fmtN(ci.sdOut)} m, mai ales <b>${esc(ci.tightOut.mat.name)}</b> cu ${fmtN(ci.tightOut.sd)} m)` : 'nu au pe unde ieși destul de repede'}.</p>
+      <p style="margin:6px 0 0">Condensul apare ${where}, unde temperatura iarna este ${fmt(tC, 1)} °C, adică sub punctul de rouă al vaporilor ajunși acolo (${fmt(tdC, 1)} °C). Se adună ~<b>${g} g/m²</b> în ${S.days} zile${r.Me != null ? (r.Me > r.Mc ? `, iar vara se pot evapora ~${fmt(r.Me * 1000, 0)} g/m², deci se usucă.` : `, iar vara se evaporă doar ~${fmt(r.Me * 1000, 0)} g/m². <b>Umezeala se acumulează de la an la an.</b>`) : '.'}</p>
+      <p class="muted" style="margin:6px 0 0">Regula de bază: straturile trebuie să fie tot mai deschise la vapori de la interior spre exterior. Cele din interior trebuie să fie de ~5-10 ori mai etanșe decât cele din exterior.</p>
+      <h3>Cum scapi de condens</h3>
+      ${fixes.length ? fixes.map((f, i) => `<div class="fix"><div><b>${f.title}</b><span class="muted">${f.desc}</span><div class="res ${f.r2.Mc === 0 ? 'okk' : ''}">${f.r2.Mc === 0 ? '✔ Fără condens' : 'Condens redus la ' + fmt(f.r2.Mc * 1000, 0) + ' g/m²'} · U ${fmt(f.r2.U, 3)}</div></div><button data-fix="${i}">Aplică</button></div>`).join('') :
+        '<p class="muted">Nu am găsit o modificare automată. Încearcă o frână de vapori în interior sau un strat exterior mai deschis la difuzie.</p>'}
+    </div>`;
+  }
+  box.className = 'cw' + (cwOpen ? ' open' : '');
+  box.innerHTML = `<div class="cw-bar" id="cwBar"><span style="font-size:20px">⚠</span><div class="t">Configurația curentă generează condens<small>~${g} g/m² în ${S.days} zile${ci ? ' · ' + (ci.atEdge ? 'între ' + esc(ci.ly.mat.name.toLowerCase()) + ' și ' + esc(ci.next.mat.name.toLowerCase()) : 'în ' + esc(ci.ly.mat.name.toLowerCase())) : ''} · ${cwOpen ? 'apasă ca să închizi detaliile' : 'apasă pentru detalii și soluții'}</small></div><span class="chev">▲</span><button id="cwX" title="Închide">✕</button></div>${body}`;
+  box.hidden = false; document.body.classList.add('cw-on');
+}
+let cwFixes = [];
+$('cw').addEventListener('click', e => {
+  if (e.target.closest('#cwX')) { cwDismissed = cwKey(); cwOpen = false; update(); return; }
+  const fb = e.target.closest('button[data-fix]');
+  if (fb) {
+    const f = cwFixes[+fb.dataset.fix]; if (!f) return;
+    S = f.st; openDet = new Set();
+    renderTypes(); renderLayers(); update(); toast(f.r2.Mc === 0 ? 'Aplicat: fără condens' : 'Aplicat');
+    return;
+  }
+  if (e.target.closest('#cwBar')) { cwOpen = !cwOpen; update(); }
+});
 
 renderTypes(); renderLayers(); update();
 let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(update, 150); });
