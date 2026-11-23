@@ -30,7 +30,7 @@
     .layout { grid-template-columns: minmax(0, 1fr); }
     .layout > .col { display: contents; }
     #cElem { order: 1; } #cLayers { order: 2; } #cU { order: 3; } #cSaved { order: 4; } #cMoist { order: 5; } #cCmp { order: 6; }
-    #cChart { order: 7; } #cSummer { order: 8; } #cLoss { order: 9; } #cTbl { order: 10; } #cHelp { order: 11; }
+    #cChart { order: 7; } #cWind { order: 8; } #cSummer { order: 9; } #cLoss { order: 10; } #cTbl { order: 11; } #cHelp { order: 12; }
   }
   .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px; min-width: 0; }
@@ -140,6 +140,14 @@
   .win .why { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
   table.cmp th .cups { display: block; font-size: 14px; letter-spacing: 2px; }
   table.cmp tr.sec td { color: var(--accent-2); font-weight: 700; text-align: left; padding-top: 12px; }
+  .windrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .windrow input[type=range] { flex: 1 1 200px; accent-color: var(--accent); }
+  .windrow b { font-size: 15px; min-width: 150px; }
+  table.wind { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+  table.wind th, table.wind td { padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  table.wind th { color: var(--muted); font-weight: 600; }
+  table.wind td:first-child, table.wind th:first-child { text-align: left; }
+  table.wind tr.hl td { background: rgba(255,106,0,.10); }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--accent); color: #140a02; font-weight: 700; padding: 8px 14px; border-radius: 10px; z-index: 30; }
 </style>
 </head>
@@ -187,6 +195,17 @@
       </h2>
       <svg class="chart" id="chart" viewBox="0 0 800 380"></svg>
       <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="card" id="cWind">
+      <h2>Vânt: cât izolează la diferite viteze</h2>
+      <div class="windrow"><span class="muted">Viteză vânt</span><input type="range" id="windV" min="0" max="35" step="1"><b id="windLbl"></b></div>
+      <div class="stats" id="windStats"></div>
+      <svg class="chart" id="windChart" viewBox="0 0 800 240" style="margin-top:10px"></svg>
+      <div class="legend"><span><i style="background:#ff5a3c"></i>U efectiv cu vânt</span><span><i style="background:repeating-linear-gradient(90deg,#8e969f 0 6px,transparent 6px 9px)"></i>U fără vânt</span><span><i style="background:#4aa8ff"></i>din care infiltrații de aer</span></div>
+      <div class="tblwrap"><table class="wind" id="windTbl"></table></div>
+      <div class="verdict" id="windVerdict"></div>
+      <div class="muted" style="margin-top:8px">Vântul influențează izolația în trei feluri: răcește mai repede fața exterioară (R<sub>se</sub> scade), împinge aer rece prin straturile neetanșe (infiltrații) și „spală” vata minerală dacă nu are o barieră de vânt în fața ei. Model orientativ: presiune pe fațada expusă 0,5·ρ·v²·0,7, permeabilitate tipică pe tip de material, rosturi bine executate.</div>
     </div>
 
     <div class="card" id="cCmp" hidden>
@@ -616,6 +635,48 @@ function compute() {
            lag, decr, mass, cap, q: (S.ti - S.te) * U };
 }
 
+// ---------------------------------------------------------------- vant
+// permeabilitate la aer tipica pe strat [m³/(m²·h·Pa)], cu rosturi executate normal (orientativ)
+const AIRP = { plaster: 0.0003, concrete: 0.0001, stone: 0.002, brick: 0.05, aac: 0.02, board: 0.004, film: 0.0002, film_d: 0.0001,
+  tile: 50, airv: 1000, air: 100, ins: 0.5, ins_gr: 0.5, ins_x: 0.2, wool: 5, wood_f: 0.02, wood: 0.1 };
+const AIRP_ID = { membrana: 0.001, lambriu: 2, parchet: 0.5, laminat: 0.5, gresie: 0.001, mdf_dif: 0.01, tenc_term: 0.0005, pamant: 0.001,
+  sticla_spuma: 0.001, pir: 0.05, spuma_puf: 0.02, celuloza: 1, gips_carton: 0.002, osb: 0.005 };
+const airP = id => AIRP_ID[id] ?? AIRP[MAT[id].cat] ?? 0.01;
+const WIND_EXPO = { wall: 1, roof: 1, attic: 0.35, floor: 0 };
+const WIND_STEPS = [[0, 'calm'], [3, 'adiere'], [6, 'vânt slab'], [10, 'vânt puternic'], [15, 'vânt foarte puternic'], [20, 'furtună'], [30, 'uragan']];
+const beaufortName = v => v < 0.5 ? 'calm' : v < 3.4 ? 'adiere' : v < 8 ? 'vânt moderat' : v < 13.9 ? 'vânt puternic' : v < 20.8 ? 'vânt foarte puternic' : v < 28.5 ? 'furtună' : 'uragan';
+function windModel(r, st) {
+  const f = WIND_EXPO[st.type] ?? 1;
+  const vent = r.nEff < r.L.length;
+  const Rbase = r.Rtot - r.rse;               // fara rezistenta exterioara
+  // stratul cel mai etans si rezistenta totala la aer
+  const solid = r.L.filter(x => x.dm > 0);
+  const Ra = solid.reduce((a, x) => a + 1 / airP(x.ly.m), 0) || 1;
+  const tight = solid.reduce((b, x) => !b || airP(x.ly.m) < airP(b.ly.m) ? x : b, null);
+  // vata expusa: niciun strat etans la vant (permeabilitate <= 0.02) spre exterior, in zona calculata
+  const washed = [];
+  r.E.forEach((x, i) => {
+    const m = x.mat;
+    if (m.cat !== 'wool') return;
+    const shielded = r.E.slice(i + 1).some(y => airP(y.ly.m) <= 0.02);
+    if (!shielded) washed.push({ x, k: x.rho < 60 ? 0.022 : 0.01 });
+  });
+  const at = v => {
+    const ve = v * f;
+    const rse = vent || f === 0 || st.type === 'attic' ? r.rse : 1 / (4 + 4 * ve + 4.1);
+    let dR = 0;
+    for (const w of washed) dR += w.x.R * Math.min(0.4, w.k * ve);
+    const Ucond = 1 / Math.max(0.05, Rbase + rse - dR);
+    const dp = 0.5 * 1.2 * ve * ve * 0.7;      // Pa
+    const q = dp / Ra;                          // m³/(m²·h)
+    const Uinf = 0.34 * q;                      // W/(m²K) (ρ·c aer = 0.34 Wh/(m³K))
+    return { v, ve, rse, dR, Ucond, q, Uinf, U: Ucond + Uinf };
+  };
+  const calm = at(0);
+  return { f, vent, Ra, tight, washed, at, calm, q10: at(10).q };
+}
+const tightClass = q => q < 0.05 ? ['Foarte etanș', 'good'] : q < 0.5 ? ['Etanș', 'good'] : q < 3 ? ['Permeabil', 'ok'] : ['Foarte permeabil', 'bad'];
+
 // ---------------------------------------------------------------- UI: straturi
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -835,6 +896,7 @@ function update() {
   $('yearNote').textContent = has ? `La ΔT = ${fmt(S.ti - S.te, 0)} K și ${S.hdd} grade-zile. Pentru 100 m² de astfel de ${T.name.toLowerCase()}: ~${Math.round(kwh * 100).toLocaleString('ro-RO')} kWh/an (≈ ${Math.round(kwh * 100 / 10.5).toLocaleString('ro-RO')} m³ de gaz).` : '';
 
   renderTable(r);
+  if (typeof drawWind === 'function' && $('windV').value) drawWind(r);
   if (typeof renderSaved === 'function' && SAVED) renderSaved();
   sizeChart();
   if (chartMode === 't') drawTemp(r); else drawGlaser(r);
@@ -1077,7 +1139,8 @@ function renderCmp() {
     fire.score = fire.frac * 1000 + Math.min(fire.mass, 999);
     // condens: cantitate, apoi cat de aproape ajunge vaporul de saturatie (rezerva)
     const ratio = Math.max(...r.samples.map(p => p.ps > 0 ? p.p / p.ps : 0));
-    return { ...c, r, fire, reserve: Math.max(0, (1 - ratio) * 100), kwh: r.U * c.st.hdd * 24 / 1000 };
+    const wm = windModel(r, c.st);
+    return { ...c, r, fire, wm, u0: wm.calm.U, u10: wm.at(10).U, u20: wm.at(20).U, reserve: Math.max(0, (1 - ratio) * 100), kwh: r.U * c.st.hdd * 24 / 1000 };
   });
   // castigatori pe categorii (pot fi mai multi la egalitate)
   const winBy = (val, dir) => {
@@ -1092,6 +1155,8 @@ function renderCmp() {
       why: w => `${fmt(w.fire.frac, 0)} % din grosime incombustibil (A1/A2), cel mai slab strat clasa ${w.fire.worst}` },
     { k: 'c', ico: '💧', name: 'Condens', w: (() => { const m = winBy(c => c.r.Mc, -1); return m.length > 1 ? winBy(c => m.includes(c) ? c.reserve : -1, 1) : m; })(),
       why: w => w.r.Mc > 0 ? `cel mai puțin condens: ${fmt(w.r.Mc * 1000, 0)} g/m²` : `fără condens, rezervă ${fmt(w.reserve, 0)} % până la saturație` },
+    { k: 'w', ico: '🌪', name: 'Izolare la vânt puternic', w: winBy(c => c.u20, -1),
+      why: w => `U ${fmt(w.u20, 3)} la 20 m/s (+${fmt((w.u20 / w.u0 - 1) * 100, 1)} % față de calm)` },
     { k: 'b', ico: '🌬', name: 'Respirabilitate (vapori)', w: winBy(c => c.r.Stot, -1),
       why: w => `s<sub>d</sub> total ${fmtN(w.r.Stot)} m${w.r.Stot < 2 ? ', deschis la difuzie' : w.r.Stot > 100 ? ', practic etanș' : ''}` },
   ];
@@ -1115,6 +1180,10 @@ function renderCmp() {
     ['Incombustibil din grosime', c => c.fire.score, c => fmt(c.fire.frac, 0) + ' %', 1],
     ['Strat cel mai inflamabil', c => -FIRE_RANK[c.fire.worst], c => 'clasa ' + c.fire.worst, 1],
     ['Grosime combustibilă [cm]', c => c.fire.combCm, c => fmt(c.fire.combCm, 1), -1],
+    ['U la vânt 10 m/s (36 km/h)', c => c.u10, c => fmt(c.u10, 3), -1],
+    ['U la furtună 20 m/s (72 km/h)', c => c.u20, c => fmt(c.u20, 3), -1],
+    ['Creștere pierderi la 20 m/s', c => c.u20 / c.u0, c => '+' + fmt((c.u20 / c.u0 - 1) * 100, 1) + ' %', -1],
+    ['Etanșeitate la vânt', c => -['Foarte etanș', 'Etanș', 'Permeabil', 'Foarte permeabil'].indexOf(tightClass(c.wm.q10)[0]), c => tightClass(c.wm.q10)[0], 1],
     ['Defazaj [h]', c => c.r.lag, c => fmt(c.r.lag, 1), 1],
     ['Factor atenuare', c => c.r.decr, c => fmt(c.r.decr, 2), -1],
     ['Masă [kg/m²]', c => c.r.mass, c => fmt(c.r.mass, 0), 0],
@@ -1137,6 +1206,66 @@ function renderCmp() {
   }
   h += `<tr><td>Straturi</td>${R.map(c => `<td class="lay">${c.r.L.map(x => `${fmt(x.dm * 100, x.dm < 0.01 ? 2 : 1)} ${esc(x.mat.name)}`).join('<br>')}</td>`).join('')}</tr>`;
   $('cmpTbl').innerHTML = h;
+}
+
+let windV = 10;
+try { const w = parseFloat(localStorage.getItem('ubakus.wind')); if (isFinite(w)) windV = w; } catch (e) {}
+$('windV').value = windV;
+$('windV').addEventListener('input', () => { windV = +$('windV').value; try { localStorage.setItem('ubakus.wind', windV); } catch (e) {} drawWind(compute()); });
+
+function drawWind(r) {
+  const has = r.E.length > 0;
+  const kmh = v => Math.round(v * 3.6);
+  $('windLbl').textContent = `${windV} m/s · ${kmh(windV)} km/h · ${beaufortName(windV)}`;
+  const svg = $('windChart');
+  if (!has) { $('windStats').innerHTML = ''; svg.innerHTML = ''; $('windTbl').innerHTML = ''; $('windVerdict').className = 'verdict'; $('windVerdict').innerHTML = ''; return; }
+  const wm = windModel(r, S);
+  const cur = wm.at(windV), calm = wm.calm;
+  const dT = S.ti - S.te;
+  const [cls, ccls] = tightClass(wm.q10);
+  $('windStats').innerHTML =
+    `<div>U la ${windV} m/s<b>${fmt(cur.U, 3)}</b></div>` +
+    `<div>Față de vânt calm<b style="color:${cur.U / calm.U > 1.1 ? 'var(--bad)' : cur.U / calm.U > 1.03 ? 'var(--ok)' : 'var(--good)'}">+${fmt((cur.U / calm.U - 1) * 100, 1)} %</b></div>` +
+    `<div>Etanșeitate la vânt<b style="color:var(--${ccls})">${cls}</b></div>` +
+    `<div>Aer prin perete la 10 m/s<b>${fmtN(wm.q10)} m³/m²·h</b></div>`;
+  // grafic U(v)
+  const W2 = 800, H2 = 240, L = 52, Rr = 20, T = 14, B = 34, vmax = 35;
+  const pts = []; for (let v = 0; v <= vmax; v += 0.5) pts.push(wm.at(v));
+  const umax = Math.max(...pts.map(p => p.U)) * 1.08, umin = 0;
+  const sx = v => L + (W2 - L - Rr) * v / vmax, sy = u => T + (H2 - T - B) * (1 - (u - umin) / (umax - umin));
+  let g = '';
+  for (const t of niceTicks(0, umax, 5)) g += `<line x1="${L}" x2="${W2 - Rr}" y1="${sy(t)}" y2="${sy(t)}" stroke="rgba(255,255,255,.08)"/><text x="${L - 6}" y="${sy(t) + 4}" fill="#8e969f" font-size="11" text-anchor="end">${String(t).replace('.', ',')}</text>`;
+  for (const [v, n] of WIND_STEPS) g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${T}" y2="${H2 - B}" stroke="rgba(255,255,255,.06)"/><text x="${sx(v)}" y="${H2 - B + 14}" fill="#8e969f" font-size="10" text-anchor="middle">${v}</text>`;
+  g += `<text x="${(L + W2 - Rr) / 2}" y="${H2 - 4}" fill="#8e969f" font-size="11" text-anchor="middle">viteza vântului [m/s]</text>`;
+  g += `<text x="12" y="${T + 4}" fill="#8e969f" font-size="11" transform="rotate(-90 12 ${T + 4})" text-anchor="end">U</text>`;
+  g += `<polygon points="${pts.map(p => `${sx(p.v)},${sy(p.Uinf)}`).join(' ')} ${sx(vmax)},${sy(0)} ${sx(0)},${sy(0)}" fill="rgba(74,168,255,.35)" stroke="#4aa8ff"/>`;
+  g += `<line x1="${L}" x2="${W2 - Rr}" y1="${sy(calm.U)}" y2="${sy(calm.U)}" stroke="#8e969f" stroke-dasharray="6 4"/>`;
+  g += `<polyline points="${pts.map(p => `${sx(p.v)},${sy(p.U)}`).join(' ')}" fill="none" stroke="#ff5a3c" stroke-width="3"/>`;
+  g += `<line x1="${sx(windV)}" x2="${sx(windV)}" y1="${T}" y2="${H2 - B}" stroke="#ff8533"/><circle cx="${sx(windV)}" cy="${sy(cur.U)}" r="5" fill="#ff8533" stroke="#fff"/>`;
+  g += `<text x="${Math.min(sx(windV) + 8, W2 - 90)}" y="${Math.max(sy(cur.U) - 8, T + 12)}" fill="#fff" font-size="12" style="paint-order:stroke" stroke="#0b0d10" stroke-width="3">U ${fmt(cur.U, 3)}</text>`;
+  svg.innerHTML = g;
+  // tabel
+  const rows = WIND_STEPS.map(([v, n]) => {
+    const a = wm.at(v);
+    return `<tr class="${Math.abs(v - windV) < 0.5 ? 'hl' : ''}"><td>${v} m/s <span class="muted">(${kmh(v)} km/h, ${n})</span></td><td>${fmt(a.U, 3)}</td><td>+${fmt((a.U / calm.U - 1) * 100, 1)} %</td><td>${fmt(a.U * dT, 1)}</td><td>${fmtN(a.q)}</td><td>${fmt(a.rse, 3)}</td></tr>`;
+  }).join('');
+  $('windTbl').innerHTML = `<tr><th>Vânt</th><th>U efectiv</th><th>vs. calm</th><th>W/m² la ΔT ${fmt(dT, 0)} K</th><th>aer [m³/m²h]</th><th>R<sub>se</sub></th></tr>${rows}`;
+  // verdict
+  const msg = [];
+  let vc = 'good';
+  const u20 = wm.at(20);
+  if (wm.f === 0) msg.push('<b>Ferit de vânt</b>Planșeul peste subsol nu e expus direct, vântul nu îl afectează practic.');
+  else {
+    if (wm.washed.length) { vc = 'bad'; msg.push(`<b>Vata e expusă vântului</b>${esc(wm.washed.map(w => w.x.mat.name).join(', '))} nu are în fața ei un strat etanș la vânt. La furtună pierde până la ${fmt(Math.max(...wm.washed.map(w => Math.min(0.4, w.k * 20 * wm.f))) * 100, 0)} % din izolare. Pune o membrană anticondens, fibră de lemn sau tencuială peste ea.`); }
+    if (wm.q10 >= 0.5) { vc = 'bad'; msg.push(`<b>Trage aer prin perete</b>Nu există un strat continuu etanș la aer. La 10 m/s trec ~${fmtN(wm.q10)} m³ de aer pe m² pe oră. O tencuială continuă, o frână de vapori lipită la rosturi sau OSB cu rosturile bandate rezolvă.`); }
+    if (!msg.length) {
+      const inc = (u20.U / calm.U - 1) * 100;
+      vc = inc > 12 ? 'bad' : inc > 5 ? 'ok' : 'good';
+      msg.push(`<b>${vc === 'good' ? 'Bine protejat la vânt' : vc === 'ok' ? 'Ok la vânt' : 'Pierde mult pe vânt'}</b>Stratul etanș la aer este ${esc(wm.tight.mat.name.toLowerCase())}. La furtună (20 m/s) U crește cu ${fmt(inc, 1)} %` +
+        (vc === 'bad' ? ', pentru că fără izolație suprafața exterioară e răcită direct de vânt.' : '.') + (wm.vent ? ' Fațada/acoperișul ventilat ține vântul departe de izolație.' : ''));
+    }
+  }
+  $('windVerdict').className = 'verdict ' + vc; $('windVerdict').innerHTML = msg.join('<br>');
 }
 
 renderTypes(); renderLayers(); update();
