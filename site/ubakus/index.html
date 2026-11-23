@@ -321,6 +321,7 @@ const GROUPS = [
     ['eps_graf', 'Polistiren EPS grafitat', 0.031, 16, 1450, 50, 'ins_gr'],
     ['xps', 'Polistiren extrudat XPS', 0.034, 35, 1450, 150, 'ins_x'],
     ['vata_baz', 'Vată bazaltică (plăci fațadă)', 0.036, 120, 1030, 1, 'wool'],
+    ['frontrock_mp', 'Rockwool Frontrock Max Plus', 0.035, 90, 1030, 1, 'wool'],
     ['vata_sticla', 'Vată de sticlă (saltele)', 0.037, 20, 1030, 1, 'wool'],
     ['vata_035', 'Vată minerală λ 0,035', 0.035, 30, 1030, 1, 'wool'],
     ['pir', 'Spumă PIR / PUR (plăci)', 0.023, 32, 1400, 60, 'ins_x'],
@@ -681,7 +682,7 @@ const tightClass = q => q < 0.05 ? ['Foarte etanș', 'good'] : q < 0.5 ? ['Etan�
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (v, d = 2) => (isFinite(v) ? v.toFixed(d) : '–').replace('.', ',');
-const fmtN = v => v >= 1000 ? Math.round(v).toLocaleString('ro-RO') : v >= 10 ? v.toFixed(1).replace('.', ',') : v.toFixed(2).replace('.', ',');
+const fmtN = v => v > 0 && v < 0.1 ? v.toFixed(3).replace('.', ',') : v >= 1000 ? Math.round(v).toLocaleString('ro-RO') : v >= 10 ? v.toFixed(1).replace('.', ',') : v.toFixed(2).replace('.', ',');
 let openDet = new Set();
 
 function matOptions(sel) {
