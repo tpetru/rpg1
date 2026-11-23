@@ -682,7 +682,7 @@ const tightClass = q => q < 0.05 ? ['Foarte etanș', 'good'] : q < 0.5 ? ['Etan�
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (v, d = 2) => (isFinite(v) ? v.toFixed(d) : '–').replace('.', ',');
-const fmtN = v => v >= 1000 ? Math.round(v).toLocaleString('ro-RO') : v >= 10 ? v.toFixed(1).replace('.', ',') : v.toFixed(2).replace('.', ',');
+const fmtN = v => v > 0 && v < 0.1 ? v.toFixed(3).replace('.', ',') : v >= 1000 ? Math.round(v).toLocaleString('ro-RO') : v >= 10 ? v.toFixed(1).replace('.', ',') : v.toFixed(2).replace('.', ',');
 let openDet = new Set();
 
 function matOptions(sel) {
