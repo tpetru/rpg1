@@ -154,7 +154,36 @@ const saveUI = () => { try { localStorage.setItem(LSUI, JSON.stringify(UI)); } c
 
 const DIRS = { N: [0, -1], NE: [.7071, -.7071], E: [1, 0], SE: [.7071, .7071], S: [0, 1], SV: [-.7071, .7071], V: [-1, 0], NV: [-.7071, -.7071] };
 const DIRN = { N: 'Nord', NE: 'Nord-Est', E: 'Est', SE: 'Sud-Est', S: 'Sud', SV: 'Sud-Vest', V: 'Vest', NV: 'Nord-Vest' };
-function gy(x, z) { const t = S.terrain, k = t.slope / 100, d = DIRS[t.dir] || DIRS.S; return -k * (x * d[0] + z * d[1]); }
+function gy0(x, z) { const t = S.terrain, k = t.slope / 100, d = DIRS[t.dir] || DIRS.S; return -k * (x * d[0] + z * d[1]); }
+// zone de nivel: în interior terenul e ridicat/coborât cu dh, pe lățimea taluzului revine treptat la normal
+let ZONES = [];
+function segDist(x, z, a, b) { const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz || 1e-9; let t = ((x - a.x) * dx + (z - a.z) * dz) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(x - a.x - t * dx, z - a.z - t * dz); }
+function updateZones() {
+  ZONES = S.items.filter(i => i.type === 'zone' && i.pts && i.pts.length >= 3 && i.dh).map(i => {
+    const sw = Math.max(.05, i.sw), xs = i.pts.map(p => p.x), zs = i.pts.map(p => p.z);
+    return { pts: i.pts, dh: i.dh, sw, x0: Math.min(...xs) - sw, x1: Math.max(...xs) + sw, z0: Math.min(...zs) - sw, z1: Math.max(...zs) + sw };
+  });
+}
+function zoneOff(x, z) {
+  let o = 0;
+  for (const Z of ZONES) {
+    if (x < Z.x0 || x > Z.x1 || z < Z.z0 || z > Z.z1) continue;
+    if (inPoly(x, z, Z.pts)) { o += Z.dh; continue; }
+    let d = Infinity; for (let i = 0; i < Z.pts.length; i++) d = Math.min(d, segDist(x, z, Z.pts[i], Z.pts[(i + 1) % Z.pts.length]));
+    if (d < Z.sw) { const t = d / Z.sw; o += Z.dh * (1 - t * t * (3 - 2 * t)); }
+  }
+  return o;
+}
+function gy(x, z) { return gy0(x, z) + (ZONES.length ? zoneOff(x, z) : 0); }
+// pe teren cu zone, împarte segmentele lungi ca obiectele să urmărească denivelările
+function densify(pts, closed, step = .5) {
+  if (!ZONES.length) return pts;
+  const out = [], n = pts.length, seg = closed ? n : n - 1;
+  for (let i = 0; i < seg; i++) { const a = pts[i], b = pts[(i + 1) % n], k = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / step));
+    for (let j = 0; j < k; j++) out.push({ x: a.x + (b.x - a.x) * j / k, z: a.z + (b.z - a.z) * j / k }); }
+  if (!closed) out.push(pts[n - 1]);
+  return out;
+}
 
 /* ───────────────────────── Texturi ───────────────────────── */
 function speckle(g, s, n, a, seed = 9) { const r = rng(seed); for (let i = 0; i < n; i++) { const v = r() < .5 ? 0 : 255; g.fillStyle = `rgba(${v},${v},${v},${a * r()})`; g.fillRect(r() * s, r() * s, 1 + r() * 2, 1 + r() * 2); } }
@@ -247,7 +276,7 @@ function offsets(pts, hw, closed) {
 }
 // bandă care urmărește terenul (alee, bordură, gard...), coordonate în lume
 function ribbon(pts, width, b, t, size, opt = {}) {
-  const closed = !!opt.closed, fit = !!opt.fit, per = opt.period || size, n = pts.length;
+  const closed = !!opt.closed, fit = !!opt.fit, per = opt.period || size; pts = densify(pts, closed); const n = pts.length;
   const { L, R } = offsets(pts, width / 2, closed), gb = new GB(), seg = closed ? n : n - 1;
   const top = q => [q.x, gy(q.x, q.z) + t, q.z, q.x / size, q.z / size];
   const vb = (q, d) => [q.x, gy(q.x, q.z) + b, q.z, d / per, fit ? 0 : b / size];
@@ -266,7 +295,12 @@ function ribbon(pts, width, b, t, size, opt = {}) {
 function slab(pts, b, t, size) {
   const gb = new GB(), tris = THREE.ShapeUtils.triangulateShape(pts.map(p => new THREE.Vector2(p.x, p.z)), []);
   const v = (p, o) => [p.x, gy(p.x, p.z) + o, p.z, p.x / size, p.z / size];
-  for (const [a, c, d] of tris) gb.tri(v(pts[a], t), v(pts[c], t), v(pts[d], t));
+  const sub = (a, c, d, lvl) => { const L = (p, q) => Math.hypot(p.x - q.x, p.z - q.z), m = Math.max(L(a, c), L(c, d), L(d, a));
+    if (!ZONES.length || m < .8 || lvl > 7) { gb.tri(v(a, t), v(c, t), v(d, t)); return; }
+    const M = (p, q) => ({ x: (p.x + q.x) / 2, z: (p.z + q.z) / 2 }), ac = M(a, c), cd = M(c, d), da = M(d, a);
+    sub(a, ac, da, lvl + 1); sub(ac, c, cd, lvl + 1); sub(da, cd, d, lvl + 1); sub(ac, cd, da, lvl + 1); };
+  for (const [a, c, d] of tris) sub(pts[a], pts[c], pts[d], 0);
+  pts = densify(pts, true);
   let dist = 0;
   for (let i = 0; i < pts.length; i++) {
     const p = pts[i], q = pts[(i + 1) % pts.length], len = Math.hypot(q.x - p.x, q.z - p.z);
@@ -309,6 +343,8 @@ const TYPES = {
       co('wall', 'Pereți'), co('roofc', 'Acoperiș'), co('plinth', 'Soclu'), ck('win', 'Ferestre și ușă')] },
   gazebo: { l: 'Foișor', ic: '🛖', kind: 'point', def: { s: 3.5, rot: 0, roofc: '#6b3b25' }, f: [n('s', 'Latură', 2, 8, .1), n('rot', 'Rotire', -180, 180, 1, '°'), co('roofc', 'Acoperiș')] },
   pool: { l: 'Piscină', ic: '🏊', kind: 'rect', def: { w: 7, d: 3.5, rot: 0 }, f: [n('w', 'Lungime', 1.5, 25, .1), n('d', 'Lățime', 1, 15, .1), n('rot', 'Rotire', -180, 180, 1, '°')] },
+  zone: { l: 'Zonă nivel', ic: '⛰️', kind: 'poly', def: { dh: -1, sw: 1.5, mat: 'iarba' },
+    f: [n('dh', 'Ridicare (+) / adâncire (−)', -20, 20, .05), n('sw', 'Lățime taluz', .1, 30, .1), sl('mat', 'Suprafață', matOpts(['iarba', 'pamant', 'pietris', 'piatra', 'beton', 'dale']), true)] },
   path: { l: 'Alee', ic: '〰️', kind: 'line', def: { w: 1.2, mat: 'dale' }, f: [n('w', 'Lățime', .3, 8, .05), sl('mat', 'Material', matOpts(['pietris', 'dale', 'pavele', 'pavele_rosu', 'pavele_bej', 'piatra', 'beton', 'lemn', 'pamant']))] },
   paving: { l: 'Pavaj', ic: '🧱', kind: 'poly', def: { mat: 'pavele' }, f: [sl('mat', 'Material', matOpts(['pavele', 'pavele_rosu', 'pavele_bej', 'dale', 'gresie', 'piatra', 'beton', 'lemn', 'pietris', 'granit']), true)] },
   curb: { l: 'Bordură', ic: '▬', kind: 'line', def: { h: .12, w: .1, mat: 'beton_alb' }, f: [n('h', 'Înălțime peste teren', 0, .6, .01), n('w', 'Lățime', .05, .4, .01), sl('mat', 'Material', matOpts(['beton_alb', 'beton', 'granit']), true)] },
@@ -324,7 +360,7 @@ const TYPES = {
   lamp: { l: 'Lampă', ic: '💡', kind: 'point', def: { h: .9 }, f: [n('h', 'Înălțime', .3, 5, .05)] },
 };
 const DEF = {}; for (const k in TYPES) DEF[k] = clone(TYPES[k].def);
-const TOOLS = [['select', '👆', 'Selectează'], 'Construcții', 'house', 'gazebo', 'pool', 'Amenajări', 'path', 'paving', 'curb', 'sidewalk', 'fence', 'Vegetație', 'tree', 'plant', 'bed', 'hedge', 'Diverse', 'bench', 'lamp'];
+const TOOLS = [['select', '👆', 'Selectează'], 'Teren', 'zone', 'Construcții', 'house', 'gazebo', 'pool', 'Amenajări', 'path', 'paving', 'curb', 'sidewalk', 'fence', 'Vegetație', 'tree', 'plant', 'bed', 'hedge', 'Diverse', 'bench', 'lamp'];
 const TERRAIN_F = [n('w', 'Lățime (Est–Vest)', 4, 400, .1), n('d', 'Lungime (Nord–Sud)', 4, 400, .1), n('slope', 'Pantă', 0, 60, .5, '%'),
   sl('dir', 'Coboară spre', Object.entries(DIRN)), n('ext', 'Teren în jur', 0, 100, 1)];
 
@@ -377,6 +413,14 @@ const BUILD = {
     const water = mesh(new THREE.PlaneGeometry(w, d), M('water', { color: '#2b9fd8', roughness: .06, metalness: .15, transparent: true, opacity: .9 }), false, true);
     water.rotation.x = -Math.PI / 2; water.position.y = -.1; g.add(water);
     const inner = mesh(new THREE.BoxGeometry(w, hh, d), M('poolin', { color: '#7fcbe6', side: THREE.BackSide }), false, false); inner.position.y = -hh / 2 - .1; g.add(inner);
+    return g;
+  },
+  zone(it) {
+    const g = new THREE.Group(), pts = it.pts, solid = it.mat !== 'iarba';
+    const m = mesh(slab(pts, -.02, solid ? .03 : .02, MATS[it.mat].size), solid ? texMat(it.mat) : M('zonepick', { transparent: true, opacity: 0, depthWrite: false }), false, true);
+    g.add(m);
+    const lp = densify(pts, true, .5).map(p => new THREE.Vector3(p.x, gy(p.x, p.z) + .06, p.z)); lp.push(lp[0].clone());
+    const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(lp), new THREE.LineDashedMaterial({ color: it.dh > 0 ? '#ffd27a' : '#7ac4ff', dashSize: .4, gapSize: .25 })); ln.computeLineDistances(); g.add(ln);
     return g;
   },
   path(it) { const g = new THREE.Group(); g.add(mesh(ribbon(it.pts, it.w, -.06, .03, MATS[it.mat].size), texMat(it.mat), false, true)); return g; },
@@ -525,17 +569,19 @@ function disposeTree(o) { o.traverse(c => { if (c.geometry && !c.geometry.userDa
 function buildTerrain() {
   terrainG.children.slice().forEach(c => { terrainG.remove(c); disposeTree(c); });
   const t = S.terrain, w = t.w, d = t.d, ext = t.ext;
-  const plane = (W, D, mat, y) => { const g = new THREE.PlaneGeometry(W, D, Math.ceil(W / 10), Math.ceil(D / 10)); g.rotateX(-Math.PI / 2); const p = g.attributes.position, uv = g.attributes.uv;
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, gy(x, z) + y); uv.setXY(i, x / 2, z / 2); } g.computeVertexNormals(); return mesh(g, mat, false, true); };
+  groundMeshes = []; const cell = ZONES.length ? Math.min(1, Math.max(.25, Math.max(w + 2 * ext, d + 2 * ext) / 260)) : 10;
+  const plane = (W, D, mat, y) => { const g = new THREE.PlaneGeometry(W, D, Math.ceil(W / cell), Math.ceil(D / cell)); g.rotateX(-Math.PI / 2); const p = g.attributes.position, uv = g.attributes.uv;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, gy(x, z) + y); uv.setXY(i, x / 2, z / 2); } g.computeVertexNormals(); const m = mesh(g, mat, false, true); groundMeshes.push(m); return m; };
   if (ext > 0) terrainG.add(plane(w + 2 * ext, d + 2 * ext, texMat('iarba', { color: '#b7bfa3', polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), -.005));
   terrainG.add(plane(w, d, texMat('iarba'), 0));
   // margine lot + borne
   const cs = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]];
-  const bp = []; for (let i = 0; i < 4; i++) { const a = cs[i], b = cs[(i + 1) % 4]; for (let k = 0; k <= 20; k++) { const x = a[0] + (b[0] - a[0]) * k / 20, z = a[1] + (b[1] - a[1]) * k / 20; bp.push(new THREE.Vector3(x, gy(x, z) + .04, z)); } }
+  const bp = []; for (let i = 0; i < 4; i++) { const a = cs[i], b = cs[(i + 1) % 4]; const K = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / .5); for (let k = 0; k <= K; k++) { const x = a[0] + (b[0] - a[0]) * k / K, z = a[1] + (b[1] - a[1]) * k / K; bp.push(new THREE.Vector3(x, gy(x, z) + .04, z)); } }
   terrainG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(bp), new THREE.LineBasicMaterial({ color: '#ff8a1f' })));
   for (const [x, z] of cs) terrainG.add(part(CYL, colMat('#ff6a00'), x, gy(x, z) + .3, z, .04, .6, .04));
   // grilă 1 m
-  const gp = [], gc = [], c1 = new THREE.Color('#ffffff'), add = (x1, z1, x2, z2, strong) => { gp.push(x1, gy(x1, z1) + .02, z1, x2, gy(x2, z2) + .02, z2); const k = strong ? .5 : .22; gc.push(k, k, k, k, k, k); };
+  const gp = [], gc = [], c1 = new THREE.Color('#ffffff'), add = (x1, z1, x2, z2, strong) => { const K = ZONES.length ? Math.ceil(Math.hypot(x2 - x1, z2 - z1) / .5) : 1, k = strong ? .5 : .22;
+    for (let j = 0; j < K; j++) { const ax = x1 + (x2 - x1) * j / K, az = z1 + (z2 - z1) * j / K, bx = x1 + (x2 - x1) * (j + 1) / K, bz = z1 + (z2 - z1) * (j + 1) / K; gp.push(ax, gy(ax, az) + .02, az, bx, gy(bx, bz) + .02, bz); gc.push(k, k, k, k, k, k); } };
   for (let x = Math.ceil(-w / 2); x <= w / 2; x++) add(x, -d / 2, x, d / 2, x % 5 === 0);
   for (let z = Math.ceil(-d / 2); z <= d / 2; z++) add(-w / 2, z, w / 2, z, z % 5 === 0);
   const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(gp, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(gc, 3));
@@ -552,6 +598,7 @@ function buildTerrain() {
   updateSun();
 }
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let groundMeshes = [];
 function updateSun() {
   const a = Math.min(Math.PI - .02, Math.max(.02, (UI.hour - 6) / 12 * Math.PI)), el = (6 + 52 * Math.sin(a)) * D2R, R = Math.max(S.terrain.w, S.terrain.d) * 1.5 + 30;
   sun.position.set(Math.cos(el) * Math.cos(a) * R, Math.sin(el) * R, Math.cos(el) * Math.sin(a) * R);
@@ -562,9 +609,9 @@ function updateSun() {
 
 const objs = {};
 const getItem = id => S.items.find(i => i.id === id);
-function rebuildItem(it) { removeObj(it.id); const o = BUILD[it.type](it); o.userData.itemId = it.id; itemsG.add(o); objs[it.id] = o; }
+function rebuildItem(it, inAll) { if (it.type === 'zone' && !inAll) { rebuildAll(); return; } removeObj(it.id); const o = BUILD[it.type](it); o.userData.itemId = it.id; itemsG.add(o); objs[it.id] = o; }
 function removeObj(id) { const o = objs[id]; if (o) { itemsG.remove(o); disposeTree(o); delete objs[id]; } }
-function rebuildAll() { for (const id in objs) removeObj(+id); buildTerrain(); S.items.forEach(rebuildItem); refreshSel(); }
+function rebuildAll() { for (const id in objs) removeObj(+id); updateZones(); buildTerrain(); S.items.forEach(i => rebuildItem(i, true)); refreshSel(); }
 
 /* ───────────────────────── Istoric / salvare ───────────────────────── */
 let hist = [], hi = -1;
@@ -617,7 +664,7 @@ function demo() {
 let tool = 'select', sel = null, draft = null, cursor = null, drag = null, down = null, shiftKey = false;
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function setRay(e) { const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
-function groundAt(e) { setRay(e); const v = new THREE.Vector3(); return ray.ray.intersectPlane(groundPlane, v) ? { x: v.x, z: v.z } : null; }
+function groundAt(e, planeOnly) { setRay(e); if (ZONES.length && !planeOnly) { const h = ray.intersectObjects(groundMeshes, false)[0]; if (h) return { x: h.point.x, z: h.point.z }; } const v = new THREE.Vector3(); return ray.ray.intersectPlane(groundPlane, v) ? { x: v.x, z: v.z } : null; }
 function pickItem(e) { setRay(e); const hit = ray.intersectObjects(itemsG.children, true)[0]; if (!hit) return null; let o = hit.object; while (o && o.userData.itemId == null) o = o.parent; return o ? o.userData.itemId : null; }
 function pickHandle(e) { setRay(e); const hs = selG.children.filter(c => c.userData.h); const hit = ray.intersectObjects(hs, false)[0]; return hit ? hit.object.userData.h : null; }
 const snapV = v => UI.snap ? Math.round(v / UI.snap) * UI.snap : v;
@@ -720,7 +767,7 @@ function onDown(e) {
   if (down) { down.cancel = true; return; }
   down = { id: e.pointerId, x: e.clientX, y: e.clientY, cancel: false, btn: e.button };
   if (e.button !== 0 || tool !== 'select') return;
-  const h = pickHandle(e), p = groundAt(e); if (!p) return;
+  const h = pickHandle(e), id0 = h ? sel : pickItem(e), p = groundAt(e, getItem(id0)?.type === 'zone'); if (!p) return;
   if (h) {
     const it = getItem(sel);
     if (h.t === 'm') { const a = it.pts[h.i], b = it.pts[(h.i + 1) % it.pts.length]; it.pts.splice(h.i + 1, 0, { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 }); startDrag(e, { kind: 'v', i: h.i + 1, id: it.id }); return; }
@@ -733,7 +780,7 @@ function onDown(e) {
 function onMove(e) {
   shiftKey = e.shiftKey;
   if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) down.far = true;
-  const p = groundAt(e);
+  const p = groundAt(e, drag && getItem(drag.id)?.type === 'zone');
   if (drag) { if (!p || !down || !down.far) return; drag.moved = true; dragTo(p); return; }
   cursor = p; if (tool !== 'select') updatePreview();
 }
@@ -768,7 +815,7 @@ renderer.domElement.addEventListener('dblclick', e => {
 });
 renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
 
-function delSel() { if (!sel) return; S.items = S.items.filter(i => i.id !== sel); removeObj(sel); sel = null; refreshSel(); commit(); renderPanel(); }
+function delSel() { if (!sel) return; const z = getItem(sel)?.type === 'zone'; S.items = S.items.filter(i => i.id !== sel); removeObj(sel); if (z) rebuildAll(); sel = null; refreshSel(); commit(); renderPanel(); }
 function dupSel() { const it = getItem(sel); if (!it) return; const c = clone(it); c.id = S.nextId++; if (c.pts) c.pts = c.pts.map(p => ({ x: p.x + 1, z: p.z + 1 })); else { c.x += 1; c.z += 1; } S.items.push(c); rebuildItem(c); commit(); select(c.id); }
 function rotSel(dd) { const it = getItem(sel); if (!it || it.rot == null) return; let a = it.rot + dd; a = ((a + 180) % 360 + 360) % 360 - 180; it.rot = a; rebuildItem(it); refreshSel(); commit(); syncPanelValues(); }
 addEventListener('keydown', e => {
@@ -816,6 +863,8 @@ function itemInfo(it) {
     const cs = rectCorners(it), hs = cs.map(p => gy(p.x, p.z)), top = Math.max(...hs), low = Math.min(...hs);
     rows.push(['Suprafață construită', fmt(it.w * it.d, 1) + ' m²'], ['Suprafață desfășurată', fmt(it.w * it.d * it.floors, 1) + ' m²'],
       ['Soclu la colțul cel mai jos', fmt(top + .2 - low) + ' m'], ['Înălțime la streașină', fmt(it.floors * it.floorH + top + .2 - low) + ' m'], ['Înălțime la coamă', fmt(it.floors * it.floorH + roofHeight(it) + top + .2 - low) + ' m']);
+  } else if (it.type === 'zone') { const a = polyArea(it.pts), v = Math.abs(it.dh) * (a + polyLen(it.pts, true) * it.sw / 2);
+    rows.push(['Suprafață plată', fmt(a, 1) + ' m²'], [it.dh < 0 ? 'Săpătură ≈' : 'Umplutură ≈', fmt(v, 1) + ' m³'], ['Pantă taluz', fmt(Math.abs(it.dh) / it.sw * 100, 0) + '%']);
   } else if (T.kind === 'poly') rows.push(['Suprafață', fmt(polyArea(it.pts), 1) + ' m²'], ['Perimetru', fmt(polyLen(it.pts, true)) + ' m'], ['Colțuri', it.pts.length]);
   else if (T.kind === 'line') { const l = polyLen(it.pts, false); rows.push(['Lungime', fmt(l) + ' m']); if (it.w && it.type !== 'curb') rows.push(['Suprafață', fmt(l * it.w, 1) + ' m²']); }
   else if (T.kind === 'rect') rows.push(['Suprafață', fmt(it.w * it.d, 1) + ' m²']);
@@ -841,6 +890,7 @@ function stats() {
 function updStats() { const e = $('#stats'); if (e) e.innerHTML = stats(); const i = $('#info'); const it = sel && getItem(sel); if (i && it) i.innerHTML = itemInfo(it); }
 const HELP = `<ul class="help"><li>Alege o unealtă din stânga și <b>click pe teren</b>.</li><li>Rotește vederea cu <b>click-stânga + trage</b>, mută cu <b>click-dreapta</b>, zoom cu <b>rotița</b> (pe telefon: 1 deget rotește, 2 degete mută și fac zoom).</li>
   <li>Cu <b>Selectează</b>: click pe un obiect, trage-l ca să-l muți. Punctele portocalii se trag, cele albe adaugă un punct nou, <b>dublu-click</b> pe un punct îl șterge.</li>
+  <li><b>Zonă nivel</b>: desenezi o zonă și o ridici (+) sau o adâncești (−); taluzul face trecerea lină spre restul terenului.</li>
   <li>La casă și piscină: colțurile schimbă dimensiunea, punctul albastru rotește. Pentru o casă în L pune două case lipite.</li>
   <li><b>Del</b> șterge, <b>R</b> rotește, <b>Ctrl+D</b> duplică, <b>Ctrl+Z</b> anulează. Totul se salvează automat în browser.</li></ul>`;
 function renderPanel() {
