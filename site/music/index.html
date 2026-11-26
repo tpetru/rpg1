@@ -83,6 +83,10 @@
   }
   .tap .circle { width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2));
     display: flex; align-items: center; justify-content: center; font-size: 30px; color: #140a02; box-shadow: 0 10px 30px rgba(255,106,0,.4); }
+  .cover { position: absolute; inset: 0; background: #000 center/cover no-repeat; z-index: 2; display: flex; align-items: flex-end; }
+  .cover::before { content: ""; position: absolute; inset: 0; background: inherit; filter: blur(24px) brightness(.45); transform: scale(1.15); }
+  .cover img { position: relative; margin: auto; max-width: 78%; max-height: 78%; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+  .cover .badge { position: absolute; left: 10px; top: 10px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; padding: 4px 9px; border-radius: 999px; }
   .spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: rot .8s linear infinite; }
   @keyframes rot { to { transform: rotate(360deg); } }
 
@@ -171,6 +175,7 @@
           <div class="big">🎧</div>
           <div>Scrie numele unei melodii și apasă <b>Enter</b>.<br>Prima potrivire începe să cânte imediat.</div>
         </div>
+        <div class="cover" id="cover" hidden><img id="coverImg" alt=""><span class="badge">🔒 Mod fundal: cântă și cu ecranul blocat</span></div>
         <button class="tap" id="tap" hidden><span class="circle">▶</span><span>Apasă ca să pornească muzica</span></button>
       </div>
       <div class="now">
@@ -191,6 +196,7 @@
         <button id="bNext" title="Următoarea (N)" aria-label="Următoarea" disabled>⏭</button>
         <button id="bRepeat" class="tg" title="Repetă melodia curentă">🔁 Repetă</button>
         <button id="bAuto" class="tg on" title="Când se termină, cântă următorul rezultat">⏩ Continuă</button>
+        <button id="bBg" class="tg" title="Mod fundal: doar sunet, continuă și când blochezi ecranul sau schimbi aplicația">🔒 Fundal</button>
         <span class="sp"></span>
         <div class="vol">
           <button id="bMute" title="Mut (M)" aria-label="Mut">🔊</button>
@@ -213,7 +219,7 @@
     Poți lipi și un link YouTube (video sau playlist). Taste: <kbd>/</kbd> caută, <kbd>Spațiu</kbd> play/pauză, <kbd>N</kbd> următoarea, <kbd>P</kbd> anterioara,
     <kbd>M</kbd> mut, <kbd>↑</kbd><kbd>↓</kbd> volum, <kbd>←</kbd><kbd>→</kbd> ±10 s. Linkul paginii păstrează căutarea, ca s-o poți trimite cuiva.
     Unele clipuri nu pot fi redate în afara YouTube (drepturi de autor); pe acestea le sărim automat.
-    Pe telefon, YouTube oprește sunetul când ecranul se închide sau ieși din browser.
+    Cu <b>🔒 Fundal</b> pornit (implicit pe telefon) se redă doar sunetul, iar muzica merge și cu ecranul blocat, cu butoane pe ecranul de blocare.
   </div>
 </div>
 
@@ -228,7 +234,7 @@
 
   var S = {
     results: [], query: '', queue: LS.get('queue', []), history: [], cur: null, // cur: {item, from:'res'|'queue'|'link', idx}
-    failed: {}, seq: 0, ctrl: null, ready: false, pending: null, playing: false,
+    failed: {}, seq: 0, ctrl: null, ytReady: false, engine: 'yt', userPaused: false, pending: null, playing: false,
     repeat: !!LS.get('repeat', false), auto: LS.get('auto', true) !== false,
     vol: +LS.get('vol', 80), muted: !!LS.get('muted', false), recent: LS.get('recent', []),
     startTimer: 0, apiTimer: 0, skips: 0, seeking: false, playlist: false
@@ -237,7 +243,8 @@
   if (!Array.isArray(S.recent)) S.recent = [];
   if (!(S.vol >= 0 && S.vol <= 100)) S.vol = 80;
 
-  var player = null;
+  var player = null, ytp = null;
+  function isReady() { return !!player && (player === aud || S.ytReady); }
 
   // ---------- util ----------
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -453,21 +460,23 @@
   function loadApi() {
     var s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.async = true;
     s.onerror = apiFailed; document.head.appendChild(s);
-    S.apiTimer = setTimeout(function () { if (!S.ready) apiFailed(); }, 12000);
+    S.apiTimer = setTimeout(function () { if (!S.ytReady) apiFailed(); }, 12000);
   }
   function apiFailed() {
-    if (S.ready) return;
+    if (S.ytReady) return;
+    if (S.engine === 'audio') return; // in modul audio nu avem nevoie de playerul video
     status('err', 'Playerul YouTube nu s-a putut încărca (poate e blocat de un ad-blocker sau de rețea). Poți deschide melodiile direct pe YouTube.', 'Reîncarcă pagina', function () { location.reload(); });
   }
   window.onYouTubeIframeAPIReady = function () {
     clearTimeout(S.apiTimer);
-    player = new YT.Player('player', {
+    ytp = new YT.Player('player', {
       width: '100%', height: '100%',
       playerVars: { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1, origin: location.origin },
       events: {
         onReady: function () {
-          S.ready = true;
+          S.ytReady = true;
           if ($('status').classList.contains('err') && /Playerul/.test($('statusMsg').textContent)) status();
+          if (S.engine === 'yt') player = ytp;
           applyVol();
           if (S.pending) { var p = S.pending; S.pending = null; p(); }
         },
@@ -487,20 +496,26 @@
 
   function playItem(item, from, idx, cueOnly) {
     if (!item) return;
+    if (S.engine === 'audio' && player !== aud) setEngine('audio', true);
     if (S.cur && S.cur.item && S.cur.item.id !== item.id) { S.history.push(S.cur); if (S.history.length > 50) S.history.shift(); }
     S.cur = { item: item, from: from, idx: idx }; S.playlist = false;
-    setNow(item); showStage(); renderResults(); updateButtons();
+    setNow(item); setCover(item); mediaSession(item); showStage(); renderResults(); updateButtons();
+    S.userPaused = !!cueOnly;
     var go = function () {
       $('tap').hidden = true;
       if (cueOnly) { player.cueVideoById(item.id); $('tap').hidden = false; return; }
       player.loadVideoById(item.id);
       watchStart();
     };
-    if (S.ready) go(); else S.pending = go;
+    if (isReady()) go(); else S.pending = go;
   }
   function cueItem(item, from, idx) { playItem(item, from, idx, true); }
 
   function playLink(link) {
+    if (link.list && S.engine === 'audio') {
+      if (!S.ytReady) { status('err', 'Playlisturile merg doar cu playerul video, care nu s-a încărcat.'); return; }
+      setEngine('yt', true); flash('Playlisturile YouTube merg doar cu playerul video (fără mod fundal).');
+    }
     S.playlist = !!(link.list && !link.id) || !!link.list;
     var item = { id: link.id, title: link.id ? '' : 'Playlist YouTube', channel: '' };
     if (S.cur && S.cur.item) S.history.push(S.cur);
@@ -512,8 +527,121 @@
       else player.loadVideoById(link.id);
       watchStart();
     };
-    if (S.ready) go(); else S.pending = go;
+    if (isReady()) go(); else S.pending = go;
   }
+
+  // ---------- motor audio (mod fundal) ----------
+  // Imita API-ul playerului YouTube, ca restul codului sa nu stie diferenta.
+  var aud = (function () {
+    var a = new Audio(), st = -1, vid = null, meta = {}, src = 0, token = 0, wantPlay = false;
+    a.preload = 'auto'; a.setAttribute('playsinline', '');
+    function emit(x) { st = x; if (player === aud) onState({ data: x }); }
+    function resolve(id, from, my) {
+      emit(3);
+      fetchJson('stream.php?id=' + id + '&from=' + from, undefined, 30000).then(function (d) {
+        if (my !== token) return;
+        if (!d || !d.ok) { fail(); return; }
+        src = d.next; meta = { title: d.title, author: d.author };
+        a.src = d.url; a.load();
+        if (wantPlay) tryPlay();
+      }, function () { if (my === token) fail(); });
+    }
+    function tryPlay() {
+      var p = a.play();
+      if (p && p.catch) p.catch(function (e) { if (e && e.name === 'NotAllowedError') { emit(-1); if (player === aud) $('tap').hidden = false; } });
+    }
+    function fail() {
+      // nicio sursa audio n-a mers pentru clipul asta -> playerul video, daca e disponibil
+      if (player === aud) audioFailed(vid);
+    }
+    a.addEventListener('playing', function () { emit(1); });
+    a.addEventListener('waiting', function () { if (!a.paused) emit(3); });
+    a.addEventListener('pause', function () { if (!a.ended) emit(2); });
+    a.addEventListener('ended', function () { emit(0); });
+    a.addEventListener('error', function () { if (vid && a.src) { var my = token; a.removeAttribute('src'); resolve(vid, src, my); } });
+    return {
+      el: a,
+      loadVideoById: function (id, start) { vid = id; token++; wantPlay = true; src = 0; a.pause(); resolve(id, 0, token);
+        if (start) a.addEventListener('loadedmetadata', function f() { a.removeEventListener('loadedmetadata', f); a.currentTime = start; }); },
+      cueVideoById: function (id) { vid = id; token++; wantPlay = false; src = 0; a.pause(); resolve(id, 0, token); emit(5); },
+      playVideo: function () { wantPlay = true; if (a.src) tryPlay(); },
+      pauseVideo: function () { wantPlay = false; a.pause(); },
+      stopVideo: function () { token++; wantPlay = false; a.pause(); a.removeAttribute('src'); a.load(); st = -1; },
+      getPlayerState: function () { return st; },
+      getDuration: function () { return isFinite(a.duration) ? a.duration : 0; },
+      getCurrentTime: function () { return a.currentTime || 0; },
+      seekTo: function (t) { try { a.currentTime = t; } catch (e) {} },
+      setVolume: function (v) { a.volume = Math.max(0, Math.min(1, v / 100)); },
+      mute: function () { a.muted = true; }, unMute: function () { a.muted = false; },
+      getVideoData: function () { return { video_id: vid, title: meta.title || '', author: meta.author || '' }; },
+      nextVideo: function () {}, previousVideo: function () {}
+    };
+  })();
+
+  function audioFailed(id) {
+    if (!S.cur || S.cur.item.id !== id) return;
+    if (S.ytReady) {
+      status('warn', 'Modul fundal n-a mers pentru această melodie, o pun în playerul video (se poate opri când blochezi ecranul).');
+      player = ytp; $('cover').hidden = true; applyVol(); updateButtons(); ytp.loadVideoById(id); watchStart();
+    } else {
+      onErr({ data: 5 });
+    }
+  }
+
+  function setEngine(name, silent) {
+    var target = name === 'audio' ? aud : ytp;
+    if (name === 'yt' && !S.ytReady) { if (!silent) flash('Playerul video nu s-a încărcat încă.'); return; }
+    var t = 0, was = false;
+    if (player && player !== target && S.cur) {
+      try { t = player.getCurrentTime() || 0; var st = player.getPlayerState(); was = st === 1 || st === 3; } catch (e) {}
+      try { player.pauseVideo(); if (player === aud) aud.stopVideo(); else ytp.stopVideo && ytp.stopVideo(); } catch (e) {}
+    }
+    var switching = player !== target;
+    player = target;
+    if (!silent) { S.engine = name; LS.set('engine', name); }
+    $('cover').hidden = player !== aud || !S.cur;
+    applyVol(); updateButtons();
+    if (switching && S.cur && S.cur.item.id && !silent) {
+      if (was) { player.loadVideoById(S.cur.item.id, t); watchStart(); }
+      else player.cueVideoById(S.cur.item.id);
+    }
+  }
+
+  function setCover(item) {
+    $('cover').hidden = player !== aud || !item;
+    if (item && item.id) {
+      var hq = 'https://i.ytimg.com/vi/' + item.id + '/hqdefault.jpg';
+      $('cover').style.backgroundImage = 'url("' + hq + '")'; $('coverImg').src = hq;
+    }
+  }
+
+  // butoane pe ecranul de blocare / in notificari
+  function mediaSession(item) {
+    if (!('mediaSession' in navigator) || !item) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: item.title || 'Music', artist: item.channel || '', album: 'no-santos.com/music',
+        artwork: [{ src: 'https://i.ytimg.com/vi/' + item.id + '/hqdefault.jpg', sizes: '480x360', type: 'image/jpeg' }]
+      });
+    } catch (e) {}
+  }
+  if ('mediaSession' in navigator) {
+    var ms = navigator.mediaSession, h = function (a, f) { try { ms.setActionHandler(a, f); } catch (e) {} };
+    h('play', function () { S.userPaused = false; player && player.playVideo(); });
+    h('pause', function () { S.userPaused = true; player && player.pauseVideo(); });
+    h('nexttrack', function () { S.skips = 0; next(false); });
+    h('previoustrack', function () { prev(); });
+    h('seekto', function (d) { if (player && d.seekTime != null) player.seekTo(d.seekTime, true); });
+    h('seekbackward', function (d) { if (player) player.seekTo(Math.max(0, player.getCurrentTime() - (d.seekOffset || 10)), true); });
+    h('seekforward', function (d) { if (player) player.seekTo(player.getCurrentTime() + (d.seekOffset || 10), true); });
+  }
+
+  // In modul video, unele browsere pun pauza cand ecranul se blocheaza: incercam sa repornim.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && player === ytp && S.ytReady && S.cur && !S.userPaused) {
+      setTimeout(function () { try { if (ytp.getPlayerState() === 2) ytp.playVideo(); } catch (e) {} }, 300);
+    }
+  });
 
   // Daca dupa cateva secunde nu a pornit, browserul a blocat autoplay-ul -> buton mare de Play.
   function watchStart() {
@@ -521,20 +649,22 @@
     S.startTimer = setTimeout(function () {
       if (!player || !player.getPlayerState) return;
       var st = player.getPlayerState();
-      if (st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING && st !== YT.PlayerState.ENDED) $('tap').hidden = false;
+      if (st !== 1 && st !== 3 && st !== 0) $('tap').hidden = false;
     }, 3000);
   }
   $('tap').onclick = function () {
-    if (!player || !S.ready) return;
-    player.playVideo();
+    if (!player || !isReady()) return;
+    S.userPaused = false; player.playVideo();
     setTimeout(function () {
       // pe iOS uneori trebuie atins chiar playerul YouTube: ascundem stratul ca sa se poata
-      if (player.getPlayerState() !== YT.PlayerState.PLAYING) { $('tap').hidden = true; flash('Atinge butonul Play din player.'); }
+      if (player !== aud && player.getPlayerState() !== 1) { $('tap').hidden = true; flash('Atinge butonul Play din player.'); }
     }, 1500);
   };
 
   function onState(e) {
-    var st = e.data, P = YT.PlayerState;
+    var st = e.data, P = { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 };
+    if (st === P.PAUSED && document.hidden && player === ytp && !S.userPaused) { setTimeout(function () { try { ytp.playVideo(); } catch (x) {} }, 250); }
+    if ('mediaSession' in navigator) try { navigator.mediaSession.playbackState = st === P.PLAYING || st === P.BUFFERING ? 'playing' : (st === P.PAUSED ? 'paused' : 'none'); } catch (x) {}
     S.playing = st === P.PLAYING;
     $('bPlay').textContent = (st === P.PLAYING || st === P.BUFFERING) ? '⏸' : '▶';
     if (st === P.PLAYING) {
@@ -544,7 +674,7 @@
         // completam titlul pentru linkuri lipite / playlisturi
         if (S.cur.from === 'link' || !S.cur.item.title) {
           S.cur.item = { id: d.video_id, title: d.title || S.cur.item.title, channel: d.author || '' };
-          setNow(S.cur.item);
+          setNow(S.cur.item); setCover(S.cur.item); mediaSession(S.cur.item);
         }
       }
       if (S.muted) player.mute(); else player.unMute();
@@ -601,7 +731,7 @@
     else { flash('Gata, s-a terminat lista.'); updateButtons(); }
   }
   function prev() {
-    if (!player || !S.ready) return;
+    if (!player || !isReady()) return;
     if (S.playlist) { player.previousVideo(); return; }
     var t = player.getCurrentTime ? player.getCurrentTime() : 0;
     if (t > 4 || !S.history.length) { player.seekTo(0, true); player.playVideo(); return; }
@@ -610,29 +740,30 @@
     if (cur && cur.from === 'queue') { S.queue.unshift(cur.item); saveQueue(); }
   }
   function togglePlay() {
-    if (!player || !S.ready || !S.cur) return;
+    if (!player || !isReady() || !S.cur) return;
     var st = player.getPlayerState();
-    if (st === YT.PlayerState.PLAYING || st === YT.PlayerState.BUFFERING) player.pauseVideo(); else { $('tap').hidden = true; player.playVideo(); }
+    if (st === 1 || st === 3) { S.userPaused = true; player.pauseVideo(); } else { S.userPaused = false; $('tap').hidden = true; player.playVideo(); }
   }
   function updateButtons() {
     var has = !!S.cur;
     $('bPlay').disabled = !has; $('bPrev').disabled = !has;
     $('bNext').disabled = !has || (!S.playlist && !nextCandidate());
     $('seek').disabled = !has;
-    $('bRepeat').classList.toggle('on', S.repeat); $('bAuto').classList.toggle('on', S.auto);
+    $('bRepeat').classList.toggle('on', S.repeat); $('bAuto').classList.toggle('on', S.auto); $('bBg').classList.toggle('on', S.engine === 'audio');
     $('bMute').textContent = S.muted || S.vol === 0 ? '🔇' : (S.vol < 45 ? '🔉' : '🔊');
   }
   function applyVol() {
-    if (!player || !S.ready) return;
+    if (!player || !isReady()) return;
     player.setVolume(S.vol); if (S.muted) player.mute(); else player.unMute();
     updateButtons();
   }
 
   // bara de progres
   setInterval(function () {
-    if (!player || !S.ready || !player.getDuration || !S.cur) return;
+    if (!player || !isReady() || !player.getDuration || !S.cur) return;
     var d = player.getDuration() || 0, c = player.getCurrentTime() || 0;
     $('tDur').textContent = d ? fmt(d) : '0:00';
+    if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && d && c <= d) try { navigator.mediaSession.setPositionState({ duration: d, position: c, playbackRate: 1 }); } catch (x) {}
     if (!S.seeking) { $('tCur').textContent = fmt(c); $('seek').value = d ? Math.round(c / d * 1000) : 0; }
   }, 500);
   $('seek').addEventListener('input', function () { S.seeking = true; var d = player && player.getDuration ? player.getDuration() : 0; $('tCur').textContent = fmt(d * this.value / 1000); });
@@ -652,6 +783,12 @@
   $('bMute').onclick = function () { S.muted = !S.muted; if (!S.muted && S.vol === 0) { S.vol = 50; $('vol').value = 50; } LS.set('muted', S.muted); LS.set('vol', S.vol); applyVol(); updateButtons(); };
   $('vol').value = S.vol;
   $('vol').addEventListener('input', function () { S.vol = +this.value; S.muted = S.vol === 0; LS.set('vol', S.vol); LS.set('muted', S.muted); applyVol(); updateButtons(); });
+  $('bBg').onclick = function () {
+    var to = S.engine === 'audio' ? 'yt' : 'audio';
+    if (to === 'yt' && !S.ytReady) { flash('Playerul video nu s-a încărcat; rămân pe modul fundal.'); return; }
+    setEngine(to);
+    flash(to === 'audio' ? 'Mod fundal pornit: doar sunet, merge și cu ecranul blocat.' : 'Mod video pornit (se poate opri când blochezi ecranul).');
+  };
   $('tabRes').onclick = function () { showTab('res'); };
   $('tabQ').onclick = function () { showTab('q'); };
 
@@ -669,7 +806,7 @@
       if (t.type === 'range') return; e.preventDefault();
       S.vol = Math.max(0, Math.min(100, S.vol + (k === 'arrowup' ? 5 : -5))); S.muted = S.vol === 0; $('vol').value = S.vol;
       LS.set('vol', S.vol); applyVol(); flash('Volum ' + S.vol + '%');
-    } else if ((k === 'arrowleft' || k === 'arrowright') && player && S.ready && S.cur) {
+    } else if ((k === 'arrowleft' || k === 'arrowright') && player && isReady() && S.cur) {
       if (t.type === 'range') return;
       player.seekTo(Math.max(0, player.getCurrentTime() + (k === 'arrowright' ? 10 : -10)), true);
     }
@@ -679,6 +816,9 @@
   window.addEventListener('online', function () { if ($('status').classList.contains('err')) status(); flash('Conexiunea a revenit.'); });
 
   // ---------- start ----------
+  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  S.engine = LS.get('engine', coarse ? 'audio' : 'yt') === 'audio' ? 'audio' : 'yt';
+  if (S.engine === 'audio') player = aud;
   renderRecent(); renderQueue(); renderResults(); updateButtons();
   loadApi();
   var start = null; try { start = new URL(location.href).searchParams.get('q'); } catch (e) {}
