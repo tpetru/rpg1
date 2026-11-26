@@ -56,6 +56,7 @@
     <a href="/camere/">Spre Camere →</a>
     <a href="/ubakus/">Spre Calculator U →</a>
     <a href="/exterior/">Spre Exterior 3D →</a>
+    <a href="/music/">Spre Music →</a>
   </div>
 </body>
 </html>

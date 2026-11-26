@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music · caută și ascultă</title>
+<meta name="description" content="Scrie numele unei melodii, o căutăm pe YouTube și începe să cânte.">
+<link rel="icon" type="image/png" href="/samp/ucp/assets/img/favicon.ico">
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #12161b; --panel-2: #181d23; --border: #252b32;
+    --text: #f2f2f2; --muted: #8e969f; --accent: #ff6a00; --accent-2: #ff8533;
+    --good: #4cc46a; --bad: #ff5a5a; --warn: #e5c13a;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,106,0,0.07) 0%, transparent 55%), var(--bg);
+    min-height: 100vh;
+  }
+  a { color: var(--accent-2); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  header { padding: 14px 0 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 1.35rem; flex: 1 1 auto; }
+  header h1 span { color: var(--accent); }
+  header .home { color: var(--muted); text-decoration: none; font-size: 13px; }
+  header .home:hover { color: var(--text); }
+
+  form.search { display: flex; gap: 8px; margin: 6px 0 8px; position: relative; }
+  .sbox { flex: 1; min-width: 0; position: relative; display: flex; }
+  .sbox input {
+    flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--text); background: #0d1014;
+    border: 1px solid var(--border); border-radius: 999px; padding: 12px 40px 12px 18px;
+  }
+  .sbox input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,106,0,.18); }
+  .sbox .clr {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px;
+    border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; border-radius: 50%;
+  }
+  .sbox .clr:hover { color: var(--text); background: var(--panel-2); }
+  .go {
+    font: inherit; font-weight: 700; font-size: 15px; padding: 0 24px; border: 0; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #140a02;
+    box-shadow: 0 8px 22px rgba(255,106,0,.25); white-space: nowrap;
+  }
+  .go:disabled { opacity: .6; cursor: wait; }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+
+  .recent { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; min-height: 26px; margin-bottom: 10px; }
+  .recent .lbl { color: var(--muted); font-size: 12px; margin-right: 2px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 2px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 999px; font-size: 12px; max-width: 220px;
+  }
+  .chip button { font: inherit; background: none; border: 0; color: var(--text); cursor: pointer; padding: 4px 4px 4px 10px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip button.x { color: var(--muted); padding: 4px 8px 4px 2px; }
+  .chip button.x:hover { color: var(--bad); }
+  .chip:hover { border-color: var(--accent); }
+  .linkbtn { font: inherit; font-size: 12px; background: none; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; }
+
+  .status { border-radius: 10px; padding: 9px 12px; margin-bottom: 10px; font-size: 13px; border: 1px solid var(--border); background: var(--panel); display: flex; gap: 10px; align-items: center; }
+  .status.err { border-color: rgba(255,90,90,.5); background: rgba(255,90,90,.08); }
+  .status.warn { border-color: rgba(229,193,58,.45); background: rgba(229,193,58,.07); }
+  .status.info { border-color: rgba(255,106,0,.35); }
+  .status .msg { flex: 1; }
+  .status button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); cursor: pointer; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; padding-bottom: 30px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; min-width: 0; }
+
+  .stage { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 14px 14px 0 0; overflow: hidden; }
+  .stage #player, .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .empty-stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); text-align: center; padding: 20px; }
+  .empty-stage .big { font-size: 46px; }
+  .tap {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+    background: rgba(0,0,0,.55); border: 0; color: #fff; font: inherit; font-size: 15px; cursor: pointer; z-index: 3;
+  }
+  .tap .circle { width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center; font-size: 30px; color: #140a02; box-shadow: 0 10px 30px rgba(255,106,0,.4); }
+  .spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: rot .8s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  .now { padding: 12px 14px 4px; display: flex; gap: 10px; align-items: flex-start; }
+  .now .t { flex: 1; min-width: 0; }
+  .now .title { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .now .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .now a.yt { font-size: 12px; white-space: nowrap; }
+
+  .prog { display: flex; align-items: center; gap: 8px; padding: 4px 14px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .prog input { flex: 1; }
+  input[type=range] { accent-color: var(--accent); cursor: pointer; min-width: 0; }
+  .ctrl { display: flex; align-items: center; gap: 6px; padding: 6px 14px 14px; flex-wrap: wrap; }
+  .ctrl button {
+    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    height: 38px; min-width: 40px; padding: 0 10px; cursor: pointer; font-size: 15px;
+  }
+  .ctrl button:hover:not(:disabled) { border-color: var(--accent); }
+  .ctrl button:disabled { opacity: .4; cursor: default; }
+  .ctrl button.main { width: 50px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #140a02; border: 0; font-size: 18px; }
+  .ctrl button.on { border-color: var(--accent); color: var(--accent-2); }
+  .ctrl .sp { flex: 1; }
+  .vol { display: flex; align-items: center; gap: 4px; }
+  .vol input { width: 110px; }
+  .ctrl .tg { font-size: 12px; }
+
+  .side { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 150px); }
+  @media (max-width: 900px) { .side { max-height: none; } }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tabs button { flex: 1; font: inherit; background: none; border: 0; color: var(--muted); padding: 11px 8px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  .tabs .n { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--panel-2); font-size: 11px; margin-left: 4px; }
+  .list { overflow-y: auto; padding: 6px; flex: 1; min-height: 120px; }
+  .list .hint { color: var(--muted); text-align: center; padding: 26px 14px; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 10px; align-items: center; padding: 6px; border-radius: 10px; cursor: pointer; position: relative; }
+  .row:hover, .row:focus-visible { background: var(--panel-2); outline: none; }
+  .row.cur { background: rgba(255,106,0,.12); }
+  .row.cur .rt::before { content: "▶ "; color: var(--accent); }
+  .row.bad { opacity: .45; }
+  .row.bad .rt { text-decoration: line-through; }
+  .row .th { width: 96px; flex: none; aspect-ratio: 16/9; border-radius: 7px; background: #000 center/cover no-repeat; position: relative; }
+  .row .th .d { position: absolute; right: 3px; bottom: 3px; background: rgba(0,0,0,.8); color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 4px; }
+  .row .th .d.live { background: #d11; }
+  .row .info { flex: 1; min-width: 0; }
+  .row .rt { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .row .rc { color: var(--muted); font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .acts { display: flex; flex-direction: column; gap: 3px; }
+  .row .acts button { font: inherit; font-size: 12px; width: 30px; height: 26px; border-radius: 7px; border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer; padding: 0; }
+  .row .acts button:hover { border-color: var(--accent); }
+  .qbar { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 2px; color: var(--muted); font-size: 12px; }
+
+  .help { color: var(--muted); font-size: 12px; line-height: 1.6; padding: 0 0 26px; }
+  .help kbd { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; font-size: 11px; color: var(--text); }
+  @media (max-width: 560px) {
+    .go { padding: 0 14px; }
+    .sbox input { font-size: 16px; padding-left: 14px; }
+    .vol input { width: 80px; }
+    .row .th { width: 84px; }
+    header h1 { font-size: 1.15rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎵 <span>Music</span> · caută și ascultă</h1>
+    <a class="home" href="/">← no-santos.com</a>
+  </header>
+
+  <form class="search" id="form" autocomplete="off" role="search">
+    <div class="sbox">
+      <input id="q" type="search" maxlength="150" placeholder="Melodie, artist sau link YouTube…" aria-label="Caută o melodie" enterkeyhint="search" autofocus>
+      <button type="button" class="clr" id="clr" title="Golește (Esc)" aria-label="Golește" hidden>×</button>
+    </div>
+    <button class="go" id="go" type="submit">Caută</button>
+  </form>
+
+  <div class="recent" id="recent"></div>
+  <div class="status" id="status" hidden><span class="msg" id="statusMsg"></span><span id="statusAct"></span></div>
+
+  <div class="layout">
+    <div class="card">
+      <div class="stage" id="stage">
+        <div id="player"></div>
+        <div class="empty-stage" id="emptyStage">
+          <div class="big">🎧</div>
+          <div>Scrie numele unei melodii și apasă <b>Enter</b>.<br>Prima potrivire începe să cânte imediat.</div>
+        </div>
+        <button class="tap" id="tap" hidden><span class="circle">▶</span><span>Apasă ca să pornească muzica</span></button>
+      </div>
+      <div class="now">
+        <div class="t">
+          <div class="title" id="nowTitle">Nimic nu cântă încă</div>
+          <div class="sub" id="nowSub">—</div>
+        </div>
+        <a class="yt" id="nowYt" href="#" target="_blank" rel="noopener" hidden>Deschide pe YouTube ↗</a>
+      </div>
+      <div class="prog">
+        <span id="tCur">0:00</span>
+        <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Poziție" disabled>
+        <span id="tDur">0:00</span>
+      </div>
+      <div class="ctrl">
+        <button id="bPrev" title="Anterioara (P)" aria-label="Anterioara" disabled>⏮</button>
+        <button id="bPlay" class="main" title="Play / Pauză (Spațiu)" aria-label="Play / Pauză" disabled>▶</button>
+        <button id="bNext" title="Următoarea (N)" aria-label="Următoarea" disabled>⏭</button>
+        <button id="bRepeat" class="tg" title="Repetă melodia curentă">🔁 Repetă</button>
+        <button id="bAuto" class="tg on" title="Când se termină, cântă următorul rezultat">⏩ Continuă</button>
+        <span class="sp"></span>
+        <div class="vol">
+          <button id="bMute" title="Mut (M)" aria-label="Mut">🔊</button>
+          <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volum">
+        </div>
+      </div>
+    </div>
+
+    <div class="card side">
+      <div class="tabs" role="tablist">
+        <button id="tabRes" class="on" role="tab">Rezultate<span class="n" id="nRes">0</span></button>
+        <button id="tabQ" role="tab">Coadă<span class="n" id="nQ">0</span></button>
+      </div>
+      <div class="list" id="listRes"><div class="hint">Rezultatele căutării apar aici.<br>Click pe o melodie ca s-o asculți, sau <b>＋</b> ca s-o pui în coadă.</div></div>
+      <div class="list" id="listQ" hidden></div>
+    </div>
+  </div>
+
+  <div class="help">
+    Poți lipi și un link YouTube (video sau playlist). Taste: <kbd>/</kbd> caută, <kbd>Spațiu</kbd> play/pauză, <kbd>N</kbd> următoarea, <kbd>P</kbd> anterioara,
+    <kbd>M</kbd> mut, <kbd>↑</kbd><kbd>↓</kbd> volum, <kbd>←</kbd><kbd>→</kbd> ±10 s. Linkul paginii păstrează căutarea, ca s-o poți trimite cuiva.
+    Unele clipuri nu pot fi redate în afara YouTube (drepturi de autor); pe acestea le sărim automat.
+    Pe telefon, YouTube oprește sunetul când ecranul se închide sau ieși din browser.
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var LS = {
+    get: function (k, d) { try { var v = localStorage.getItem('music.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem('music.' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  var S = {
+    results: [], query: '', queue: LS.get('queue', []), history: [], cur: null, // cur: {item, from:'res'|'queue'|'link', idx}
+    failed: {}, seq: 0, ctrl: null, ready: false, pending: null, playing: false,
+    repeat: !!LS.get('repeat', false), auto: LS.get('auto', true) !== false,
+    vol: +LS.get('vol', 80), muted: !!LS.get('muted', false), recent: LS.get('recent', []),
+    startTimer: 0, apiTimer: 0, skips: 0, seeking: false, playlist: false
+  };
+  if (!Array.isArray(S.queue)) S.queue = [];
+  if (!Array.isArray(S.recent)) S.recent = [];
+  if (!(S.vol >= 0 && S.vol <= 100)) S.vol = 80;
+
+  var player = null;
+
+  // ---------- util ----------
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function fmt(t) {
+    t = Math.max(0, Math.floor(t || 0)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+    return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function clean(s) { return String(s || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150); }
+
+  function status(kind, msg, actLabel, act) {
+    var box = $('status');
+    if (!msg) { box.hidden = true; return; }
+    box.className = 'status ' + kind; box.hidden = false; $('statusMsg').textContent = msg;
+    var a = $('statusAct'); a.innerHTML = '';
+    if (actLabel) { var b = el('button', '', actLabel); b.onclick = act; a.appendChild(b); }
+    var x = el('button', '', '✕'); x.title = 'Închide'; x.onclick = function () { box.hidden = true; }; a.appendChild(x);
+  }
+  var infoTimer = 0;
+  function flash(msg) { status('info', msg); clearTimeout(infoTimer); infoTimer = setTimeout(function () { if ($('statusMsg').textContent === msg) status(); }, 4000); }
+
+  // ---------- link YouTube lipit ----------
+  function parseYt(s) {
+    var m, list = null, id = null;
+    if (!/(youtube\.com|youtu\.be|youtube-nocookie\.com)/i.test(s)) return null;
+    if ((m = s.match(/[?&]list=([A-Za-z0-9_-]{10,})/))) list = m[1];
+    if ((m = s.match(/(?:youtu\.be\/|[?&]v=|\/(?:embed|shorts|live|v)\/)([A-Za-z0-9_-]{11})/))) id = m[1];
+    if (!id && !list) return null;
+    return { id: id, list: list };
+  }
+
+  // ---------- recent ----------
+  function addRecent(q) {
+    var low = q.toLowerCase();
+    S.recent = [q].concat(S.recent.filter(function (r) { return String(r).toLowerCase() !== low; })).slice(0, 12);
+    LS.set('recent', S.recent); renderRecent();
+  }
+  function renderRecent() {
+    var box = $('recent'); box.innerHTML = '';
+    if (!S.recent.length) return;
+    box.appendChild(el('span', 'lbl', 'Recente:'));
+    S.recent.forEach(function (r, i) {
+      var c = el('span', 'chip'), b = el('button', '', r), x = el('button', 'x', '×');
+      b.title = r; b.onclick = function () { $('q').value = r; syncClr(); search(r); };
+      x.title = 'Șterge'; x.onclick = function () { S.recent.splice(i, 1); LS.set('recent', S.recent); renderRecent(); };
+      c.appendChild(b); c.appendChild(x); box.appendChild(c);
+    });
+    var all = el('button', 'linkbtn', 'șterge tot');
+    all.onclick = function () { S.recent = []; LS.set('recent', []); renderRecent(); };
+    box.appendChild(all);
+  }
+
+  // ---------- cautare ----------
+  function setBusy(b) { $('go').disabled = b; $('go').textContent = b ? 'Caut…' : 'Caută'; }
+
+  function fetchJson(url, signal, ms) {
+    return new Promise(function (resolve, reject) {
+      var done = false, t = setTimeout(function () { done = true; reject(new Error('timeout')); }, ms);
+      fetch(url, { signal: signal, headers: { 'Accept': 'application/json' } }).then(function (r) {
+        return r.json().catch(function () { return { ok: false, error: 'bad_json', message: 'Răspuns invalid (' + r.status + ').' }; })
+          .then(function (j) { if (j && typeof j === 'object') j.httpStatus = r.status; return j; });
+      }).then(function (j) { if (!done) { clearTimeout(t); resolve(j); } }, function (e) { if (!done) { clearTimeout(t); reject(e); } });
+    });
+  }
+
+  // Ultima varianta, direct din browser, daca serverul nostru nu raspunde deloc.
+  function browserFallback(q, signal) {
+    var inst = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://yewtu.be'];
+    var i = 0;
+    function next() {
+      if (i >= inst.length) return Promise.reject(new Error('all_failed'));
+      var base = inst[i++];
+      return fetchJson(base + '/api/v1/search?type=video&q=' + encodeURIComponent(q), signal, 7000).then(function (d) {
+        if (!Array.isArray(d)) return next();
+        var out = d.filter(function (v) { return v.type === 'video' && /^[\w-]{11}$/.test(v.videoId || ''); }).slice(0, 20).map(function (v) {
+          return { id: v.videoId, title: v.title || '', channel: v.author || '', duration: v.lengthSeconds ? fmt(v.lengthSeconds) : '', live: !!v.liveNow,
+                   thumb: 'https://i.ytimg.com/vi/' + v.videoId + '/mqdefault.jpg' };
+        });
+        return out.length ? { ok: true, results: out, source: 'browser' } : next();
+      }, function (e) { if (e && e.name === 'AbortError') throw e; return next(); });
+    }
+    return next();
+  }
+
+  function search(raw, opts) {
+    opts = opts || {};
+    var q = clean(raw);
+    if (!q) {
+      var f = $('form'); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake');
+      status('warn', 'Scrie numele unei melodii sau al unui artist.'); $('q').focus(); return;
+    }
+    var link = parseYt(q);
+    if (link) { playLink(link); updateUrl(q); return; }
+    if (!navigator.onLine) { status('err', 'Nu ești conectat la internet. Verifică rețeaua și încearcă din nou.', 'Reîncearcă', function () { search(q, opts); }); return; }
+
+    if (S.ctrl) try { S.ctrl.abort(); } catch (e) {}
+    var my = ++S.seq;
+    S.ctrl = window.AbortController ? new AbortController() : null;
+    var signal = S.ctrl ? S.ctrl.signal : undefined;
+    setBusy(true); status('info', 'Caut „' + q + '” pe YouTube…');
+    $('listRes').innerHTML = '<div class="hint"><div class="spin" style="margin:0 auto 10px"></div>Caut…</div>';
+    showTab('res');
+
+    fetchJson('search.php?q=' + encodeURIComponent(q), signal, 25000).then(function (d) {
+      if (d && d.ok) return d;
+      if (d && (d.error === 'rate_limit' || d.error === 'empty')) return d;
+      return browserFallback(q, signal).catch(function () { return d; });
+    }, function (e) {
+      if (e && e.name === 'AbortError') throw e;
+      return browserFallback(q, signal).catch(function () { return { ok: false, error: 'network', message: 'Nu pot contacta serverul. Verifică conexiunea.' }; });
+    }).then(function (d) {
+      if (my !== S.seq) return;
+      setBusy(false);
+      if (!d || !d.ok) {
+        S.results = []; renderResults();
+        $('listRes').innerHTML = '<div class="hint">Căutarea n-a mers.</div>';
+        status('err', (d && d.message) || 'Căutarea n-a mers. Încearcă din nou.', 'Reîncearcă', function () { search(q, opts); });
+        return;
+      }
+      S.query = q; S.results = d.results || []; S.failed = {}; S.skips = 0;
+      addRecent(q); updateUrl(q);
+      if (!S.results.length) {
+        renderResults();
+        status('warn', 'N-am găsit nimic pentru „' + q + '”. Verifică ortografia sau încearcă doar artistul ori titlul.');
+        return;
+      }
+      status();
+      renderResults();
+      if (opts.noPlay) { cueItem(S.results[0], 'res', 0); return; }
+      playItem(S.results[0], 'res', 0);
+    }).catch(function (e) {
+      if (my !== S.seq) return;
+      setBusy(false);
+      if (e && e.name === 'AbortError') return;
+      status('err', 'Căutarea n-a mers. Încearcă din nou.', 'Reîncearcă', function () { search(q, opts); });
+    });
+  }
+
+  function updateUrl(q) {
+    try {
+      var u = new URL(location.href);
+      if (u.searchParams.get('q') === q) return;
+      u.searchParams.set('q', q); history.replaceState(null, '', u.toString());
+    } catch (e) {}
+  }
+
+  // ---------- liste ----------
+  function rowFor(item, kind, i) {
+    var r = el('div', 'row'); r.tabIndex = 0;
+    if (S.failed[item.id]) r.classList.add('bad');
+    if (S.cur && S.cur.item.id === item.id && S.cur.from === kind && (kind !== 'queue')) r.classList.add('cur');
+    var th = el('div', 'th'); th.style.backgroundImage = 'url("' + (item.thumb || ('https://i.ytimg.com/vi/' + item.id + '/mqdefault.jpg')) + '")';
+    if (item.live) th.appendChild(el('span', 'd live', 'LIVE')); else if (item.duration) th.appendChild(el('span', 'd', item.duration));
+    var info = el('div', 'info');
+    info.appendChild(el('div', 'rt', item.title || '(fără titlu)'));
+    info.appendChild(el('div', 'rc', item.channel || ''));
+    r.title = item.title || '';
+    var acts = el('div', 'acts');
+    if (kind === 'res') {
+      var add = el('button', '', '＋'); add.title = 'Pune în coadă';
+      add.onclick = function (e) { e.stopPropagation(); enqueue(item); };
+      acts.appendChild(add);
+      var nx = el('button', '', '⤴'); nx.title = 'Cântă imediat după melodia curentă';
+      nx.onclick = function (e) { e.stopPropagation(); enqueue(item, true); };
+      acts.appendChild(nx);
+    } else {
+      var up = el('button', '', '↑'); up.title = 'Mută mai sus';
+      up.onclick = function (e) { e.stopPropagation(); if (i > 0) { var t = S.queue[i - 1]; S.queue[i - 1] = S.queue[i]; S.queue[i] = t; saveQueue(); } };
+      var rm = el('button', '', '✕'); rm.title = 'Scoate din coadă';
+      rm.onclick = function (e) { e.stopPropagation(); S.queue.splice(i, 1); saveQueue(); };
+      acts.appendChild(up); acts.appendChild(rm);
+    }
+    var activate = function () {
+      if (kind === 'res') { S.skips = 0; playItem(item, 'res', i); }
+      else { var it = S.queue.splice(i, 1)[0]; saveQueue(); playItem(it, 'queue', -1); }
+    };
+    r.onclick = activate;
+    r.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); activate(); } };
+    r.appendChild(th); r.appendChild(info); r.appendChild(acts);
+    return r;
+  }
+  function renderResults() {
+    var box = $('listRes'); box.innerHTML = '';
+    $('nRes').textContent = S.results.length;
+    if (!S.results.length) { box.appendChild(el('div', 'hint', S.query ? 'Niciun rezultat.' : 'Rezultatele căutării apar aici.')); return; }
+    S.results.forEach(function (it, i) { box.appendChild(rowFor(it, 'res', i)); });
+  }
+  function renderQueue() {
+    var box = $('listQ'); box.innerHTML = '';
+    $('nQ').textContent = S.queue.length;
+    if (!S.queue.length) {
+      var h = el('div', 'hint'); h.innerHTML = 'Coada e goală.<br>Apasă <b>＋</b> lângă un rezultat ca s-o adaugi aici. Melodiile din coadă cântă înaintea restului rezultatelor.';
+      box.appendChild(h); return;
+    }
+    var bar = el('div', 'qbar'); bar.appendChild(el('span', '', S.queue.length + (S.queue.length === 1 ? ' melodie' : ' melodii') + ' în așteptare'));
+    var c = el('button', 'linkbtn', 'golește coada'); c.onclick = function () { S.queue = []; saveQueue(); }; bar.appendChild(c);
+    box.appendChild(bar);
+    S.queue.forEach(function (it, i) { box.appendChild(rowFor(it, 'queue', i)); });
+  }
+  function saveQueue() { LS.set('queue', S.queue.slice(0, 200)); renderQueue(); updateButtons(); }
+  function enqueue(item, first) {
+    var copy = { id: item.id, title: item.title, channel: item.channel, duration: item.duration, live: item.live, thumb: item.thumb };
+    if (first) S.queue.unshift(copy); else S.queue.push(copy);
+    saveQueue();
+    if (!S.cur) { var it = S.queue.shift(); saveQueue(); playItem(it, 'queue', -1); return; }
+    flash(first ? '„' + item.title + '” cântă imediat după melodia curentă.' : '„' + item.title + '” a fost pusă în coadă (' + S.queue.length + ').');
+  }
+  function showTab(t) {
+    $('tabRes').classList.toggle('on', t === 'res'); $('tabQ').classList.toggle('on', t === 'q');
+    $('listRes').hidden = t !== 'res'; $('listQ').hidden = t !== 'q';
+  }
+
+  // ---------- player ----------
+  function loadApi() {
+    var s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.async = true;
+    s.onerror = apiFailed; document.head.appendChild(s);
+    S.apiTimer = setTimeout(function () { if (!S.ready) apiFailed(); }, 12000);
+  }
+  function apiFailed() {
+    if (S.ready) return;
+    status('err', 'Playerul YouTube nu s-a putut încărca (poate e blocat de un ad-blocker sau de rețea). Poți deschide melodiile direct pe YouTube.', 'Reîncarcă pagina', function () { location.reload(); });
+  }
+  window.onYouTubeIframeAPIReady = function () {
+    clearTimeout(S.apiTimer);
+    player = new YT.Player('player', {
+      width: '100%', height: '100%',
+      playerVars: { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1, origin: location.origin },
+      events: {
+        onReady: function () {
+          S.ready = true;
+          if ($('status').classList.contains('err') && /Playerul/.test($('statusMsg').textContent)) status();
+          applyVol();
+          if (S.pending) { var p = S.pending; S.pending = null; p(); }
+        },
+        onStateChange: onState,
+        onError: onErr
+      }
+    });
+  };
+
+  function showStage() { $('emptyStage').hidden = true; }
+  function setNow(item) {
+    $('nowTitle').textContent = item ? (item.title || 'Se încarcă…') : 'Nimic nu cântă încă';
+    $('nowSub').textContent = item ? (item.channel || (S.playlist ? 'Playlist YouTube' : '')) || '—' : '—';
+    if (item && item.id) { $('nowYt').href = 'https://www.youtube.com/watch?v=' + item.id; $('nowYt').hidden = false; } else $('nowYt').hidden = true;
+    document.title = item && item.title ? '♪ ' + item.title + ' · Music' : 'Music · caută și ascultă';
+  }
+
+  function playItem(item, from, idx, cueOnly) {
+    if (!item) return;
+    if (S.cur && S.cur.item && S.cur.item.id !== item.id) { S.history.push(S.cur); if (S.history.length > 50) S.history.shift(); }
+    S.cur = { item: item, from: from, idx: idx }; S.playlist = false;
+    setNow(item); showStage(); renderResults(); updateButtons();
+    var go = function () {
+      $('tap').hidden = true;
+      if (cueOnly) { player.cueVideoById(item.id); $('tap').hidden = false; return; }
+      player.loadVideoById(item.id);
+      watchStart();
+    };
+    if (S.ready) go(); else S.pending = go;
+  }
+  function cueItem(item, from, idx) { playItem(item, from, idx, true); }
+
+  function playLink(link) {
+    S.playlist = !!(link.list && !link.id) || !!link.list;
+    var item = { id: link.id, title: link.id ? '' : 'Playlist YouTube', channel: '' };
+    if (S.cur && S.cur.item) S.history.push(S.cur);
+    S.cur = { item: item, from: 'link', idx: -1 }; S.failed = {};
+    setNow(item); showStage(); renderResults(); updateButtons(); status();
+    var go = function () {
+      $('tap').hidden = true;
+      if (link.list) player.loadPlaylist({ listType: 'playlist', list: link.list, index: 0 });
+      else player.loadVideoById(link.id);
+      watchStart();
+    };
+    if (S.ready) go(); else S.pending = go;
+  }
+
+  // Daca dupa cateva secunde nu a pornit, browserul a blocat autoplay-ul -> buton mare de Play.
+  function watchStart() {
+    clearTimeout(S.startTimer);
+    S.startTimer = setTimeout(function () {
+      if (!player || !player.getPlayerState) return;
+      var st = player.getPlayerState();
+      if (st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING && st !== YT.PlayerState.ENDED) $('tap').hidden = false;
+    }, 3000);
+  }
+  $('tap').onclick = function () {
+    if (!player || !S.ready) return;
+    player.playVideo();
+    setTimeout(function () {
+      // pe iOS uneori trebuie atins chiar playerul YouTube: ascundem stratul ca sa se poata
+      if (player.getPlayerState() !== YT.PlayerState.PLAYING) { $('tap').hidden = true; flash('Atinge butonul Play din player.'); }
+    }, 1500);
+  };
+
+  function onState(e) {
+    var st = e.data, P = YT.PlayerState;
+    S.playing = st === P.PLAYING;
+    $('bPlay').textContent = (st === P.PLAYING || st === P.BUFFERING) ? '⏸' : '▶';
+    if (st === P.PLAYING) {
+      $('tap').hidden = true; S.skips = 0;
+      var d = player.getVideoData && player.getVideoData();
+      if (S.cur && d && d.video_id) {
+        // completam titlul pentru linkuri lipite / playlisturi
+        if (S.cur.from === 'link' || !S.cur.item.title) {
+          S.cur.item = { id: d.video_id, title: d.title || S.cur.item.title, channel: d.author || '' };
+          setNow(S.cur.item);
+        }
+      }
+      if (S.muted) player.mute(); else player.unMute();
+    }
+    if (st === P.ENDED) {
+      if (S.repeat) { player.seekTo(0, true); player.playVideo(); return; }
+      if (S.playlist) return; // playlistul YouTube merge singur mai departe
+      next(true);
+    }
+    updateButtons();
+  }
+
+  var ERR = { 2: 'link invalid', 5: 'eroare a playerului', 100: 'clipul nu mai există sau e privat', 101: 'autorul nu permite redarea în afara YouTube', 150: 'autorul nu permite redarea în afara YouTube' };
+  function onErr(e) {
+    clearTimeout(S.startTimer);
+    var cur = S.cur, why = ERR[e.data] || ('eroare ' + e.data);
+    if (!cur) return;
+    S.failed[cur.item.id] = true; renderResults();
+    var name = cur.item.title ? '„' + cur.item.title + '”' : 'Clipul';
+    if (cur.from === 'link' && !S.queue.length) {
+      $('tap').hidden = true;
+      status('err', name + ' nu poate fi redat aici (' + why + ').', 'Deschide pe YouTube', function () { window.open('https://www.youtube.com/watch?v=' + cur.item.id, '_blank', 'noopener'); });
+      return;
+    }
+    S.skips++;
+    if (S.skips > 8) { status('err', 'Prea multe clipuri la rând nu pot fi redate. Încearcă altă căutare.'); return; }
+    var n = nextCandidate();
+    if (n) { status('warn', name + ' nu poate fi redat aici (' + why + '). Trec la următorul.'); S.cur = null; n(); }
+    else status('err', name + ' nu poate fi redat aici (' + why + ') și nu mai am alte rezultate. Încearcă altă căutare.', 'Deschide pe YouTube', function () { window.open('https://www.youtube.com/watch?v=' + cur.item.id, '_blank', 'noopener'); });
+  }
+
+  // Ce urmeaza: intai coada, apoi (daca "Continuă" e pornit) urmatorul rezultat care n-a dat eroare.
+  function nextCandidate(auto) {
+    if (S.queue.length) return function () { var it = S.queue.shift(); saveQueue(); playItem(it, 'queue', -1); };
+    if (auto && !S.auto) return null;
+    var start = S.cur && S.cur.from === 'res' ? S.cur.idx + 1 : 0;
+    if (S.cur && S.cur.from !== 'res' && S.cur.from !== 'queue') start = 0;
+    if (S.cur && S.cur.from === 'queue') {
+      // dupa coada continuam de unde ramasesem in rezultate
+      var lastRes = null; for (var h = S.history.length - 1; h >= 0; h--) if (S.history[h].from === 'res') { lastRes = S.history[h]; break; }
+      start = lastRes ? lastRes.idx + 1 : 0;
+    }
+    for (var i = start; i < S.results.length; i++) {
+      if (!S.failed[S.results[i].id] && !(S.cur && S.results[i].id === S.cur.item.id)) {
+        var idx = i; return function () { playItem(S.results[idx], 'res', idx); };
+      }
+    }
+    return null;
+  }
+  function next(auto) {
+    if (S.playlist && !auto && player) { player.nextVideo(); return; }
+    var n = nextCandidate(auto);
+    if (n) n(); else if (!auto) flash('Nu mai e nimic după această melodie. Caută altceva sau pune melodii în coadă.');
+    else { flash('Gata, s-a terminat lista.'); updateButtons(); }
+  }
+  function prev() {
+    if (!player || !S.ready) return;
+    if (S.playlist) { player.previousVideo(); return; }
+    var t = player.getCurrentTime ? player.getCurrentTime() : 0;
+    if (t > 4 || !S.history.length) { player.seekTo(0, true); player.playVideo(); return; }
+    var p = S.history.pop(); var cur = S.cur;
+    S.cur = null; playItem(p.item, p.from, p.idx);
+    if (cur && cur.from === 'queue') { S.queue.unshift(cur.item); saveQueue(); }
+  }
+  function togglePlay() {
+    if (!player || !S.ready || !S.cur) return;
+    var st = player.getPlayerState();
+    if (st === YT.PlayerState.PLAYING || st === YT.PlayerState.BUFFERING) player.pauseVideo(); else { $('tap').hidden = true; player.playVideo(); }
+  }
+  function updateButtons() {
+    var has = !!S.cur;
+    $('bPlay').disabled = !has; $('bPrev').disabled = !has;
+    $('bNext').disabled = !has || (!S.playlist && !nextCandidate());
+    $('seek').disabled = !has;
+    $('bRepeat').classList.toggle('on', S.repeat); $('bAuto').classList.toggle('on', S.auto);
+    $('bMute').textContent = S.muted || S.vol === 0 ? '🔇' : (S.vol < 45 ? '🔉' : '🔊');
+  }
+  function applyVol() {
+    if (!player || !S.ready) return;
+    player.setVolume(S.vol); if (S.muted) player.mute(); else player.unMute();
+    updateButtons();
+  }
+
+  // bara de progres
+  setInterval(function () {
+    if (!player || !S.ready || !player.getDuration || !S.cur) return;
+    var d = player.getDuration() || 0, c = player.getCurrentTime() || 0;
+    $('tDur').textContent = d ? fmt(d) : '0:00';
+    if (!S.seeking) { $('tCur').textContent = fmt(c); $('seek').value = d ? Math.round(c / d * 1000) : 0; }
+  }, 500);
+  $('seek').addEventListener('input', function () { S.seeking = true; var d = player && player.getDuration ? player.getDuration() : 0; $('tCur').textContent = fmt(d * this.value / 1000); });
+  $('seek').addEventListener('change', function () { var d = player.getDuration() || 0; player.seekTo(d * this.value / 1000, true); S.seeking = false; });
+
+  // ---------- butoane ----------
+  $('form').addEventListener('submit', function (e) { e.preventDefault(); search($('q').value); $('q').blur(); });
+  function syncClr() { $('clr').hidden = !$('q').value; }
+  $('q').addEventListener('input', syncClr);
+  $('q').addEventListener('keydown', function (e) { if (e.key === 'Escape') { $('q').value = ''; syncClr(); } });
+  $('clr').onclick = function () { $('q').value = ''; syncClr(); $('q').focus(); };
+  $('bPlay').onclick = togglePlay;
+  $('bNext').onclick = function () { S.skips = 0; next(false); };
+  $('bPrev').onclick = prev;
+  $('bRepeat').onclick = function () { S.repeat = !S.repeat; LS.set('repeat', S.repeat); updateButtons(); flash(S.repeat ? 'Melodia curentă se va repeta.' : 'Repetarea e oprită.'); };
+  $('bAuto').onclick = function () { S.auto = !S.auto; LS.set('auto', S.auto); updateButtons(); flash(S.auto ? 'La final trec la următorul rezultat.' : 'La final mă opresc (coada tot cântă).'); };
+  $('bMute').onclick = function () { S.muted = !S.muted; if (!S.muted && S.vol === 0) { S.vol = 50; $('vol').value = 50; } LS.set('muted', S.muted); LS.set('vol', S.vol); applyVol(); updateButtons(); };
+  $('vol').value = S.vol;
+  $('vol').addEventListener('input', function () { S.vol = +this.value; S.muted = S.vol === 0; LS.set('vol', S.vol); LS.set('muted', S.muted); applyVol(); updateButtons(); });
+  $('tabRes').onclick = function () { showTab('res'); };
+  $('tabQ').onclick = function () { showTab('q'); };
+
+  document.addEventListener('keydown', function (e) {
+    var t = e.target, typing = t && (t.tagName === 'INPUT' && t.type !== 'range' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === '/' && !typing) { e.preventDefault(); $('q').focus(); $('q').select(); return; }
+    if (typing) return;
+    var k = e.key.toLowerCase();
+    if (k === ' ' || k === 'k') { if (t.tagName === 'BUTTON' || t.classList.contains('row')) return; e.preventDefault(); togglePlay(); }
+    else if (k === 'n') { S.skips = 0; next(false); }
+    else if (k === 'p') prev();
+    else if (k === 'm') $('bMute').click();
+    else if (k === 'arrowup' || k === 'arrowdown') {
+      if (t.type === 'range') return; e.preventDefault();
+      S.vol = Math.max(0, Math.min(100, S.vol + (k === 'arrowup' ? 5 : -5))); S.muted = S.vol === 0; $('vol').value = S.vol;
+      LS.set('vol', S.vol); applyVol(); flash('Volum ' + S.vol + '%');
+    } else if ((k === 'arrowleft' || k === 'arrowright') && player && S.ready && S.cur) {
+      if (t.type === 'range') return;
+      player.seekTo(Math.max(0, player.getCurrentTime() + (k === 'arrowright' ? 10 : -10)), true);
+    }
+  });
+
+  window.addEventListener('offline', function () { status('err', 'Ai pierdut conexiunea la internet. Muzica se poate opri.'); });
+  window.addEventListener('online', function () { if ($('status').classList.contains('err')) status(); flash('Conexiunea a revenit.'); });
+
+  // ---------- start ----------
+  renderRecent(); renderQueue(); renderResults(); updateButtons();
+  loadApi();
+  var start = null; try { start = new URL(location.href).searchParams.get('q'); } catch (e) {}
+  if (start && clean(start)) { $('q').value = clean(start); syncClr(); search(start); }
+})();
+</script>
+</body>
+</html>
