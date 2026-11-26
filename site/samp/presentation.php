@@ -1401,32 +1401,48 @@ require_once __DIR__ . '/includes/lang.php';
 
 <section id="robbery">
   <h2>💰 <?= t('Robbery') ?></h2>
-  <p class="subtitle"><?= t('Hit a store with your crew — but shake the police before you cash out') ?></p>
+  <p class="subtitle"><?= t('Hit a store, grab the loot bag and launder it at a fence — before the police catch you') ?></p>
 
   <div class="note warn">
-    <?= t('You need') ?> <strong>10/10 <?= t('rob points') ?></strong> <?= t('to pull a robbery. You gain') ?> <strong><?= t('+1 rob point every PayDay') ?></strong>
-    (<?= t('max 10') ?>), <?= t('and a robbery costs') ?> <strong><?= t('all 10') ?></strong>. <?= t('Your points are visible in your stats, under') ?>
-    <strong>[Crime]</strong>.
+    <?= t('You still need') ?> <strong>10/10 <?= t('rob points') ?></strong> <?= t('to pull a robbery. You gain') ?> <strong><?= t('+1 rob point every PayDay') ?></strong>
+    (<?= t('max 10') ?>). <?= t('Every crew member spends') ?> <strong>10</strong> <?= t('when joining. Each store also has a') ?>
+    <strong><?= t('30 min cooldown') ?></strong> <?= t('after it was robbed.') ?>
   </div>
 
-  <h3><?= t('How it works') ?></h3>
+  <h3><?= t('1. The hold-up') ?></h3>
   <ol>
-    <li><?= t('Get your crew into a car — you have to be the') ?> <strong><?= t('driver') ?></strong>.</li>
-    <li><?= t('Pull up next to a shop or fast-food spot and start the robbery.') ?></li>
-    <li><?= t('Everyone in the car at that moment joins in: each loses 10 rob points and gets') ?> <strong><?= t('wanted level 6') ?></strong>.</li>
-    <li><?= t('The') ?> <strong><?= t('police are notified immediately') ?></strong> — <?= t('with your name and the store hit.') ?></li>
-    <li><?= t('A checkpoint appears at a random business. Reach it, and a second one appears. You must reach') ?>
-    <strong><?= t('both') ?></strong> <?= t('to cash out.') ?></li>
+    <li><?= t('Park a car or motorbike (category A/B) at a shop or fast-food, have a firearm on you, and use') ?> <code>/rob</code> <?= t('from the vehicle.') ?></li>
+    <li><?= t('Everyone in the vehicle with 10/10 rob points becomes the crew (max 4).') ?></li>
+    <li><?= t('The cash starts flowing once the leader gets out and goes inside the store (90 seconds to do it). The more of the crew inside, the faster — up to') ?> <strong>$70.000</strong>.</li>
+    <li><?= t('When the leader leaves the store, the cash stops and the run begins.') ?></li>
+    <li><?= t('The alarm goes off at a random moment. Still inside? The crew gets') ?> <strong><?= t('wanted level 6') ?></strong> <?= t('and the cash hides a') ?>
+    <strong><?= t('GPS tracker') ?></strong> <?= t('the police follow on the map for 3 minutes.') ?></li>
+    <li><?= t('Left before the alarm? Less money, but only wanted 3 and no tracker. Greed vs. risk — your call.') ?></li>
   </ol>
 
-  <h3><?= t('The payout') ?></h3>
-  <p><?= t('After the second business, every crew member gets a base cut plus a per-participant bonus and a random') ?>
-  <?= t('extra — the more people in the car, the more everyone earns. Once delivered, the wanted level drops from 6 to') ?>
-  <strong>5</strong>.</p>
+  <h3><?= t('2. The loot bag') ?></h3>
+  <ul>
+    <li><?= t('The leader walks out with the bag — you can see it on their back.') ?></li>
+    <li><code>/rob pass [id]</code> <?= t('hands it to a crew member next to you.') ?></li>
+    <li><?= t('If the carrier dies or disconnects, the bag falls on the ground for 3 minutes. Anyone can grab it with') ?> <code>/rob take</code> <?= t('or by walking over it') ?>:
+      <ul>
+        <li><?= t('your crew takes it back and goes on to the fence;') ?></li>
+        <li><?= t('a cop returns it to the store and gets 15%;') ?></li>
+        <li><?= t('a mafia member takes it to their own HQ and keeps 50%;') ?></li>
+        <li><?= t('anyone else: 60% chance they hand it to the police HQ for 25%, 40% chance they finish the job at the fence and keep everything.') ?></li>
+      </ul></li>
+    <li><?= t('Arrested with the bag? It goes back to the store and the officer gets 15%.') ?></li>
+  </ul>
 
+  <h3><?= t('3. The fence') ?></h3>
+  <p><?= t('Take the bag to the checkpoint at a random mafia HQ. The fence keeps') ?> <strong>15%</strong> <?= t('(it goes to that mafia\'s vault), and the rest is split') ?>
+  <strong><?= t('equally') ?></strong> <?= t('between the crew members still alive. VIP members get +10%.') ?></p>
+
+  <div class="note">
+    <?= t('For the police: the alarm message gives the store and the number of suspects; the red map marker follows the bag. Returning it to the store pays the officer 15%.') ?>
+  </div>
   <div class="note warn">
-    <strong><?= t('Die or disconnect, and you get nothing.') ?></strong> <?= t('The robbery continues for the rest of the crew, but') ?>
-    <?= t("you're out of the payout. Only members still") ?> <strong><?= t('alive and connected') ?></strong> <?= t('at delivery time get paid.') ?>
+    <?= t('A few minutes after the hold-up the store catches fire — it burns until a SMURD firefighter puts it out.') ?>
   </div>
 </section>
 

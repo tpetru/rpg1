@@ -149,7 +149,7 @@ $ADMIN_COMMANDS = [
             ['cmd' => '/removejetpack', 'desc' => 'Removes the jetpack from all connected players using one, reporting how many were affected.'],
             ['cmd' => '/clsc [id] name/loc/int [value]', 'desc' => 'Configures an in-game created clothing store: rename, move to your position, or link an interior (int = gtaIntID).'],
             ['cmd' => '/ammoc [id] name/loc/int [value]', 'desc' => 'Configures an in-game created ammunation: rename, move to your position, or link an interior (int = gtaIntID).'],
-            ['cmd' => '/shopc [id] loc/name [value]', 'desc' => 'Configures a shop: move to your position, or rename it.'],
+            ['cmd' => '/shopc [id] loc/name/type/int [value]', 'desc' => 'Configures a shop: move it to your position, rename it, change its type, or set its interior to where you stand (int remove = no interior). Shops with an interior are entered with ENTER at the door.'],
         ],
     ],
     6 => [

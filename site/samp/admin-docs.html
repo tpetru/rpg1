@@ -143,7 +143,7 @@
   <a href="#caravans">Rulote personale &amp; Camping</a>
   <a href="#farming">Farming (Agricultură)</a>
   <a href="#skins">Skinuri &amp; Uniforme</a>
-  <a href="#robbery">Jaf (/rob)</a>
+  <a href="#robbery">Jaf (/rob) v2</a>
   <a href="#marketplace">Marketplace (proprietăți)</a>
   <a href="#reports">Sistem de reporturi</a>
   <a href="#database">Schema bazei de date</a>
@@ -1193,38 +1193,41 @@ RP    += 1</pre>
 </section>
 
 <section id="robbery">
-  <h2>Jaf (/rob)</h2>
-  <p>Jefuiești un <strong>shop sau fast-food</strong> cu o echipă, apoi <strong>livrezi banii la 2 business-uri
-  aleatorii</strong>. Poliția e alertată.</p>
+  <h2>Jaf (/rob) — v2</h2>
+  <p><strong>Hold-up</strong> pornit dintr-un vehicul la un <strong>shop sau fast-food</strong>, apoi un <strong>sac cu bani</strong> fizic
+  care trebuie dus la un <strong>fence</strong> (HQ de mafie). Modulul e în <code>bare.pwn</code>, secțiunea
+  <code>JAF / ROBBERY v2</code> (după Smuggle); constantele <code>ROB_*</code> și starea sunt sus, lângă <code>PlayerData</code>.</p>
 
-  <h3>Rob points</h3>
+  <h3>Rob points + cooldown pe magazin</h3>
   <p><code>pRobPoints</code> → coloana <code>players.rob_points</code> (default <code>ROB_POINTS_MAX = 10</code>).
-  <strong>+1 la fiecare payday</strong> (plafonat la 10). Un jaf costă <code>ROB_COST = 10</code> — deci practic
-  un jaf la ~10 payday-uri. Afișat în <code>/stats</code> la linia <code>[Crime]</code>.</p>
+  <strong>+1 la fiecare payday</strong> (VIP: 2 la orele impare), plafonat la 10. Fiecare membru care intră în jaf
+  plătește <code>ROB_COST = 10</code> (<code>Rob_CheckEligible</code> / <code>Rob_AddCrew</code>). Afișat în <code>/stats</code>.</p>
+  <p>Fiecare țintă are cooldown <code>ROB_TARGET_CD_SEC = 1800</code> (30 min) în <code>g_RobTargetCD[]</code> —
+  <strong>doar în memorie</strong>, se resetează la restartul serverului. Cheia țintei:
+  <code>tip × ROB_TGT_STRIDE + index</code> (0 shop, 1 pizza, 2 burger, 3 meal, 4 desert).</p>
 
   <h3>Flux</h3>
   <table>
     <tr><th>Pas</th><th>Detalii</th></tr>
-    <tr><td>1 · Condiții</td><td>Logat, <strong>șofer</strong> (<code>PLAYER_STATE_DRIVER</code>), <code>10/10</code> rob points, lângă un shop/fast-food (<code>Rob_NearTarget</code>, rază <code>ROB_RANGE = 8.0</code>)</td></tr>
-    <tr><td>2 · Echipa</td><td>Toți jucătorii logați din aceeași mașină (<code>ROB_MAX_CREW = 6</code>). Fiecare pierde 10 rob points și primește <strong>wanted 6</strong>. <code>g_RobLeaderOf[]</code> = mapare inversă player → lider.</td></tr>
-    <tr><td>3 · Alertă</td><td>Toți membrii <strong>facțiunii 1</strong> online primesc numele liderului + ținta jefuită</td></tr>
-    <tr><td>4 · Livrare</td><td><code>Rob_PickTwoBusinesses</code> alege 2 business-uri distincte cu locație setată. Checkpoint (<code>ROB_CP_SIZE = 9.0</code>) la primul → la atingere, al doilea.</td></tr>
-    <tr><td>5 · Plată</td><td>La al 2-lea business: <code>Rob_Payout</code>. Wanted scade <strong>6 → 5</strong>.</td></tr>
+    <tr><td>1 · Start</td><td><code>/rob</code> din vehicul de categorie A/B (<code>GetVehicleLicenseCategory</code>), cu armă de foc la el (<code>Rob_HasFirearm</code>: arma ținută sau sloturile 2-6, arme 22-34; <code>ROB_REQUIRE_WEAPON = 1</code>), la max <code>ROB_START_RANGE = 12.0</code> de țintă (<code>Rob_FindTarget</code>). Polițiștii nu pot jefui. Max <code>ROB_MAX_JOBS = 4</code> jafuri simultane (<code>RobJob[]</code>).</td></tr>
+    <tr><td>2 · Echipa</td><td>Toți cei din același vehicul care au 10/10 rob points (ceilalți sunt lăsați afară cu mesaj), max <code>ROB_MAX_CREW = 4</code>. <code>g_RobJobOf[pid]</code> = jaful din care face parte jucătorul (-1 = niciunul).</td></tr>
+    <tr><td>3 · Hold-up</td><td><code>Rob_TickHoldup</code> (1s). „Înăuntru” (<code>Rob_IsInside</code>): la un shop cu interior (setat cu <code>/shopc [id] int</code>, vw <code>SHOP_VW_BASE + shopID</code>) = în vw-ul shop-ului; altfel (fast-food-uri, shop-uri fără interior) = pe jos în <code>ROB_ZONE_RANGE = 10.0</code> de pickup. Banii curg doar după ce <strong>liderul</strong> intră (are <code>ROB_ENTER_TIMEOUT = 90</code>s, altfel jaful se anulează): <code>500 + 150 × membri înăuntru</code> $/s, până la <code>ROB_LOOT_MAX = 70.000</code>. Când liderul iese (sau după <code>ROB_HOLDUP_MAX_SEC = 240</code>), banii se opresc → fuga.</td></tr>
+    <tr><td>4 · Alarmă</td><td>La 25-45s de la intrarea liderului (<code>ROB_ALARM_MIN_SEC</code> + random). Membrii încă în hold-up: <strong>wanted 6</strong> + GPS <code>ROB_TRACKER_SEC = 180</code>s (map icon roșu, streamer, vizibil doar Poliției, actualizat la 3s). Dacă au ieșit deja: <strong>wanted 3</strong>, fără GPS. Mesaj la Poliție + News.</td></tr>
+    <tr><td>5 · Sacul</td><td>Liderul (sau primul membru rămas) primește sacul (obiect 1550 pe slotul <code>ROB_BAG_ATTACH_INDEX = 9</code>) + checkpoint la fence (<code>Rob_PickFence</code>: HQ de mafie random; fallback: business random). <code>/rob pass [id]</code> îl dă unui coechipier la max 3m.</td></tr>
+    <tr><td>6 · Scăpat</td><td>Purtătorul moare / iese → sacul cade ca <strong>pickup</strong> (<code>CreatePickup</code> tip 1 + label 3D, tratat în <code>OnPlayerPickUpPickup</code>) <code>ROB_DROP_SEC = 180</code>s. Mers peste el sau <code>/rob take</code> (<code>Rob_TakeBag</code>) setează <code>rjMode</code>: membru → <code>ROB_MODE_FENCE</code>; polițist → <code>ROB_MODE_RETURN</code> (înapoi la magazin, <code>ROB_RETURN_COP_PCT = 15%</code>); mafiot străin cu HQ → <code>ROB_MODE_MAFIA</code> (HQ-ul lui, <code>ROB_MAFIA_KEEP_PCT = 50%</code>, wanted 4); oricine altcineva → <code>ROB_CIVIL_HONEST_PCT = 60%</code> <code>ROB_MODE_POLICE</code> (HQ Poliție, <code>ROB_CIVIL_REWARD_PCT = 25%</code>), altfel <code>ROB_MODE_FENCE</code> (wanted 4, ia tot). Livrarea străinilor: <code>Rob_PayOutsider</code>. Nimeni → banii se pierd.</td></tr>
+    <tr><td>7 · Fence</td><td><code>Rob_HandleCheckpoint</code> → <code>Rob_Payout</code>: <code>ROB_FENCE_CUT_PCT = 15%</code> în seiful mafiei, restul împărțit egal între membrii rămași (VIP +10%). Wanted 6 → 5.</td></tr>
+    <tr><td>8 · Incendiu</td><td><code>ROB_FIRE_DELAY = 3 min</code> după hold-up: <code>Rob_StartFire</code> → <code>Fires_Create</code> la magazinul jefuit; arde până îl stinge SMURD (alertat în chat + gametext).</td></tr>
   </table>
 
-  <h3>Premiu (per om)</h3>
-  <p><code>ROB_PAY_BASE ($12.000) + ROB_PAY_PERCREW ($2.000) × nr. participanți + random(ROB_PAY_RAND = $5.000)</code>
-  — deci o echipă mai mare înseamnă mai mulți bani <em>pentru fiecare</em>.</p>
+  <h3>Poliția</h3>
+  <p>Polițistul care ridică sacul îl duce înapoi la magazin (15%). <code>/arrest</code> pe purtător
+  (<code>Rob_HandleArrest</code> → <code>Rob_Seize</code>): sacul e returnat, ofițerul primește <code>ROB_RETURN_COP_PCT = 15%</code>.
+  La <code>/arrestme</code> cu sacul, cei 15% merg în seiful facțiunii 1.</p>
 
   <div class="note warn">
-    <strong>Cine moare sau se deconectează nu primește bani.</strong> La deces (<code>OnPlayerDeath</code>) jucătorul
-    e scos din mapare (<code>g_RobLeaderOf = INVALID</code>) și primește un mesaj; jaful continuă pentru ceilalți.
-    La plată se verifică: încă mapat la acest jaf <strong>și</strong> conectat <strong>și</strong> logat.
-  </div>
-  <div class="note">
-    Dacă <strong>liderul</strong> se deconectează, jaful se anulează pentru toată echipa (<code>Rob_Cancel</code>).
-    Handler-ul de checkpoint e <code>Rob_HandleCheckpoint</code> — funcție separată (forward-declarată) pentru că
-    <code>OnPlayerEnterCheckpoint</code> apare în cod înaintea declarării <code>BusinessData</code>.
+    <strong>Cine moare sau se deconectează nu primește bani</strong> (<code>Rob_HandleLeave</code> scoate jucătorul din
+    <code>g_RobJobOf</code>; dacă purta sacul, sacul cade). Jaful <strong>nu</strong> se mai anulează când pleacă liderul —
+    contează doar cine are sacul.
   </div>
 </section>
 
@@ -1320,7 +1323,7 @@ medkits INT DEFAULT 0, extinguishers INT DEFAULT 0, mute_expire INT DEFAULT 0,
 wanted_level INT DEFAULT 0, jail_seconds INT DEFAULT 0,
 rob_points INT DEFAULT 10, skin INT DEFAULT 7
 -- house/business: 0 = niciuna (standardizat; anterior 999)
--- rob_points: 0-10, +1 la fiecare payday, -10 la /rob (vezi sectiunea Jaf)
+-- rob_points: 0-10, +1 la fiecare payday, -10 pentru fiecare membru care intra intr-un jaf (vezi sectiunea Jaf)
 -- skin: skin-ul purtat (0-311), default 7 (vezi sectiunea Skinuri)
 -- phone_model: index marca (0-4), -1 = fara telefon; phone_number: 7 cifre, 0 = fara SIM (vezi sectiunea Telefonie)</pre>
 

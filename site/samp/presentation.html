@@ -826,32 +826,48 @@
 
 <section id="robbery">
   <h2>💰 Robbery</h2>
-  <p class="subtitle">Hit a store with your crew — but shake the police before you cash out</p>
+  <p class="subtitle">Hit a store, grab the loot bag and launder it at a fence — before the police catch you</p>
 
   <div class="note warn">
-    You need <strong>10/10 rob points</strong> to pull a robbery. You gain <strong>+1 rob point every PayDay</strong>
-    (max 10), and a robbery costs <strong>all 10</strong>. Your points are visible in your stats, under
-    <strong>[Crime]</strong>.
+    You still need <strong>10/10 rob points</strong> to pull a robbery. You gain <strong>+1 rob point every PayDay</strong>
+    (max 10). Every crew member spends <strong>10</strong> when joining. Each store also has a
+    <strong>30 min cooldown</strong> after it was robbed.
   </div>
 
-  <h3>How it works</h3>
+  <h3>1. The hold-up</h3>
   <ol>
-    <li>Get your crew into a car — you have to be the <strong>driver</strong>.</li>
-    <li>Pull up next to a shop or fast-food spot and start the robbery.</li>
-    <li>Everyone in the car at that moment joins in: each loses 10 rob points and gets <strong>wanted level 6</strong>.</li>
-    <li>The <strong>police are notified immediately</strong> — with your name and the store hit.</li>
-    <li>A checkpoint appears at a random business. Reach it, and a second one appears. You must reach
-    <strong>both</strong> to cash out.</li>
+    <li>Park a <strong>car or motorbike (category A/B)</strong> at a shop or fast-food, have a <strong>firearm</strong> on you, and use <code>/rob</code> from the vehicle.</li>
+    <li>Everyone in the vehicle with 10/10 rob points becomes the crew (max 4).</li>
+    <li>The cash starts flowing once the leader gets out and goes inside the store (90 seconds to do it). The more of the crew inside, the faster — up to <strong>$70.000</strong>.</li>
+    <li>When the leader leaves the store, the cash stops and the run begins.</li>
+    <li>The alarm goes off at a random moment. Still inside? The crew gets <strong>wanted level 6</strong> and the cash hides a
+    <strong>GPS tracker</strong> the police follow on the map for 3 minutes.</li>
+    <li>Left before the alarm? Less money, but only wanted 3 and no tracker. Greed vs. risk — your call.</li>
   </ol>
 
-  <h3>The payout</h3>
-  <p>After the second business, every crew member gets a base cut plus a per-participant bonus and a random
-  extra — the more people in the car, the more everyone earns. Once delivered, the wanted level drops from 6 to
-  <strong>5</strong>.</p>
+  <h3>2. The loot bag</h3>
+  <ul>
+    <li>The leader walks out with the bag — you can see it on their back.</li>
+    <li><code>/rob pass [id]</code> hands it to a crew member next to you.</li>
+    <li>If the carrier dies or disconnects, the bag falls on the ground for 3 minutes. Anyone can grab it by walking over it (or <code>/rob take</code>):
+      <ul>
+        <li>your crew takes it back and goes on to the fence;</li>
+        <li>a <strong>cop</strong> returns it to the store and gets <strong>15%</strong>;</li>
+        <li>a <strong>mafia member</strong> takes it to their own HQ and keeps <strong>50%</strong>;</li>
+        <li>anyone else: 60% chance they hand it to the police HQ for <strong>25%</strong>, 40% chance they finish the job at the fence and keep everything.</li>
+      </ul></li>
+    <li>Arrested with the bag? It goes back to the store and the officer gets 15%.</li>
+  </ul>
 
+  <h3>3. The fence</h3>
+  <p>Take the bag to the checkpoint at a random mafia HQ. The fence keeps <strong>15%</strong> (it goes to that mafia's vault),
+  and the rest is split <strong>equally</strong> between the crew members still alive. VIP members get +10%.</p>
+
+  <div class="note">
+    For the police: the alarm message gives the store and the number of suspects; the red map marker follows the bag. Returning it to the store pays the officer 15%.
+  </div>
   <div class="note warn">
-    <strong>Die or disconnect, and you get nothing.</strong> The robbery continues for the rest of the crew, but
-    you're out of the payout. Only members still <strong>alive and connected</strong> at delivery time get paid.
+    A few minutes after the hold-up the store catches fire — it burns until a SMURD firefighter puts it out.
   </div>
 </section>
 

@@ -299,6 +299,45 @@ ro:{EF6F6C}[Smuggle] {E3E3E3}Ai fost prins - nu primesti partea ta.
 en:{EF6F6C}[Smuggle] {E3E3E3}You died during the run - you won't get a cut.
 ro:{EF6F6C}[Smuggle] {E3E3E3}Ai murit in timpul cursei - nu primesti partea ta.
 
+en:{EF6F6C}[Rob] {E3E3E3}You are already carrying a loot bag.
+ro:{EF6F6C}[Rob] {E3E3E3}Cari deja un sac cu bani.
+
+en:{EF6F6C}[Rob] {E3E3E3}You are part of another robbery.
+ro:{EF6F6C}[Rob] {E3E3E3}Faci parte din alt jaf.
+
+en:{A06A9A}[Rob] {E3E3E3}You grabbed someone else's loot. Reach the fence and it's all yours - but you are wanted now.
+ro:{A06A9A}[Rob] {E3E3E3}Ai luat prada altcuiva. Ajungi la fence si e toata a ta - dar acum esti cautat.
+
+en:{EF6F6C}[Rob] {E3E3E3}ALARM! The police are coming - and there's a GPS tracker hidden in the cash.
+ro:{EF6F6C}[Rob] {E3E3E3}ALARMA! Vine politia - si in bani e ascuns un tracker GPS.
+
+en:{EF6F6C}[Rob] {E3E3E3}The store reported the robbery. You got out before the alarm - no tracker on the bag.
+ro:{EF6F6C}[Rob] {E3E3E3}Magazinul a raportat jaful. Ai iesit inainte de alarma - sacul nu are tracker.
+
+en:{EF6F6C}[Rob] {E3E3E3}The leader never went into the store - the robbery is called off.
+ro:{EF6F6C}[Rob] {E3E3E3}Liderul n-a intrat in magazin - jaful se anuleaza.
+
+en:{A06A9A}[Rob] {E3E3E3}The register is empty - get out of the store before the police arrive!
+ro:{A06A9A}[Rob] {E3E3E3}Casa de marcat e goala - iesi din magazin inainte sa ajunga politia!
+
+en:{EF6F6C}[Rob] {E3E3E3}Nobody picked up the loot bag - the money is lost.
+ro:{EF6F6C}[Rob] {E3E3E3}Nimeni n-a ridicat sacul cu bani - banii s-au pierdut.
+
+en:{93C572}[Rob] {E3E3E3}The GPS tracker in the cash died. The police lost the signal.
+ro:{93C572}[Rob] {E3E3E3}Tracker-ul GPS din bani s-a oprit. Politia a pierdut semnalul.
+
+en:{A06A9A}[P.R.] {E3E3E3}The GPS tracker in the stolen cash went silent.
+ro:{A06A9A}[P.R.] {E3E3E3}Tracker-ul GPS din banii furati nu mai transmite.
+
+en:{EF6F6C}[Rob] {E3E3E3}The police recovered the loot bag. The job is over.
+ro:{EF6F6C}[Rob] {E3E3E3}Politia a recuperat sacul cu bani. Jaful s-a terminat.
+
+en:{EF6F6C}[Rob] {E3E3E3}Someone else delivered your loot bag. The job is over.
+ro:{EF6F6C}[Rob] {E3E3E3}Altcineva a livrat sacul vostru cu bani. Jaful s-a terminat.
+
+en:{EF6F6C}[Rob] {E3E3E3}You died during the robbery - you won't get a cut.
+ro:{EF6F6C}[Rob] {E3E3E3}Ai murit in timpul jafului - nu primesti partea ta.
+
 en:{EF6F6C}[Road Working] {E3E3E3}You were caught in the road working zone, and your wanted level increased by {A06A9A}+4{E3E3E3}.
 ro:{EF6F6C}[Road Working] {E3E3E3}Ai fost prins in zona de lucrari, iar nivelul tau de wanted a crescut cu {A06A9A}+4{E3E3E3}.
 
@@ -1445,17 +1484,50 @@ ro:{EF6F6C}[Farm] {E3E3E3}Faci deja munca agricola.
 en:{EF6F6C}[Farm] {E3E3E3}This field was already worked today. Come back tomorrow.
 ro:{EF6F6C}[Farm] {E3E3E3}Acest teren a fost deja lucrat azi. Revino maine.
 
-en:{EF6F6C}[Rob] {E3E3E3}You already have a robbery in progress.
-ro:{EF6F6C}[Rob] {E3E3E3}Ai deja un jaf in desfasurare.
+en:{EF6F6C}[Rob] {E3E3E3}Get out of the vehicle to pick up the bag.
+ro:{EF6F6C}[Rob] {E3E3E3}Coboara din vehicul ca sa ridici sacul.
 
-en:{EF6F6C}[Rob] {E3E3E3}You must be the driver of a vehicle to start a robbery.
-ro:{EF6F6C}[Rob] {E3E3E3}Trebuie sa fii soferul unui vehicul ca sa incepi un jaf.
+en:{EF6F6C}[Rob] {E3E3E3}There is no loot bag next to you.
+ro:{EF6F6C}[Rob] {E3E3E3}Nu e niciun sac cu bani langa tine.
+
+en:{EF6F6C}[Rob] {E3E3E3}You are not carrying a loot bag.
+ro:{EF6F6C}[Rob] {E3E3E3}Nu cari niciun sac cu bani.
+
+en:{A06A9A}Info: {E3E3E3}Use {A06A9A}/rob pass [playerid]{E3E3E3} to hand the bag to a crew member next to you.
+ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/rob pass [playerid]{E3E3E3} ca sa dai sacul unui coechipier aflat langa tine.
+
+en:{EF6F6C}[Rob] {E3E3E3}That player is not in your crew.
+ro:{EF6F6C}[Rob] {E3E3E3}Jucatorul nu e in echipa ta.
+
+en:{EF6F6C}[Rob] {E3E3E3}Your crew member must be right next to you.
+ro:{EF6F6C}[Rob] {E3E3E3}Coechipierul trebuie sa fie chiar langa tine.
+
+en:{A06A9A}Info: {E3E3E3}Use {A06A9A}/rob{E3E3E3} (start a robbery from your vehicle), {A06A9A}/rob take{E3E3E3}, {A06A9A}/rob pass [id]{E3E3E3} or {A06A9A}/rob status{E3E3E3}.
+ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/rob{E3E3E3} (porneste un jaf din vehicul), {A06A9A}/rob take{E3E3E3}, {A06A9A}/rob pass [id]{E3E3E3} sau {A06A9A}/rob status{E3E3E3}.
+
+en:{EF6F6C}[Rob] {E3E3E3}You are already part of a robbery.
+ro:{EF6F6C}[Rob] {E3E3E3}Faci deja parte dintr-un jaf.
+
+en:{EF6F6C}[Rob] {E3E3E3}Police officers don't rob stores.
+ro:{EF6F6C}[Rob] {E3E3E3}Politistii nu jefuiesc magazine.
+
+en:{EF6F6C}[Rob] {E3E3E3}You must be in a car or on a motorbike (category A or B) parked at the store.
+ro:{EF6F6C}[Rob] {E3E3E3}Trebuie sa fii intr-o masina sau pe o motocicleta (categoria A sau B) parcata la magazin.
+
+en:{EF6F6C}[Rob] {E3E3E3}This vehicle can't be used for a robbery - use a category A or B vehicle.
+ro:{EF6F6C}[Rob] {E3E3E3}Vehiculul asta nu poate fi folosit la jaf - foloseste un vehicul de categoria A sau B.
 
 en:{EF6F6C}[Rob] {E3E3E3}There is no shop or fast-food nearby to rob.
 ro:{EF6F6C}[Rob] {E3E3E3}Nu exista niciun shop sau fast-food in apropiere de jefuit.
 
-en:{EF6F6C}[Rob] {E3E3E3}Robbery unavailable: there aren't 2 businesses to deliver to.
-ro:{EF6F6C}[Rob] {E3E3E3}Jaf indisponibil: nu exista 2 business-uri unde sa livrezi.
+en:{EF6F6C}[Rob] {E3E3E3}You need a firearm to hold up the store.
+ro:{EF6F6C}[Rob] {E3E3E3}Ai nevoie de o arma de foc ca sa jefuiesti magazinul.
+
+en:{EF6F6C}[Rob] {E3E3E3}Too many robberies in progress right now. Try again in a few minutes.
+ro:{EF6F6C}[Rob] {E3E3E3}Sunt prea multe jafuri in desfasurare acum. Incearca din nou peste cateva minute.
+
+en:{A06A9A}[Rob] {E3E3E3}The more of your crew inside, the faster the cash comes. When you leave the store, you grab the bag and run.
+ro:{A06A9A}[Rob] {E3E3E3}Cu cat mai multi din echipa inauntru, cu atat mai repede vin banii. Cand iesi din magazin, iei sacul si fugi.
 
 en:{EF6F6C}[Smuggle] {E3E3E3}Only mafia factions can run contraband.
 ro:{EF6F6C}[Smuggle] {E3E3E3}Doar factiunile mafiote pot face contrabanda.
@@ -3986,8 +4058,8 @@ ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/deleteatm [id]{E3E3E3}.
 en:{EF6F6C}Error: {E3E3E3}Limit of {A06A9A}20{E3E3E3} shops reached.
 ro:{EF6F6C}Eroare: {E3E3E3}S-a atins limita de {A06A9A}20{E3E3E3} shop-uri.
 
-en:{A06A9A}Info: {E3E3E3}Use {A06A9A}/shopc [id] [loc/name/type]{E3E3E3}.
-ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/shopc [id] [loc/name/type]{E3E3E3}.
+en:{A06A9A}Info: {E3E3E3}Use {A06A9A}/shopc [id] [loc/name/type/int]{E3E3E3}.
+ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/shopc [id] [loc/name/type/int]{E3E3E3}.
 
 en:{EF6F6C}Error: {E3E3E3}Invalid shop ID.
 ro:{EF6F6C}Eroare: {E3E3E3}ID de shop invalid.
@@ -3998,8 +4070,11 @@ ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/shopc [id] name [numeNou]{E3E3E3}.
 en:{A06A9A}Info: {E3E3E3}Use {A06A9A}/shopc [id] type [1/2/3/4]{E3E3E3} (1=24/7, 2=Electronics, 3=Tools, 4=Pet Store).
 ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/shopc [id] type [1/2/3/4]{E3E3E3} (1=24/7, 2=Electronics, 3=Tools, 4=Pet Store).
 
-en:{A06A9A}Info: {E3E3E3}Unknown option. Use {A06A9A}/shopc [id] [loc/name/type]{E3E3E3}.
-ro:{A06A9A}Info: {E3E3E3}Optiune necunoscuta. Foloseste {A06A9A}/shopc [id] [loc/name/type]{E3E3E3}.
+en:{EF6F6C}Error: {E3E3E3}Go inside the interior you want first (e.g. with {A06A9A}/setint{E3E3E3}), then use {A06A9A}/shopc [id] int{E3E3E3} there.
+ro:{EF6F6C}Error: {E3E3E3}Intra intai in interiorul dorit (de ex. cu {A06A9A}/setint{E3E3E3}), apoi foloseste {A06A9A}/shopc [id] int{E3E3E3} acolo.
+
+en:{A06A9A}Info: {E3E3E3}Unknown option. Use {A06A9A}/shopc [id] [loc/name/type/int]{E3E3E3}.
+ro:{A06A9A}Info: {E3E3E3}Optiune necunoscuta. Foloseste {A06A9A}/shopc [id] [loc/name/type/int]{E3E3E3}.
 
 en:{A06A9A}Info: {E3E3E3}Use {A06A9A}/shopDelete [id]{E3E3E3}.
 ro:{A06A9A}Info: {E3E3E3}Foloseste {A06A9A}/shopDelete [id]{E3E3E3}.
@@ -4736,9 +4811,6 @@ ro:{EF6F6C}[Funeral] {E3E3E3}Ai murit - cursa funerara a fost anulata, fara ramb
 en:{EF6F6C}[SGR] {E3E3E3}You lost your bag and its containers when you died.
 ro:{EF6F6C}[SGR] {E3E3E3}Ti-ai pierdut sacul si containerele din el cand ai murit.
 
-en:{EF6F6C}[Rob] {E3E3E3}You died during the robbery - you won't get a cut.
-ro:{EF6F6C}[Rob] {E3E3E3}Ai murit in timpul jafului - nu primesti partea ta.
-
 en:{EF6F6C}[Glovo] {E3E3E3}You died, so your work was stopped.
 ro:{EF6F6C}[Glovo] {E3E3E3}Ai murit, asa ca munca ta a fost oprita.
 
@@ -5080,6 +5152,12 @@ ro:~y~Se incarca marfa...
 
 en:~y~Collecting cargo...
 ro:~y~Se colecteaza marfa...
+
+en:~r~Fire alarm!
+ro:~r~Alarma de incendiu!
+
+en:~y~Get out and go into the store
+ro:~y~Coboara si intra in magazin
 
 en:Put out the fire
 ro:Stinge incendiul
@@ -5576,15 +5654,6 @@ ro:{EF6F6C}[ANAF] {E3E3E3}Business-ul tau {A06A9A}%s{E3E3E3} (ID #%d) a fost sem
 en:{93C572}[ANAF] {E3E3E3}Your business {A06A9A}%s{E3E3E3} (ID #%d) has been cleared and can earn money again.
 ro:{93C572}[ANAF] {E3E3E3}Business-ul tau {A06A9A}%s{E3E3E3} (ID #%d) a fost deblocat si poate produce bani din nou.
 
-en:{A06A9A}[Rob] {E3E3E3}Drop-off %d/%d reached. Drive to the next business!
-ro:{A06A9A}[Rob] {E3E3E3}Punctul de predare %d/%d atins. Condu pana la urmatorul business!
-
-en:{FFD700}[VIP] {E3E3E3}You received a {93C572}+$%s{E3E3E3} bonus for being VIP.
-ro:{FFD700}[VIP] {E3E3E3}Ai primit un bonus de {93C572}+$%s{E3E3E3} pentru ca esti VIP.
-
-en:{93C572}[Rob] {E3E3E3}Robbery of {A06A9A}%s{E3E3E3} complete! You earned {93C572}$%s{E3E3E3}.
-ro:{93C572}[Rob] {E3E3E3}Jaful de la {A06A9A}%s{E3E3E3} este complet! Ai castigat {93C572}$%s{E3E3E3}.
-
 en:{93C572}[Drugs] {E3E3E3}You deposited {A06A9A}%d{E3E3E3} grams of weed in the faction vault.
 ro:{93C572}[Drugs] {E3E3E3}Ai depus {A06A9A}%d{E3E3E3} grame de iarba in seiful factiunii.
 
@@ -5719,6 +5788,72 @@ ro:{93C572}[P.R.] {E3E3E3}Agentul {A06A9A}%s{E3E3E3} l-a prins pe contrabandistu
 
 en:{93C572}[P.R.] {E3E3E3}Smuggler {A06A9A}%s{E3E3E3} was caught! Police vault +{A06A9A}$%s{E3E3E3}.
 ro:{93C572}[P.R.] {E3E3E3}Contrabandistul {A06A9A}%s{E3E3E3} a fost prins! Seiful Politiei +{A06A9A}$%s{E3E3E3}.
+
+en:{EF6F6C}[Rob] {E3E3E3}You need {A06A9A}%d/%d{E3E3E3} rob points (you have {A06A9A}%d{E3E3E3}). You gain 1 per payday.
+ro:{EF6F6C}[Rob] {E3E3E3}Ai nevoie de {A06A9A}%d/%d{E3E3E3} puncte de jaf (ai {A06A9A}%d{E3E3E3}). Primesti 1 per payday.
+
+en:{93C572}[P.R.] {E3E3E3}You recovered the loot bag ({93C572}$%s{E3E3E3}). Return it to {A06A9A}%s{E3E3E3} (checkpoint) - you get %d%%.
+ro:{93C572}[P.R.] {E3E3E3}Ai recuperat sacul cu bani ({93C572}$%s{E3E3E3}). Returneaza-l la {A06A9A}%s{E3E3E3} (checkpoint) - primesti %d%%.
+
+en:{93C572}[Rob] {E3E3E3}You grabbed a loot bag ({93C572}$%s{E3E3E3}). Take it to your HQ, {A06A9A}%s{E3E3E3} (checkpoint) - you keep %d%%.
+ro:{93C572}[Rob] {E3E3E3}Ai luat un sac cu bani ({93C572}$%s{E3E3E3}). Du-l la HQ-ul vostru, {A06A9A}%s{E3E3E3} (checkpoint) - pastrezi %d%%.
+
+en:{93C572}[Rob] {E3E3E3}You found a loot bag ({93C572}$%s{E3E3E3}). Hand it in at {A06A9A}%s{E3E3E3} (checkpoint) for a %d%% reward.
+ro:{93C572}[Rob] {E3E3E3}Ai gasit un sac cu bani ({93C572}$%s{E3E3E3}). Preda-l la {A06A9A}%s{E3E3E3} (checkpoint) pentru o recompensa de %d%%.
+
+en:{93C572}[Rob] {E3E3E3}You carry the loot bag ({93C572}$%s{E3E3E3}). Take it to the fence at {A06A9A}%s{E3E3E3} (checkpoint).
+ro:{93C572}[Rob] {E3E3E3}Cari sacul cu bani ({93C572}$%s{E3E3E3}). Du-l la fence-ul de la {A06A9A}%s{E3E3E3} (checkpoint).
+
+en:{EF6F6C}[Rob] {E3E3E3}The loot bag ({93C572}$%s{E3E3E3}) was dropped! Walk over it (or {A06A9A}/rob take{E3E3E3}) within %d minutes.
+ro:{EF6F6C}[Rob] {E3E3E3}Sacul cu bani ({93C572}$%s{E3E3E3}) a cazut! Mergi peste el (sau {A06A9A}/rob take{E3E3E3}) in maxim %d minute.
+
+en:{A06A9A}[P.R.] {E3E3E3}The loot bag from {A06A9A}%s{E3E3E3} was dropped. Walk over it and return it to the store.
+ro:{A06A9A}[P.R.] {E3E3E3}Sacul cu bani de la {A06A9A}%s{E3E3E3} a cazut pe jos. Mergi peste el si returneaza-l la magazin.
+
+en:{EF6F6C}[Rob] {A06A9A}%s{E3E3E3} took your loot bag! Get it back before it reaches its destination.
+ro:{EF6F6C}[Rob] {A06A9A}%s{E3E3E3} v-a luat sacul cu bani! Recuperati-l inainte sa ajunga la destinatie.
+
+en:{EF6F6C}[P.R.] {E3E3E3}Alarm at {A06A9A}%s{E3E3E3}! %d armed suspect(s) inside. The cash has a GPS tracker - follow the red marker.
+ro:{EF6F6C}[P.R.] {E3E3E3}Alarma la {A06A9A}%s{E3E3E3}! %d suspect(i) inarmat(i) inauntru. Banii au tracker GPS - urmareste marker-ul rosu.
+
+en:{EF6F6C}[P.R.] {E3E3E3}%s reports a robbery. %d suspect(s) already fled, no tracker on the cash.
+ro:{EF6F6C}[P.R.] {E3E3E3}%s raporteaza un jaf. %d suspect(i) au fugit deja, banii nu au tracker.
+
+en:{93C572}[Rob] {E3E3E3}You got out with {93C572}$%s{E3E3E3}. {A06A9A}%s{E3E3E3} carries the bag to the fence at %s - protect them!
+ro:{93C572}[Rob] {E3E3E3}Ati iesit cu {93C572}$%s{E3E3E3}. {A06A9A}%s{E3E3E3} duce sacul la fence-ul de la %s - protejati-l!
+
+en:~g~$%s~n~~r~ALARM!
+ro:~g~$%s~n~~r~ALARMA!
+
+en:~g~$%s~n~~w~leader leaves = run
+ro:~g~$%s~n~~w~liderul iese = fuga
+
+en:{93C572}[P.R.] {E3E3E3}Officer {A06A9A}%s{E3E3E3} returned the loot from %s. Reward: {93C572}$%s{E3E3E3}.
+ro:{93C572}[P.R.] {E3E3E3}Ofiterul {A06A9A}%s{E3E3E3} a returnat prada de la %s. Recompensa: {93C572}$%s{E3E3E3}.
+
+en:{93C572}[P.R.] {E3E3E3}The loot from %s was recovered. Vault +{93C572}$%s{E3E3E3}.
+ro:{93C572}[P.R.] {E3E3E3}Prada de la %s a fost recuperata. Seif +{93C572}$%s{E3E3E3}.
+
+en:{FFD700}[VIP] {E3E3E3}You received a {93C572}+$%s{E3E3E3} bonus for being VIP.
+ro:{FFD700}[VIP] {E3E3E3}Ai primit un bonus de {93C572}+$%s{E3E3E3} pentru ca esti VIP.
+
+en:{93C572}[Rob] {E3E3E3}The fence laundered the loot from {A06A9A}%s{E3E3E3}. Your share: {93C572}$%s{E3E3E3} (%d-way split).
+ro:{93C572}[Rob] {E3E3E3}Fence-ul a spalat prada de la {A06A9A}%s{E3E3E3}. Partea ta: {93C572}$%s{E3E3E3} (impartit la %d).
+
+en:{A06A9A}[Fence] {E3E3E3}Your HQ laundered stolen cash. Faction vault +{93C572}$%s{E3E3E3}.
+ro:{A06A9A}[Fence] {E3E3E3}HQ-ul vostru a spalat bani furati. Seiful factiunii +{93C572}$%s{E3E3E3}.
+
+en:{93C572}[P.R.] {E3E3E3}You returned the stolen money to {A06A9A}%s{E3E3E3}. Reward: {93C572}$%s{E3E3E3}.
+ro:{93C572}[P.R.] {E3E3E3}Ai returnat banii furati la {A06A9A}%s{E3E3E3}. Recompensa: {93C572}$%s{E3E3E3}.
+
+en:{93C572}[Rob] {E3E3E3}You brought the loot to your HQ. You keep {93C572}$%s{E3E3E3}.
+ro:{93C572}[Rob] {E3E3E3}Ai adus prada la HQ. Pastrezi {93C572}$%s{E3E3E3}.
+
+en:{93C572}[P.R.] {E3E3E3}You handed the stolen money to the police. Reward: {93C572}$%s{E3E3E3}.
+ro:{93C572}[P.R.] {E3E3E3}Ai predat banii furati politiei. Recompensa: {93C572}$%s{E3E3E3}.
+
+en:{93C572}[P.R.] {A06A9A}%s{E3E3E3} returned the loot from %s.
+ro:{93C572}[P.R.] {A06A9A}%s{E3E3E3} a returnat prada de la %s.
 
 en:[SMURD] {E3E3E3}Firefighter %s%s {E3E3E3}put out the fire.
 ro:[SMURD] {E3E3E3}Pompierul %s%s {E3E3E3}a stins incendiul.
@@ -6416,14 +6551,29 @@ ro:{EF6F6C}[Farm] {E3E3E3}Acest teren nu are %s. Cumpara sau inchiriaza unul ({A
 en:{93C572}[Farm] {E3E3E3}Started {A06A9A}%s{E3E3E3}. Drive the {A06A9A}%s{E3E3E3} for {A06A9A}%d min{E3E3E3} - don't leave it!
 ro:{93C572}[Farm] {E3E3E3}Ai inceput {A06A9A}%s{E3E3E3}. Condu {A06A9A}%s{E3E3E3} timp de {A06A9A}%d min{E3E3E3} - nu cobori din el!
 
-en:{EF6F6C}[Rob] {E3E3E3}You need {A06A9A}%d/%d{E3E3E3} rob points (you have {A06A9A}%d{E3E3E3}). You gain 1 per payday.
-ro:{EF6F6C}[Rob] {E3E3E3}Ai nevoie de {A06A9A}%d/%d{E3E3E3} puncte de jaf (ai {A06A9A}%d{E3E3E3}). Primesti 1 per payday.
+en:{A06A9A}[Rob] {E3E3E3}Hold-up at %s: {93C572}$%s{E3E3E3} in the bag, alarm: %s.
+ro:{A06A9A}[Rob] {E3E3E3}Jaf la %s: {93C572}$%s{E3E3E3} in sac, alarma: %s.
 
-en:{EF6F6C}[Rob] {E3E3E3}Robbery of {A06A9A}%s{E3E3E3} started! Deliver the money to the {A06A9A}2 businesses{E3E3E3} (checkpoints) to get paid.
-ro:{EF6F6C}[Rob] {E3E3E3}Jaful de la {A06A9A}%s{E3E3E3} a inceput! Du banii la cele {A06A9A}2 business-uri{E3E3E3} ca sa fii platit.
+en:{A06A9A}[Rob] {E3E3E3}The bag ({93C572}$%s{E3E3E3}) is on the ground - %d sec left to grab it with /rob take.
+ro:{A06A9A}[Rob] {E3E3E3}Sacul ({93C572}$%s{E3E3E3}) e pe jos - mai ai %d sec sa-l iei cu /rob take.
 
-en:[P.R.] A group of thieves led by %s robbed %s! Hurry and catch them before they deliver the stolen goods.
-ro:[P.R.] Un grup de hoti condus de %s a jefuit %s! Grabiti-va sa ii prindeti inainte sa livreze bunurile furate.
+en:{A06A9A}[Rob] {E3E3E3}%s carries the bag ({93C572}$%s{E3E3E3}) to %s. GPS tracker: %d sec.
+ro:{A06A9A}[Rob] {E3E3E3}%s duce sacul ({93C572}$%s{E3E3E3}) la %s. Tracker GPS: %d sec.
+
+en:{A06A9A}[Rob] {E3E3E3}Rob points: {A06A9A}%d/%d{E3E3E3}. Use /rob next to a shop or fast-food.
+ro:{A06A9A}[Rob] {E3E3E3}Puncte de jaf: {A06A9A}%d/%d{E3E3E3}. Foloseste /rob langa un magazin sau fast-food.
+
+en:{93C572}[Rob] {E3E3E3}You handed the bag to {A06A9A}%s{E3E3E3}.
+ro:{93C572}[Rob] {E3E3E3}I-ai dat sacul lui {A06A9A}%s{E3E3E3}.
+
+en:{EF6F6C}[Rob] {E3E3E3}This place was robbed recently. Security is still on alert for {A06A9A}%d min{E3E3E3}.
+ro:{EF6F6C}[Rob] {E3E3E3}Locul a fost jefuit recent. Paza e inca in alerta inca {A06A9A}%d min{E3E3E3}.
+
+en:{EF6F6C}[Rob] {E3E3E3}You stay out of this robbery - you need {A06A9A}%d/%d{E3E3E3} rob points.
+ro:{EF6F6C}[Rob] {E3E3E3}Ramai in afara jafului - ai nevoie de {A06A9A}%d/%d{E3E3E3} puncte de jaf.
+
+en:{EF6F6C}[Rob] {E3E3E3}Robbery at {A06A9A}%s{E3E3E3}! Get out and go in - the cash only flows while {A06A9A}%s{E3E3E3} is inside.
+ro:{EF6F6C}[Rob] {E3E3E3}Jaf la {A06A9A}%s{E3E3E3}! Coborati si intrati - banii curg doar cat {A06A9A}%s{E3E3E3} e inauntru.
 
 en:{A06A9A}_____ Your Forest (#%d) ____________________
 ro:{A06A9A}_____ Padurea Ta (#%d) ____________________
@@ -7393,6 +7543,12 @@ ro:{93C572}[ADM] Succes: {E3E3E3}Ai schimbat {A06A9A}name{E3E3E3} pentru Shop-ul
 
 en:{93C572}[ADM] Success: {E3E3E3}You changed {A06A9A}type{E3E3E3} of Shop {A06A9A}#%d{E3E3E3} to {A06A9A}%d{E3E3E3}.
 ro:{93C572}[ADM] Succes: {E3E3E3}Ai schimbat {A06A9A}type{E3E3E3} pentru Shop-ul {A06A9A}#%d{E3E3E3} in {A06A9A}%d{E3E3E3}.
+
+en:{93C572}[ADM] Success: {E3E3E3}Shop {A06A9A}#%d{E3E3E3} now has an interior (interior {A06A9A}%d{E3E3E3}). Players enter with ENTER at the shop.
+ro:{93C572}[ADM] Success: {E3E3E3}Shop-ul {A06A9A}#%d{E3E3E3} are acum interior (interior {A06A9A}%d{E3E3E3}). Jucatorii intra cu ENTER la shop.
+
+en:{93C572}[ADM] Success: {E3E3E3}Shop {A06A9A}#%d{E3E3E3} no longer has an interior.
+ro:{93C572}[ADM] Success: {E3E3E3}Shop-ul {A06A9A}#%d{E3E3E3} nu mai are interior.
 
 en:{93C572}[ADM] Success: {E3E3E3}Shop {A06A9A}#%d{E3E3E3} deleted.
 ro:{93C572}[ADM] Succes: {E3E3E3}Shop-ul {A06A9A}#%d{E3E3E3} a fost sters.
@@ -8402,8 +8558,8 @@ ro:{E3E3E3}Ai nevoie de permis ca sa conduci/zbori. Treci examenul si platesti t
 en:{E3E3E3}Own a field and work the land through a cycle of 5 steps - {A06A9A}one step per real day{E3E3E3}.\n\n{FFFF00}Owning a farm:{E3E3E3} stand on a for-sale field (look for the pickup + sign) and use {A06A9A}/buyfarm{E3E3E3}. To resell, list it with {A06A9A}/sellfarm [price]{E3E3E3} - another player buys it with /buyfarm and the money goes to your bank ({A06A9A}/sellfarm 0{E3E3E3} cancels). Or sell it back to the state instantly with {A06A9A}/sellfarmtostate{E3E3E3} (60%). You can own one farm.\n\n{FFFF00}Machines (on your own farm):{E3E3E3}\n- /farm buy [tractor/dozer/combina] - parks a machine at the farm (Tractor $10.000, Dozer $15.000, Combine $20.000)\n- /farm sell - sit in a farm machine to sell that one (75% back)\n\n{FFFF00}Working (one step per day):{E3E3E3} drive the correct machine for the shown time WITHOUT leaving it:\n- /farm plow - Tractor, 1 min\n- /farm level - Dozer, 2 min\n- /farm seed - Tractor, 3 min\n- /farm fertilize - Tractor, 1 min\n- /farm harvest - Combine, 4 min -> paid $15.000, cycle restarts\n\nIf you leave the machine, die or disconnect, the job is cancelled and you lose that day's work (and can't retry until tomorrow).\n\n{FFFF00}Info:{E3E3E3} /farm stats (on a field) and /farmstats (your farm) show the next step, progress and whether you can work today.
 ro:{E3E3E3}Detii un teren si il lucrezi printr-un ciclu de 5 pasi - {A06A9A}un pas pe zi reala{E3E3E3}.\n\n{FFFF00}Cum detii o ferma:{E3E3E3} stai pe un teren de vanzare (cauta pickup-ul + panoul) si foloseste {A06A9A}/buyfarm{E3E3E3}. Ca sa o revinzi, listeaz-o cu {A06A9A}/sellfarm [pret]{E3E3E3} - alt jucator o cumpara cu /buyfarm iar banii intra in banca ta ({A06A9A}/sellfarm 0{E3E3E3} anuleaza). Sau o vinzi instant statului cu {A06A9A}/sellfarmtostate{E3E3E3} (60%). Poti detine o singura ferma.\n\n{FFFF00}Utilaje (pe ferma ta):{E3E3E3}\n- /farm buy [tractor/dozer/combina] - parcheaza un utilaj la ferma (Tractor $10.000, Dozer $15.000, Combina $20.000)\n- /farm sell - stai in utilajul respectiv ca sa il vinzi (primesti 75% inapoi)\n\n{FFFF00}Munca (un pas pe zi):{E3E3E3} condu utilajul corect timpul afisat, FARA sa cobori din el:\n- /farm plow - Tractor, 1 min\n- /farm level - Dozer, 2 min\n- /farm seed - Tractor, 3 min\n- /farm fertilize - Tractor, 1 min\n- /farm harvest - Combina, 4 min -> platit $15.000, ciclul o ia de la capat\n\nDaca cobori din utilaj, mori sau te deconectezi, munca se anuleaza si pierzi ziua respectiva (si nu poti reincerca pana maine).\n\n{FFFF00}Informatii:{E3E3E3} /farm stats (pe un teren) si /farmstats (ferma ta) arata pasul urmator, progresul si daca poti munci azi.
 
-en:{E3E3E3}Rob a shop or fast-food with your crew - the more people in the car, the bigger the reward.\n\n{FFFF00}Requirements:{E3E3E3}\n- You need {A06A9A}10/10 rob points{E3E3E3} (shown in /stats). You gain {A06A9A}1 per payday{E3E3E3}.\n- You must be the {A06A9A}driver{E3E3E3} of a vehicle, parked next to a {A06A9A}shop or fast-food{E3E3E3}.\n\n{FFFF00}Doing it:{E3E3E3} drive up to a shop or fast-food and use {A06A9A}/rob{E3E3E3}.\n- Everyone in the car at that moment becomes the crew and each loses {A06A9A}10 rob points{E3E3E3}.\n- The whole crew gets {A06A9A}wanted level 6{E3E3E3} - the police will come!\n- Now deliver the money: a checkpoint appears at a random {A06A9A}business{E3E3E3}. Reach it, then a {A06A9A}second{E3E3E3} business appears. You must reach {A06A9A}both{E3E3E3}.\n\n{FFFF00}Payout:{E3E3E3} after the 2nd business every crew member who is {A06A9A}still alive and connected{E3E3E3} earns {93C572}$12.000 + $2.000 per crew member + a random bonus up to $5.000{E3E3E3} each. Die or disconnect and you get nothing.
-ro:{E3E3E3}Jefuiesti un shop sau un fast-food cu echipa ta - cu cat sunt mai multi in masina, cu atat premiul e mai mare.\n\n{FFFF00}Conditii:{E3E3E3}\n- Ai nevoie de {A06A9A}10/10 puncte de jaf{E3E3E3} (apar in /stats). Primesti {A06A9A}1 per payday{E3E3E3}.\n- Trebuie sa fii {A06A9A}soferul{E3E3E3} unui vehicul, oprit langa un {A06A9A}shop sau fast-food{E3E3E3}.\n\n{FFFF00}Cum se face:{E3E3E3} opreste langa un shop sau fast-food si foloseste {A06A9A}/rob{E3E3E3}.\n- Toti cei din masina in acel moment devin echipa si fiecare pierde {A06A9A}10 puncte de jaf{E3E3E3}.\n- Toata echipa primeste {A06A9A}wanted nivel 6{E3E3E3} - vine politia!\n- Acum livrati banii: apare un checkpoint la un {A06A9A}business{E3E3E3} aleatoriu. Ajungi acolo, apoi apare un {A06A9A}al doilea{A06A9A} business. Trebuie sa le atingeti pe {A06A9A}amandoua{E3E3E3}.\n\n{FFFF00}Plata:{E3E3E3} dupa al 2-lea business, fiecare membru al echipei care e {A06A9A}inca in viata si conectat{E3E3E3} castiga {93C572}$12.000 + $2.000 per membru + un bonus aleatoriu de pana la $5.000{E3E3E3}. Daca mori sau te deconectezi, nu primesti nimic.
+en:{E3E3E3}Hold up a shop or fast-food, get away with the loot bag and launder it at a fence.\n\n{FFFF00}1. Hold-up:{E3E3E3} park a {A06A9A}car or motorbike (category A/B){E3E3E3} at a shop or fast-food, have a {A06A9A}firearm{E3E3E3} on you and use {A06A9A}/rob{E3E3E3} from the vehicle.\n- Everyone in the vehicle with 10/10 rob points becomes the crew (max {A06A9A}4{E3E3E3}).\n- The cash starts flowing once the leader gets out and goes {A06A9A}inside{E3E3E3} the store (90 seconds to do it). More crew inside = faster (up to {93C572}$70.000{E3E3E3}).\n- When the leader leaves the store, the cash stops and the run begins.\n- The {EF6F6C}alarm{E3E3E3} goes off at a random moment. Still inside? Wanted 6 and a {EF6F6C}GPS tracker{E3E3E3} in the cash for 3 minutes.\n- Got out before the alarm? Less money, but only wanted 3 and no tracker. Greed vs. risk - your call.\n\n{FFFF00}2. The bag:{E3E3E3} the leader walks out with the loot bag (you see it on their back).\n- {A06A9A}/rob pass [id]{E3E3E3} hands it to a crew member next to you.\n- If the carrier dies or quits, the bag falls on the ground for 3 minutes. Anyone can grab it by walking over it (or {A06A9A}/rob take{E3E3E3}):\n  - your crew takes it back and goes on to the fence;\n  - a {A06A9A}cop{E3E3E3} returns it to the store and gets {93C572}15%{E3E3E3};\n  - a {A06A9A}mafia member{E3E3E3} takes it to their own HQ and keeps {93C572}50%{E3E3E3};\n  - anyone else: 60% chance they hand it to the police HQ for {93C572}25%{E3E3E3}, 40% chance they finish the job at the fence.\n- Arrested with the bag = returned, the officer gets 15%.\n\n{FFFF00}3. The fence:{E3E3E3} take the bag to the checkpoint (a mafia HQ). The fence keeps {A06A9A}15%{E3E3E3} (it goes to that mafia), the rest is split equally between the crew members still alive. VIP: +10%.\n\n{FFFF00}Limits:{E3E3E3} you need {A06A9A}10/10 rob points{E3E3E3} (shown in /stats, {A06A9A}+1 per payday{E3E3E3}); each crew member spends {A06A9A}10{E3E3E3} when joining. Each store also has a {A06A9A}30 min{E3E3E3} cooldown.\nA few minutes after the hold-up, the store catches {EF6F6C}fire{E3E3E3} - it burns until SMURD puts it out. Check yourself with {A06A9A}/rob status{E3E3E3}.
+ro:{E3E3E3}Jefuieste un magazin sau un fast-food, fugi cu sacul cu bani si spala-l la un fence.\n\n{FFFF00}1. Jaful:{E3E3E3} parcheaza o {A06A9A}masina sau motocicleta (categoria A/B){E3E3E3} la un magazin sau fast-food, ai o {A06A9A}arma de foc{E3E3E3} la tine si foloseste {A06A9A}/rob{E3E3E3} din vehicul.\n- Toti cei din vehicul cu 10/10 puncte de jaf devin echipa (maxim {A06A9A}4{E3E3E3}).\n- Banii incep sa curga cand liderul coboara si intra {A06A9A}in magazin{E3E3E3} (are 90 de secunde). Mai multi din echipa inauntru = mai repede (pana la {93C572}$70.000{E3E3E3}).\n- Cand liderul iese din magazin, banii se opresc si incepe fuga.\n- {EF6F6C}Alarma{E3E3E3} suna la un moment aleator. Inca esti inauntru? Wanted 6 si un {EF6F6C}tracker GPS{E3E3E3} in bani timp de 3 minute.\n- Ai iesit inainte de alarma? Mai putini bani, dar doar wanted 3 si fara tracker. Lacomie vs. risc - tu alegi.\n\n{FFFF00}2. Sacul:{E3E3E3} liderul iese cu sacul cu bani (il vezi pe spatele lui).\n- {A06A9A}/rob pass [id]{E3E3E3} il da unui coechipier aflat langa tine.\n- Daca purtatorul moare sau iese de pe server, sacul cade pe jos timp de 3 minute. Oricine il poate lua mergand peste el (sau cu {A06A9A}/rob take{E3E3E3}):\n  - echipa ta il recupereaza si merge mai departe la fence;\n  - un {A06A9A}politist{E3E3E3} il returneaza la magazin si primeste {93C572}15%{E3E3E3};\n  - un {A06A9A}mafiot{E3E3E3} il duce la HQ-ul lui si pastreaza {93C572}50%{E3E3E3};\n  - oricine altcineva: 60% sansa sa-l predea la HQ-ul politiei pentru {93C572}25%{E3E3E3}, 40% sansa sa termine jaful la fence.\n- Arestat cu sacul = returnat, ofiterul primeste 15%.\n\n{FFFF00}3. Fence-ul:{E3E3E3} du sacul la checkpoint (un HQ de mafie). Fence-ul pastreaza {A06A9A}15%{E3E3E3} (merge la mafia aceea), restul se imparte egal intre membrii echipei ramasi in viata. VIP: +10%.\n\n{FFFF00}Limite:{E3E3E3} ai nevoie de {A06A9A}10/10 puncte de jaf{E3E3E3} (in /stats, {A06A9A}+1 la fiecare payday{E3E3E3}); fiecare membru consuma {A06A9A}10{E3E3E3} cand intra in jaf. Fiecare magazin mai are si un cooldown de {A06A9A}30 min{E3E3E3}.\nLa cateva minute dupa jaf, magazinul ia {EF6F6C}foc{E3E3E3} - arde pana il stinge SMURD-ul. Verifica-te cu {A06A9A}/rob status{E3E3E3}.
 
 en:{E3E3E3}Change how your character looks by buying and wearing outfits (skins).\n\n{FFFF00}Clothing store:{E3E3E3} find one with {A06A9A}/gps{E3E3E3} (category {A06A9A}Clothing Stores{E3E3E3}) and go stand at the pickup.\n- /buyskin - browse the catalogue and {A06A9A}buy{E3E3E3} an outfit ({A06A9A}$10.000{E3E3E3} each). Buying an outfit also puts it on.\n- /wardrobe - switch between outfits you already own, {A06A9A}for free{E3E3E3}.\n\nOutfits you buy are {A06A9A}yours forever{E3E3E3} - you can swap between them anytime at a store.\n\n{FFFF00}Faction uniform:{E3E3E3} factions have {A06A9A}3 uniforms by rank{E3E3E3} (rank 1/2, rank 3/4, rank 5). You wear the one for your rank automatically when you spawn {A06A9A}on duty{E3E3E3} (faction spawn); as a civilian you wear your own outfit. Inside your faction HQ you can use {A06A9A}/changeskin{E3E3E3} to switch between your uniform and civilian clothes.
 ro:{E3E3E3}Iti schimbi infatisarea cumparand si purtand tinute (skin-uri).\n\n{FFFF00}Magazinul de haine:{E3E3E3} gaseste unul cu {A06A9A}/gps{E3E3E3} (categoria {A06A9A}Clothing Stores{E3E3E3}) si stai pe pickup.\n- /buyskin - rasfoiesti catalogul si {A06A9A}cumperi{E3E3E3} o tinuta ({A06A9A}$10.000{E3E3E3} bucata). Cand cumperi o tinuta, o si imbraci.\n- /wardrobe - comuti intre tinutele pe care le detii deja, {A06A9A}gratuit{E3E3E3}.\n\nTinutele cumparate raman {A06A9A}ale tale pentru totdeauna{E3E3E3} - poti schimba intre ele oricand, la un magazin.\n\n{FFFF00}Uniforma de factiune:{E3E3E3} factiunile au {A06A9A}3 uniforme, dupa rank{E3E3E3} (rank 1/2, rank 3/4, rank 5). O porti automat pe cea potrivita rank-ului tau cand faci spawn {A06A9A}in tura{E3E3E3} (spawn de factiune); ca civil porti tinuta ta. In sediul factiunii poti folosi {A06A9A}/changeskin{E3E3E3} ca sa comuti intre uniforma si hainele civile.
@@ -8446,9 +8602,6 @@ ro:[ Casa #%d ]\nNume: %s\nProprietar: %s\n{5DA271}DE VANZARE: $%s{E3E3E3}\n/buy
 
 en:[ Hotel #%d ]\nName: %s\nOwner: %s\n{5DA271}FOR SALE: $%s{E3E3E3}\n/buyhotel to buy it\n/sleep - $%d
 ro:[ Hotel #%d ]\nNume: %s\nProprietar: %s\n{5DA271}DE VANZARE: $%s{E3E3E3}\n/buyhotel ca sa il cumperi\n/sleep - $%d
-
-en:[SMURD] {E3E3E3}A fire has broken out at {A06A9A}%s{E3E3E3} - suspected arson linked to a recent robbery!
-ro:[SMURD] {E3E3E3}A izbucnit un incendiu la {A06A9A}%s{E3E3E3} - se banuieste incendiere legata de un jaf recent!
 
 en:[ Business #%d ]\nName: %s\nOwner: %s\n{5DA271}FOR SALE: $%s{E3E3E3}\n/buybiz to buy it
 ro:[ Business #%d ]\nNume: %s\nProprietar: %s\n{5DA271}DE VANZARE: $%s{E3E3E3}\n/buybiz ca sa il cumperi

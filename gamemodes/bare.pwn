@@ -262,7 +262,7 @@ enum E_PLAYER_DATA
     pMuteExpire,               // timestamp unix pana cand jucatorul e mutat (0 = nu e mutat)
     pWanted,                   // nivel wanted (0-6), setat de politie; persistat in DB
     pJailSeconds,              // secunde ramase de stat in inchisoare; persistat in DB
-    pRobPoints,                // puncte de jaf (0-10); +1 la payday, -10 la /rob; persistat in DB
+    pRobPoints,                // puncte de jaf (0-10); +1 la payday, -10 la /rob (fiecare membru); persistat in DB
     pSkin,                     // skin-ul (haina) curent al jucatorului; persistat in DB
     pGasCan,                   // canistra: -1 = nu are, 0 = are goala, 1 = are plina; persistat in DB
     pWatchModel,               // ceas: index marca (0-3, -1 = fara ceas); persistat in DB
@@ -507,30 +507,89 @@ stock Casino_Create()
 
 #define MAX_JOBS 20 // numarul maxim de joburi (/getjob 1-20)
 
-// ---- Jaf / Robbery: constante + stare globala (helper-ele sunt langa sectiunea business) ----
-#define ROB_POINTS_MAX   10       // maxim (si necesar) rob points pentru a da /rob
+// ---- Jaf / Robbery v2: constante + stare globala (helper-ele sunt dupa sectiunea Smuggle) ----
+// Hold-up la un shop/fastfood (banii curg cat stai in zona, alarma vine la un moment aleator),
+// apoi sacul cu bani e un obiect fizic: purtat de un jucator, poate fi scapat/furat/confiscat,
+// si devine bani curati doar la un fence (HQ de mafie). Limitat de rob points (10/10) + cooldown pe tinta.
 #define MAX_WARNS        3        // la cate warn-uri primeste playerul ban automat
 #define WARN_BAN_SECONDS (2 * 24 * 60 * 60) // durata ban-ului automat la MAX_WARNS: 2 zile
-#define ROB_COST         10       // rob points scazuti la /rob (tuturor din masina)
-#define ROB_RANGE        8.0      // distanta max fata de tinta (shop/fastfood) pentru a incepe jaful
-#define ROB_PAY_BASE     12000    // castig de baza per om
-#define ROB_PAY_PERCREW  2000     // bonus per participant (nr. oameni din echipa)
-#define ROB_PAY_RAND     5000     // bonus aleatoriu per om (0..4999)
-#define ROB_MAX_CREW     6        // capacitate stocare echipa (o masina are max 4, +margine)
-#define ROB_CP_SIZE      9.0      // dimensiune checkpoint la business-urile de livrare (6 + 3)
-#define ROB_HQ_COUNT     2        // cate business-uri de livrare trebuie atinse
-#define ROB_FIRE_DELAY   300000   // 5 minute (ms) pana izbucneste incendiul la ultimul business livrat
 
-forward Rob_StartFire(bizidx);
+#define ROB_MAX_JOBS          4        // jafuri simultane pe server
+#define ROB_MAX_CREW          4        // membri per echipa
+#define ROB_START_RANGE       12.0     // distanta max a vehiculului fata de tinta pentru /rob
+#define ROB_ZONE_RANGE        10.0     // "interiorul" magazinului: pe jos, in raza asta de pickup-ul lui
+#define ROB_LOOT_MAX          70000    // plafon brut; fence-ul ia ROB_FENCE_CUT_PCT => max ~60k net pt. echipa
+#define ROB_LOOT_RATE_BASE    500      // $/secunda de baza in hold-up...
+#define ROB_LOOT_RATE_PERMEM  150      // ...+ $/secunda pentru fiecare membru aflat in zona
+#define ROB_HOLDUP_MAX_SEC    240      // dupa atat hold-up-ul se termina oricum
+#define ROB_ENTER_TIMEOUT     90       // secunde dupa /rob in care liderul trebuie sa intre in magazin, altfel jaful se anuleaza
+#define ROB_ALARM_MIN_SEC     25       // alarma suna la 25-45s de la start
+#define ROB_ALARM_RAND_SEC    21
+#define ROB_TRACKER_SEC       180      // cat timp transmite GPS-ul din sac dupa alarma
+#define ROB_TRACKER_REFRESH   3        // secunde intre actualizarile marker-ului pentru Politie
+#define ROB_TRACKER_COLOR     0xFF0000FF
+#define ROB_DROP_SEC          180      // cat sta un sac scapat pe jos pana se pierde
+#define ROB_TAKE_RANGE        3.0      // raza pentru /rob take si /rob pass
+#define ROB_FENCE_CP_SIZE     6.0
+#define ROB_FENCE_CUT_PCT     15       // % din sac pastrat de fence (merge in seiful mafiei)
+#define ROB_RETURN_COP_PCT    15       // politistul care returneaza sacul la magazin (sau aresteaza purtatorul) primeste 15%
+#define ROB_MAFIA_KEEP_PCT    50       // mafiotul strain care duce sacul la HQ-ul factiunii lui pastreaza 50%
+#define ROB_CIVIL_REWARD_PCT  25       // civilul care duce sacul la HQ-ul Politiei primeste 25%
+#define ROB_CIVIL_HONEST_PCT  60       // sansa ca un civil sa duca sacul la Politie (altfel il duce la fence)
+#define ROB_MODE_FENCE        0        // echipa (sau un civil lacom) -> fence, plata normala
+#define ROB_MODE_RETURN       1        // politist -> inapoi la magazinul jefuit
+#define ROB_MODE_MAFIA        2        // mafiot strain -> HQ-ul mafiei lui
+#define ROB_MODE_POLICE       3        // civil cinstit -> HQ-ul Politiei
+#define ROB_TARGET_CD_SEC     1800     // 30 min intre doua jafuri la aceeasi tinta
+#define ROB_POINTS_MAX        10       // maxim (si necesar) rob points pentru a intra intr-un jaf; +1 la payday
+#define ROB_COST              10       // rob points scazuti fiecarui membru la intrarea in jaf
+#define ROB_FIRE_DELAY        180000   // 3 min dupa hold-up izbucneste incendiul la magazinul jefuit
+#define ROB_REQUIRE_WEAPON    1        // 1 = cine porneste jaful trebuie sa aiba o arma de foc la el
+#define ROB_BAG_MODEL         1550     // sac cu bani
+#define ROB_BAG_ATTACH_INDEX  9        // 0-5 sunt folosite permanent; 6-9 si de evenimente (9 = ultimul ales de ele)
+#define ROB_STAGE_NONE        0
+#define ROB_STAGE_HOLDUP      1        // echipa e inauntru, banii curg
+#define ROB_STAGE_RUN         2        // sacul e pe drum spre fence (purtat sau scapat pe jos)
+#define ROB_TGT_STRIDE        20       // >= MAX_SHOPS si >= MAX_FOOD_LOCATIONS (verificat cu #if langa helpers)
+#define ROB_TGT_SLOTS         (5 * ROB_TGT_STRIDE) // 0 shop, 1 pizza, 2 burger, 3 meal, 4 desert
 
-new bool:g_RobActive[MAX_PLAYERS];       // jucatorul (lider) conduce un jaf in desfasurare
-new g_RobCrew[MAX_PLAYERS][ROB_MAX_CREW];// playerid-urile din masina la momentul /rob
-new g_RobCrewCount[MAX_PLAYERS];
-new g_RobTargetName[MAX_PLAYERS][32];    // numele tintei jefuite (shop/fastfood) pentru mesaje
-new g_RobHQ[MAX_PLAYERS][ROB_HQ_COUNT];  // indicii celor 2 business-uri de livrare (in ordine)
-new g_RobStage[MAX_PLAYERS];             // la ce business e echipa (0 = primul, 1 = al doilea)
-new g_RobLeaderOf[MAX_PLAYERS];          // pentru fiecare jucator: liderul jafului din care face parte (INVALID = niciunul)
-forward Rob_HandleCheckpoint(playerid);  // definit langa sectiunea business (foloseste BusinessData)
+forward Rob_StartFire(Float:fx, Float:fy, Float:fz);
+forward Rob_Tick();
+forward Rob_HandleCheckpoint(playerid);  // apelat din OnPlayerEnterCheckpoint
+
+enum E_ROB_JOB
+{
+    rjStage,                    // ROB_STAGE_*
+    rjLeader,                   // cine a pornit jaful
+    rjCrew[ROB_MAX_CREW],       // membrii (cine mai e eligibil se verifica prin g_RobJobOf[pid] == job)
+    rjCrewCount,
+    rjTarget,                   // cheie tinta: tip * ROB_TGT_STRIDE + index
+    rjTargetName[32],
+    Float:rjTX, Float:rjTY, Float:rjTZ,
+    rjLoot,                     // bani in sac (brut)
+    rjElapsed,                  // secunde de cand liderul a intrat prima data in magazin
+    rjWait,                     // secunde de la /rob pana intra liderul (timeout ROB_ENTER_TIMEOUT)
+    bool:rjInside,              // liderul a intrat deja in magazin
+    rjAlarmAt,                  // secunda la care suna alarma
+    bool:rjAlarm,
+    rjTracker,                  // secunde ramase de GPS (0 = fara semnal)
+    rjCarrier,                  // cine poarta sacul (INVALID_PLAYER_ID = e pe jos)
+    bool:rjDropped,
+    Float:rjBX, Float:rjBY, Float:rjBZ, // pozitia sacului scapat
+    rjDropLeft,
+    rjDropObj,                  // pickup-ul sacului scapat (valid doar cat rjDropped = true)
+    Text3D:rjDropLabel,
+    Float:rjFX, Float:rjFY, Float:rjFZ, // fence
+    rjFenceFid,                 // mafia care primeste cota fence-ului (0 = fara)
+    rjFenceName[32],
+    rjMode,                     // ROB_MODE_*: unde duce purtatorul curent sacul
+    rjDestFid,                  // pentru ROB_MODE_MAFIA: mafia purtatorului
+    STREAMER_TAG_MAP_ICON:rjIcon
+}
+new RobJob[ROB_MAX_JOBS][E_ROB_JOB];
+new g_RobJobOf[MAX_PLAYERS] = {-1, ...}; // jaful din care face parte jucatorul (-1 = niciunul)
+new g_RobTargetCD[ROB_TGT_SLOTS];        // gettime() pana la care tinta e "pe cooldown"
+new g_RobCopList[MAX_PLAYERS];           // buffer pentru lista de politisti (marker GPS)
 
 // ============================================================
 //  CONTRABANDA PE MARE (/smuggle) - mafii, cu barci desemnate
@@ -5802,6 +5861,21 @@ new g_HouseUpgradeAnimalIdx[MAX_PLAYERS] = {-1, ...};
 new bool:g_BizCoffeeOrder[MAX_PLAYERS];
 new g_BizCoffeeIdx[MAX_PLAYERS] = {-1, ...}; // indexul (in BusinessData) al biz-ului detinut, capturat la comanda
 
+// Pickup ridicat: momentan doar sacul cu bani scapat de la un jaf
+public OnPlayerPickUpPickup(playerid, pickupid)
+{
+    if(!PlayerData[playerid][pLogged]) return 1;
+    for(new j = 0; j < ROB_MAX_JOBS; j++)
+    {
+        if(RobJob[j][rjStage] == ROB_STAGE_RUN && RobJob[j][rjDropped] && RobJob[j][rjDropObj] == pickupid)
+        {
+            Rob_TakeBag(playerid, j);
+            break;
+        }
+    }
+    return 1;
+}
+
 public OnPlayerEnterCheckpoint(playerid)
 {
     if(JailWork_HandleCheckpoint(playerid)) return 1;
@@ -8012,7 +8086,7 @@ stock Business_ANAFProcessDocs()
 }
 
 // ============================================================
-//  JAF / ROBBERY - helpers (starea globala e declarata langa PlayerData)
+//  BUSINESS - helper: cel mai apropiat business (jaful v2 e dupa sectiunea Smuggle)
 // ============================================================
 // Returneaza indexul business-ului cel mai apropiat in raza data, altfel -1
 stock Biz_NearestIndex(playerid, Float:range)
@@ -8027,128 +8101,6 @@ stock Biz_NearestIndex(playerid, Float:range)
         if(d < bestDist) { bestDist = d; best = i; }
     }
     return best;
-}
-
-// (Re)seteaza checkpoint-ul la business-ul de livrare curent pentru toata echipa conectata a unui jaf
-stock Rob_SetCheckpointForCrew(leaderid)
-{
-    new bidx = g_RobHQ[leaderid][g_RobStage[leaderid]];
-    for(new c = 0; c < g_RobCrewCount[leaderid]; c++)
-    {
-        new pid = g_RobCrew[leaderid][c];
-        if(!IsPlayerConnected(pid)) continue;
-        Track_SetPlayerCheckpoint(pid, BusinessData[bidx][bLocX], BusinessData[bidx][bLocY], BusinessData[bidx][bLocZ], ROB_CP_SIZE);
-    }
-}
-
-// Verifica in OnPlayerEnterCheckpoint daca s-a ajuns la business-ul de livrare al jafului. Returneaza 1 daca a tratat evenimentul.
-public Rob_HandleCheckpoint(playerid)
-{
-    new rl = g_RobLeaderOf[playerid];
-    if(rl == INVALID_PLAYER_ID || rl < 0 || rl >= MAX_PLAYERS || !g_RobActive[rl]) return 0;
-
-    new bidx = g_RobHQ[rl][g_RobStage[rl]];
-    if(!IsPlayerInRangeOfPoint(playerid, ROB_CP_SIZE + 2.0, BusinessData[bidx][bLocX], BusinessData[bidx][bLocY], BusinessData[bidx][bLocZ]))
-        return 0;
-
-    if(g_RobStage[rl] < ROB_HQ_COUNT - 1)
-    {
-        g_RobStage[rl]++;
-        Rob_SetCheckpointForCrew(rl); // urmatorul business
-        new nm2[144];
-        format(nm2, sizeof(nm2), C_INFO"[Rob] "C_WHITE"Drop-off %d/%d reached. Drive to the next business!", g_RobStage[rl], ROB_HQ_COUNT);
-        for(new c = 0; c < g_RobCrewCount[rl]; c++)
-            if(IsPlayerConnected(g_RobCrew[rl][c]))
-                {
-                    format(nm2, sizeof(nm2), T(g_RobCrew[rl][c], C_INFO"[Rob] "C_WHITE"Drop-off %d/%d reached. Drive to the next business!"), g_RobStage[rl], ROB_HQ_COUNT);
-                    SCM(g_RobCrew[rl][c], COLOR_INFO, nm2);
-                }
-    }
-    else
-    {
-        Rob_Payout(rl); // ultimul business -> plata
-    }
-    return 1;
-}
-
-// Curata starea unui jaf (fara plata) - la anulare / deconectare lider
-stock Rob_Cancel(leaderid)
-{
-    for(new c = 0; c < g_RobCrewCount[leaderid]; c++)
-    {
-        new pid = g_RobCrew[leaderid][c];
-        if(IsPlayerConnected(pid))
-        {
-            DisablePlayerCheckpoint(pid);
-            if(g_RobLeaderOf[pid] == leaderid) g_RobLeaderOf[pid] = INVALID_PLAYER_ID;
-        }
-    }
-    g_RobActive[leaderid]    = false;
-    g_RobCrewCount[leaderid] = 0;
-}
-
-// Finalizeaza jaful: plateste doar membrii inca in viata SI conectati (cei ce au murit/plecat sunt scosi din mapare)
-stock Rob_Payout(leaderid)
-{
-    new bizName[32];
-    format(bizName, sizeof(bizName), "%s", g_RobTargetName[leaderid]);
-
-    for(new c = 0; c < g_RobCrewCount[leaderid]; c++)
-    {
-        new pid = g_RobCrew[leaderid][c];
-        if(!IsPlayerConnected(pid)) continue; // deconectat -> fara bani
-        DisablePlayerCheckpoint(pid);
-
-        // eligibil doar daca inca e mapat la acest jaf (a murit -> a fost scos) si e logat
-        new bool:eligible = (g_RobLeaderOf[pid] == leaderid && PlayerData[pid][pLogged]);
-        if(g_RobLeaderOf[pid] == leaderid) g_RobLeaderOf[pid] = INVALID_PLAYER_ID;
-        if(!eligible) continue;
-
-        // premiu / om: 12000 + 2000*nr participanti + random(5000)
-        new pay = ROB_PAY_BASE + ROB_PAY_PERCREW * g_RobCrewCount[leaderid] + random(ROB_PAY_RAND);
-
-        if(PlayerData[pid][pVIP])
-        {
-            new vipBonus = pay / 10; // VIP: +10% la /rob
-            pay += vipBonus;
-
-            new vbm[128];
-            format(vbm, sizeof(vbm), T(pid, "{FFD700}[VIP] "C_WHITE"You received a "C_SUCCESS"+$%s"C_WHITE" bonus for being VIP."), MoneyStr(vipBonus));
-            SCM(pid, COLOR_WHITE, vbm);
-        }
-
-        PlayerData[pid][pMoney] += pay;
-        GivePlayerMoney(pid, pay);
-
-        // dupa livrarea marfii, wanted-ul scade de la 6 la 5
-        PlayerData[pid][pWanted] = 5;
-        SetPlayerWantedLevel(pid, 5);
-        UpdatePlayer(pid, pWanted);
-
-        new fm[144];
-        format(fm, sizeof(fm), T(pid, C_SUCCESS"[Rob] "C_WHITE"Robbery of "C_INFO"%s"C_WHITE" complete! You earned "C_SUCCESS"$%s"C_WHITE"."),
-            bizName, MoneyStr(pay));
-        SCM(pid, COLOR_SUCCESS, fm);
-    }
-
-    g_RobActive[leaderid]    = false;
-    g_RobCrewCount[leaderid] = 0;
-
-    // dupa ce hotii ridica banii, un incendiu izbucneste la ultimul business livrat (peste 5 minute)
-    new lastBiz = g_RobHQ[leaderid][ROB_HQ_COUNT - 1];
-    SetTimerEx("Rob_StartFire", ROB_FIRE_DELAY, false, "i", lastBiz);
-}
-
-// Pornit la 5 minute dupa un jaf: izbucneste un incendiu la business-ul unde s-au dus banii furati
-public Rob_StartFire(bizidx)
-{
-    if(bizidx < 0 || bizidx >= g_BusinessCount) return 1;
-
-    new fmsg[144];
-    format(fmsg, sizeof(fmsg), "[SMURD] "C_WHITE"A fire has broken out at "C_INFO"%s"C_WHITE" - suspected arson linked to a recent robbery!",
-        BusinessData[bizidx][bName]);
-    Fires_Create(BusinessData[bizidx][bLocX], BusinessData[bizidx][bLocY], BusinessData[bizidx][bLocZ], fmsg);
-    return 1;
 }
 
 stock Businesses_RecreatePickup(idx)
@@ -8931,10 +8883,17 @@ enum E_SHOP_DATA
 {
     shopID, shopName[32], shopType,
     Float:shopX, Float:shopY, Float:shopZ,
-    shopStockMax, shopStockCurr // stoc pentru jobul Truck Driver; scade cu 1 la fiecare item cumparat din shop-ul asta
+    shopStockMax, shopStockCurr, // stoc pentru jobul Truck Driver; scade cu 1 la fiecare item cumparat din shop-ul asta
+    Float:shopIntX, Float:shopIntY, Float:shopIntZ, Float:shopIntA, // interiorul (0,0 = fara interior); setat cu /shopc [id] int
+    shopIntID                   // interior id-ul GTA al interiorului
 }
 new ShopData[MAX_SHOPS][E_SHOP_DATA];
 new g_ShopPickup[MAX_SHOPS];
+new g_ShopIntPickup[MAX_SHOPS] = {-1, ...};                                // pickup-ul de iesire din interior
+new Text3D:g_ShopIntLabel[MAX_SHOPS] = {Text3D:INVALID_3DTEXT_ID, ...};
+#define SHOP_VW_BASE        8000   // vw-ul interiorului unui shop = SHOP_VW_BASE + shopID (fiecare shop in lumea lui)
+#define SHOP_DOOR_RANGE     1.5    // cat de aproape de usa (pickup) trebuie sa fii ca sa intri/iesi cu ENTER
+forward bool:Shop_HasInterior(idx); // folosita in Shop_Create, definita langa Shop_FindNearby
 new Text3D:g_ShopLabel[MAX_SHOPS] = {Text3D:INVALID_3DTEXT_ID, ...};
 new g_ShopCount = 0;
 new g_ShopDialogType[MAX_PLAYERS]; // tipul shop-ului deschis curent cu /shop (1/2/3/4), pentru interpretarea DIALOG_SHOP
@@ -8970,8 +8929,12 @@ stock Shop_Create(idx)
     new stype = ShopData[idx][shopType];
     if(stype < 1 || stype > 3) stype = 1;
     new label[128];
-    format(label, sizeof(label), "[ Shop #%d ]\n[ %s ]\n[ %s ]\n[ Use /shop ]", ShopData[idx][shopID], ShopData[idx][shopName], g_ShopTypeName[stype]);
+    if(Shop_HasInterior(idx))
+        format(label, sizeof(label), "[ Shop #%d ]\n[ %s ]\n[ %s ]\n[ Press ENTER to go in ]", ShopData[idx][shopID], ShopData[idx][shopName], g_ShopTypeName[stype]);
+    else
+        format(label, sizeof(label), "[ Shop #%d ]\n[ %s ]\n[ %s ]\n[ Use /shop ]", ShopData[idx][shopID], ShopData[idx][shopName], g_ShopTypeName[stype]);
     g_ShopLabel[idx] = Create3DTextLabel(label, COLOR_WHITE, ShopData[idx][shopX], ShopData[idx][shopY], ShopData[idx][shopZ] - 0.5, 40.0, 0, 0);
+    Shop_CreateInterior(idx);
 }
 
 // Returneaza indexul shop-ului cu shopID dat (sau -1)
@@ -8995,10 +8958,67 @@ stock bool:Shop_PlayerInRange(playerid)
 // La fel ca Shop_PlayerInRange, dar returneaza indexul shop-ului (sau -1) - necesar ca sa stim tipul lui
 stock Shop_FindNearby(playerid)
 {
+    // in interiorul unui shop: /shop merge oriunde inauntru
+    new inside = Shop_InsideIdx(playerid);
+    if(inside != -1) return inside;
     for(new i = 0; i < g_ShopCount; i++)
-        if(IsPlayerInRangeOfPoint(playerid, SHOP_RANGE, ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ]))
+        if(GetPlayerVirtualWorld(playerid) == 0 &&
+           IsPlayerInRangeOfPoint(playerid, SHOP_RANGE, ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ]))
             return i;
     return -1;
+}
+
+stock bool:Shop_HasInterior(idx)
+{
+    return (ShopData[idx][shopIntX] != 0.0 || ShopData[idx][shopIntY] != 0.0);
+}
+
+// Indexul shop-ului in al carui interior se afla jucatorul, sau -1
+stock Shop_InsideIdx(playerid)
+{
+    new vw = GetPlayerVirtualWorld(playerid);
+    if(vw <= SHOP_VW_BASE) return -1;
+    for(new i = 0; i < g_ShopCount; i++)
+        if(Shop_HasInterior(i) && vw == SHOP_VW_BASE + ShopData[i][shopID]) return i;
+    return -1;
+}
+
+// Pickup + label de iesire in interior (in vw-ul shop-ului); le sterge daca shop-ul nu are interior
+stock Shop_CreateInterior(idx)
+{
+    if(g_ShopIntPickup[idx] != -1) { DestroyPickup(g_ShopIntPickup[idx]); g_ShopIntPickup[idx] = -1; }
+    if(g_ShopIntLabel[idx] != Text3D:INVALID_3DTEXT_ID) { Delete3DTextLabel(g_ShopIntLabel[idx]); g_ShopIntLabel[idx] = Text3D:INVALID_3DTEXT_ID; }
+    if(!Shop_HasInterior(idx)) return;
+    new vw = SHOP_VW_BASE + ShopData[idx][shopID];
+    g_ShopIntPickup[idx] = CreatePickup(1318, 1, ShopData[idx][shopIntX], ShopData[idx][shopIntY], ShopData[idx][shopIntZ], vw);
+    g_ShopIntLabel[idx] = Create3DTextLabel("[ Exit ]\n[ Press ENTER ]", COLOR_WHITE, ShopData[idx][shopIntX], ShopData[idx][shopIntY], ShopData[idx][shopIntZ] + 0.3, 15.0, vw, 0);
+}
+
+// ENTER la usa unui shop (afara, vw 0) -> intra; la pickup-ul de iesire din interior -> iese. True daca a actionat.
+stock bool:Shop_InteriorToggle(playerid)
+{
+    if(IsPlayerInAnyVehicle(playerid)) return false;
+    new in = Shop_InsideIdx(playerid);
+    if(in != -1)
+    {
+        if(!IsPlayerInRangeOfPoint(playerid, SHOP_DOOR_RANGE, ShopData[in][shopIntX], ShopData[in][shopIntY], ShopData[in][shopIntZ])) return false;
+        AC_SetInterior(playerid, 0);
+        AC_SetVW(playerid, 0);
+        AC_SetPos(playerid, ShopData[in][shopX], ShopData[in][shopY], ShopData[in][shopZ]);
+        return true;
+    }
+    if(GetPlayerVirtualWorld(playerid) != 0) return false;
+    for(new i = 0; i < g_ShopCount; i++)
+    {
+        if(!Shop_HasInterior(i)) continue;
+        if(!IsPlayerInRangeOfPoint(playerid, SHOP_DOOR_RANGE, ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ])) continue;
+        AC_SetInterior(playerid, ShopData[i][shopIntID]);
+        AC_SetVW(playerid, SHOP_VW_BASE + ShopData[i][shopID]);
+        AC_SetPos(playerid, ShopData[i][shopIntX], ShopData[i][shopIntY], ShopData[i][shopIntZ]);
+        SetPlayerFacingAngle(playerid, ShopData[i][shopIntA]);
+        return true;
+    }
+    return false;
 }
 
 // Scade stocul shop-ului cu `amount` (clamp la 0) si salveaza in DB. Apelata la fiecare item cumparat din /shop.
@@ -9975,62 +9995,6 @@ stock bool:Rob_PickTwoMafiaHQ(&f1, &f2)
     while(b == a) b = random(count); // asigura al doilea diferit de primul
     f1 = valid[a];
     f2 = valid[b];
-    return true;
-}
-
-// True daca jucatorul e langa o tinta de jaf (shop sau fastfood). Umple `name` cu numele tintei.
-stock bool:Rob_NearTarget(playerid, name[], namelen)
-{
-    for(new i = 0; i < g_ShopCount; i++)
-        if(IsPlayerInRangeOfPoint(playerid, ROB_RANGE, ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ]))
-        {
-            format(name, namelen, "Shop #%d", ShopData[i][shopID]);
-            return true;
-        }
-    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
-    {
-        if((PizzaLocations[i][0] != 0.0 || PizzaLocations[i][1] != 0.0) &&
-           IsPlayerInRangeOfPoint(playerid, ROB_RANGE, PizzaLocations[i][0], PizzaLocations[i][1], PizzaLocations[i][2]))
-        {
-            format(name, namelen, "%s", g_PizzaName[i]);
-            return true;
-        }
-        if((BurgerLocations[i][0] != 0.0 || BurgerLocations[i][1] != 0.0) &&
-           IsPlayerInRangeOfPoint(playerid, ROB_RANGE, BurgerLocations[i][0], BurgerLocations[i][1], BurgerLocations[i][2]))
-        {
-            format(name, namelen, "%s", g_BurgerName[i]);
-            return true;
-        }
-        if((MealLocations[i][0] != 0.0 || MealLocations[i][1] != 0.0) &&
-           IsPlayerInRangeOfPoint(playerid, ROB_RANGE, MealLocations[i][0], MealLocations[i][1], MealLocations[i][2]))
-        {
-            format(name, namelen, "%s", g_MealName[i]);
-            return true;
-        }
-        if((DesertLocations[i][0] != 0.0 || DesertLocations[i][1] != 0.0) &&
-           IsPlayerInRangeOfPoint(playerid, ROB_RANGE, DesertLocations[i][0], DesertLocations[i][1], DesertLocations[i][2]))
-        {
-            format(name, namelen, "%s", g_DesertName[i]);
-            return true;
-        }
-    }
-    return false;
-}
-
-// Alege 2 business-uri DISTINCTE (cu locatie setata) in b1 si b2. Returneaza false daca sunt < 2.
-stock bool:Rob_PickTwoBusinesses(&b1, &b2)
-{
-    new valid[MAX_BUSINESSES], count = 0;
-    for(new i = 0; i < g_BusinessCount; i++)
-        if(BusinessData[i][bLocX] != 0.0 || BusinessData[i][bLocY] != 0.0)
-            valid[count++] = i;
-    if(count < 2) return false;
-
-    new a = random(count);
-    new b = random(count);
-    while(b == a) b = random(count);
-    b1 = valid[a];
-    b2 = valid[b];
     return true;
 }
 
@@ -14157,6 +14121,742 @@ stock Smuggle_HandleDeath(victimid, killerid)
 
 
 // ============================================================
+//  JAF / ROBBERY v2 - hold-up, sac cu bani, fence (constantele + starea sunt sus, langa PlayerData)
+// ============================================================
+#if MAX_SHOPS > ROB_TGT_STRIDE || MAX_FOOD_LOCATIONS > ROB_TGT_STRIDE
+    #error "ROB_TGT_STRIDE trebuie sa fie >= MAX_SHOPS si >= MAX_FOOD_LOCATIONS"
+#endif
+
+stock bool:Rob_IsCop(i)
+{
+    return (IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pFaction] == FACTION_POLICE);
+}
+
+// Membru inca eligibil (in viata de la intrare, conectat) al jafului j
+stock bool:Rob_IsCrew(j, pid)
+{
+    return (pid >= 0 && pid < MAX_PLAYERS && IsPlayerConnected(pid) && g_RobJobOf[pid] == j);
+}
+
+// Jaful in care jucatorul poarta sacul, sau -1
+stock Rob_CarrierJob(pid)
+{
+    for(new j = 0; j < ROB_MAX_JOBS; j++)
+        if(RobJob[j][rjStage] == ROB_STAGE_RUN && !RobJob[j][rjDropped] && RobJob[j][rjCarrier] == pid) return j;
+    return -1;
+}
+
+// Are o arma de foc (pistol/shotgun/SMG/pusca) cu munitie in inventar (in vehicul nu o poate tine "in mana")
+stock bool:Rob_HasFirearm(playerid)
+{
+    new w = GetPlayerWeapon(playerid);
+    if(w >= 22 && w <= 34) return true;
+    for(new slot = 2; slot <= 6; slot++)
+    {
+        new wid, ammo;
+        GetPlayerWeaponData(playerid, slot, wid, ammo);
+        if(wid >= 22 && wid <= 34 && ammo > 0) return true;
+    }
+    return false;
+}
+
+// "Inauntru" = pe jos, in raza ROB_ZONE_RANGE de magazinul jafului j
+stock bool:Rob_IsInside(j, pid)
+{
+    if(IsPlayerInAnyVehicle(pid)) return false;
+    new tgt = RobJob[j][rjTarget];
+    if(tgt >= 0 && tgt < ROB_TGT_STRIDE && tgt < g_ShopCount && Shop_HasInterior(tgt)) // shop cu interior real
+        return (GetPlayerVirtualWorld(pid) == SHOP_VW_BASE + ShopData[tgt][shopID]);
+    return bool:IsPlayerInRangeOfPoint(pid, ROB_ZONE_RANGE, RobJob[j][rjTX], RobJob[j][rjTY], RobJob[j][rjTZ]);
+}
+
+stock bool:Rob_PointNear(playerid, Float:range, const Float:p[])
+{
+    if(p[0] == 0.0 && p[1] == 0.0) return false;
+    return bool:IsPlayerInRangeOfPoint(playerid, range, p[0], p[1], p[2]);
+}
+
+// Cauta o tinta (shop sau fastfood) langa jucator. Returneaza cheia tintei (tip * ROB_TGT_STRIDE + index) sau -1.
+stock Rob_FindTarget(playerid, Float:range, name[], namelen, &Float:tx, &Float:ty, &Float:tz)
+{
+    for(new i = 0; i < g_ShopCount; i++)
+        if(IsPlayerInRangeOfPoint(playerid, range, ShopData[i][shopX], ShopData[i][shopY], ShopData[i][shopZ]))
+        {
+            format(name, namelen, "Shop #%d", ShopData[i][shopID]);
+            tx = ShopData[i][shopX]; ty = ShopData[i][shopY]; tz = ShopData[i][shopZ];
+            return i;
+        }
+    for(new i = 0; i < MAX_FOOD_LOCATIONS; i++)
+    {
+        if(Rob_PointNear(playerid, range, PizzaLocations[i]))
+        {
+            format(name, namelen, "%s", g_PizzaName[i]);
+            tx = PizzaLocations[i][0]; ty = PizzaLocations[i][1]; tz = PizzaLocations[i][2];
+            return 1 * ROB_TGT_STRIDE + i;
+        }
+        if(Rob_PointNear(playerid, range, BurgerLocations[i]))
+        {
+            format(name, namelen, "%s", g_BurgerName[i]);
+            tx = BurgerLocations[i][0]; ty = BurgerLocations[i][1]; tz = BurgerLocations[i][2];
+            return 2 * ROB_TGT_STRIDE + i;
+        }
+        if(Rob_PointNear(playerid, range, MealLocations[i]))
+        {
+            format(name, namelen, "%s", g_MealName[i]);
+            tx = MealLocations[i][0]; ty = MealLocations[i][1]; tz = MealLocations[i][2];
+            return 3 * ROB_TGT_STRIDE + i;
+        }
+        if(Rob_PointNear(playerid, range, DesertLocations[i]))
+        {
+            format(name, namelen, "%s", g_DesertName[i]);
+            tx = DesertLocations[i][0]; ty = DesertLocations[i][1]; tz = DesertLocations[i][2];
+            return 4 * ROB_TGT_STRIDE + i;
+        }
+    }
+    return -1;
+}
+
+// Alege fence-ul: HQ-ul unei mafii aleatorii (cu HQ setat); fallback: un business aleator. False daca nu exista nimic.
+stock bool:Rob_PickFence(j)
+{
+    new valid[MAFIA_FID_MAX - MAFIA_FID_MIN + 1], count = 0;
+    for(new fid = MAFIA_FID_MIN; fid <= MAFIA_FID_MAX; fid++)
+        if(FactionData[fid][fHQX] != 0.0 || FactionData[fid][fHQY] != 0.0)
+            valid[count++] = fid;
+    if(count > 0)
+    {
+        new fid = valid[random(count)];
+        RobJob[j][rjFenceFid] = fid;
+        RobJob[j][rjFX] = FactionData[fid][fHQX];
+        RobJob[j][rjFY] = FactionData[fid][fHQY];
+        RobJob[j][rjFZ] = FactionData[fid][fHQZ];
+        format(RobJob[j][rjFenceName], 32, "%s", FactionData[fid][fName]);
+        return true;
+    }
+
+    new bvalid[MAX_BUSINESSES], bcount = 0;
+    for(new i = 0; i < g_BusinessCount; i++)
+        if(BusinessData[i][bLocX] != 0.0 || BusinessData[i][bLocY] != 0.0)
+            bvalid[bcount++] = i;
+    if(bcount == 0) return false;
+    new b = bvalid[random(bcount)];
+    RobJob[j][rjFenceFid] = 0;
+    RobJob[j][rjFX] = BusinessData[b][bLocX];
+    RobJob[j][rjFY] = BusinessData[b][bLocY];
+    RobJob[j][rjFZ] = BusinessData[b][bLocZ];
+    format(RobJob[j][rjFenceName], 32, "%s", BusinessData[b][bName]);
+    return true;
+}
+
+// Poate jucatorul intra intr-un jaf acum? (are nevoie de 10/10 rob points). Trimite motivul daca nu.
+stock bool:Rob_CheckEligible(playerid)
+{
+    if(PlayerData[playerid][pRobPoints] < ROB_POINTS_MAX)
+    {
+        new em[176];
+        format(em, sizeof(em), T(playerid, C_ERROR"[Rob] "C_WHITE"You need "C_INFO"%d/%d"C_WHITE" rob points (you have "C_INFO"%d"C_WHITE"). You gain 1 per payday."),
+            ROB_POINTS_MAX, ROB_POINTS_MAX, PlayerData[playerid][pRobPoints]);
+        SCM(playerid, COLOR_ERROR, em);
+        return false;
+    }
+    return true;
+}
+
+// Adauga un jucator in echipa jafului j: costa ROB_COST rob points, pacatul lacomiei
+stock Rob_AddCrew(j, pid)
+{
+    new c = RobJob[j][rjCrewCount];
+    if(c >= ROB_MAX_CREW) return 0;
+    RobJob[j][rjCrew][c] = pid;
+    RobJob[j][rjCrewCount] = c + 1;
+    g_RobJobOf[pid] = j;
+
+    new pts = PlayerData[pid][pRobPoints] - ROB_COST;
+    if(pts < 0) pts = 0;
+    PlayerData[pid][pRobPoints] = pts;
+    UpdatePlayer(pid, pRobPoints);
+
+    Pray_FlagSin(pid, 2); // Lacomia dupa bani
+    return 1;
+}
+
+stock Rob_DestroyIcon(j)
+{
+    if(RobJob[j][rjIcon] != STREAMER_TAG_MAP_ICON:0)
+    {
+        DestroyDynamicMapIcon(RobJob[j][rjIcon]);
+        RobJob[j][rjIcon] = STREAMER_TAG_MAP_ICON:0;
+    }
+}
+
+// Muta marker-ul GPS (vizibil doar Politiei) la pozitia data
+stock Rob_UpdateIcon(j, Float:x, Float:y, Float:z)
+{
+    Rob_DestroyIcon(j);
+    new cnt = 0;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(Rob_IsCop(i)) g_RobCopList[cnt++] = i;
+    if(cnt == 0) return;
+    RobJob[j][rjIcon] = CreateDynamicMapIconEx(x, y, z, 0, ROB_TRACKER_COLOR, MAPICON_GLOBAL, 6000.0,
+        .players = g_RobCopList, .maxplayers = cnt);
+}
+
+stock Rob_RemoveBagFrom(pid)
+{
+    if(pid < 0 || pid >= MAX_PLAYERS || !IsPlayerConnected(pid)) return;
+    RemovePlayerAttachedObject(pid, ROB_BAG_ATTACH_INDEX);
+    DisablePlayerCheckpoint(pid);
+}
+
+stock Rob_ClearDrop(j)
+{
+    if(!RobJob[j][rjDropped]) return;
+    DestroyPickup(RobJob[j][rjDropObj]);
+    RobJob[j][rjDropObj] = -1;
+    Delete3DTextLabel(RobJob[j][rjDropLabel]);
+    RobJob[j][rjDropped] = false;
+}
+
+// Inchide jaful j (fara plata aici): scoate sacul, marker-ul, maparea echipei
+stock Rob_Finish(j)
+{
+    if(RobJob[j][rjStage] == ROB_STAGE_RUN && !RobJob[j][rjDropped])
+        Rob_RemoveBagFrom(RobJob[j][rjCarrier]);
+    Rob_ClearDrop(j);
+    Rob_DestroyIcon(j);
+    for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+    {
+        new pid = RobJob[j][rjCrew][c];
+        if(pid >= 0 && pid < MAX_PLAYERS && g_RobJobOf[pid] == j) g_RobJobOf[pid] = -1;
+    }
+    RobJob[j][rjStage]     = ROB_STAGE_NONE;
+    RobJob[j][rjCrewCount] = 0;
+    RobJob[j][rjCarrier]   = INVALID_PLAYER_ID;
+}
+
+// Da sacul jucatorului pid (membru sau strain): obiect atasat + checkpoint la fence
+stock Rob_GetDest(j, &Float:x, &Float:y, &Float:z, name[], namelen)
+{
+    switch(RobJob[j][rjMode])
+    {
+        case ROB_MODE_RETURN:
+        {
+            x = RobJob[j][rjTX]; y = RobJob[j][rjTY]; z = RobJob[j][rjTZ];
+            format(name, namelen, "%s", RobJob[j][rjTargetName]);
+        }
+        case ROB_MODE_MAFIA:
+        {
+            new fid = RobJob[j][rjDestFid];
+            x = FactionData[fid][fHQX]; y = FactionData[fid][fHQY]; z = FactionData[fid][fHQZ];
+            format(name, namelen, "%s", FactionData[fid][fName]);
+        }
+        case ROB_MODE_POLICE:
+        {
+            x = FactionData[FACTION_POLICE][fHQX]; y = FactionData[FACTION_POLICE][fHQY]; z = FactionData[FACTION_POLICE][fHQZ];
+            format(name, namelen, "%s", FactionData[FACTION_POLICE][fName]);
+        }
+        default:
+        {
+            x = RobJob[j][rjFX]; y = RobJob[j][rjFY]; z = RobJob[j][rjFZ];
+            format(name, namelen, "%s", RobJob[j][rjFenceName]);
+        }
+    }
+}
+
+stock bool:Rob_HQSet(fid)
+{
+    return (fid > 0 && fid <= MAX_FACTIONS && (FactionData[fid][fHQX] != 0.0 || FactionData[fid][fHQY] != 0.0));
+}
+
+// Da sacul jucatorului pid: obiect atasat + checkpoint la destinatia modului curent (rjMode)
+stock Rob_GiveBag(j, pid)
+{
+    Rob_ClearDrop(j);
+    RobJob[j][rjCarrier] = pid;
+    SetPlayerAttachedObject(pid, ROB_BAG_ATTACH_INDEX, ROB_BAG_MODEL, 1, 0.1, -0.2, 0.0, 0.0, 90.0, 0.0, 1.0, 1.0, 1.0);
+
+    new Float:dx, Float:dy, Float:dz, dname[32];
+    Rob_GetDest(j, dx, dy, dz, dname, sizeof(dname));
+    Track_SetPlayerCheckpoint(pid, dx, dy, dz, ROB_FENCE_CP_SIZE);
+
+    new bm[220];
+    switch(RobJob[j][rjMode])
+    {
+        case ROB_MODE_RETURN:
+            format(bm, sizeof(bm), T(pid, C_SUCCESS"[P.R.] "C_WHITE"You recovered the loot bag ("C_SUCCESS"$%s"C_WHITE"). Return it to "C_INFO"%s"C_WHITE" (checkpoint) - you get %d%%."),
+                MoneyStr(RobJob[j][rjLoot]), dname, ROB_RETURN_COP_PCT);
+        case ROB_MODE_MAFIA:
+            format(bm, sizeof(bm), T(pid, C_SUCCESS"[Rob] "C_WHITE"You grabbed a loot bag ("C_SUCCESS"$%s"C_WHITE"). Take it to your HQ, "C_INFO"%s"C_WHITE" (checkpoint) - you keep %d%%."),
+                MoneyStr(RobJob[j][rjLoot]), dname, ROB_MAFIA_KEEP_PCT);
+        case ROB_MODE_POLICE:
+            format(bm, sizeof(bm), T(pid, C_SUCCESS"[Rob] "C_WHITE"You found a loot bag ("C_SUCCESS"$%s"C_WHITE"). Hand it in at "C_INFO"%s"C_WHITE" (checkpoint) for a %d%% reward."),
+                MoneyStr(RobJob[j][rjLoot]), dname, ROB_CIVIL_REWARD_PCT);
+        default:
+            format(bm, sizeof(bm), T(pid, C_SUCCESS"[Rob] "C_WHITE"You carry the loot bag ("C_SUCCESS"$%s"C_WHITE"). Take it to the fence at "C_INFO"%s"C_WHITE" (checkpoint)."),
+                MoneyStr(RobJob[j][rjLoot]), dname);
+    }
+    SCM(pid, COLOR_SUCCESS, bm);
+}
+
+// Sacul cade pe jos la (x, y, z) - oricine il poate lua cu /rob take
+stock Rob_DropBag(j, Float:x, Float:y, Float:z, vw = 0)
+{
+    if(RobJob[j][rjStage] != ROB_STAGE_RUN || RobJob[j][rjDropped]) return;
+    Rob_RemoveBagFrom(RobJob[j][rjCarrier]);
+    RobJob[j][rjCarrier]  = INVALID_PLAYER_ID;
+    RobJob[j][rjDropped]  = true;
+    RobJob[j][rjDropLeft] = ROB_DROP_SEC;
+    RobJob[j][rjBX] = x; RobJob[j][rjBY] = y; RobJob[j][rjBZ] = z;
+    RobJob[j][rjDropObj]   = CreatePickup(ROB_BAG_MODEL, 1, x, y, z, vw); // tip 1: ramane pana il distrugem noi
+    RobJob[j][rjDropLabel] = Create3DTextLabel("Loot bag\nwalk over it to pick it up", 0x93C572FF, x, y, z + 0.5, 15.0, vw, 0);
+
+    new dm[200];
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(Rob_IsCrew(j, i))
+        {
+            format(dm, sizeof(dm), T(i, C_ERROR"[Rob] "C_WHITE"The loot bag ("C_SUCCESS"$%s"C_WHITE") was dropped! Walk over it (or "C_INFO"/rob take"C_WHITE") within %d minutes."),
+                MoneyStr(RobJob[j][rjLoot]), ROB_DROP_SEC / 60);
+            SCM(i, COLOR_ERROR, dm);
+        }
+        else if(Rob_IsCop(i))
+        {
+            format(dm, sizeof(dm), T(i, C_INFO"[P.R.] "C_WHITE"The loot bag from "C_INFO"%s"C_WHITE" was dropped. Walk over it and return it to the store."),
+                RobJob[j][rjTargetName]);
+            SCM(i, COLOR_INFO, dm);
+        }
+    }
+}
+
+// Cineva ridica sacul scapat al jafului tj (pickup sau /rob take): membrul il preia,
+// politistul il confisca, un strain il fura (primeste tot la fence, dar devine cautat).
+stock Rob_TakeBag(playerid, tj)
+{
+    if(Rob_CarrierJob(playerid) != -1)
+        return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You are already carrying a loot bag."), 1;
+    if(g_RobJobOf[playerid] != -1 && g_RobJobOf[playerid] != tj)
+        return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You are part of another robbery."), 1;
+
+    // membru al echipei: il duce mai departe la fence
+    if(g_RobJobOf[playerid] == tj)
+    {
+        RobJob[tj][rjMode] = ROB_MODE_FENCE;
+        Rob_GiveBag(tj, playerid);
+        return 1;
+    }
+
+    // strain: politist -> inapoi la magazin; mafiot -> HQ-ul lui; restul -> random (Politie sau fence)
+    new fac = PlayerData[playerid][pFaction];
+    if(fac == FACTION_POLICE) RobJob[tj][rjMode] = ROB_MODE_RETURN;
+    else if(IsMafiaFaction(fac) && Rob_HQSet(fac))
+    {
+        RobJob[tj][rjMode] = ROB_MODE_MAFIA;
+        RobJob[tj][rjDestFid] = fac;
+    }
+    else if(random(100) < ROB_CIVIL_HONEST_PCT && Rob_HQSet(FACTION_POLICE)) RobJob[tj][rjMode] = ROB_MODE_POLICE;
+    else RobJob[tj][rjMode] = ROB_MODE_FENCE;
+
+    // mafiotul si civilul lacom devin cautati
+    if(RobJob[tj][rjMode] == ROB_MODE_MAFIA || RobJob[tj][rjMode] == ROB_MODE_FENCE)
+    {
+        if(PlayerData[playerid][pWanted] < 4)
+        {
+            PlayerData[playerid][pWanted] = 4;
+            SetPlayerWantedLevel(playerid, 4);
+            UpdatePlayer(playerid, pWanted);
+        }
+        Pray_FlagSin(playerid, 2);
+    }
+    if(RobJob[tj][rjMode] == ROB_MODE_FENCE)
+        SCM(playerid, COLOR_INFO, C_INFO"[Rob] "C_WHITE"You grabbed someone else's loot. Reach the fence and it's all yours - but you are wanted now.");
+
+    new tm[180];
+    for(new c = 0; c < RobJob[tj][rjCrewCount]; c++)
+        if(Rob_IsCrew(tj, RobJob[tj][rjCrew][c]))
+        {
+            format(tm, sizeof(tm), T(RobJob[tj][rjCrew][c], C_ERROR"[Rob] "C_INFO"%s"C_WHITE" took your loot bag! Get it back before it reaches its destination."), PlayerData[playerid][pName]);
+            SCM(RobJob[tj][rjCrew][c], COLOR_ERROR, tm);
+        }
+    Rob_GiveBag(tj, playerid);
+    return 1;
+}
+
+// Pornit la ROB_FIRE_DELAY dupa hold-up: incendiu la magazinul jefuit, arde pana il stinge SMURD-ul
+public Rob_StartFire(Float:fx, Float:fy, Float:fz)
+{
+    Fires_Create(fx, fy, fz, "[SMURD] "C_WHITE"A fire broke out at a recently robbed store - take the firetruck and put it out!", true); // icon doar pt. SMURD
+    for(new i = 0; i < MAX_PLAYERS; i++)
+        if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pFaction] == FACTION_SMURD)
+            GTP(i, "~r~Fire alarm!", 4000, 3);
+    return 1;
+}
+
+// Alarma: suna la rjAlarmAt. Cei din zona: wanted 6; GPS in sac. Daca au plecat deja: wanted 3, fara GPS.
+stock Rob_TriggerAlarm(j)
+{
+    RobJob[j][rjAlarm] = true;
+    new bool:inside = (RobJob[j][rjStage] == ROB_STAGE_HOLDUP);
+    new suspects = 0;
+
+    for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+    {
+        new pid = RobJob[j][rjCrew][c];
+        if(!Rob_IsCrew(j, pid)) continue;
+        suspects++;
+        new wl = inside ? 6 : 3;
+        if(PlayerData[pid][pWanted] < wl)
+        {
+            PlayerData[pid][pWanted] = wl;
+            SetPlayerWantedLevel(pid, wl);
+            UpdatePlayer(pid, pWanted);
+        }
+        if(inside) SCM(pid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"ALARM! The police are coming - and there's a GPS tracker hidden in the cash.");
+        else SCM(pid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"The store reported the robbery. You got out before the alarm - no tracker on the bag.");
+    }
+
+    if(inside)
+    {
+        RobJob[j][rjTracker] = ROB_TRACKER_SEC;
+        Rob_UpdateIcon(j, RobJob[j][rjTX], RobJob[j][rjTY], RobJob[j][rjTZ]);
+    }
+
+    new pm[220];
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+        if(PlayerData[i][pFaction] != FACTION_POLICE && PlayerData[i][pFaction] != NEWS_FACTION_ID) continue;
+        if(inside)
+            format(pm, sizeof(pm), T(i, C_ERROR"[P.R.] "C_WHITE"Alarm at "C_INFO"%s"C_WHITE"! %d armed suspect(s) inside. The cash has a GPS tracker - follow the red marker."),
+                RobJob[j][rjTargetName], suspects);
+        else
+            format(pm, sizeof(pm), T(i, C_ERROR"[P.R.] "C_WHITE"%s reports a robbery. %d suspect(s) already fled, no tracker on the cash."),
+                RobJob[j][rjTargetName], suspects);
+        SCM(i, COLOR_ERROR, pm);
+    }
+}
+
+// Sfarsitul hold-up-ului (toata echipa a iesit din zona): sacul merge la lider (sau primul membru ramas)
+stock Rob_EndHoldup(j)
+{
+    new carrier = INVALID_PLAYER_ID;
+    if(Rob_IsCrew(j, RobJob[j][rjLeader])) carrier = RobJob[j][rjLeader];
+    else
+    {
+        for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+            if(Rob_IsCrew(j, RobJob[j][rjCrew][c])) { carrier = RobJob[j][rjCrew][c]; break; }
+    }
+    if(carrier == INVALID_PLAYER_ID || RobJob[j][rjLoot] <= 0 || !Rob_PickFence(j))
+    {
+        Rob_Finish(j);
+        return;
+    }
+
+    RobJob[j][rjStage] = ROB_STAGE_RUN;
+    RobJob[j][rjDropped] = false;
+    RobJob[j][rjMode] = ROB_MODE_FENCE;
+    Rob_GiveBag(j, carrier);
+
+    new em[220];
+    for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+    {
+        new pid = RobJob[j][rjCrew][c];
+        if(!Rob_IsCrew(j, pid) || pid == carrier) continue;
+        format(em, sizeof(em), T(pid, C_SUCCESS"[Rob] "C_WHITE"You got out with "C_SUCCESS"$%s"C_WHITE". "C_INFO"%s"C_WHITE" carries the bag to the fence at %s - protect them!"),
+            MoneyStr(RobJob[j][rjLoot]), PlayerData[carrier][pName], RobJob[j][rjFenceName]);
+        SCM(pid, COLOR_SUCCESS, em);
+    }
+
+    // Hotii dau foc magazinului ca sa acopere urmele
+    SetTimerEx("Rob_StartFire", ROB_FIRE_DELAY, false, "fff", RobJob[j][rjTX], RobJob[j][rjTY], RobJob[j][rjTZ]);
+}
+
+stock Rob_TickHoldup(j)
+{
+    new crewLeft = 0, inZone = 0;
+    for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+    {
+        new pid = RobJob[j][rjCrew][c];
+        if(!Rob_IsCrew(j, pid)) continue;
+        crewLeft++;
+        if(Rob_IsInside(j, pid)) inZone++;
+    }
+    if(crewLeft == 0) { Rob_Finish(j); return; } // toata echipa a murit / a iesit de pe server
+
+    new leader = RobJob[j][rjLeader];
+    new bool:leaderInside = (Rob_IsCrew(j, leader) && Rob_IsInside(j, leader));
+
+    // inainte sa intre liderul: banii nu curg; daca nu intra la timp, jaful se anuleaza
+    if(!RobJob[j][rjInside])
+    {
+        if(!leaderInside)
+        {
+            new w = RobJob[j][rjWait] + 1;
+            RobJob[j][rjWait] = w;
+            if(w >= ROB_ENTER_TIMEOUT || !Rob_IsCrew(j, leader))
+            {
+                for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+                    if(Rob_IsCrew(j, RobJob[j][rjCrew][c]))
+                        SCM(RobJob[j][rjCrew][c], COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"The leader never went into the store - the robbery is called off.");
+                Rob_Finish(j);
+            }
+            else if(Rob_IsCrew(j, leader))
+                GTP(leader, "~y~Get out and go into the store", 1100, 3);
+            return;
+        }
+        RobJob[j][rjInside] = true;
+    }
+
+    // liderul a iesit (sau a murit): banii se opresc, incepe fuga
+    if(!leaderInside || RobJob[j][rjElapsed] >= ROB_HOLDUP_MAX_SEC) { Rob_EndHoldup(j); return; }
+
+    RobJob[j][rjElapsed] = RobJob[j][rjElapsed] + 1;
+    if(!RobJob[j][rjAlarm] && RobJob[j][rjElapsed] >= RobJob[j][rjAlarmAt]) Rob_TriggerAlarm(j);
+
+    new before = RobJob[j][rjLoot];
+    new loot = before + ROB_LOOT_RATE_BASE + ROB_LOOT_RATE_PERMEM * inZone;
+    if(loot > ROB_LOOT_MAX) loot = ROB_LOOT_MAX;
+    RobJob[j][rjLoot] = loot;
+
+    new gt[96];
+    for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+    {
+        new pid = RobJob[j][rjCrew][c];
+        if(!Rob_IsCrew(j, pid)) continue;
+        if(loot >= ROB_LOOT_MAX && before < ROB_LOOT_MAX)
+            SCM(pid, COLOR_INFO, C_INFO"[Rob] "C_WHITE"The register is empty - get out of the store before the police arrive!");
+        if(RobJob[j][rjAlarm]) format(gt, sizeof(gt), T(pid, "~g~$%s~n~~r~ALARM!"), MoneyStr(loot));
+        else format(gt, sizeof(gt), T(pid, "~g~$%s~n~~w~leader leaves = run"), MoneyStr(loot));
+        GTP(pid, gt, 1100, 3);
+    }
+}
+
+stock Rob_TickRun(j)
+{
+    RobJob[j][rjElapsed] = RobJob[j][rjElapsed] + 1;
+    if(!RobJob[j][rjAlarm] && RobJob[j][rjElapsed] >= RobJob[j][rjAlarmAt]) Rob_TriggerAlarm(j);
+
+    new Float:x, Float:y, Float:z;
+    if(RobJob[j][rjDropped])
+    {
+        x = RobJob[j][rjBX]; y = RobJob[j][rjBY]; z = RobJob[j][rjBZ];
+        new left = RobJob[j][rjDropLeft] - 1;
+        RobJob[j][rjDropLeft] = left;
+        if(left <= 0)
+        {
+            for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+                if(Rob_IsCrew(j, RobJob[j][rjCrew][c]))
+                    SCM(RobJob[j][rjCrew][c], COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Nobody picked up the loot bag - the money is lost.");
+            Rob_Finish(j);
+            return;
+        }
+    }
+    else
+    {
+        new carrier = RobJob[j][rjCarrier];
+        if(carrier < 0 || carrier >= MAX_PLAYERS || !IsPlayerConnected(carrier)) { Rob_Finish(j); return; }
+        GetPlayerPos(carrier, x, y, z);
+    }
+
+    if(RobJob[j][rjTracker] > 0)
+    {
+        new t = RobJob[j][rjTracker] - 1;
+        RobJob[j][rjTracker] = t;
+        if(t == 0)
+        {
+            Rob_DestroyIcon(j);
+            for(new i = 0; i < MAX_PLAYERS; i++)
+            {
+                if(Rob_IsCrew(j, i) || (!RobJob[j][rjDropped] && i == RobJob[j][rjCarrier]))
+                    SCM(i, COLOR_SUCCESS, C_SUCCESS"[Rob] "C_WHITE"The GPS tracker in the cash died. The police lost the signal.");
+                else if(Rob_IsCop(i))
+                    SCM(i, COLOR_INFO, C_INFO"[P.R.] "C_WHITE"The GPS tracker in the stolen cash went silent.");
+            }
+        }
+        else if(t % ROB_TRACKER_REFRESH == 0) Rob_UpdateIcon(j, x, y, z);
+    }
+}
+
+// Timer global, 1s
+public Rob_Tick()
+{
+    for(new j = 0; j < ROB_MAX_JOBS; j++)
+    {
+        if(RobJob[j][rjStage] == ROB_STAGE_HOLDUP) Rob_TickHoldup(j);
+        else if(RobJob[j][rjStage] == ROB_STAGE_RUN) Rob_TickRun(j);
+    }
+    return 1;
+}
+
+// Politia confisca sacul (copid = INVALID_PLAYER_ID -> fara ofiter, totul merge in seif)
+stock Rob_Seize(j, copid)
+{
+    new reward = RobJob[j][rjLoot] * ROB_RETURN_COP_PCT / 100;
+    new bool:byCop = (copid != INVALID_PLAYER_ID && copid >= 0 && copid < MAX_PLAYERS && IsPlayerConnected(copid));
+    if(byCop)
+    {
+        PlayerData[copid][pMoney] += reward;
+        GivePlayerMoney(copid, reward);
+        UpdatePlayer(copid, pMoney);
+    }
+    else Faction_AddBank(FACTION_POLICE, reward);
+
+    new sm[220];
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(Rob_IsCop(i))
+        {
+            if(byCop)
+                format(sm, sizeof(sm), T(i, C_SUCCESS"[P.R.] "C_WHITE"Officer "C_INFO"%s"C_WHITE" returned the loot from %s. Reward: "C_SUCCESS"$%s"C_WHITE"."),
+                    PlayerData[copid][pName], RobJob[j][rjTargetName], MoneyStr(reward));
+            else
+                format(sm, sizeof(sm), T(i, C_SUCCESS"[P.R.] "C_WHITE"The loot from %s was recovered. Vault +"C_SUCCESS"$%s"C_WHITE"."),
+                    RobJob[j][rjTargetName], MoneyStr(reward));
+            SCM(i, COLOR_SUCCESS, sm);
+        }
+        else if(Rob_IsCrew(j, i) || (!RobJob[j][rjDropped] && i == RobJob[j][rjCarrier]))
+            SCM(i, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"The police recovered the loot bag. The job is over.");
+    }
+    Rob_Finish(j);
+}
+
+// Livrarea la fence: fence-ul pastreaza o cota (seiful mafiei), restul se imparte egal intre membrii ramasi.
+// Daca sacul a fost furat de un strain, strainul ia tot.
+stock Rob_Payout(j)
+{
+    new carrier = RobJob[j][rjCarrier];
+    new loot    = RobJob[j][rjLoot];
+    new cut     = loot * ROB_FENCE_CUT_PCT / 100;
+    new net     = loot - cut;
+    new fid     = RobJob[j][rjFenceFid];
+    if(fid > 0) Faction_AddBank(fid, cut);
+
+    new payees[ROB_MAX_CREW], n = 0;
+    if(Rob_IsCrew(j, carrier))
+    {
+        for(new c = 0; c < RobJob[j][rjCrewCount]; c++)
+        {
+            new pid = RobJob[j][rjCrew][c];
+            if(Rob_IsCrew(j, pid) && PlayerData[pid][pLogged]) payees[n++] = pid;
+        }
+    }
+    else payees[n++] = carrier;
+
+    new share = (n > 0) ? (net / n) : 0;
+    new fm[220];
+    for(new k = 0; k < n; k++)
+    {
+        new pid = payees[k];
+        new pay = share;
+        if(PlayerData[pid][pVIP])
+        {
+            new vipBonus = pay / 10; // VIP: +10% la jaf
+            pay = pay + vipBonus;
+            format(fm, sizeof(fm), T(pid, "{FFD700}[VIP] "C_WHITE"You received a "C_SUCCESS"+$%s"C_WHITE" bonus for being VIP."), MoneyStr(vipBonus));
+            SCM(pid, COLOR_WHITE, fm);
+        }
+        PlayerData[pid][pMoney] += pay;
+        GivePlayerMoney(pid, pay);
+        UpdatePlayer(pid, pMoney);
+
+        if(PlayerData[pid][pWanted] == 6)
+        {
+            PlayerData[pid][pWanted] = 5;
+            SetPlayerWantedLevel(pid, 5);
+            UpdatePlayer(pid, pWanted);
+        }
+
+        format(fm, sizeof(fm), T(pid, C_SUCCESS"[Rob] "C_WHITE"The fence laundered the loot from "C_INFO"%s"C_WHITE". Your share: "C_SUCCESS"$%s"C_WHITE" (%d-way split)."),
+            RobJob[j][rjTargetName], MoneyStr(pay), n);
+        SCM(pid, COLOR_SUCCESS, fm);
+    }
+
+    if(fid > 0)
+    {
+        for(new i = 0; i < MAX_PLAYERS; i++)
+            if(IsPlayerConnected(i) && PlayerData[i][pLogged] && PlayerData[i][pFaction] == fid)
+            {
+                format(fm, sizeof(fm), T(i, C_INFO"[Fence] "C_WHITE"Your HQ laundered stolen cash. Faction vault +"C_SUCCESS"$%s"C_WHITE"."), MoneyStr(cut));
+                SCM(i, COLOR_INFO, fm);
+            }
+    }
+    Rob_Finish(j);
+}
+
+// Livrarea unui strain: politist (magazin, 15%), mafiot (HQ-ul lui, 50%), civil cinstit (HQ Politie, 25%)
+stock Rob_PayOutsider(j)
+{
+    new pid  = RobJob[j][rjCarrier];
+    new mode = RobJob[j][rjMode];
+    new pct  = (mode == ROB_MODE_RETURN) ? ROB_RETURN_COP_PCT : ((mode == ROB_MODE_MAFIA) ? ROB_MAFIA_KEEP_PCT : ROB_CIVIL_REWARD_PCT);
+    new pay  = RobJob[j][rjLoot] * pct / 100;
+
+    PlayerData[pid][pMoney] += pay;
+    GivePlayerMoney(pid, pay);
+    UpdatePlayer(pid, pMoney);
+
+    new om[220];
+    if(mode == ROB_MODE_RETURN)
+        format(om, sizeof(om), T(pid, C_SUCCESS"[P.R.] "C_WHITE"You returned the stolen money to "C_INFO"%s"C_WHITE". Reward: "C_SUCCESS"$%s"C_WHITE"."), RobJob[j][rjTargetName], MoneyStr(pay));
+    else if(mode == ROB_MODE_MAFIA)
+        format(om, sizeof(om), T(pid, C_SUCCESS"[Rob] "C_WHITE"You brought the loot to your HQ. You keep "C_SUCCESS"$%s"C_WHITE"."), MoneyStr(pay));
+    else
+        format(om, sizeof(om), T(pid, C_SUCCESS"[P.R.] "C_WHITE"You handed the stolen money to the police. Reward: "C_SUCCESS"$%s"C_WHITE"."), MoneyStr(pay));
+    SCM(pid, COLOR_SUCCESS, om);
+
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(i == pid) continue;
+        if(Rob_IsCop(i) && mode != ROB_MODE_MAFIA)
+        {
+            format(om, sizeof(om), T(i, C_SUCCESS"[P.R.] "C_INFO"%s"C_WHITE" returned the loot from %s."), PlayerData[pid][pName], RobJob[j][rjTargetName]);
+            SCM(i, COLOR_SUCCESS, om);
+        }
+        else if(Rob_IsCrew(j, i))
+            SCM(i, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Someone else delivered your loot bag. The job is over.");
+    }
+    Rob_Finish(j);
+}
+
+// OnPlayerEnterCheckpoint: purtatorul sacului a ajuns la fence. Returneaza 1 daca a tratat evenimentul.
+public Rob_HandleCheckpoint(playerid)
+{
+    new j = Rob_CarrierJob(playerid);
+    if(j == -1) return 0;
+    new Float:dx, Float:dy, Float:dz, dname[32];
+    Rob_GetDest(j, dx, dy, dz, dname, sizeof(dname));
+    if(!IsPlayerInRangeOfPoint(playerid, ROB_FENCE_CP_SIZE + 3.0, dx, dy, dz)) return 0;
+    if(RobJob[j][rjMode] == ROB_MODE_FENCE) Rob_Payout(j);
+    else Rob_PayOutsider(j);
+    return 1;
+}
+
+// Moarte / deconectare: purtatorul scapa sacul pe jos; membrul iese din impartire
+stock Rob_HandleLeave(playerid, bool:died)
+{
+    new j = Rob_CarrierJob(playerid);
+    if(j != -1)
+    {
+        new Float:x, Float:y, Float:z;
+        GetPlayerPos(playerid, x, y, z);
+        Rob_DropBag(j, x, y, z, GetPlayerVirtualWorld(playerid));
+    }
+    if(g_RobJobOf[playerid] != -1)
+    {
+        g_RobJobOf[playerid] = -1;
+        if(died) SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You died during the robbery - you won't get a cut.");
+    }
+}
+
+// Arestat (de un politist sau /arrestme) cu sacul asupra lui -> confiscat
+stock Rob_HandleArrest(playerid, copid)
+{
+    new j = Rob_CarrierJob(playerid);
+    if(j != -1) Rob_Seize(j, copid);
+    if(g_RobJobOf[playerid] != -1) g_RobJobOf[playerid] = -1;
+}
+
+
+// ============================================================
 //  GARAJ POLITIE (teleport garaj <-> intrare)
 // ============================================================
 // Puncte de tranzitie Politie (faction 1), suprascrise din locations_admin dupa nume:
@@ -14634,7 +15334,8 @@ stock Fires_Extinguish(f, extinguisherId)
 
 // Creeaza un incendiu la coordonatele date (folosit de /createfire si de incendiul post-jaf). Returneaza -1 daca s-a atins limita.
 // notifyMsg: mesajul trimis pompierilor de tura; "" foloseste mesajul implicit.
-stock Fires_Create(Float:fx, Float:fy, Float:fz, const notifyMsg[] = "")
+// smurdIconOnly: map icon-ul incendiului se arata doar membrilor SMURD (ex. incendiul post-jaf), nu tuturor.
+stock Fires_Create(Float:fx, Float:fy, Float:fz, const notifyMsg[] = "", bool:smurdIconOnly = false)
 {
     new fidx = Fires_FindFree();
     if(fidx == -1) return -1;
@@ -14664,6 +15365,7 @@ stock Fires_Create(Float:fx, Float:fy, Float:fz, const notifyMsg[] = "")
                 format(fmsg, sizeof(fmsg), T(i, "[SMURD] "C_WHITE"A fire has broken out! Take the firetruck and put it out with water."));
             SCM(i, COLOR_INFO, fmsg);
         }
+        if(smurdIconOnly && PlayerData[i][pFaction] != FACTION_SMURD) continue;
         SetPlayerMapIcon(i, FIRE_ICON_SLOT_BASE + fidx, fx, fy, fz, FIRE_MAPICON_ID, 0, MAPICON_GLOBAL);
     }
     return fidx;
@@ -17271,6 +17973,12 @@ stock DB_CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         "", "", 0);
     mysql_tquery(g_SQL, "UPDATE `shops` SET `shopName`='24/7 Shop' WHERE `shopName`=''", "", "", 0);
+    // Interior shop (setat cu /shopc [id] int); 0,0 = fara interior
+    mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `int_x` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `int_y` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `int_z` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `int_a` FLOAT DEFAULT 0.0", "", "", 0);
+    mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `int_id` INT DEFAULT 0", "", "", 0);
     // Stoc pentru jobul Truck Driver (tabelele deja existente nu au coloanele)
     mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `stock_max` INT DEFAULT 100", "", "", 0);
     mysql_tquery(g_SQL, "ALTER TABLE `shops` ADD COLUMN IF NOT EXISTS `stock_curr` INT DEFAULT 100", "", "", 0);
@@ -18154,7 +18862,7 @@ public OnBinCreated(playerid, idx)
 stock Shops_Load()
 {
     mysql_tquery(g_SQL,
-        "SELECT `shopID`,`shopLocX`,`shopLocY`,`shopLocZ`,`shopName`,`type`,`stock_max`,`stock_curr` FROM `shops` ORDER BY `shopID` ASC",
+        "SELECT `shopID`,`shopLocX`,`shopLocY`,`shopLocZ`,`shopName`,`type`,`stock_max`,`stock_curr`,`int_x`,`int_y`,`int_z`,`int_a`,`int_id` FROM `shops` ORDER BY `shopID` ASC",
         "OnShopsLoaded");
 }
 
@@ -18165,6 +18873,8 @@ public OnShopsLoaded()
     {
         if(g_ShopPickup[i] != -1) { DestroyPickup(g_ShopPickup[i]); g_ShopPickup[i] = -1; }
         if(g_ShopLabel[i] != Text3D:INVALID_3DTEXT_ID) { Delete3DTextLabel(g_ShopLabel[i]); g_ShopLabel[i] = Text3D:INVALID_3DTEXT_ID; }
+        if(g_ShopIntPickup[i] != -1) { DestroyPickup(g_ShopIntPickup[i]); g_ShopIntPickup[i] = -1; }
+        if(g_ShopIntLabel[i] != Text3D:INVALID_3DTEXT_ID) { Delete3DTextLabel(g_ShopIntLabel[i]); g_ShopIntLabel[i] = Text3D:INVALID_3DTEXT_ID; }
     }
 
     new rows = cache_num_rows();
@@ -18180,6 +18890,11 @@ public OnShopsLoaded()
         cache_get_value_name_int  (i, "type",     ShopData[idx][shopType]);
         cache_get_value_name_int  (i, "stock_max",  ShopData[idx][shopStockMax]);
         cache_get_value_name_int  (i, "stock_curr", ShopData[idx][shopStockCurr]);
+        cache_get_value_name_float(i, "int_x",  ShopData[idx][shopIntX]);
+        cache_get_value_name_float(i, "int_y",  ShopData[idx][shopIntY]);
+        cache_get_value_name_float(i, "int_z",  ShopData[idx][shopIntZ]);
+        cache_get_value_name_float(i, "int_a",  ShopData[idx][shopIntA]);
+        cache_get_value_name_int  (i, "int_id", ShopData[idx][shopIntID]);
         g_ShopPickup[idx] = -1;
         g_ShopLabel[idx]  = Text3D:INVALID_3DTEXT_ID;
         Shop_Create(idx);
@@ -25160,6 +25875,7 @@ public OnGameModeInit()
     ShowNameTags(1);
     AllowAdminTeleport(1);
     DisableInteriorEnterExits();
+    EnableStuntBonusForAll(false); // fara bani din stunt-uri/drift (bonusurile native GTA); true = reactiveaza
 
     for(new p = 0; p < MAX_PLAYERS; p++)
         for(new t = 0; t < EXAMW_TARGET_COUNT; t++)
@@ -25451,6 +26167,7 @@ public OnGameModeInit()
     SetTimer("HealthDecay_Tick", HEALTH_DECAY_TICK, true);
     SetTimer("Appliance_ExpireTick", 300000, true); // sweep frigidere stricate: pierde itemele
     SetTimer("Fires_Tick", 1000, true);
+    SetTimer("Rob_Tick", 1000, true); // jaf v2: hold-up, sac, GPS
     SetTimer("Jail_Tick", 1000, true);
     SetTimer("Radar_Tick", RADAR_TICK, true);
     SetTimer("Speedometer_Tick", SPEEDOMETER_TICK, true);
@@ -25645,10 +26362,7 @@ public OnPlayerConnect(playerid)
     g_TrashCarrying[playerid]    = 0;
     g_TrashHouseID[playerid]     = 0;
     for(new s = 0; s < SKIN_COUNT; s++) g_SkinQty[playerid][s] = 0; // reset skinuri detinute
-    g_RobActive[playerid]        = false;
-    g_RobCrewCount[playerid]     = 0;
-    g_RobStage[playerid]         = 0;
-    g_RobLeaderOf[playerid]      = INVALID_PLAYER_ID;
+    g_RobJobOf[playerid]         = -1;
     g_SmuggleActive[playerid]    = false;
     g_SmuggleCrewCount[playerid] = 0;
     g_SmuggleStage[playerid]     = 0;
@@ -29589,89 +30303,174 @@ public OnPlayerCommandText(playerid, cmdtext[])
         return 1;
     }
 
-    // ---- /rob (jaf la un business, cu masina) ----
+    // ---- /rob [take|pass|status] (jaf v2: hold-up -> sac cu bani -> fence) ----
     if(strcmp(cmd, "/rob", true) == 0)
     {
         if(!PlayerData[playerid][pLogged])
             return SCM(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"You must be logged in."), 1;
 
-        if(g_RobActive[playerid])
-            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You already have a robbery in progress."), 1;
+        // argumentele se citesc cu un index propriu, din cmdtext (nu din `idx` comun, ca sa nu depinda de ce au consumat blocurile de mai sus)
+        new ridx = 0, rsub[256];
+        rsub = strtok(cmdtext, ridx); // "/rob"
+        rsub = strtok(cmdtext, ridx); // subcomanda
 
-        // trebuie sa fii intr-o masina, ca sofer
-        new vid = GetPlayerVehicleID(playerid);
-        if(vid == 0 || GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
-            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You must be the driver of a vehicle to start a robbery."), 1;
-
-        // ai nevoie de 10/10 rob points
-        if(PlayerData[playerid][pRobPoints] < ROB_POINTS_MAX)
+        // /rob status - starea jafului curent, sau heat + cooldown
+        if(strlen(rsub) && !strcmp(rsub, "status", true))
         {
-            new rm[144];
-            format(rm, sizeof(rm), T(playerid, C_ERROR"[Rob] "C_WHITE"You need "C_INFO"%d/%d"C_WHITE" rob points (you have "C_INFO"%d"C_WHITE"). You gain 1 per payday."),
-                ROB_POINTS_MAX, ROB_POINTS_MAX, PlayerData[playerid][pRobPoints]);
-            return SCM(playerid, COLOR_ERROR, rm), 1;
+            new rs[200];
+            new rj = g_RobJobOf[playerid];
+            if(rj == -1) rj = Rob_CarrierJob(playerid);
+            if(rj != -1)
+            {
+                if(RobJob[rj][rjStage] == ROB_STAGE_HOLDUP)
+                    format(rs, sizeof(rs), T(playerid, C_INFO"[Rob] "C_WHITE"Hold-up at %s: "C_SUCCESS"$%s"C_WHITE" in the bag, alarm: %s."),
+                        RobJob[rj][rjTargetName], MoneyStr(RobJob[rj][rjLoot]), RobJob[rj][rjAlarm] ? ("yes") : ("not yet"));
+                else if(RobJob[rj][rjDropped])
+                    format(rs, sizeof(rs), T(playerid, C_INFO"[Rob] "C_WHITE"The bag ("C_SUCCESS"$%s"C_WHITE") is on the ground - %d sec left to grab it with /rob take."),
+                        MoneyStr(RobJob[rj][rjLoot]), RobJob[rj][rjDropLeft]);
+                else
+                {
+                    new Float:sdx, Float:sdy, Float:sdz, sdn[32];
+                    Rob_GetDest(rj, sdx, sdy, sdz, sdn, sizeof(sdn));
+                    format(rs, sizeof(rs), T(playerid, C_INFO"[Rob] "C_WHITE"%s carries the bag ("C_SUCCESS"$%s"C_WHITE") to %s. GPS tracker: %d sec."),
+                        PlayerData[RobJob[rj][rjCarrier]][pName], MoneyStr(RobJob[rj][rjLoot]), sdn, RobJob[rj][rjTracker]);
+                }
+                return SCM(playerid, COLOR_INFO, rs), 1;
+            }
+            format(rs, sizeof(rs), T(playerid, C_INFO"[Rob] "C_WHITE"Rob points: "C_INFO"%d/%d"C_WHITE". Use /rob next to a shop or fast-food."),
+                PlayerData[playerid][pRobPoints], ROB_POINTS_MAX);
+            return SCM(playerid, COLOR_INFO, rs), 1;
         }
 
-        // trebuie sa fii langa un shop sau un fastfood
-        new targetName[32];
-        if(!Rob_NearTarget(playerid, targetName, sizeof(targetName)))
+        // /rob take - ia un sac scapat pe jos (membru: il preia; politist: il confisca; strain: il fura)
+        if(strlen(rsub) && !strcmp(rsub, "take", true))
+        {
+            if(IsPlayerInAnyVehicle(playerid))
+                return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Get out of the vehicle to pick up the bag."), 1;
+            new tj = -1;
+            for(new j = 0; j < ROB_MAX_JOBS; j++)
+                if(RobJob[j][rjStage] == ROB_STAGE_RUN && RobJob[j][rjDropped] &&
+                   IsPlayerInRangeOfPoint(playerid, ROB_TAKE_RANGE, RobJob[j][rjBX], RobJob[j][rjBY], RobJob[j][rjBZ])) { tj = j; break; }
+            if(tj == -1)
+                return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"There is no loot bag next to you."), 1;
+
+            Rob_TakeBag(playerid, tj);
+            return 1;
+        }
+
+        // /rob pass [id] - purtatorul da sacul unui coechipier aflat langa el
+        if(strlen(rsub) && !strcmp(rsub, "pass", true))
+        {
+            new pj = Rob_CarrierJob(playerid);
+            if(pj == -1)
+                return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You are not carrying a loot bag."), 1;
+            new parg[256];
+            parg = strtok(cmdtext, ridx);
+            if(!strlen(parg))
+                return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/rob pass [playerid]"C_WHITE" to hand the bag to a crew member next to you."), 1;
+            new ptarget = strval(parg);
+            if(ptarget == playerid || !Rob_IsCrew(pj, ptarget))
+                return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"That player is not in your crew."), 1;
+            new Float:px, Float:py, Float:pz;
+            GetPlayerPos(playerid, px, py, pz);
+            if(!IsPlayerInRangeOfPoint(ptarget, ROB_TAKE_RANGE, px, py, pz))
+                return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Your crew member must be right next to you."), 1;
+            Rob_RemoveBagFrom(playerid);
+            Rob_GiveBag(pj, ptarget);
+            new pm2[144];
+            format(pm2, sizeof(pm2), T(playerid, C_SUCCESS"[Rob] "C_WHITE"You handed the bag to "C_INFO"%s"C_WHITE"."), PlayerData[ptarget][pName]);
+            SCM(playerid, COLOR_SUCCESS, pm2);
+            return 1;
+        }
+
+        if(strlen(rsub))
+            return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/rob"C_WHITE" (start a robbery from your vehicle), "C_INFO"/rob take"C_WHITE", "C_INFO"/rob pass [id]"C_WHITE" or "C_INFO"/rob status"C_WHITE"."), 1;
+
+        // /rob - porneste jaful din vehicul (cat. A/B), parcat la magazin/fast-food, cu o arma de foc la tine.
+        // Echipa = toti cei din vehicul cu 10/10 rob points. Banii curg doar cat liderul e "inauntru"
+        // (coborat din vehicul, pe jos, in zona magazinului); cand liderul iese, banii se opresc si incepe fuga.
+        if(g_RobJobOf[playerid] != -1 || Rob_CarrierJob(playerid) != -1)
+            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You are already part of a robbery."), 1;
+        if(PlayerData[playerid][pFaction] == FACTION_POLICE)
+            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Police officers don't rob stores."), 1;
+
+        new rveh = GetPlayerVehicleID(playerid);
+        if(rveh == 0)
+            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You must be in a car or on a motorbike (category A or B) parked at the store."), 1;
+        new rcat = GetVehicleLicenseCategory(GetVehicleModel(rveh));
+        if(rcat != LIC_A && rcat != LIC_B)
+            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"This vehicle can't be used for a robbery - use a category A or B vehicle."), 1;
+
+        new targetName[32], Float:tx, Float:ty, Float:tz;
+        new tkey = Rob_FindTarget(playerid, ROB_START_RANGE, targetName, sizeof(targetName), tx, ty, tz);
+        if(tkey == -1)
             return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"There is no shop or fast-food nearby to rob."), 1;
 
-        // alege 2 business-uri distincte, aleatorii, pentru livrarea banilor
-        new bd1, bd2;
-        if(!Rob_PickTwoBusinesses(bd1, bd2))
-            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Robbery unavailable: there aren't 2 businesses to deliver to."), 1;
+        new cdLeft = g_RobTargetCD[tkey] - gettime();
+        if(cdLeft > 0)
+        {
+            new cm[160];
+            format(cm, sizeof(cm), T(playerid, C_ERROR"[Rob] "C_WHITE"This place was robbed recently. Security is still on alert for "C_INFO"%d min"C_WHITE"."), (cdLeft + 59) / 60);
+            return SCM(playerid, COLOR_ERROR, cm), 1;
+        }
+        #if ROB_REQUIRE_WEAPON == 1
+        if(!Rob_HasFirearm(playerid))
+            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You need a firearm to hold up the store."), 1;
+        #endif
 
-        // capteaza echipa: toti jucatorii logati din aceeasi masina
-        new crewCount = 0;
+        new nj = -1;
+        for(new j = 0; j < ROB_MAX_JOBS; j++)
+            if(RobJob[j][rjStage] == ROB_STAGE_NONE) { nj = j; break; }
+        if(nj == -1)
+            return SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"Too many robberies in progress right now. Try again in a few minutes."), 1;
+        if(!Rob_CheckEligible(playerid)) return 1;
+
+        RobJob[nj][rjStage]     = ROB_STAGE_HOLDUP;
+        RobJob[nj][rjLeader]    = playerid;
+        RobJob[nj][rjCrewCount] = 0;
+        RobJob[nj][rjTarget]    = tkey;
+        format(RobJob[nj][rjTargetName], 32, "%s", targetName);
+        RobJob[nj][rjTX] = tx; RobJob[nj][rjTY] = ty; RobJob[nj][rjTZ] = tz;
+        RobJob[nj][rjLoot]      = 0;
+        RobJob[nj][rjElapsed]   = 0;
+        RobJob[nj][rjWait]      = 0;
+        RobJob[nj][rjInside]    = false;
+        RobJob[nj][rjAlarm]     = false;
+        RobJob[nj][rjTracker]   = 0;
+        RobJob[nj][rjCarrier]   = INVALID_PLAYER_ID;
+        RobJob[nj][rjDropped]   = false;
+        RobJob[nj][rjFenceFid]  = 0;
+        RobJob[nj][rjMode]      = ROB_MODE_FENCE;
+        RobJob[nj][rjAlarmAt]   = ROB_ALARM_MIN_SEC + random(ROB_ALARM_RAND_SEC); // numarat de cand liderul intra
+
+        g_RobTargetCD[tkey] = gettime() + ROB_TARGET_CD_SEC;
+        Rob_AddCrew(nj, playerid);
+
+        // restul echipei: cei din acelasi vehicul, cu 10/10 rob points
+        new sm2[220];
         for(new i = 0; i < MAX_PLAYERS; i++)
         {
-            if(!IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
-            if(GetPlayerVehicleID(i) != vid) continue;
-            if(crewCount >= ROB_MAX_CREW) break;
-            g_RobCrew[playerid][crewCount++] = i;
+            if(i == playerid || !IsPlayerConnected(i) || !PlayerData[i][pLogged]) continue;
+            if(GetPlayerVehicleID(i) != rveh) continue;
+            if(PlayerData[i][pFaction] == FACTION_POLICE || g_RobJobOf[i] != -1 || Rob_CarrierJob(i) != -1) continue;
+            if(RobJob[nj][rjCrewCount] >= ROB_MAX_CREW) break;
+            if(PlayerData[i][pRobPoints] < ROB_POINTS_MAX)
+            {
+                format(sm2, sizeof(sm2), T(i, C_ERROR"[Rob] "C_WHITE"You stay out of this robbery - you need "C_INFO"%d/%d"C_WHITE" rob points."), ROB_POINTS_MAX, ROB_POINTS_MAX);
+                SCM(i, COLOR_ERROR, sm2);
+                continue;
+            }
+            Rob_AddCrew(nj, i);
         }
-        g_RobCrewCount[playerid] = crewCount;
-        format(g_RobTargetName[playerid], 32, "%s", targetName);
-        g_RobHQ[playerid][0]     = bd1;
-        g_RobHQ[playerid][1]     = bd2;
-        g_RobStage[playerid]     = 0;
-        g_RobActive[playerid]    = true;
 
-        // scade 10 rob points tuturor din masina + wanted level (pentru politie) + mapare inversa
-        for(new c = 0; c < crewCount; c++)
+        for(new c = 0; c < RobJob[nj][rjCrewCount]; c++)
         {
-            new pid = g_RobCrew[playerid][c];
-            g_RobLeaderOf[pid] = playerid;
-
-            PlayerData[pid][pRobPoints] -= ROB_COST;
-            if(PlayerData[pid][pRobPoints] < 0) PlayerData[pid][pRobPoints] = 0;
-            UpdatePlayer(pid, pRobPoints);
-
-            PlayerData[pid][pWanted] = 6;
-            SetPlayerWantedLevel(pid, 6);
-            UpdatePlayer(pid, pWanted);
-
-            Pray_FlagSin(pid, 2); // Lacomia dupa bani
-
-            new nm[256];
-            format(nm, sizeof(nm), T(pid, C_ERROR"[Rob] "C_WHITE"Robbery of "C_INFO"%s"C_WHITE" started! Deliver the money to the "C_INFO"2 businesses"C_WHITE" (checkpoints) to get paid."),
-                targetName);
-            SCM(pid, COLOR_ERROR, nm);
+            new pid = RobJob[nj][rjCrew][c];
+            format(sm2, sizeof(sm2), T(pid, C_ERROR"[Rob] "C_WHITE"Robbery at "C_INFO"%s"C_WHITE"! Get out and go in - the cash only flows while "C_INFO"%s"C_WHITE" is inside."),
+                targetName, PlayerData[playerid][pName]);
+            SCM(pid, COLOR_ERROR, sm2);
         }
-
-        // anunta politia (factiunea 1) si presa (News Reporters) despre jaf
-        new pmsg[160];
-        format(pmsg, sizeof(pmsg), "[P.R.] A group of thieves led by %s robbed %s! Hurry and catch them before they deliver the stolen goods.",
-            PlayerData[playerid][pName], targetName);
-        for(new i = 0; i < MAX_PLAYERS; i++)
-            if(IsPlayerConnected(i) && PlayerData[i][pLogged] && (PlayerData[i][pFaction] == 1 || PlayerData[i][pFaction] == NEWS_FACTION_ID))
-                {
-                    format(pmsg, sizeof(pmsg), T(i, "[P.R.] A group of thieves led by %s robbed %s! Hurry and catch them before they deliver the stolen goods."), PlayerData[playerid][pName], targetName);
-                    SCM(i, COLOR_ERROR, pmsg);
-                }
-
-        Rob_SetCheckpointForCrew(playerid); // pune primul checkpoint la business-ul 1
+        SCM(playerid, COLOR_INFO, C_INFO"[Rob] "C_WHITE"The more of your crew inside, the faster the cash comes. When you leave the store, you grab the bag and run.");
         return 1;
     }
 
@@ -34778,6 +35577,9 @@ We are connected with nature, with community, and with the supreme good that wat
         if(g_SmuggleActive[artarget] || g_SmuggleLeaderOf[artarget] != INVALID_PLAYER_ID)
             Smuggle_OnCaught(artarget, playerid);
 
+        // Jaf: arestat cu sacul asupra lui -> sacul e confiscat de ofiter; oricum iese din echipa
+        Rob_HandleArrest(artarget, playerid);
+
         // Baga in inchisoare
         PlayerData[artarget][pJailSeconds] = minutes * 60;
         UpdatePlayer(artarget, pJailSeconds);
@@ -34848,6 +35650,9 @@ We are connected with nature, with community, and with the supreme good that wat
         // Contrabanda: auto-arestat in timpul unei curse -> prima Politiei (fara ofiter) + scos din cursa
         if(g_SmuggleActive[playerid] || g_SmuggleLeaderOf[playerid] != INVALID_PLAYER_ID)
             Smuggle_OnCaught(playerid, INVALID_PLAYER_ID);
+
+        // Jaf: s-a predat cu sacul -> totul merge in seiful Politiei
+        Rob_HandleArrest(playerid, INVALID_PLAYER_ID);
 
         // Baga in inchisoare
         PlayerData[playerid][pJailSeconds] = amMinutes * 60;
@@ -38265,7 +39070,24 @@ This is handy for setting up far from the city - drag the caravan somewhere remo
         else if(!strcmp(topic, "rob", true) || !strcmp(topic, "robbery", true))
         {
             title = "How to: Robbery";
-            body = "{E3E3E3}Rob a shop or fast-food with your crew - the more people in the car, the bigger the reward.\n\n{FFFF00}Requirements:{E3E3E3}\n- You need "C_INFO"10/10 rob points"C_WHITE" (shown in /stats). You gain "C_INFO"1 per payday"C_WHITE".\n- You must be the "C_INFO"driver"C_WHITE" of a vehicle, parked next to a "C_INFO"shop or fast-food"C_WHITE".\n\n{FFFF00}Doing it:{E3E3E3} drive up to a shop or fast-food and use "C_INFO"/rob"C_WHITE".\n- Everyone in the car at that moment becomes the crew and each loses "C_INFO"10 rob points"C_WHITE".\n- The whole crew gets "C_INFO"wanted level 6"C_WHITE" - the police will come!\n- Now deliver the money: a checkpoint appears at a random "C_INFO"business"C_WHITE". Reach it, then a "C_INFO"second"C_WHITE" business appears. You must reach "C_INFO"both"C_WHITE".\n\n{FFFF00}Payout:{E3E3E3} after the 2nd business every crew member who is "C_INFO"still alive and connected"C_WHITE" earns "C_SUCCESS"$12.000 + $2.000 per crew member + a random bonus up to $5.000"C_WHITE" each. Die or disconnect and you get nothing.";
+            body = "{E3E3E3}Hold up a shop or fast-food, get away with the loot bag and launder it at a fence.\n\n\
+{FFFF00}1. Hold-up:{E3E3E3} park a "C_INFO"car or motorbike (category A/B)"C_WHITE" at a shop or fast-food, have a "C_INFO"firearm"C_WHITE" on you and use "C_INFO"/rob"C_WHITE" from the vehicle.\n\
+- Everyone in the vehicle with 10/10 rob points becomes the crew (max "C_INFO"4"C_WHITE").\n\
+- The cash starts flowing once the leader gets out and goes "C_INFO"inside"C_WHITE" the store (90 seconds to do it). More crew inside = faster (up to "C_SUCCESS"$70.000"C_WHITE").\n\
+- When the leader leaves the store, the cash stops and the run begins.\n\
+- The "C_ERROR"alarm"C_WHITE" goes off at a random moment. Still inside? Wanted 6 and a "C_ERROR"GPS tracker"C_WHITE" in the cash for 3 minutes.\n\
+- Got out before the alarm? Less money, but only wanted 3 and no tracker. Greed vs. risk - your call.\n\n\
+{FFFF00}2. The bag:{E3E3E3} the leader walks out with the loot bag (you see it on their back).\n\
+- "C_INFO"/rob pass [id]"C_WHITE" hands it to a crew member next to you.\n\
+- If the carrier dies or quits, the bag falls on the ground for 3 minutes. Anyone can grab it by walking over it (or "C_INFO"/rob take"C_WHITE"):\n\
+  - your crew takes it back and goes on to the fence;\n\
+  - a "C_INFO"cop"C_WHITE" returns it to the store and gets "C_SUCCESS"15%"C_WHITE";\n\
+  - a "C_INFO"mafia member"C_WHITE" takes it to their own HQ and keeps "C_SUCCESS"50%"C_WHITE";\n\
+  - anyone else: 60% chance they hand it to the police HQ for "C_SUCCESS"25%"C_WHITE", 40% chance they finish the job at the fence.\n\
+- Arrested with the bag = returned, the officer gets 15%.\n\n\
+{FFFF00}3. The fence:{E3E3E3} take the bag to the checkpoint (a mafia HQ). The fence keeps "C_INFO"15%"C_WHITE" (it goes to that mafia), the rest is split equally between the crew members still alive. VIP: +10%.\n\n\
+{FFFF00}Limits:{E3E3E3} you need "C_INFO"10/10 rob points"C_WHITE" (shown in /stats, "C_INFO"+1 per payday"C_WHITE"); each crew member spends "C_INFO"10"C_WHITE" when joining. Each store also has a "C_INFO"30 min"C_WHITE" cooldown.\n\
+A few minutes after the hold-up, the store catches "C_ERROR"fire"C_WHITE" - it burns until SMURD puts it out. Check yourself with "C_INFO"/rob status"C_WHITE".";
         }
         else if(!strcmp(topic, "skins", true) || !strcmp(topic, "skin", true) || !strcmp(topic, "clothes", true))
         {
@@ -42679,7 +43501,7 @@ Continue with "C_INFO"/howto setquest 2"C_WHITE".";
         while(cmdtext[idx] > ' ' && shpIdPos < 7) { shpIdStr[shpIdPos++] = cmdtext[idx]; idx++; }
         shpIdStr[shpIdPos] = EOS;
         if(!strlen(shpIdStr))
-            return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopc [id] [loc/name/type]"C_WHITE"."), 1;
+            return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopc [id] [loc/name/type/int]"C_WHITE"."), 1;
 
         new sidx = Shop_FindByID(strval(shpIdStr));
         if(sidx == -1)
@@ -42690,7 +43512,7 @@ Continue with "C_INFO"/howto setquest 2"C_WHITE".";
         while(cmdtext[idx] > ' ' && shpOptPos < 15) { shpOpt[shpOptPos++] = cmdtext[idx]; idx++; }
         shpOpt[shpOptPos] = EOS;
         if(!strlen(shpOpt))
-            return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopc [id] [loc/name/type]"C_WHITE"."), 1;
+            return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Use "C_INFO"/shopc [id] [loc/name/type/int]"C_WHITE"."), 1;
 
         // ---- /shopc [id] loc (muta shop-ul la pozitia ta) ----
         if(strcmp(shpOpt, "loc", true) == 0)
@@ -42763,7 +43585,44 @@ Continue with "C_INFO"/howto setquest 2"C_WHITE".";
             return 1;
         }
 
-        return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/shopc [id] [loc/name/type]"C_WHITE"."), 1;
+        // ---- /shopc [id] int [remove] (interiorul = pozitia/interiorul tau curent) ----
+        if(strcmp(shpOpt, "int", true) == 0)
+        {
+            while(cmdtext[idx] == ' ') idx++;
+            new shpIntArg[8];
+            strmid(shpIntArg, cmdtext, idx, strlen(cmdtext), 8);
+            new q[256];
+            if(strlen(shpIntArg) && !strcmp(shpIntArg, "remove", true))
+            {
+                ShopData[sidx][shopIntX] = 0.0; ShopData[sidx][shopIntY] = 0.0; ShopData[sidx][shopIntZ] = 0.0;
+                ShopData[sidx][shopIntA] = 0.0; ShopData[sidx][shopIntID] = 0;
+            }
+            else
+            {
+                if(GetPlayerInterior(playerid) == 0)
+                    return SCM(playerid, COLOR_ERROR, C_ERROR"Error: "C_WHITE"Go inside the interior you want first (e.g. with "C_INFO"/setint"C_WHITE"), then use "C_INFO"/shopc [id] int"C_WHITE" there."), 1;
+                new Float:ix, Float:iy, Float:iz, Float:ia;
+                GetPlayerPos(playerid, ix, iy, iz);
+                GetPlayerFacingAngle(playerid, ia);
+                ShopData[sidx][shopIntX] = ix; ShopData[sidx][shopIntY] = iy; ShopData[sidx][shopIntZ] = iz;
+                ShopData[sidx][shopIntA] = ia; ShopData[sidx][shopIntID] = GetPlayerInterior(playerid);
+            }
+            Shop_Create(sidx);
+            mysql_format(g_SQL, q, sizeof(q), "UPDATE `shops` SET `int_x`=%.4f, `int_y`=%.4f, `int_z`=%.4f, `int_a`=%.4f, `int_id`=%d WHERE `shopID`=%d",
+                ShopData[sidx][shopIntX], ShopData[sidx][shopIntY], ShopData[sidx][shopIntZ], ShopData[sidx][shopIntA], ShopData[sidx][shopIntID], ShopData[sidx][shopID]);
+            mysql_tquery(g_SQL, q, "", "", 0);
+
+            new imsg[200];
+            if(Shop_HasInterior(sidx))
+                format(imsg, sizeof(imsg), T(playerid, C_SUCCESS"[ADM] Success: "C_WHITE"Shop "C_INFO"#%d"C_WHITE" now has an interior (interior "C_INFO"%d"C_WHITE"). Players enter with ENTER at the shop."),
+                    ShopData[sidx][shopID], ShopData[sidx][shopIntID]);
+            else
+                format(imsg, sizeof(imsg), T(playerid, C_SUCCESS"[ADM] Success: "C_WHITE"Shop "C_INFO"#%d"C_WHITE" no longer has an interior."), ShopData[sidx][shopID]);
+            SCM(playerid, COLOR_SUCCESS, imsg);
+            return 1;
+        }
+
+        return SCM(playerid, COLOR_INFO, C_INFO"Info: "C_WHITE"Unknown option. Use "C_INFO"/shopc [id] [loc/name/type/int]"C_WHITE"."), 1;
     }
 
     // ---- /shopDelete [id] ----
@@ -47463,11 +48322,12 @@ Continue with "C_INFO"/howto setquest 2"C_WHITE".";
             PlayerData[targetid][pFactionRank] = 5; // fRank 5 = Lead
             SetPlayerColor(targetid, FactionColors[fid]);
 
-            // Noul lider primeste spawn-ul setat la HQ-ul factiunii si e respawnat pe loc
+            // Noul lider primeste spawn-ul setat la HQ-ul factiunii; nu mai e respawnat direct,
+            // i se pune viata la 0 si ajunge la HQ prin moarte (respawn normal)
             PlayerData[targetid][pSpawn] = 2;
             UpdatePlayer(targetid, pSpawn);
             Player_RecalcSpawn(targetid);
-            SpawnPlayer(targetid);
+            SetPlayerHealth(targetid, 0.0);
 
             GetPlayerName(targetid, FactionData[fid][fLead], 24);
 
@@ -48094,13 +48954,8 @@ public OnPlayerDeath(playerid, killerid, reason)
         SCM(playerid, COLOR_ERROR, C_ERROR"[SGR] "C_WHITE"You lost your bag and its containers when you died.");
     }
 
-    // Jaf: daca moare, iese din echipa (nu mai primeste bani); jaful continua pentru ceilalti
-    if(g_RobLeaderOf[playerid] != INVALID_PLAYER_ID)
-    {
-        g_RobLeaderOf[playerid] = INVALID_PLAYER_ID;
-        DisablePlayerCheckpoint(playerid);
-        SCM(playerid, COLOR_ERROR, C_ERROR"[Rob] "C_WHITE"You died during the robbery - you won't get a cut.");
-    }
+    // Jaf: purtatorul scapa sacul pe jos; mortul iese din impartire (jaful continua pentru ceilalti)
+    Rob_HandleLeave(playerid, true);
 
     // Contrabanda: prins de politie -> prima Politiei; lider mort -> cursa se anuleaza
     Smuggle_HandleDeath(playerid, killerid);
@@ -48197,12 +49052,8 @@ public OnPlayerDisconnect(playerid, reason)
         HTM_RemovePlayer(playerid, false);
     }
 
-    // Daca conducea un jaf (lider), anuleaza-l pentru toata echipa
-    if(g_RobActive[playerid])
-        Rob_Cancel(playerid);
-    // Daca era doar membru in echipa altcuiva, scoate-l din mapare (payout-ul il va sari)
-    if(g_RobLeaderOf[playerid] != INVALID_PLAYER_ID)
-        g_RobLeaderOf[playerid] = INVALID_PLAYER_ID;
+    // Jaf: sacul cade pe jos daca il purta; iese din impartire (jaful continua fara el, si fara lider)
+    Rob_HandleLeave(playerid, false);
 
     // Contrabanda: lider deconectat -> anuleaza cursa; membru deconectat -> scos din plata
     if(g_SmuggleActive[playerid])
@@ -48423,6 +49274,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 
         if(PlayerData[playerid][pLogged])
             Casino_Toggle(playerid);
+
+        if(PlayerData[playerid][pLogged])
+            Shop_InteriorToggle(playerid); // usa shop-urilor cu interior (setat cu /shopc [id] int)
 
         if(PlayerData[playerid][pLogged])
             Houses_InteriorToggle(playerid);
